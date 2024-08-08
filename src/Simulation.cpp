@@ -28,8 +28,15 @@ void Simulation::addObject(MeshObject* mesh_object)
     _mesh_objects.push_back(mesh_object);
 
     // add the Drawables for the new MeshObject to the Viewer
-    _viewer->add_drawable(mesh_object->renderer()->get_triangles_drawable("faces"));
-    _viewer->add_drawable(mesh_object->renderer()->get_points_drawable("vertices"));
+    for (const auto& pt_drawable : mesh_object->renderer()->points_drawables())
+    {
+        _viewer->add_drawable(pt_drawable);
+    }
+    for (const auto& tri_drawable : mesh_object->renderer()->triangles_drawables())
+    {
+        _viewer->add_drawable(tri_drawable);
+    }
+    
     
 }
 
@@ -57,7 +64,7 @@ void Simulation::setup()
 
     // create a ground plane
     RigidMeshObject* ground_plane = new RigidMeshObject("ground");
-    ground_plane->createPlaneGeometry({0, 0, 0}, 10);
+    ground_plane->createPlaneGeometry({0, 0, 0}, 20);
     addObject(ground_plane);
 
     // add text that displays the current Sim Time   

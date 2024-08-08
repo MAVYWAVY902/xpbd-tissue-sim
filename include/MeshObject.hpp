@@ -136,6 +136,12 @@ class MeshObject : public easy3d::Model
      */
     std::vector<easy3d::vec3> _vertex_cache;
 
+    /** Constant color to be used by the mesh. */
+    easy3d::vec4 _color;
+
+    /** Whether or not to draw the points of the mesh */
+    bool _draw_points;
+
 };
 
 #endif

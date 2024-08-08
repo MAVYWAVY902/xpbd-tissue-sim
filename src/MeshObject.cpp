@@ -26,30 +26,48 @@ void MeshObject::init()
         }
         
     });
+    tri_drawable->set_uniform_coloring(_color);
 
-    // create a PointsDrawable for the points of the tetrahedral mesh
-    easy3d::PointsDrawable* points_drawable = renderer()->add_points_drawable("vertices");
-    // specify the update function for the points
-    points_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
-        // update the vertex buffer with the vertices of the mesh
-        d->update_vertex_buffer(m->points(), true);
-    });
+    if (_draw_points)
+    {
+        // create a PointsDrawable for the points of the tetrahedral mesh
+        easy3d::PointsDrawable* points_drawable = renderer()->add_points_drawable("vertices");
+        // specify the update function for the points
+        points_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
+            // update the vertex buffer with the vertices of the mesh
+            d->update_vertex_buffer(m->points(), true);
+        });
+    }
 }
 
 MeshObject::MeshObject(const std::string& name)
-    : easy3d::Model(name)
+    : easy3d::Model(name), _color(1.0f, 1.0f, 1.0f, 1.0f)
 {
     init();
 }
 
 MeshObject::MeshObject(const std::string& name, const YAML::Node& config)
-    : easy3d::Model(name)
+    : easy3d::Model(name), _color(1.0f, 1.0f, 1.0f, 1.0f)
 {
+    // read color from config, if it exists
+    YAML::Node color_yaml_node = config["color"];
+    if (color_yaml_node.Type() != YAML::NodeType::Null)
+    {
+        _color = easy3d::vec4(color_yaml_node[0].as<double>(), color_yaml_node[1].as<double>(), color_yaml_node[2].as<double>(), color_yaml_node[3].as<double>());
+    }
+
+    // read draw points flag from config
+    YAML::Node draw_points_yaml_node = config["draw-points"];
+    if (draw_points_yaml_node.Type() != YAML::NodeType::Null)
+    {
+        _draw_points = draw_points_yaml_node.as<bool>();
+    }
+
     init();
 }
 
 MeshObject::MeshObject(const std::string& name, const VerticesMat& verts, const FacesMat& faces)
-    : easy3d::Model(name), _vertices(verts), _faces(faces), _vertex_cache(verts.rows())
+    : easy3d::Model(name), _vertices(verts), _faces(faces), _vertex_cache(verts.rows()), _color(1.0f, 1.0f, 1.0f, 1.0f)
 {
     init();
 }
