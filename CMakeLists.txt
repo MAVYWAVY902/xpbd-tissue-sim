@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.12)
+project(MyProject)
+set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
+set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
+
+find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
+find_package(assimp REQUIRED)
+
+include_directories("./include")
+include_directories("/home/smtobin/Documents/UTK/C++/XPBD/eigen-3.4.0")
+
+add_library(MeshUtils include/MeshUtils.hpp src/MeshUtils.cpp) # create MeshUtils library
+set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with CGAL
+
+set(XPBD_FILES 
+    "include/Simulation.hpp" 
+    "include/ElasticMaterial.hpp"
+    "include/MeshObject.hpp" 
+    "include/RigidMeshObject.hpp"
+    "include/ElasticMeshObject.hpp"
+    "include/XPBDMeshObject.hpp"
+    "include/TextRenderingViewer.hpp" 
+    "src/Simulation.cpp" 
+    "src/MeshObject.cpp" 
+    "src/RigidMeshObject.cpp"
+    "src/ElasticMeshObject.cpp"
+    "src/TextRenderingViewer.cpp" 
+    "src/XPBDMeshObject.cpp"
+)
+
+add_library(XPBD ${XPBD_FILES} ) # create XPBD library
+target_link_libraries(XPBD easy3d::core easy3d::util easy3d::renderer easy3d::viewer MeshUtils yaml-cpp)
+add_executable(Test src/main.cpp)                    # create an executable target
+target_link_libraries(Test XPBD easy3d::viewer gmsh)       # link to necessary Easy3D modules (add more if needed, e.g., algo)
