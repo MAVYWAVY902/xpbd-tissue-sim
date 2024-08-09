@@ -1,0 +1,15 @@
+name: sim
+services:
+  dev:
+    privileged: true
+    tty: true
+    build:
+      context: "./"
+      dockerfile: "./Dockerfile"
+    environment:
+      - DISPLAY
+    volumes:
+      - "./:/workspace"
+      - "/tmp/.X11-unix:/tmp/.X11-unix"
+    network_mode: "host"
+    

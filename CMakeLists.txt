@@ -3,11 +3,13 @@ project(MyProject)
 set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
+list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build")
+
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)
 
 include_directories("./include")
-include_directories("/home/smtobin/Documents/UTK/C++/XPBD/eigen-3.4.0")
+include_directories("/thirdparty/eigen")
 
 add_library(MeshUtils include/MeshUtils.hpp src/MeshUtils.cpp) # create MeshUtils library
 set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX)

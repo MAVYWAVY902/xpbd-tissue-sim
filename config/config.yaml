@@ -5,7 +5,7 @@ objects:
   -
     name: "Cube1"
     type: "XPBDMeshObject"
-    filename: "/home/smtobin/Documents/UTK/C++/XPBD/resource/refined_cube.msh"
+    filename: "../resource/refined_cube.msh"
     material:
       name: "Rubber"
       density: 1000
@@ -20,7 +20,7 @@ objects:
   - 
     name: "Cube2"
     type: "XPBDMeshObject"
-    filename: "/home/smtobin/Documents/UTK/C++/XPBD/resource/refined_cube.msh"
+    filename: "../resource/refined_cube.msh"
     material:
       name: "Soft Tissue"
       density: 1000
