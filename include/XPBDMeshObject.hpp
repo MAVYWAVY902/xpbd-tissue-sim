@@ -93,6 +93,11 @@ class XPBDMeshObject : public ElasticMeshObject
     /** Previous vertex positions */
     VerticesMat _x_prev;
 
+    /** Number of Gauss-Seidel iterations
+     * For now, just a hard-coded constant value.
+     */
+    const unsigned _num_iters = 1;
+
 
 
 
