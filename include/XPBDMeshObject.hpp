@@ -3,6 +3,7 @@
 
 #include "ElasticMeshObject.hpp"
 #include "ElasticMaterial.hpp"
+#include "config/XPBDMeshObjectConfig.hpp"
 
 /** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
  *  "A Constraint-based Formulation of Stable Neo-Hookean Materials" by Macklin and Muller (2021).
@@ -15,7 +16,8 @@ class XPBDMeshObject : public ElasticMeshObject
      * @param name : the name of the new XPBDMeshObject
      * @param config : the YAML node dictionary describing the parameters for the new XPBDMeshObject
      */
-    explicit XPBDMeshObject(const std::string& name, const YAML::Node& config);
+    // explicit XPBDMeshObject(const std::string& name, const YAML::Node& config);
+    explicit XPBDMeshObject(const XPBDMeshObjectConfig* config);
 
     /** Creates a new XPBDMeshObject from a mesh file
      * @param name : the name of the new XPBDMeshObject
@@ -94,9 +96,8 @@ class XPBDMeshObject : public ElasticMeshObject
     VerticesMat _x_prev;
 
     /** Number of Gauss-Seidel iterations
-     * For now, just a hard-coded constant value.
      */
-    const unsigned _num_iters = 1;
+    unsigned _num_iters;
 
 
 

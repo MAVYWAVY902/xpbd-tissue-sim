@@ -11,6 +11,8 @@
 
 #include <Eigen/Dense>
 
+#include "config/MeshObjectConfig.hpp"
+
 /** A class for representing mesh-based objects in the simulation.
  * Inherited classes will implement the material behavior associated with the meshes.
  * 
@@ -42,7 +44,8 @@ class MeshObject : public easy3d::Model
      */
     explicit MeshObject(const std::string& name);
     
-    explicit MeshObject(const std::string& name, const YAML::Node& config);
+    // explicit MeshObject(const std::string& name, const YAML::Node& config);
+    explicit MeshObject(const MeshObjectConfig* config);
 
     /** Creates MeshObject by loading from a file
      * @param name : the name of the new MeshObject

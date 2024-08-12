@@ -8,53 +8,77 @@ ElasticMeshObject::ElasticMeshObject(const std::string& name)
 
 }
 
-ElasticMeshObject::ElasticMeshObject(const std::string& name, const YAML::Node& config)
-    : MeshObject(name, config), _material(ElasticMaterial::RUBBER())
+// ElasticMeshObject::ElasticMeshObject(const std::string& name, const YAML::Node& config)
+//     : MeshObject(name, config), _material(ElasticMaterial::RUBBER())
+// {
+//     // read in material
+//     YAML::Node material_yaml_node = config["material"];
+//     if (material_yaml_node.Type() != YAML::NodeType::Null)
+//     {
+//         const std::string& mat_name = material_yaml_node["name"].as<std::string>();
+//         const double mat_density = material_yaml_node["density"].as<double>();
+//         const double mat_E = material_yaml_node["E"].as<double>();
+//         const double mat_nu = material_yaml_node["nu"].as<double>();
+//         ElasticMaterial mat(mat_name, mat_density, mat_E, mat_nu);
+
+//         _material = mat;
+//     }
+
+//     // read in filename and load from file if specified
+//     YAML::Node filename_yaml_node = config["filename"];
+//     if (filename_yaml_node.Type() != YAML::NodeType::Null)
+//     {
+//         _loadMeshFromFile(filename_yaml_node.as<std::string>());
+//     }
+
+//     // read in starting position
+//     YAML::Node position_yaml_node = config["position"];
+//     if (position_yaml_node.Type() != YAML::NodeType::Null)
+//     {
+//         Eigen::Vector3d position {position_yaml_node[0].as<double>(), position_yaml_node[1].as<double>(), position_yaml_node[2].as<double>()};
+//         moveTo(position, PositionReference::CENTER);
+//     }
+
+//     // read in starting max size
+//     YAML::Node max_size_yaml_node = config["max-size"];
+//     if (max_size_yaml_node.Type() != YAML::NodeType::Null)
+//     {
+//         resize(max_size_yaml_node.as<double>());
+//     }
+
+//     // read in starting velocity
+//     YAML::Node velocity_yaml_node = config["velocity"];
+//     if (velocity_yaml_node.Type() != YAML::NodeType::Null)
+//     {
+//         Eigen::Vector3d velocity {velocity_yaml_node[0].as<double>(), velocity_yaml_node[1].as<double>(), velocity_yaml_node[2].as<double>()};
+//         _v.rowwise() = velocity.transpose(); 
+//     }
+
+//     updateVertexCache();
+// }
+ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
+    : MeshObject(config), _material(config->materialConfig())
 {
-    // read in material
-    YAML::Node material_yaml_node = config["material"];
-    if (material_yaml_node.Type() != YAML::NodeType::Null)
-    {
-        const std::string& mat_name = material_yaml_node["name"].as<std::string>();
-        const double mat_density = material_yaml_node["density"].as<double>();
-        const double mat_E = material_yaml_node["E"].as<double>();
-        const double mat_nu = material_yaml_node["nu"].as<double>();
-        ElasticMaterial mat(mat_name, mat_density, mat_E, mat_nu);
+    std::string filename = config->filename().value_or("");
+    _loadMeshFromFile(filename);
 
-        _material = mat;
+    if (config->initialPosition().has_value())
+    {
+        moveTo(config->initialPosition().value(), PositionReference::CENTER);
     }
 
-    // read in filename and load from file if specified
-    YAML::Node filename_yaml_node = config["filename"];
-    if (filename_yaml_node.Type() != YAML::NodeType::Null)
+    if (config->maxSize().has_value())
     {
-        _loadMeshFromFile(filename_yaml_node.as<std::string>());
+        resize(config->maxSize().value());
     }
 
-    // read in starting position
-    YAML::Node position_yaml_node = config["position"];
-    if (position_yaml_node.Type() != YAML::NodeType::Null)
+    if (config->initialVelocity().has_value())
     {
-        Eigen::Vector3d position {position_yaml_node[0].as<double>(), position_yaml_node[1].as<double>(), position_yaml_node[2].as<double>()};
-        moveTo(position, PositionReference::CENTER);
-    }
-
-    // read in starting max size
-    YAML::Node max_size_yaml_node = config["max-size"];
-    if (max_size_yaml_node.Type() != YAML::NodeType::Null)
-    {
-        resize(max_size_yaml_node.as<double>());
-    }
-
-    // read in starting velocity
-    YAML::Node velocity_yaml_node = config["velocity"];
-    if (velocity_yaml_node.Type() != YAML::NodeType::Null)
-    {
-        Eigen::Vector3d velocity {velocity_yaml_node[0].as<double>(), velocity_yaml_node[1].as<double>(), velocity_yaml_node[2].as<double>()};
-        _v.rowwise() = velocity.transpose(); 
+        _v.rowwise() = config->initialVelocity().value().transpose();
     }
 
     updateVertexCache();
+
 }
 
 ElasticMeshObject::ElasticMeshObject(const std::string& name, const std::string& filename, const ElasticMaterial& material = ElasticMaterial::RUBBER())
@@ -122,7 +146,7 @@ void ElasticMeshObject::_setFacesFromElements()
     // each element has 4 faces
     FacesMat faces_from_elems(_elements.rows()*4, 3);
 
-    for (size_t i = 0; i < _elements.rows(); i++)
+    for (int i = 0; i < _elements.rows(); i++)
     {
         
         // TODO: don't add duplicate faces

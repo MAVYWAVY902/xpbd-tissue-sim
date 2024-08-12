@@ -2,6 +2,7 @@
 #define __RIGID_MESH_OBJECT_HPP
 
 #include "MeshObject.hpp"
+#include "config/RigidMeshObjectConfig.hpp"
 
 /** A class for representing rigid body meshes.
  * These meshes are just run-of-the-mill surface meshes loaded from .obj or .stl files and do not deform.
@@ -20,7 +21,8 @@ class RigidMeshObject : public MeshObject
      * @param name : the name of the new RigidMeshObject
      * @param config : the YAML config node to load parameters from
      */
-    explicit RigidMeshObject(const std::string& name, const YAML::Node& config);
+    // explicit RigidMeshObject(const std::string& name, const YAML::Node& config);
+    explicit RigidMeshObject(const RigidMeshObjectConfig* config);
 
     /** Creates a RigidMeshObject by loading from a mesh file.
      * @param name : the name of the new RigidMeshObject

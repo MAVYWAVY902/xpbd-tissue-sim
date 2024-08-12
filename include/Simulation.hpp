@@ -18,6 +18,8 @@
 #include "RigidMeshObject.hpp"
 #include "XPBDMeshObject.hpp"
 
+#include "config/SimulationConfig.hpp"
+
 #include <yaml-cpp/yaml.h>
 
 #include <thread>
@@ -33,7 +35,7 @@ class Simulation
         /** Creates a Simulation object with specified name and default parameters.
          * @param name : the name of the Simulation
          */
-        explicit Simulation(const std::string& name, const std::string& config_filename);
+        explicit Simulation(const std::string& config_filename);
 
         /** Adds a MeshObject to the simulation. Will add its Drawables to the Viewer as well.
          * @param mesh_obj : the MeshObject being added  
@@ -55,7 +57,9 @@ class Simulation
 
     protected:
         /** YAML config dictionary for setting up the simulation */
-        YAML::Node _config;
+        // YAML::Node _config;
+
+        SimulationConfig _config;
 
         /** Name of the simulation */
         std::string _name;

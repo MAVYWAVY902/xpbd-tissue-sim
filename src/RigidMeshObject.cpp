@@ -7,15 +7,20 @@ RigidMeshObject::RigidMeshObject(const std::string& name)
 
 }
 
-RigidMeshObject::RigidMeshObject(const std::string& name, const YAML::Node& config)
-    : MeshObject(name)
+// RigidMeshObject::RigidMeshObject(const std::string& name, const YAML::Node& config)
+//     : MeshObject(name)
+// {
+//     // read in filename and load from file if specified
+//     YAML::Node filename_yaml_node = config["filename"];
+//     if (filename_yaml_node.Type() != YAML::NodeType::Null)
+//     {
+//         _loadMeshFromFile(filename_yaml_node.as<std::string>());
+//     }
+// }
+RigidMeshObject::RigidMeshObject(const RigidMeshObjectConfig* config)
+    : MeshObject(config)
 {
-    // read in filename and load from file if specified
-    YAML::Node filename_yaml_node = config["filename"];
-    if (filename_yaml_node.Type() != YAML::NodeType::Null)
-    {
-        _loadMeshFromFile(filename_yaml_node.as<std::string>());
-    }
+    _loadMeshFromFile(config->filename().value_or(""));
 }
 
 RigidMeshObject::RigidMeshObject(const std::string& name, const std::string& filename)

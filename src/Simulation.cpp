@@ -1,9 +1,11 @@
 #include "Simulation.hpp"
+#include "config/RigidMeshObjectConfig.hpp"
+#include "config/XPBDMeshObjectConfig.hpp"
 
 #include <gmsh.h>
 
-Simulation::Simulation(const std::string& name, const std::string& config_filename)
-    : _name(name)
+Simulation::Simulation(const std::string& config_filename)
+    : _config(YAML::LoadFile(config_filename))
 {
     // initialize gmsh
     gmsh::initialize();
@@ -16,10 +18,13 @@ Simulation::Simulation(const std::string& name, const std::string& config_filena
     _viewer->set_usage("");
 
     // open the config file using yaml-cpp
-    _config = YAML::LoadFile(config_filename);
+    // YAML::Node root_yaml_node = YAML::LoadFile(config_filename);
+    // _config = SimulationConfig(root_yaml_node);
     // set simulation properties based on YAML file
-    _time_step = _config["time-step"].as<double>();
-    _end_time = _config["end-time"].as<double>();
+    _name = _config.name().value_or("");
+    _time_step = _config.timeStep().value_or(1e-3);
+    _end_time = _config.endTime().value_or(10);
+    _time = 0;
 }
 
 void Simulation::addObject(MeshObject* mesh_object)
@@ -43,22 +48,36 @@ void Simulation::addObject(MeshObject* mesh_object)
 void Simulation::setup()
 {
     // create a MeshObject for each object specified in the YAML file
-    for (const auto& obj : _config["objects"])
-    {
-        // extract name and type information
-        const std::string& name = obj["name"].as<std::string>();
-        const std::string& type = obj["type"].as<std::string>();
+    // for (const auto& obj : _config["objects"])
+    // {
+    //     // extract name and type information
+    //     const std::string& name = obj["name"].as<std::string>();
+    //     const std::string& type = obj["type"].as<std::string>();
 
-        // create the specified type of object
-        if(type == "XPBDMeshObject")
-        { 
-            XPBDMeshObject* mesh_obj = new XPBDMeshObject(name, obj);
-            addObject(mesh_obj);
-        }
-        if(type == "RigidMeshObject")
+    //     // create the specified type of object
+    //     if(type == "XPBDMeshObject")
+    //     { 
+    //         XPBDMeshObject* mesh_obj = new XPBDMeshObject(name, obj);
+    //         addObject(mesh_obj);
+    //     }
+    //     if(type == "RigidMeshObject")
+    //     {
+    //         RigidMeshObject* mesh_obj = new RigidMeshObject(name, obj);
+    //         addObject(mesh_obj);
+    //     }
+    // }
+    for (const auto& obj_config : _config.meshObjectConfigs())
+    {
+        // try downcasting
+        if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
         {
-            RigidMeshObject* mesh_obj = new RigidMeshObject(name, obj);
-            addObject(mesh_obj);
+            XPBDMeshObject* new_obj = new XPBDMeshObject(xpbd_config);
+            addObject(new_obj);
+        }
+        else if (RigidMeshObjectConfig* rigid_config = dynamic_cast<RigidMeshObjectConfig*>(obj_config.get()))
+        {
+            RigidMeshObject* new_obj = new RigidMeshObject(rigid_config);
+            addObject(new_obj);
         }
     }
 

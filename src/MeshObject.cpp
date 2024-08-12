@@ -46,24 +46,35 @@ MeshObject::MeshObject(const std::string& name)
     init();
 }
 
-MeshObject::MeshObject(const std::string& name, const YAML::Node& config)
-    : easy3d::Model(name), _color(1.0f, 1.0f, 1.0f, 1.0f)
-{
-    // read color from config, if it exists
-    YAML::Node color_yaml_node = config["color"];
-    if (color_yaml_node.Type() != YAML::NodeType::Null)
-    {
-        _color = easy3d::vec4(color_yaml_node[0].as<double>(), color_yaml_node[1].as<double>(), color_yaml_node[2].as<double>(), color_yaml_node[3].as<double>());
-    }
+// MeshObject::MeshObject(const std::string& name, const YAML::Node& config)
+//     : easy3d::Model(name), _color(1.0f, 1.0f, 1.0f, 1.0f)
+// {
+//     // read color from config, if it exists
+//     YAML::Node color_yaml_node = config["color"];
+//     if (color_yaml_node.Type() != YAML::NodeType::Null)
+//     {
+//         _color = easy3d::vec4(color_yaml_node[0].as<double>(), color_yaml_node[1].as<double>(), color_yaml_node[2].as<double>(), color_yaml_node[3].as<double>());
+//     }
 
-    // read draw points flag from config
-    YAML::Node draw_points_yaml_node = config["draw-points"];
-    if (draw_points_yaml_node.Type() != YAML::NodeType::Null)
-    {
-        _draw_points = draw_points_yaml_node.as<bool>();
-    }
+//     // read draw points flag from config
+//     YAML::Node draw_points_yaml_node = config["draw-points"];
+//     if (draw_points_yaml_node.Type() != YAML::NodeType::Null)
+//     {
+//         _draw_points = draw_points_yaml_node.as<bool>();
+//     }
+
+//     init();
+// }
+MeshObject::MeshObject(const MeshObjectConfig* config)
+    : easy3d::Model(config->name().value_or(""))
+{
+    Eigen::Vector4d color_eigen_vec = config->color().value_or(Eigen::Vector4d::Constant(1.0));
+    _color = easy3d::vec4(color_eigen_vec(0), color_eigen_vec(1), color_eigen_vec(2), color_eigen_vec(3));
+
+    _draw_points = config->drawPoints().value_or(false);
 
     init();
+
 }
 
 MeshObject::MeshObject(const std::string& name, const VerticesMat& verts, const FacesMat& faces)

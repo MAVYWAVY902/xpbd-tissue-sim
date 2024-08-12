@@ -5,22 +5,30 @@
 
 #include <chrono>
 
-XPBDMeshObject::XPBDMeshObject(const std::string& name, const YAML::Node& config)
-    : ElasticMeshObject(name, config)
+// XPBDMeshObject::XPBDMeshObject(const std::string& name, const YAML::Node& config)
+//     : ElasticMeshObject(name, config)
+// {
+//     _init();
+//     _precomputeQuantities();
+// }
+XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
+    : ElasticMeshObject(config)
 {
+    _num_iters = config->numSolverIters().value_or(1);
+
     _init();
     _precomputeQuantities();
 }
 
 XPBDMeshObject::XPBDMeshObject(const std::string& name, const std::string& filename, const ElasticMaterial& material)
-    : ElasticMeshObject(name, filename, material)
+    : ElasticMeshObject(name, filename, material), _num_iters(1)
 {
     _init();
     _precomputeQuantities();
 }
 
 XPBDMeshObject::XPBDMeshObject(const std::string& name, const VerticesMat& verts, const ElementsMat& elems, const ElasticMaterial& material)
-    : ElasticMeshObject(name, verts, elems, material)
+    : ElasticMeshObject(name, verts, elems, material), _num_iters(1)
 {
     _init();
     _precomputeQuantities();

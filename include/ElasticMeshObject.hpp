@@ -3,6 +3,7 @@
 
 #include "MeshObject.hpp"
 #include "ElasticMaterial.hpp"
+#include "config/ElasticMeshObjectConfig.hpp"
 
 /** A class for representing tetrahedral meshes with elastic material properties.
  * Each vertex in the mesh has its own velocity.
@@ -24,7 +25,8 @@ class ElasticMeshObject : public MeshObject
      * @param name : the name of the new ElasticMeshObject
      * @param config : the YAML node dictionary describing the parameters for the ElasticMeshObject
      */
-    explicit ElasticMeshObject(const std::string& name, const YAML::Node& config);
+    // explicit ElasticMeshObject(const std::string& name, const YAML::Node& config);
+    explicit ElasticMeshObject(const ElasticMeshObjectConfig* config);
     
     /** Creates an ElasticMeshObject by loading data from a mesh file
      * @param name : the name of the new ElasticMeshObject
