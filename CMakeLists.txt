@@ -36,13 +36,13 @@ set(XPBD_FILES
     "src/ElasticMeshObject.cpp"
     "src/TextRenderingViewer.cpp" 
     "src/XPBDMeshObject.cpp"
-    "src/config/Config.cpp"
-    "src/config/MeshObjectConfig.cpp"
-    "src/config/ElasticMeshObjectConfig.cpp"
-    "src/config/XPBDMeshObjectConfig.cpp"
-    "src/config/ElasticMaterialConfig.cpp"
-    "src/config/RigidMeshObjectConfig.cpp"
-    "src/config/SimulationConfig.cpp"
+    # "src/config/Config.cpp"
+    # "src/config/MeshObjectConfig.cpp"
+    # "src/config/ElasticMeshObjectConfig.cpp"
+    # "src/config/XPBDMeshObjectConfig.cpp"
+    # "src/config/ElasticMaterialConfig.cpp"
+    # "src/config/RigidMeshObjectConfig.cpp"
+    # "src/config/SimulationConfig.cpp"
 )
 
 add_library(XPBD ${XPBD_FILES} ) # create XPBD library

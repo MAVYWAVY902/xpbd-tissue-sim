@@ -6,7 +6,11 @@
 class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
 {
     public:
-    explicit XPBDMeshObjectConfig(const YAML::Node& node);
+    explicit XPBDMeshObjectConfig(const YAML::Node& node)
+        : ElasticMeshObjectConfig(node)
+    {
+        _extractParameter("num-solver-iters", node, _num_solver_iters);
+    }
 
     std::optional<unsigned> numSolverIters() const { return _num_solver_iters.value; }
 

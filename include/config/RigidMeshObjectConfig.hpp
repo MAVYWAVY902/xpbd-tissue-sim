@@ -6,7 +6,11 @@
 class RigidMeshObjectConfig : public MeshObjectConfig
 {
     public:
-    explicit RigidMeshObjectConfig(const YAML::Node& node);
+    explicit RigidMeshObjectConfig(const YAML::Node& node)
+        : MeshObjectConfig(node)
+    {
+
+    }
 
 };
 

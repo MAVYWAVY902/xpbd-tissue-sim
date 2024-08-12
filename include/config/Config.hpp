@@ -18,8 +18,11 @@ struct ConfigParameter
 class Config
 {
     public:
-    explicit Config();
-    explicit Config(const YAML::Node& node);
+    explicit Config() {}
+    explicit Config(const YAML::Node& node)
+    {
+        _extractParameter("name", node, _name);
+    }
 
     virtual ~Config() = default;
 
@@ -52,7 +55,6 @@ class Config
 
     void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector3d>& param)
     {
-        std::cout << "Setting Vector3 parameter with name " << param_name << "..." << std::endl;
         param.name = param_name;
         try
         {
@@ -76,7 +78,6 @@ class Config
 
     void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector4d>& param)
     {
-        std::cout << "Setting Vector4 parameter with name " << param_name << "..." << std::endl;
         param.name = param_name;
         try
         {

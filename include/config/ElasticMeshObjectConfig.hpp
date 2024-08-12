@@ -7,7 +7,11 @@
 class ElasticMeshObjectConfig : public MeshObjectConfig
 {
     public:
-    explicit ElasticMeshObjectConfig(const YAML::Node& node);
+    explicit ElasticMeshObjectConfig(const YAML::Node& node)
+        : MeshObjectConfig(node)
+    {
+        _material_config = std::make_unique<ElasticMaterialConfig>(node["material"]);
+    }
 
     ElasticMaterialConfig* materialConfig() const { return _material_config.get(); }
 
