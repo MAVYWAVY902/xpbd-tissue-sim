@@ -104,6 +104,18 @@ class MeshObject : public easy3d::Model
      */
     void resize(const double size_of_max_dim);
 
+    /** Resizes the mesh to the specified x, y, and z sizes.
+     * @param x_size : the new size of the mesh in the x direction
+     * @param y_size : the new size of the mesh in the y direction
+     * @param z_size : the new size of the mesh in the z direction
+     */
+    void resize(const double x_size, const double y_size, const double z_size);
+
+    /** Resizes the mesh to the specified x, y, and z sizes, with a Eigen::Vector3 as an input. 
+     * @param size : the Eigen::Vector3d describing the new size of the mesh
+    */
+   void resize(const Eigen::Vector3d& size);
+
     /** Moves the mesh to a specified position, with respect to a specified reference point on the mesh's bounding box.
      * @param position : the position to move the mesh to
      * @param reference : the reference point on the mesh that the position corresponds to

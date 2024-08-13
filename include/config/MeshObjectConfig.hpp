@@ -16,6 +16,7 @@ class MeshObjectConfig : public Config
         _extractParameter("filename", node, _filename);
 
         _extractParameter("max-size", node, _max_size);
+        _extractParameter("size", node, _size);
         _extractParameter("position", node, _initial_position);
         _extractParameter("velocity", node, _initial_velocity);
         
@@ -26,6 +27,7 @@ class MeshObjectConfig : public Config
     // Getters
     std::optional<std::string> filename() const { return _filename.value; }
     std::optional<double> maxSize() const { return _max_size.value; }
+    std::optional<Eigen::Vector3d> size() const { return _size.value; }
     std::optional<Eigen::Vector3d> initialPosition() const { return _initial_position.value; }
     std::optional<Eigen::Vector3d> initialVelocity() const { return _initial_velocity.value; }
     std::optional<bool> drawPoints() const { return _draw_points.value; }
@@ -36,6 +38,7 @@ class MeshObjectConfig : public Config
     ConfigParameter<std::string> _filename;
 
     ConfigParameter<double> _max_size;
+    ConfigParameter<Eigen::Vector3d> _size;
     ConfigParameter<Eigen::Vector3d> _initial_position;
     ConfigParameter<Eigen::Vector3d> _initial_velocity;
 

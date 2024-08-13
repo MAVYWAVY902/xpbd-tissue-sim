@@ -72,6 +72,11 @@ ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
         resize(config->maxSize().value());
     }
 
+    if (config->size().has_value())
+    {
+        resize(config->size().value());
+    }
+
     if (config->initialVelocity().has_value())
     {
         _v.rowwise() = config->initialVelocity().value().transpose();

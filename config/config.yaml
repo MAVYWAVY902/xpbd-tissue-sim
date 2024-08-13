@@ -31,6 +31,14 @@ objects:
     max-size: 7
     position: [0, 7, 12]
     velocity: [0, 0, 1]
+  
+  -
+    name: "Ground"
+    type: "RigidMeshObject"
+    primitive-type: "Plane"
+    size: [10, 25, 0]
+    position: [0, 0, 0]
+    color: [1.0, 1.0, 1.0, 1.0]
 
   # -
   #   name: "Cube3"

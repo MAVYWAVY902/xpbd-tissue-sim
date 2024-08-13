@@ -42,6 +42,12 @@ class RigidMeshObject : public MeshObject
      */
     virtual void update(const double dt) override;
 
+
+    /** Creates a square, 1x1, XY-planar geometry for this RigidMeshObject.
+     * No parameters are taken - use successive resize() and moveTo() calls to manipulate the geometry.
+     */
+    void createPlaneGeometry();
+
     /** Creates a square, XY-planar geometry for this RigidMeshObject.
      * @param center_pos : the center position of the planar square
      * @param size : the size of the planar square

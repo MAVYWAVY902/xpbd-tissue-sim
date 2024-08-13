@@ -20,7 +20,45 @@ RigidMeshObject::RigidMeshObject(const std::string& name)
 RigidMeshObject::RigidMeshObject(const RigidMeshObjectConfig* config)
     : MeshObject(config)
 {
-    _loadMeshFromFile(config->filename().value_or(""));
+    if (config->filename().has_value())
+    {
+        _loadMeshFromFile(config->filename().value());
+    }
+    else if (config->primitiveType().has_value())
+    {
+        if (config->primitiveType().value() == "Plane")
+        {
+            std::cout << "creating plane geometry..." << std::endl;
+            createPlaneGeometry();
+        }
+        else
+        {
+            std::cerr << "Unrecognized primitive type: " << config->primitiveType().value() << std::endl;
+        }
+    }
+    
+
+    if (config->initialPosition().has_value())
+    {
+        moveTo(config->initialPosition().value(), PositionReference::CENTER);
+    }
+
+    if (config->maxSize().has_value())
+    {
+        resize(config->maxSize().value());
+    }
+
+    if (config->size().has_value())
+    {
+        resize(config->size().value());
+    }
+
+    if (config->initialVelocity().has_value())
+    {
+        _v = config->initialVelocity().value();
+    }
+
+    updateVertexCache();
 }
 
 RigidMeshObject::RigidMeshObject(const std::string& name, const std::string& filename)
@@ -52,15 +90,31 @@ void RigidMeshObject::_loadMeshFromFile(const std::string& filename)
 void RigidMeshObject::createPlaneGeometry(const Eigen::Vector3d& center_pos, const double size)
 {
     // create 4 vertices in a square
-    VerticesMat verts { {-size/2 + center_pos(0),    -size/2 + center_pos(1),    0 + center_pos(2)},
-                        {size/2 + center_pos(0),     -size/2 + center_pos(1),    0 + center_pos(2)},
-                        {size/2 + center_pos(0),     size/2 + center_pos(1),     0 + center_pos(2)},
-                        {-size/2 + center_pos(0),    size/2 + center_pos(1),     0 + center_pos(2)} };
+    // VerticesMat verts { {-size/2 + center_pos(0),    -size/2 + center_pos(1),    0 + center_pos(2)},
+    //                     {size/2 + center_pos(0),     -size/2 + center_pos(1),    0 + center_pos(2)},
+    //                     {size/2 + center_pos(0),     size/2 + center_pos(1),     0 + center_pos(2)},
+    //                     {-size/2 + center_pos(0),    size/2 + center_pos(1),     0 + center_pos(2)} };
 
-    // create 2 triangular faces spanning the square
+    // // create 2 triangular faces spanning the square
+    // FacesMat faces { {0, 1, 2},
+    //                  {0, 2, 3} };
+
+    createPlaneGeometry();
+    resize(size, size, 0);
+    moveTo(center_pos, PositionReference::CENTER);
+}
+
+void RigidMeshObject::createPlaneGeometry()
+{
+    // create 4 vertices in a 1x1 square
+    VerticesMat verts { { -1, -1, 0 },
+                        { 1, -1, 0 },
+                        { 1, 1, 0 },
+                        { -1, 1, 0 } };
+    
     FacesMat faces { {0, 1, 2},
                      {0, 2, 3} };
-
+    
     // set the new vertices and faces
     setVertices(verts);
     setFaces(faces);

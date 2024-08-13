@@ -17,9 +17,6 @@ Simulation::Simulation(const std::string& config_filename)
     _viewer = std::make_unique<TextRenderingViewer>(_name);
     _viewer->set_usage("");
 
-    // open the config file using yaml-cpp
-    // YAML::Node root_yaml_node = YAML::LoadFile(config_filename);
-    // _config = SimulationConfig(root_yaml_node);
     // set simulation properties based on YAML file
     _name = _config.name().value_or("");
     _time_step = _config.timeStep().value_or(1e-3);
@@ -47,25 +44,6 @@ void Simulation::addObject(MeshObject* mesh_object)
 
 void Simulation::setup()
 {
-    // create a MeshObject for each object specified in the YAML file
-    // for (const auto& obj : _config["objects"])
-    // {
-    //     // extract name and type information
-    //     const std::string& name = obj["name"].as<std::string>();
-    //     const std::string& type = obj["type"].as<std::string>();
-
-    //     // create the specified type of object
-    //     if(type == "XPBDMeshObject")
-    //     { 
-    //         XPBDMeshObject* mesh_obj = new XPBDMeshObject(name, obj);
-    //         addObject(mesh_obj);
-    //     }
-    //     if(type == "RigidMeshObject")
-    //     {
-    //         RigidMeshObject* mesh_obj = new RigidMeshObject(name, obj);
-    //         addObject(mesh_obj);
-    //     }
-    // }
     for (const auto& obj_config : _config.meshObjectConfigs())
     {
         // try downcasting
@@ -80,11 +58,6 @@ void Simulation::setup()
             addObject(new_obj);
         }
     }
-
-    // create a ground plane
-    RigidMeshObject* ground_plane = new RigidMeshObject("ground");
-    ground_plane->createPlaneGeometry({0, 0, 0}, 20);
-    addObject(ground_plane);
 
     // add text that displays the current Sim Time   
     _viewer->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, easy3d::TextRenderer::ALIGN_LEFT, TextRenderingViewer::Font::MAO, easy3d::vec3(0,0,0), 0.5f, false);

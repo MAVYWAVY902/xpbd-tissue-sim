@@ -12,8 +12,15 @@ class RigidMeshObjectConfig : public MeshObjectConfig
     explicit RigidMeshObjectConfig(const YAML::Node& node)
         : MeshObjectConfig(node)
     {
+        _extractParameter("primitive-type", node, _primitive_type);
 
     }
+
+    // Getters
+    std::optional<std::string> primitiveType() const { return _primitive_type.value; }
+
+    protected:
+    ConfigParameter<std::string> _primitive_type;
 
 };
 

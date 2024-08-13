@@ -140,6 +140,12 @@ void MeshObject::setFaces(const FacesMat& faces)
 
 void MeshObject::resize(const double size_of_max_dim)
 {
+    if (_vertices.rows() == 0)
+    {
+        std::cerr << "Vertices matrix is empty!" << std::endl;
+        return;
+    }
+
     // compute the size of the maximum dimension
     Eigen::Vector3d min_coords = _vertices.colwise().minCoeff();
     Eigen::Vector3d max_coords = _vertices.colwise().maxCoeff();
@@ -153,8 +159,47 @@ void MeshObject::resize(const double size_of_max_dim)
     _vertices.rowwise() += center_of_bbox.transpose();
 }
 
+void MeshObject::resize(const double x_size, const double y_size, const double z_size)
+{
+    if (_vertices.rows() == 0)
+    {
+        std::cerr << "Vertices matrix is empty!" << std::endl;
+        return;
+    }
+
+    // compute the current size in each dimension
+    Eigen::Vector3d min_coords = _vertices.colwise().minCoeff();
+    Eigen::Vector3d max_coords = _vertices.colwise().maxCoeff();
+    Eigen::Vector3d size = max_coords - min_coords;
+
+    // compute the scaling factors for each dimension
+    double scaling_factor_x = (size(0) != 0) ? x_size / size(0) : 1;
+    double scaling_factor_y = (size(1) != 0) ? y_size / size(1) : 1;
+    double scaling_factor_z = (size(2) != 0) ? z_size / size(2) : 1;
+
+    // move all vertices to be centered around (0, 0, 0), apply scaling, then move them back
+    Eigen::Vector3d center_of_bbox = min_coords + size / 2;
+    _vertices.rowwise() += -center_of_bbox.transpose();
+    _vertices.col(0) *= scaling_factor_x;
+    _vertices.col(1) *= scaling_factor_y;
+    _vertices.col(2) *= scaling_factor_z;
+    _vertices.rowwise() += center_of_bbox.transpose();
+
+}
+
+void MeshObject::resize(const Eigen::Vector3d& size)
+{
+    resize(size(0), size(1), size(2));
+}
+
 void MeshObject::moveTo(const Eigen::Vector3d& position, PositionReference ref)
 {
+    if (_vertices.rows() == 0)
+    {
+        std::cerr << "Vertices matrix is empty!" << std::endl;
+        return;
+    }
+
     // the position offset to be applied to each vertex in the mesh
     // depends on not only the desired position but the reference
     Eigen::Vector3d pos_offset;
