@@ -6,9 +6,13 @@
 class MeshObjectConfig : public Config
 {
     public:
+    /** Creates a MeshObjectConfig from a YAML node, which consists of the parameters needed for a MeshObject
+     * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
+     */
     explicit MeshObjectConfig(const YAML::Node& node)
         : Config(node)
     {
+        // extract parameters from Config
         _extractParameter("filename", node, _filename);
 
         _extractParameter("max-size", node, _max_size);
@@ -19,6 +23,7 @@ class MeshObjectConfig : public Config
         _extractParameter("color", node, _color);
     }
 
+    // Getters
     std::optional<std::string> filename() const { return _filename.value; }
     std::optional<double> maxSize() const { return _max_size.value; }
     std::optional<Eigen::Vector3d> initialPosition() const { return _initial_position.value; }
@@ -27,6 +32,7 @@ class MeshObjectConfig : public Config
     std::optional<Eigen::Vector4d> color() const { return _color.value; }
 
     protected:
+    // parameters
     ConfigParameter<std::string> _filename;
 
     ConfigParameter<double> _max_size;
