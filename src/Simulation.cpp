@@ -13,15 +13,37 @@ Simulation::Simulation(const std::string& config_filename)
     // initialize easy3d
     easy3d::initialize();
 
-    // now we can create the Viewer
-    _viewer = std::make_unique<TextRenderingViewer>(_name);
-    _viewer->set_usage("");
-
     // set simulation properties based on YAML file
     _name = _config.name().value_or("");
     _time_step = _config.timeStep().value_or(1e-3);
     _end_time = _config.endTime().value_or(10);
     _time = 0;
+
+    // set the Simulation mode from the YAML config
+    if (_config.simMode().has_value())
+    {
+        if (_config.simMode().value() == "Visualization")
+            _sim_mode = SimulationMode::VISUALIZATION;
+        else if(_config.simMode().value() == "AFAP")
+            _sim_mode = SimulationMode::AFAP;
+        else if(_config.simMode().value() == "Frame-by-frame")
+            _sim_mode = SimulationMode::FRAME_BY_FRAME;
+        else
+        {
+            std::cerr << _config.simMode().value() << " not recognized as a valid simulation mode. Defaulting to 'Visualization'..." << std::endl;
+            _sim_mode = SimulationMode::VISUALIZATION;
+        }
+    }
+    else
+    {
+        // default to 'Visualization' mode
+        _sim_mode = SimulationMode::VISUALIZATION;
+    }
+
+    // now we can create the Viewer
+    _viewer = std::make_unique<TextRenderingViewer>(_name);
+    _viewer->set_usage("");
+    _viewer->registerSimulation(this);
 }
 
 void Simulation::addObject(MeshObject* mesh_object)
@@ -78,49 +100,50 @@ void Simulation::update()
         // the elapsed seconds in wall time since the simulation has started
         double wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
         // if the simulation is ahead of the current elapsed wall time, stall
-        if (_time > wall_time_elapsed_s)
+        if (_sim_mode == SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
         {
             continue;
         }
 
-        // update each MeshObject
-        for (auto& mo : _mesh_objects)
-        {
-            mo->update(_time_step);
-        }
+        _timeStep();
 
         // the time in ms since the viewer was last redrawn
         auto time_since_last_redraw_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - last_redraw).count();
         // we want ~30 fps, so update the viewer every 33 ms
         if (time_since_last_redraw_ms > 33)
         {
-            // update the sim time text
-            _viewer->editText("time", "Sim Time: " + std::to_string(_time) + " s");
-
-            // make sure graphics are up to date for all the objects in the sim
-            for (auto& mesh_object : _mesh_objects)
-            {
-                mesh_object->updateGraphics();
-            }
-
-            // update the viewer
-            _viewer->update();
+            _updateGraphics();
 
             last_redraw = std::chrono::steady_clock::now();
         }
-
-        // increment the time by the time step
-        _time += _time_step;
-
-
         
     }
 
     // one final redraw of final state
+    _updateGraphics();
 
+    auto end = std::chrono::steady_clock::now();
+    std::cout << "Simulating " << _end_time << " seconds took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+}
+
+void Simulation::_timeStep()
+{
+    // update each MeshObject
+    for (auto& mo : _mesh_objects)
+    {
+        mo->update(_time_step);
+    }
+
+    // increment the time by the time step
+    _time += _time_step;
+}
+
+void Simulation::_updateGraphics()
+{
     // update the sim time text
     _viewer->editText("time", "Sim Time: " + std::to_string(_time) + " s");
 
+    // make sure graphics are up to date for all the objects in the sim
     for (auto& mesh_object : _mesh_objects)
     {
         mesh_object->updateGraphics();
@@ -128,9 +151,20 @@ void Simulation::update()
 
     // update the viewer
     _viewer->update();
+}
 
-    auto end = std::chrono::steady_clock::now();
-    std::cout << "Simulating " << _end_time << " seconds took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+void Simulation::notifyKeyPressed(int /* key */, int action, int /* modifiers */)
+{
+    // action = 0 ==> key up event
+    // action = 1 ==> key down event
+    // action = 2 ==> key hold event
+    
+    // if key is pressed down or held, we want to time step
+    if (action > 0)
+    {
+        _timeStep();
+        _updateGraphics();
+    }
 }
 
 int Simulation::run()
@@ -139,7 +173,11 @@ int Simulation::run()
     setup();
 
     // spwan the update thread
-    std::thread update_thread(&Simulation::update, this);
+    std::thread update_thread;
+    if (_sim_mode != SimulationMode::FRAME_BY_FRAME)
+    {
+        update_thread = std::thread(&Simulation::update, this);
+    }
 
     // run the Viewer
     _viewer->fit_screen();

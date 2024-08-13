@@ -5,6 +5,16 @@
 #include "ElasticMaterial.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 
+/** Dictates different 'solve modes' for XPBD
+ * SIMULTANEOUS: solves the hydrostatic and deviatoric constraints for each element simultaneously as a 2x2 system. Still iterates sequentially through each element.
+ * SEQUENTIAL: solves the hydrostatic and deviatoric constraints for each element sequentially in true Gauss-Seidel fashion
+ */
+enum XPBDSolveMode
+{
+    SIMULTANEOUS,
+    SEQUENTIAL
+};
+
 /** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
  *  "A Constraint-based Formulation of Stable Neo-Hookean Materials" by Macklin and Muller (2021).
  *  Refer to the paper and preceding papers for details on the XPBD approach.
@@ -98,6 +108,9 @@ class XPBDMeshObject : public ElasticMeshObject
     /** Number of Gauss-Seidel iterations
      */
     unsigned _num_iters;
+
+    /** The solve mode of XPBD */
+    XPBDSolveMode _solve_mode;
 
 
 

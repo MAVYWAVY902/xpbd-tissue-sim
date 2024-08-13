@@ -6,6 +6,10 @@
 #include <easy3d/core/types.h>
 #include <easy3d/util/resource.h>
 
+#include "Simulation.hpp"
+
+class Simulation;
+
 /** A class that extends easy3d::Viewer in order to render text in the graphics window.
  * Necessary so that the drawing of text can happen in the Viewer redraw, so that the text actually gets rendered.
  * TextRenderingViewer has support for as much rendered text as needed through specifications of TextSpecs, which
@@ -116,6 +120,11 @@ class TextRenderingViewer : public easy3d::Viewer
                   const float& new_y,
                   const float& new_font_size);
 
+    /** Assigns a weak reference to the simulation.
+     * @param simulation : a non-owning pointer to the Simulation object
+     */
+    void registerSimulation(Simulation* simulation) { _simulation = simulation; }
+
     protected:
     /** Overridden draw method from easy3d::Viewer, with added functionality to draw each TextSpec. */
     void draw() const override;
@@ -126,11 +135,18 @@ class TextRenderingViewer : public easy3d::Viewer
     /** Draws each TextSpec. */
     void drawText() const;
 
+    /** Triggered on key-press events */
+    bool callback_event_keyboard(int key, int action, int modifiers) override;
+
     private:
     /** The TextRenderer responsible for drawing the text on screen. */
     std::unique_ptr<easy3d::TextRenderer> _text_renderer;
     /** Stores each TextSpec under its name */
     std::map<std::string, TextSpec> _text_map;
+    /** Non-owning pointer to the Simulation object that owns this Viewer
+     * Used to notify Simulation object when a key is pressed (which applies when using the Frame-by-frame simulation mode)
+     */
+    Simulation* _simulation;
 };
 
 #endif // __TEXT_RENDERING_VIEWER_HPP

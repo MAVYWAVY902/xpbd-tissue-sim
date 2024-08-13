@@ -25,6 +25,20 @@
 #include <thread>
 #include <optional>
 
+class TextRenderingViewer;
+
+/** Enum defining the different ways the simulation can be run 
+ * VISUALIZATION: if simulation is running faster than real-time, slow down updates so that sim time = wall time
+ * AFAP: run the simulation As Fast As Possible - i.e. do not slow updates
+ * FRAME_BY_FRAME: allow the user to step the simulation forward, time step by time step, using the keyboard
+*/
+enum SimulationMode
+{
+    VISUALIZATION,
+    AFAP,
+    FRAME_BY_FRAME
+};
+
 /** A class for managing the simulation being performed.
  * Owns the MeshObjects, keeps track fo the sim time, etc.
  * 
@@ -55,6 +69,20 @@ class Simulation
         /** Updates the simulation at a fixed time step. */
         void update();
 
+        /** Notifies the simulation that a key has been pressed in the viewer.
+         * @param key : the key that was pressed
+         * @param action : the action performed on the keyboard
+         * @param modifiers : the modifiers (i.e. Shift, Ctrl, Alt)
+         */
+        void notifyKeyPressed(int key, int action, int modifiers);
+    
+    private:
+        /** Time step the simulation */
+        void _timeStep();
+
+        /** Update graphics in the sim */
+        void _updateGraphics();
+
     protected:
         /** YAML config dictionary for setting up the simulation */
         // YAML::Node _config;
@@ -63,6 +91,9 @@ class Simulation
 
         /** Name of the simulation */
         std::string _name;
+
+        /** How the simulation should be run */
+        SimulationMode _sim_mode;
 
         /** Current sim time */
         double _time;

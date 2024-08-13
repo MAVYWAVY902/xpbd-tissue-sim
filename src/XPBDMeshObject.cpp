@@ -15,6 +15,24 @@ XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
     : ElasticMeshObject(config)
 {
     _num_iters = config->numSolverIters().value_or(1);
+    
+    if (config->solveMode().has_value())
+    {
+        if (config->solveMode().value() == "Sequential")
+            _solve_mode = XPBDSolveMode::SEQUENTIAL;
+        else if (config->solveMode().value() == "Simultaneous")
+            _solve_mode = XPBDSolveMode::SIMULTANEOUS;
+        else
+        {
+            std::cout << _solve_mode << " not a recognized XPBD solve mode! Defaulting to 'Simultaneous'..." << std::endl;
+            _solve_mode = XPBDSolveMode::SIMULTANEOUS;
+        }
+    }
+    else
+    {
+        // default to Simultaneous solving of the constraints
+        _solve_mode = XPBDSolveMode::SIMULTANEOUS;
+    }
 
     _init();
     _precomputeQuantities();
@@ -163,38 +181,47 @@ void XPBDMeshObject::_projectConstraints(const double dt)
             C_h_grad_4 = -C_h_grads.col(0) - C_h_grads.col(1) - C_h_grads.col(2);
             C_d_grad_4 = -C_d_grads.col(0) - C_d_grads.col(1) - C_d_grads.col(2);
 
+
+            double dlam_d = 0;
+            double dlam_h = 0; 
+
             /** SOLVE FOR DLAM SIMULTANEOUSLY */
-            // set up 2x2 system with both constraints
-            const double off_diagonal = 1/m1*C_h_grads.col(0).dot(C_d_grads.col(0)) +
-                                        1/m2*C_h_grads.col(1).dot(C_d_grads.col(1)) +
-                                        1/m3*C_h_grads.col(2).dot(C_d_grads.col(2)) +
-                                        1/m4*C_h_grad_4.dot(C_d_grad_4);
-            Eigen::Matrix2d A {  {1/m1*C_h_grads.col(0).squaredNorm() + 1/m2*C_h_grads.col(1).squaredNorm() + 1/m3*C_h_grads.col(2).squaredNorm() + 1/m4*C_h_grad_4.squaredNorm() + alpha_h/(dt*dt),
-                                        off_diagonal},
-                                        {off_diagonal,
-                                        1/m1*C_d_grads.col(0).squaredNorm() + 1/m2*C_d_grads.col(1).squaredNorm() + 1/m3*C_d_grads.col(2).squaredNorm() + 1/m4*C_d_grad_4.squaredNorm() + alpha_d/(dt*dt)
-            } };
+            if (_solve_mode == XPBDSolveMode::SIMULTANEOUS)
+            {
+                // set up 2x2 system with both constraints
+                const double off_diagonal = 1/m1*C_h_grads.col(0).dot(C_d_grads.col(0)) +
+                                            1/m2*C_h_grads.col(1).dot(C_d_grads.col(1)) +
+                                            1/m3*C_h_grads.col(2).dot(C_d_grads.col(2)) +
+                                            1/m4*C_h_grad_4.dot(C_d_grad_4);
+                Eigen::Matrix2d A {  {1/m1*C_h_grads.col(0).squaredNorm() + 1/m2*C_h_grads.col(1).squaredNorm() + 1/m3*C_h_grads.col(2).squaredNorm() + 1/m4*C_h_grad_4.squaredNorm() + alpha_h/(dt*dt),
+                                            off_diagonal},
+                                            {off_diagonal,
+                                            1/m1*C_d_grads.col(0).squaredNorm() + 1/m2*C_d_grads.col(1).squaredNorm() + 1/m3*C_d_grads.col(2).squaredNorm() + 1/m4*C_d_grad_4.squaredNorm() + alpha_d/(dt*dt)
+                } };
 
-            Eigen::Vector2d b {  -C_h - alpha_h * lambda_hs(i) / (dt*dt),
-                                        -C_d - alpha_d * lambda_ds(i) / (dt*dt)    
-                                    };
+                Eigen::Vector2d b {  -C_h - alpha_h * lambda_hs(i) / (dt*dt),
+                                            -C_d - alpha_d * lambda_ds(i) / (dt*dt)    
+                                        };
 
-            // solve the system
-            // TODO: can we use a faster system solve?
-            Eigen::ColPivHouseholderQR<Eigen::Matrix2d> dec(A);
-            const Eigen::Vector2d& dlambda = dec.solve(b);
+                // solve the system
+                // TODO: can we use a faster system solve?
+                Eigen::ColPivHouseholderQR<Eigen::Matrix2d> dec(A);
+                const Eigen::Vector2d& dlambda = dec.solve(b);
 
-            const double dlam_h = dlambda(0);
-            const double dlam_d = dlambda(1);
+                dlam_h = dlambda(0);
+                dlam_d = dlambda(1);
+            }
             
 
-            /** SOLVE FOR DLAM SEQUENTIALLY 
-            const double dlam_h = (-C_h - alpha_h * lambda_h / (dt*dt)) / 
-            ((1/m1)*C_h_grads.col(0).squaredNorm() + (1/m2)*C_h_grads.col(1).squaredNorm() + (1/m3)*C_h_grads.col(2).squaredNorm() + (1/m4)*C_h_grad_4.squaredNorm() + alpha_h/(dt*dt));
+            /** SOLVE FOR DLAM SEQUENTIALLY */
+            else if (_solve_mode == XPBDSolveMode::SEQUENTIAL)
+            {
+                dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt)) / 
+                ((1/m1)*C_h_grads.col(0).squaredNorm() + (1/m2)*C_h_grads.col(1).squaredNorm() + (1/m3)*C_h_grads.col(2).squaredNorm() + (1/m4)*C_h_grad_4.squaredNorm() + alpha_h/(dt*dt));
 
-            const double dlam_d = (-C_d - alpha_d * lambda_d / (dt*dt)) /
-            ((1/m1)*C_d_grads.col(0).squaredNorm() + (1/m2)*C_d_grads.col(1).squaredNorm() + (1/m3)*C_d_grads.col(2).squaredNorm() + (1/m4)*C_d_grad_4.squaredNorm() + alpha_d/(dt*dt)); 
-            */
+                dlam_d = (-C_d - alpha_d * lambda_ds(i) / (dt*dt)) /
+                ((1/m1)*C_d_grads.col(0).squaredNorm() + (1/m2)*C_d_grads.col(1).squaredNorm() + (1/m3)*C_d_grads.col(2).squaredNorm() + (1/m4)*C_d_grad_4.squaredNorm() + alpha_d/(dt*dt)); 
+            }
 
             // update Lagrange multipliers
             lambda_hs(i) += dlam_h;

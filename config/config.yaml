@@ -1,5 +1,6 @@
 name: "Bunnies"
-time-step: 5e-4
+sim-mode: "AFAP"
+time-step: 1e-2
 end-time: 10
 objects:
   -
@@ -16,6 +17,8 @@ objects:
     max-size: 7
     position: [0, -7, 12]
     velocity: [0, 0, 1]
+    num-solver-iters: 1
+    solve-mode: "Sequential"
 
   - 
     name: "Cube2"
@@ -31,6 +34,8 @@ objects:
     max-size: 7
     position: [0, 7, 12]
     velocity: [0, 0, 1]
+    num-solver-iters: 1
+    solve-mode: "Sequential"
   
   -
     name: "Ground"

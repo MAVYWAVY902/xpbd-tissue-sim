@@ -14,14 +14,17 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
     {
         // extract parameters
         _extractParameter("num-solver-iters", node, _num_solver_iters);
+        _extractParameter("solve-mode", node, _solve_mode);
     }
 
     // Getters
     std::optional<unsigned> numSolverIters() const { return _num_solver_iters.value; }
+    std::optional<std::string> solveMode() const { return _solve_mode.value; }
 
     protected:
     // Parameters
     ConfigParameter<unsigned> _num_solver_iters;
+    ConfigParameter<std::string> _solve_mode;
 };
 
 #endif // __XPBD_MESH_OBJECT_CONFIG_HPP

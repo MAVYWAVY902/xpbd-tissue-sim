@@ -17,6 +17,7 @@ class SimulationConfig : public Config
         // extract parameters
         _extractParameter("time-step", node, _time_step);
         _extractParameter("end-time", node, _end_time);
+        _extractParameter("sim-mode", node, _sim_mode);
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -50,6 +51,7 @@ class SimulationConfig : public Config
     // Getters
     std::optional<double> timeStep() const { return _time_step.value; }
     std::optional<double> endTime() const { return _end_time.value; }
+    std::optional<std::string> simMode() const { return _sim_mode.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const std::vector<std::unique_ptr<MeshObjectConfig> >& meshObjectConfigs() const { return _mesh_object_configs; }
@@ -57,7 +59,8 @@ class SimulationConfig : public Config
     protected:
     // Parameters
     ConfigParameter<double> _time_step;
-    ConfigParameter<double> _end_time; 
+    ConfigParameter<double> _end_time;
+    ConfigParameter<std::string> _sim_mode; 
 
     /** List of MeshObject configs for each object in the Simulation */
     std::vector<std::unique_ptr<MeshObjectConfig>> _mesh_object_configs;

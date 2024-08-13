@@ -78,6 +78,16 @@ void TextRenderingViewer::draw() const
     drawText();
 }
 
+bool TextRenderingViewer::callback_event_keyboard(int key, int action, int modifiers)
+{
+    if (_simulation)
+    {
+        _simulation->notifyKeyPressed(key, action, modifiers);
+    }
+
+    return Viewer::callback_event_keyboard(key, action, modifiers);
+}
+
 void TextRenderingViewer::init()
 {
     Viewer::init();
