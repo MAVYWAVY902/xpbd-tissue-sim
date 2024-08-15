@@ -69,6 +69,14 @@ class XPBDMeshObject : public ElasticMeshObject
     */
     void _projectConstraints(const double dt);
 
+    /** Computes the residuals for the equations of motion.
+     * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
+     * 
+     * M * (x^n+1 - x_inertial) - delC(x^n+1)^T * lam^n+1 = "primary residual"
+     * C(x^n+1) + alpha * lam^n+1 = "constraint residual"
+     */
+    void _calculateResiduals(const VerticesMat& inertial_positions, const Eigen::VectorXd& lambda_hs, const Eigen::VectorXd& lambda_ds);
+
     /** Projects the collision constraints onto the updated positions. */
     void _projectCollisionConstraints();
 
@@ -93,14 +101,16 @@ class XPBDMeshObject : public ElasticMeshObject
      * 
      * Computed once for each element, upon initialization of the mesh.
      */
-    std::vector<double> _vols;
+    Eigen::VectorXd _vols;
+    
 
     /** Per vertex mass
      * Each element contributes 1/4 of its mass to each of its vertices.
      * 
      * Computed once for each vertex, upon initializaation of the mesh.
      */
-    std::vector<double> _m;
+    // std::vector<double> _m;
+    Eigen::VectorXd _m;
 
     /** Previous vertex positions */
     VerticesMat _x_prev;

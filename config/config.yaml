@@ -1,24 +1,24 @@
 name: "Bunnies"
-sim-mode: "AFAP"
-time-step: 1e-2
+sim-mode: "Frame-by-frame"
+time-step: 1e-3
 end-time: 10
 objects:
-  -
-    name: "Cube1"
-    type: "XPBDMeshObject"
-    filename: "../resource/refined_cube.msh"
-    material:
-      name: "Rubber"
-      density: 1000
-      E: 3e6
-      nu: 0.49
-    color: [1.0, 0.509, 0.0, 1.0]
-    draw-points: false
-    max-size: 7
-    position: [0, -7, 12]
-    velocity: [0, 0, 1]
-    num-solver-iters: 1
-    solve-mode: "Sequential"
+  # -
+  #   name: "Cube1"
+  #   type: "XPBDMeshObject"
+  #   filename: "../resource/refined_cube.msh"
+  #   material:
+  #     name: "Rubber"
+  #     density: 1000
+  #     E: 3e6
+  #     nu: 0.49
+  #   color: [1.0, 0.509, 0.0, 1.0]
+  #   draw-points: false
+  #   max-size: 7
+  #   position: [0, -7, 12]
+  #   velocity: [0, 0, 1]
+  #   num-solver-iters: 1
+  #   solve-mode: "Sequential"
 
   - 
     name: "Cube2"
@@ -31,9 +31,9 @@ objects:
       nu: 0.4999
     color: [1.0, 0.509, 0.0, 1.0]
     draw-points: false
-    max-size: 7
-    position: [0, 7, 12]
-    velocity: [0, 0, 1]
+    max-size: 0.1
+    position: [0, 0, 0.1]
+    velocity: [0, 0, 0]
     num-solver-iters: 1
     solve-mode: "Sequential"
   
@@ -41,21 +41,8 @@ objects:
     name: "Ground"
     type: "RigidMeshObject"
     primitive-type: "Plane"
-    size: [10, 25, 0]
+    size: [0.2, 0.2, 0]
     position: [0, 0, 0]
     color: [1.0, 1.0, 1.0, 1.0]
-
-  # -
-  #   name: "Cube3"
-  #   type: "XPBDMeshObject"
-  #   filename: "/home/smtobin/Documents/UTK/C++/XPBD/resource/refined_cube.msh"
-  #   material:
-  #     name: "Steel"
-  #     density: 7850
-  #     E: 2e10
-  #     nu: 0.25
-  #   max-size: 3
-  #   position: [0, 12, 5]
-  #   velocity: [0, 0, 2]
 
 

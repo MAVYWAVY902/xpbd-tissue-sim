@@ -15,6 +15,7 @@ XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
     : ElasticMeshObject(config)
 {
     _num_iters = config->numSolverIters().value_or(1);
+    std::cout << "Num solver iters: " << _num_iters << std::endl;
     
     if (config->solveMode().has_value())
     {
@@ -62,9 +63,9 @@ void XPBDMeshObject::_precomputeQuantities()
     // reserve space for vectors
     // Q and volumes are per-element
     _Q.resize(_elements.rows());
-    _vols.resize(_elements.rows());
+    _vols.conservativeResize(_elements.rows());
     // masses are per-vertex
-    _m.resize(_vertices.rows(), 0);
+    _m = Eigen::VectorXd::Zero(_vertices.rows());
 
     for (unsigned i = 0; i < _elements.rows(); i++)
     {
@@ -84,15 +85,15 @@ void XPBDMeshObject::_precomputeQuantities()
 
         // compute volume from X
         double vol = std::abs(X.determinant()/6);
-        _vols.at(i) = vol;
+        _vols(i) = vol;
 
         // compute mass of element
         double m_element = vol * _material.density();
         // add mass contribution of element to each of its vertices
-        _m.at(_elements(i,0)) += m_element/4;
-        _m.at(_elements(i,1)) += m_element/4;
-        _m.at(_elements(i,2)) += m_element/4;
-        _m.at(_elements(i,3)) += m_element/4;
+        _m(_elements(i,0)) += m_element/4;
+        _m(_elements(i,1)) += m_element/4;
+        _m(_elements(i,2)) += m_element/4;
+        _m(_elements(i,3)) += m_element/4;
     }
 
     std::cout << "Precomputed quantities" << std::endl;
@@ -122,7 +123,11 @@ void XPBDMeshObject::_movePositionsIntertially(const double dt)
     // move vertices according to their velocity
     _vertices += dt*_v;
     // external forces (right now just gravity, which acts in -z direction)
-    _vertices.col(2).array() += -9.81 * dt * dt;
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        // _vertices(i,2) += -9.81 * dt * dt;
+    }
+    
 
 }
 
@@ -133,12 +138,16 @@ void XPBDMeshObject::_projectConstraints(const double dt)
     // accumulated deviatoric Lagrange multipliers
     Eigen::VectorXd lambda_ds = Eigen::VectorXd::Zero(_elements.rows());
 
+    // store positions before constraints are projected
+    // this is x-tilde, seen in XPBD eqn 8 - used for computing primary residual
+    VerticesMat inertial_positions = _vertices;
+
+    // define Eigen loop variables
+    Eigen::Matrix3d X, F, F_cross, C_h_grads, C_d_grads;
+    Eigen::Vector3d C_h_grad_4, C_d_grad_4;
     for (unsigned i = 0; i < _num_iters; i++)
     {
-        // define Eigen loop variables
-        Eigen::Matrix3d X, F, F_cross, C_h_grads, C_d_grads;
-        Eigen::Vector3d C_h_grad_4, C_d_grad_4;
-        for (unsigned i = 0; i < _elements.rows(); i++)
+        for (int i = 0; i < _elements.rows(); i++)
         {
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
@@ -219,7 +228,7 @@ void XPBDMeshObject::_projectConstraints(const double dt)
                 dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt)) / 
                 ((1/m1)*C_h_grads.col(0).squaredNorm() + (1/m2)*C_h_grads.col(1).squaredNorm() + (1/m3)*C_h_grads.col(2).squaredNorm() + (1/m4)*C_h_grad_4.squaredNorm() + alpha_h/(dt*dt));
 
-                dlam_d = (-C_d - alpha_d * lambda_ds(i) / (dt*dt)) /
+                dlam_d = (-C_d + std::sqrt(3) - alpha_d * lambda_ds(i) / (dt*dt)) /
                 ((1/m1)*C_d_grads.col(0).squaredNorm() + (1/m2)*C_d_grads.col(1).squaredNorm() + (1/m3)*C_d_grads.col(2).squaredNorm() + (1/m4)*C_d_grad_4.squaredNorm() + alpha_d/(dt*dt)); 
             }
 
@@ -240,6 +249,107 @@ void XPBDMeshObject::_projectConstraints(const double dt)
         }
     }
 
+    // _calculateResiduals(inertial_positions, lambda_hs, lambda_ds);
+
+}
+
+void XPBDMeshObject::_calculateResiduals(const VerticesMat& inertial_positions, const Eigen::VectorXd& lambda_hs, const Eigen::VectorXd& lambda_ds)
+{
+    // calculate constraint violation
+    Eigen::Matrix<double, -1, 3> M(_vertices.rows(), 3);
+    M.col(0) = _m;
+    M.col(1) = _m;
+    M.col(2) = _m;
+    Eigen::Matrix<double, -1, 3> Mx(_vertices.rows(), 3);
+    Mx = M.array() * (_vertices - inertial_positions).array();
+    
+    Eigen::Matrix<double, -1, 3> del_C_lam = Eigen::MatrixXd::Zero(_vertices.rows(), 3);
+
+    Eigen::VectorXd lambdas(_elements.rows() * 2);
+    Eigen::VectorXd constraint_residual(_elements.rows() * 2);
+
+    Eigen::VectorXd cur_vols(_elements.rows());
+
+    // define Eigen loop variables
+    Eigen::Matrix3d X, F, F_cross, C_h_grads, C_d_grads;
+    Eigen::Vector3d C_h_grad_4, C_d_grad_4;
+    for (int i = 0; i < _elements.rows(); i++)
+    {
+        const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+        // create the deformed shape matrix from current deformed vertex positions
+        X.col(0) = _vertices.row(elem(0)) - _vertices.row(elem(3));
+        X.col(1) = _vertices.row(elem(1)) - _vertices.row(elem(3));
+        X.col(2) = _vertices.row(elem(2)) - _vertices.row(elem(3));
+
+        cur_vols(i) = std::abs(X.determinant()/6);
+
+        // extract masses of each vertex in the current element
+        const double m1 = _m[elem(0)];
+        const double m2 = _m[elem(1)];
+        const double m3 = _m[elem(2)];
+        const double m4 = _m[elem(3)];
+
+        // compute F
+        F = X * _Q[i];
+
+        /** HYDROSTATIC CONSTRAINT */
+        // compute constraint itself
+        const double C_h = F.determinant() - (1 + _material.mu()/_material.lambda());
+
+        // compute constraint gradient
+        F_cross.col(0) = F.col(1).cross(F.col(2));
+        F_cross.col(1) = F.col(2).cross(F.col(0));
+        F_cross.col(2) = F.col(0).cross(F.col(1));
+        C_h_grads = F_cross * _Q[i].transpose();
+        // compute the hydrostatic alpha
+        const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+        /** DEVIATORIC CONSTRAINT */
+        // compute constraint itself
+        const double C_d = std::sqrt(F.col(0).squaredNorm() + F.col(1).squaredNorm() + F.col(2).squaredNorm());
+
+        // compute constraint gradient
+        C_d_grads = 1/C_d * (F * _Q[i].transpose());
+        // compute the deviatoric alpha
+        const double alpha_d = 1/(_material.mu() * _vols[i]);
+
+        // by definition, the gradient for vertex 4 in the element is the negative sum of other gradients
+        C_h_grad_4 = -C_h_grads.col(0) - C_h_grads.col(1) - C_h_grads.col(2);
+        C_d_grad_4 = -C_d_grads.col(0) - C_d_grads.col(1) - C_d_grads.col(2);
+
+        // primary residual
+        del_C_lam.row(elem(0)) += C_h_grads.col(0) * lambda_hs(i) + C_d_grads.col(0) * lambda_ds(i);
+        del_C_lam.row(elem(1)) += C_h_grads.col(1) * lambda_hs(i) + C_d_grads.col(1) * lambda_ds(i);
+        del_C_lam.row(elem(2)) += C_h_grads.col(2) * lambda_hs(i) + C_d_grads.col(2) * lambda_ds(i);
+        del_C_lam.row(elem(3)) += C_h_grad_4 * lambda_hs(i) + C_d_grad_4 * lambda_ds(i); 
+
+        // constraint residual
+        const double c_res_h = C_h + alpha_h * lambda_hs(i);
+        const double c_res_d = C_d + alpha_d * lambda_ds(i) - std::sqrt(3); // WHY IS THIS SQRT(3) NECESSARY??
+        // std::cout << "C_h: " << C_h << "\talpha_h: " << alpha_h << "\tlambda_h: " << lambda_hs(i) << std::endl;
+        // std::cout << "C_d: " << C_d << "\talpha_d: " << alpha_d << "\tlambda_d: " << lambda_ds(i) << std::endl;
+        constraint_residual(2*i) = c_res_h;
+        constraint_residual(2*i+1) = c_res_d;
+    }
+
+     
+
+   
+    VerticesMat primary_residual = Mx - del_C_lam;
+    const double primary_residual_abs_mean = primary_residual.cwiseAbs().mean();
+    const double primary_residual_2norm = primary_residual.norm();
+    
+    const double constraint_residual_2norm = constraint_residual.norm();
+    const double constraint_residual_abs_mean = constraint_residual.cwiseAbs().mean();
+
+    // std::cout << primary_residual << std::endl;
+
+    std::cout << name() << " Residuals:" << std::endl;
+    std::cout << "\tPrimary residual\t--\tNorm:\t" << primary_residual_2norm << "\t\tAverage:\t" << primary_residual_abs_mean << std::endl;
+    std::cout << "\tConstraint residual\t--\tNorm:\t" << constraint_residual_2norm << "\t\tAverage:\t" << constraint_residual_abs_mean << std::endl;
+    std::cout << "\tCurrent volume / initial volume:\t" << cur_vols.sum() / _vols.sum() << std::endl;
+    std::cout << "\tConstraint residuals for first element: " << constraint_residual(0) << "\t, " << constraint_residual(1) << std::endl;
 }
 
 void XPBDMeshObject::_projectCollisionConstraints()
