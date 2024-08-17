@@ -25,6 +25,8 @@ void convertSTLtoMSH(const std::string& filename);
 
 void loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3>& verts, Eigen::Matrix<unsigned, -1, 4>& elems); 
 
+void createBeamObj(const std::string& filename, const double l, const double w, const double h);
+
 }
 
 #endif // __MESH_UTILS_HPP
