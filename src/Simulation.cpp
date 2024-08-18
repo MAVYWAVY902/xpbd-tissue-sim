@@ -2,6 +2,8 @@
 #include "config/RigidMeshObjectConfig.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 
+#include "MeshUtils.hpp"
+
 #include <gmsh.h>
 
 Simulation::Simulation(const std::string& config_filename)
@@ -22,22 +24,7 @@ Simulation::Simulation(const std::string& config_filename)
     // set the Simulation mode from the YAML config
     if (_config.simMode().has_value())
     {
-        if (_config.simMode().value() == "Visualization")
-            _sim_mode = SimulationMode::VISUALIZATION;
-        else if(_config.simMode().value() == "AFAP")
-            _sim_mode = SimulationMode::AFAP;
-        else if(_config.simMode().value() == "Frame-by-frame")
-            _sim_mode = SimulationMode::FRAME_BY_FRAME;
-        else
-        {
-            std::cerr << _config.simMode().value() << " not recognized as a valid simulation mode. Defaulting to 'Visualization'..." << std::endl;
-            _sim_mode = SimulationMode::VISUALIZATION;
-        }
-    }
-    else
-    {
-        // default to 'Visualization' mode
-        _sim_mode = SimulationMode::VISUALIZATION;
+        _sim_mode = _config.simMode().value();
     }
 
     // now we can create the Viewer

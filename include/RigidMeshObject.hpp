@@ -42,6 +42,10 @@ class RigidMeshObject : public MeshObject
      */
     virtual void update(const double dt) override;
 
+    /** Creates a primitive geometry based on the specified primitive type.
+     * No other parameters are taken - use successive resize() and moveTo() calls to manipulate the geometry.
+     */
+    void createPrimitiveGeometry(const RigidMeshPrimitiveType primitive_type);
 
     /** Creates a square, 1x1, XY-planar geometry for this RigidMeshObject.
      * No parameters are taken - use successive resize() and moveTo() calls to manipulate the geometry.

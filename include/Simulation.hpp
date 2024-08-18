@@ -27,18 +27,6 @@
 
 class TextRenderingViewer;
 
-/** Enum defining the different ways the simulation can be run 
- * VISUALIZATION: if simulation is running faster than real-time, slow down updates so that sim time = wall time
- * AFAP: run the simulation As Fast As Possible - i.e. do not slow updates
- * FRAME_BY_FRAME: allow the user to step the simulation forward, time step by time step, using the keyboard
-*/
-enum SimulationMode
-{
-    VISUALIZATION,
-    AFAP,
-    FRAME_BY_FRAME
-};
-
 /** A class for managing the simulation being performed.
  * Owns the MeshObjects, keeps track fo the sim time, etc.
  * 

@@ -25,6 +25,9 @@ struct ConfigParameter
  */
 class Config
 {
+    /** Static predefined default name */
+    static std::optional<std::string>& DEFAULT_NAME() { static std::optional<std::string> name(""); return name; }
+
     public:
     /** Default constructor */
     explicit Config() {}
@@ -35,7 +38,7 @@ class Config
     explicit Config(const YAML::Node& node)
     {
         // load the name parameter
-        _extractParameter("name", node, _name);
+        _extractParameter("name", node, _name, DEFAULT_NAME());
     }
 
     /** Declare virtual destructor for polymorphism */
@@ -54,7 +57,7 @@ class Config
      * 
      */
     template<typename T>
-    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<T>& param)
+    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<T>& param, const std::optional<T>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;
@@ -64,8 +67,9 @@ class Config
             if (yaml_node[param_name].Type() != YAML::NodeType::Null)
             {
                 // if we get here, the parameter exists, and it is not null
-                // so, set the value of the ConfigParameter
+                // so, set the value of the ConfigParameter and we're done!
                 param.value = yaml_node[param_name].as<T>();
+                return;
             }
             else
             {
@@ -79,6 +83,55 @@ class Config
             std::cerr << e.what() << '\n';
             std::cerr << "Parameter name " << param_name << " does not exist or is not of the type " << typeid(T).name() << "." << std::endl;
         }
+
+        // if we get to here, the parameter was not specified so set the default value
+        param.value = default_value;
+
+        if (default_value.has_value())
+        {
+            std::cout << "Setting parameter " << param_name << " to default value of " << default_value.value() << std::endl;
+        }
+    }
+
+    template<typename K, typename T>
+    void _extractParameterWithOptions(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<T>& param, const std::map<K, T>& options, const std::optional<T>& default_value = std::nullopt)
+    {
+        // set the name field of the ConfigParameter
+        param.name = param_name;
+
+        try
+        {
+            if (yaml_node[param_name].Type() != YAML::NodeType::Null)
+            {
+                K key = yaml_node[param_name].as<K>();
+                if (options.count(key) == 1)
+                {
+                    param.value = options.at(key);
+                    return;
+                }
+                else
+                {
+                    std::cerr << key << " is not a valid option for parameter " << param_name << "! Valid options are ";
+                    for (const auto& [k, v] : options)
+                    {
+                        std::cerr << k << "; ";
+                    }
+                    std::cerr << std::endl;
+                }
+            }
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+        }
+
+        // if we get to here, the parameter was not specified so set the default value
+        param.value = default_value;
+
+        if (default_value.has_value())
+        {
+            std::cout << "Setting parameter " << param_name << " to default value of " << default_value.value() << std::endl;
+        }
     }
 
     /** Extracts a 3-vector from YAML node as an Eigen::Vector3d
@@ -87,7 +140,7 @@ class Config
      * @param yaml_node : the YAML node to extract information from
      * @param param : (output) the ConfigParameter, which gets set by the function
      */
-    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector3d>& param)
+    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector3d>& param, const std::optional<Eigen::Vector3d>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;
@@ -95,11 +148,21 @@ class Config
         {
             if (yaml_node[param_name].Type() != YAML::NodeType::Null)
             {
-                // if we get here, the parameter exists and it is not null
-                // so, set the value of the ConfigParameter
-                param.value = Eigen::Vector3d({ yaml_node[param_name][0].as<double>(), 
-                                                yaml_node[param_name][1].as<double>(),
-                                                yaml_node[param_name][2].as<double>() });
+                // make sure the node is an array of exactly 3 values
+                if (yaml_node[param_name].size() == 3)
+                {
+                    // if we get here, the parameter exists and it is not null
+                    // so, set the value of the ConfigParameter
+                    param.value = Eigen::Vector3d({ yaml_node[param_name][0].as<double>(), 
+                                                    yaml_node[param_name][1].as<double>(),
+                                                    yaml_node[param_name][2].as<double>() });
+                    return;
+                }
+                else
+                {
+                    std::cerr << "Expected exactly 3 values for the parameter " << param_name << std::endl;
+                }
+                
             }
             else
             {
@@ -112,6 +175,14 @@ class Config
             // parameter in YAML does not exist
             std::cerr << e.what() << '\n';
         }
+
+        // if we get to here, there was an issue with the parameter
+        param.value = default_value;
+
+        if (default_value.has_value())
+        {
+            std::cout << "Setting parameter " << param_name << " to default value of " << default_value.value() << std::endl;
+        }
         
     }
 
@@ -121,7 +192,7 @@ class Config
      * @param yaml_node : the YAML node to extract information from
      * @param param : (output) the ConfigParameter, which gets set by the function
     */
-    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector4d>& param)
+    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector4d>& param, const std::optional<Eigen::Vector4d>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;
@@ -129,12 +200,22 @@ class Config
         {
             if (yaml_node[param_name].Type() != YAML::NodeType::Null)
             {
-                // if we get here, the parameter exists and it is not null
-                // so, set the value of the ConfigParameter
-                param.value = Eigen::Vector4d({ yaml_node[param_name][0].as<double>(), 
-                                                yaml_node[param_name][1].as<double>(),
-                                                yaml_node[param_name][2].as<double>(),
-                                                yaml_node[param_name][3].as<double>() });
+                // make sure the node is an array of exactly 4 values
+                if (yaml_node[param_name].size() == 4)
+                {
+                    // if we get here, the parameter exists and it is not null
+                    // so, set the value of the ConfigParameter
+                    param.value = Eigen::Vector4d({ yaml_node[param_name][0].as<double>(), 
+                                                    yaml_node[param_name][1].as<double>(),
+                                                    yaml_node[param_name][2].as<double>(),
+                                                    yaml_node[param_name][3].as<double>() });
+                    return;
+                }
+                else
+                {
+                    std::cerr << "Expected exactly 4 values for the parameter " << param_name << std::endl;
+                }
+                
             }
             else
             {
@@ -146,6 +227,14 @@ class Config
         {
             // parameter in YAML does not exist
             std::cerr << e.what() << '\n';
+        }
+
+        // if we get to here, there was an issue with the parameter, so set the default
+        param.value = default_value;
+
+        if (default_value.has_value())
+        {
+            std::cout << "Setting parameter " << param_name << " to default value of " << default_value.value() << std::endl;
         }
         
     }

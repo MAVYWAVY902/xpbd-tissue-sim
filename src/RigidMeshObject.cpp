@@ -26,15 +26,7 @@ RigidMeshObject::RigidMeshObject(const RigidMeshObjectConfig* config)
     }
     else if (config->primitiveType().has_value())
     {
-        if (config->primitiveType().value() == "Plane")
-        {
-            std::cout << "creating plane geometry..." << std::endl;
-            createPlaneGeometry();
-        }
-        else
-        {
-            std::cerr << "Unrecognized primitive type: " << config->primitiveType().value() << std::endl;
-        }
+        createPrimitiveGeometry(config->primitiveType().value());
     }
     
 
@@ -85,6 +77,14 @@ void RigidMeshObject::_loadMeshFromFile(const std::string& filename)
     // set the new vertices and faces
     setVertices(loaded_verts);
     setFaces(loaded_faces);
+}
+
+void RigidMeshObject::createPrimitiveGeometry(const RigidMeshPrimitiveType primitive_type)
+{
+    if (primitive_type == RigidMeshPrimitiveType::PLANE)
+    {
+        createPlaneGeometry();
+    }
 }
 
 void RigidMeshObject::createPlaneGeometry(const Eigen::Vector3d& center_pos, const double size)

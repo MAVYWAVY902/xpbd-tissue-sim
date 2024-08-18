@@ -64,6 +64,11 @@ class ElasticMeshObject : public MeshObject
     /** Nx4 element matrix */
     ElementsMat _elements;
 
+    /** Keeps track of fixed vertices
+     * If entry i is true, vertex i is fixed
+     */
+    Eigen::Vector<bool, -1> _fixed_vertices;
+
     /** Per vertex velocity
      * Velocity is updated to be (x - x_prev) / dt
      */

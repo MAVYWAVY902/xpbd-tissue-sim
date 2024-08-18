@@ -5,6 +5,10 @@
 
 class MeshObjectConfig : public Config
 {
+    /** Static predefined default for whether or not to draw mesh points */
+    static std::optional<bool>& DEFAULT_DRAW_POINTS() { static std::optional<bool> draw_points(false); return draw_points; }
+    static std::optional<Eigen::Vector4d>& DEFAULT_COLOR() { static std::optional<Eigen::Vector4d> color({1.0, 1.0, 1.0, 1.0}); return color; }
+
     public:
     /** Creates a MeshObjectConfig from a YAML node, which consists of the parameters needed for a MeshObject
      * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
@@ -20,8 +24,8 @@ class MeshObjectConfig : public Config
         _extractParameter("position", node, _initial_position);
         _extractParameter("velocity", node, _initial_velocity);
         
-        _extractParameter("draw-points", node, _draw_points);
-        _extractParameter("color", node, _color);
+        _extractParameter("draw-points", node, _draw_points, DEFAULT_DRAW_POINTS());
+        _extractParameter("color", node, _color, DEFAULT_COLOR());
     }
 
     // Getters

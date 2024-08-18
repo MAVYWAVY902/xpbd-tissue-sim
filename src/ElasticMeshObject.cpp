@@ -82,6 +82,17 @@ ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
         _v.rowwise() = config->initialVelocity().value().transpose();
     }
 
+    // for now, hard code that vertices at the far left of the object are fixed
+    _fixed_vertices = Eigen::Vector<bool, -1>::Zero(_vertices.rows());
+    Eigen::Vector3d min_coeff = _vertices.colwise().minCoeff();
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        if (_vertices(i,1) == min_coeff(1))
+        {
+            _fixed_vertices(i) = true;
+        }
+    }
+
     updateVertexCache();
 
 }

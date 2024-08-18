@@ -1,7 +1,7 @@
 name: "Bunnies"
 sim-mode: "Frame-by-frame"
-time-step: 1e-3
-end-time: 10
+time-step: 1e-4
+end-time: 1000
 objects:
   # -
   #   name: "Cube1"
@@ -23,26 +23,27 @@ objects:
   - 
     name: "Cube2"
     type: "XPBDMeshObject"
-    filename: "../resource/refined_cube.msh"
+    filename: "../resource/10x1x1_beam_refined.obj"
     material:
       name: "Soft Tissue"
       density: 1000
       E: 1e6
       nu: 0.4999
     color: [1.0, 0.509, 0.0, 1.0]
-    draw-points: false
-    max-size: 0.1
-    position: [0, 0, 0.1]
+    draw-points: true
+    max-size: 1
+    # size: [0.1, 0.1, 0.1]
+    position: [0, 0, 200]
     velocity: [0, 0, 0]
     num-solver-iters: 1
     solve-mode: "Sequential"
   
-  -
-    name: "Ground"
-    type: "RigidMeshObject"
-    primitive-type: "Plane"
-    size: [0.2, 0.2, 0]
-    position: [0, 0, 0]
-    color: [1.0, 1.0, 1.0, 1.0]
+  # -
+  #   name: "Ground"
+  #   type: "RigidMeshObject"
+  #   primitive-type: "Plane2"
+  #   size: [0.2, 0.2, 0]
+  #   position: [0, 0, 0]
+  #   color: [1.0, 1.0, 1.0, 1.0]
 
 
