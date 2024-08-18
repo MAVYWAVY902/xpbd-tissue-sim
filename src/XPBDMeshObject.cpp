@@ -15,24 +15,10 @@ XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
     : ElasticMeshObject(config)
 {
     _num_iters = config->numSolverIters().value_or(1);
-    std::cout << "Num solver iters: " << _num_iters << std::endl;
     
     if (config->solveMode().has_value())
     {
-        if (config->solveMode().value() == "Sequential")
-            _solve_mode = XPBDSolveMode::SEQUENTIAL;
-        else if (config->solveMode().value() == "Simultaneous")
-            _solve_mode = XPBDSolveMode::SIMULTANEOUS;
-        else
-        {
-            std::cout << _solve_mode << " not a recognized XPBD solve mode! Defaulting to 'Simultaneous'..." << std::endl;
-            _solve_mode = XPBDSolveMode::SIMULTANEOUS;
-        }
-    }
-    else
-    {
-        // default to Simultaneous solving of the constraints
-        _solve_mode = XPBDSolveMode::SIMULTANEOUS;
+        _solve_mode = config->solveMode().value();
     }
 
     _init();
@@ -56,6 +42,7 @@ XPBDMeshObject::XPBDMeshObject(const std::string& name, const VerticesMat& verts
 void XPBDMeshObject::_init()
 {
     _x_prev = _vertices;
+    _initial_min_coords = _vertices.colwise().minCoeff();
 }
 
 void XPBDMeshObject::_precomputeQuantities()
@@ -97,6 +84,8 @@ void XPBDMeshObject::_precomputeQuantities()
     }
 
     std::cout << "Precomputed quantities" << std::endl;
+
+    // _calculateForces();
 }
 
 void XPBDMeshObject::update(const double dt)
@@ -116,6 +105,8 @@ void XPBDMeshObject::update(const double dt)
     // std::cout << "\tprojectConstraints took " << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << " us" << std::endl;
     // std::cout << "\tprojectCollisionConstraints took " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
     // std::cout << "\tupdateVelocities took " << std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count() << " us" << std::endl;
+
+    std::cout << "Beam deflection: " << std::setprecision(10) << _initial_min_coords(2) - _vertices.col(2).minCoeff() << std::endl;
 }
 
 void XPBDMeshObject::_movePositionsIntertially(const double dt)
@@ -125,7 +116,7 @@ void XPBDMeshObject::_movePositionsIntertially(const double dt)
     // external forces (right now just gravity, which acts in -z direction)
     for (int i = 0; i < _vertices.rows(); i++)
     {
-        // _vertices(i,2) += -9.81 * dt * dt;
+        _vertices(i,2) += -9.81 * dt * dt;
     }
     
 
@@ -228,8 +219,11 @@ void XPBDMeshObject::_projectConstraints(const double dt)
                 dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt)) / 
                 ((1/m1)*C_h_grads.col(0).squaredNorm() + (1/m2)*C_h_grads.col(1).squaredNorm() + (1/m3)*C_h_grads.col(2).squaredNorm() + (1/m4)*C_h_grad_4.squaredNorm() + alpha_h/(dt*dt));
 
-                dlam_d = (-C_d + std::sqrt(3) - alpha_d * lambda_ds(i) / (dt*dt)) /
+                const double denom_d = ((1/m1)*C_d_grads.col(0).squaredNorm() + (1/m2)*C_d_grads.col(1).squaredNorm() + (1/m3)*C_d_grads.col(2).squaredNorm() + (1/m4)*C_d_grad_4.squaredNorm() + alpha_d/(dt*dt));
+                dlam_d = (-C_d /*+ std::sqrt(3)*/ - alpha_d * lambda_ds(i) / (dt*dt)) /
                 ((1/m1)*C_d_grads.col(0).squaredNorm() + (1/m2)*C_d_grads.col(1).squaredNorm() + (1/m3)*C_d_grads.col(2).squaredNorm() + (1/m4)*C_d_grad_4.squaredNorm() + alpha_d/(dt*dt)); 
+                // std::cout << "C_h: " << C_h << "\talpha_h: " << alpha_h <<"\tdlam_h: " << dlam_h << std::endl;
+                // std::cout << "C_d: " << C_d << "\talpha_d: " << alpha_d << "\tdenominator: " <<  denom_d << "\tdlam_d: " << dlam_d << std::endl;
             }
 
             // update Lagrange multipliers
@@ -249,7 +243,70 @@ void XPBDMeshObject::_projectConstraints(const double dt)
         }
     }
 
-    // _calculateResiduals(inertial_positions, lambda_hs, lambda_ds);
+    _calculateResiduals(inertial_positions, lambda_hs, lambda_ds);
+    // _calculateForces();
+
+}
+
+void XPBDMeshObject::_calculateForces()
+{
+    Eigen::Matrix<double, -1, 3> forces = Eigen::MatrixXd::Zero(_vertices.rows(), 3);
+
+    // define Eigen loop variables
+    Eigen::Matrix3d X, F, F_cross, C_h_grads, C_d_grads;
+    Eigen::Vector3d C_h_grad_4, C_d_grad_4;
+    Eigen::Vector3d f_x1, f_x2, f_x3, f_x4;
+    for (int i = 0; i < _elements.rows(); i++)
+    {
+        const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+        // create the deformed shape matrix from current deformed vertex positions
+        X.col(0) = _vertices.row(elem(0)) - _vertices.row(elem(3));
+        X.col(1) = _vertices.row(elem(1)) - _vertices.row(elem(3));
+        X.col(2) = _vertices.row(elem(2)) - _vertices.row(elem(3));
+
+        // compute F
+        F = X * _Q[i];
+
+        /** HYDROSTATIC CONSTRAINT */
+        // compute constraint itself
+        const double C_h = F.determinant() - (1 + _material.mu()/_material.lambda());
+
+        // compute constraint gradient
+        F_cross.col(0) = F.col(1).cross(F.col(2));
+        F_cross.col(1) = F.col(2).cross(F.col(0));
+        F_cross.col(2) = F.col(0).cross(F.col(1));
+        C_h_grads = F_cross * _Q[i].transpose();
+        // compute the hydrostatic alpha
+        const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+        /** DEVIATORIC CONSTRAINT */
+        // compute constraint itself
+        const double C_d = std::sqrt(F.col(0).squaredNorm() + F.col(1).squaredNorm() + F.col(2).squaredNorm());
+
+        // compute constraint gradient
+        C_d_grads = 1/C_d * (F * _Q[i].transpose());
+        // compute the deviatoric alpha
+        const double alpha_d = 1/(_material.mu() * _vols[i]);
+
+        // by definition, the gradient for vertex 4 in the element is the negative sum of other gradients
+        C_h_grad_4 = -C_h_grads.col(0) - C_h_grads.col(1) - C_h_grads.col(2);
+        C_d_grad_4 = -C_d_grads.col(0) - C_d_grads.col(1) - C_d_grads.col(2);
+
+        // compute forces per vertex
+        f_x1 = -C_h_grads.col(0) / alpha_h * C_h + C_d_grads.col(0) / alpha_d * C_d;
+        f_x2 = -C_h_grads.col(1) / alpha_h * C_h + C_d_grads.col(1) / alpha_d * C_d;
+        f_x3 = -C_h_grads.col(2) / alpha_h * C_h + C_d_grads.col(2) / alpha_d * C_d;
+        f_x4 = -C_h_grad_4 / alpha_h * C_h + C_d_grad_4 / alpha_d * C_d;
+
+        // compute forces
+        forces.row(elem(0)) += f_x1;
+        forces.row(elem(1)) += f_x2;
+        forces.row(elem(2)) += f_x3;
+        forces.row(elem(3)) += f_x4;
+    }
+
+    std::cout << "Forces:\n" << forces << std::endl;
 
 }
 
@@ -283,12 +340,6 @@ void XPBDMeshObject::_calculateResiduals(const VerticesMat& inertial_positions, 
         X.col(2) = _vertices.row(elem(2)) - _vertices.row(elem(3));
 
         cur_vols(i) = std::abs(X.determinant()/6);
-
-        // extract masses of each vertex in the current element
-        const double m1 = _m[elem(0)];
-        const double m2 = _m[elem(1)];
-        const double m3 = _m[elem(2)];
-        const double m4 = _m[elem(3)];
 
         // compute F
         F = X * _Q[i];
@@ -348,8 +399,10 @@ void XPBDMeshObject::_calculateResiduals(const VerticesMat& inertial_positions, 
     std::cout << name() << " Residuals:" << std::endl;
     std::cout << "\tPrimary residual\t--\tNorm:\t" << primary_residual_2norm << "\t\tAverage:\t" << primary_residual_abs_mean << std::endl;
     std::cout << "\tConstraint residual\t--\tNorm:\t" << constraint_residual_2norm << "\t\tAverage:\t" << constraint_residual_abs_mean << std::endl;
+    std::cout << "\tLambda_h 2-norm:\t" << lambda_hs.norm() << "\tLambda_d 2-norm:\t" << lambda_ds.norm() << std::endl;
     std::cout << "\tCurrent volume / initial volume:\t" << cur_vols.sum() / _vols.sum() << std::endl;
     std::cout << "\tConstraint residuals for first element: " << constraint_residual(0) << "\t, " << constraint_residual(1) << std::endl;
+    // std::cout << "\tForces:\n" << forces << std::endl;
 }
 
 void XPBDMeshObject::_projectCollisionConstraints()
@@ -360,6 +413,15 @@ void XPBDMeshObject::_projectCollisionConstraints()
         if (_vertices(i,2) < 0)
         {
             _vertices(i,2) = 0;
+        }
+    }
+
+    // snap fixed vertices back to previous position (this should be their initial position)
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        if (_fixed_vertices(i) == true)
+        {
+            _vertices.row(i) = _x_prev.row(i);
         }
     }
 }
