@@ -10,7 +10,8 @@
 enum XPBDSolveMode
 {
     SIMULTANEOUS,
-    SEQUENTIAL
+    SEQUENTIAL,
+    CONSTANTX,
 };
 
 class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
@@ -23,7 +24,8 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
     static std::map<std::string, XPBDSolveMode>& SOLVE_MODE_OPTIONS() 
     {
         static std::map<std::string, XPBDSolveMode> solve_mode_options{{"Simultaneous", XPBDSolveMode::SIMULTANEOUS},
-                                                                       {"Sequential", XPBDSolveMode::SEQUENTIAL}};
+                                                                       {"Sequential", XPBDSolveMode::SEQUENTIAL},
+                                                                       {"ConstantX", XPBDSolveMode::CONSTANTX}};
         return solve_mode_options;
     }
 

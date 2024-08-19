@@ -57,7 +57,11 @@ class XPBDMeshObject : public ElasticMeshObject
      * See the XPBD paper for more details.
      * @param dt : the time step
     */
-    void _projectConstraints(const double dt);
+    void _projectConstraintsSequential(const double dt);
+
+    void _projectConstraintsSimultaneous(const double dt);
+
+    void _projectConstraintsConstantX(const double dt);
 
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
