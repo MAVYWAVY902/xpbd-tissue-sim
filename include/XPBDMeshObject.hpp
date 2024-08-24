@@ -37,7 +37,13 @@ class XPBDMeshObject : public ElasticMeshObject
     /** Updates the mesh based on a time step 
      * @param dt : the time delta since the last update
     */
-    void update(const double dt) override;
+    void update(const double dt, const double g_accel) override;
+
+    double primaryResidual();
+    double constraintResidual();
+
+    unsigned numSolverIters() { return _num_iters; }
+    std::string solveMode();
     
     private:
     /** Helper method to initialize upon instantiation */
@@ -49,19 +55,42 @@ class XPBDMeshObject : public ElasticMeshObject
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the forces applied to them
      * @param dt : the time step
+     * @param g_accel : the acceleration due to gravity
      */
-    void _movePositionsIntertially(const double dt);
+    void _movePositionsIntertially(const double dt, const double g_accel);
 
     /** Projects the elastic constraints onto the updated positions in a Gauss-Seidel fashion.
      * For XPBD, this is the hydrostatic constraint, C_h and the deviatoric constraint, C_d.
      * See the XPBD paper for more details.
+     * This is the direct implementation of the method in the XPBD paper, and mirrors the code provided in the paper.
      * @param dt : the time step
     */
     void _projectConstraintsSequential(const double dt);
 
-    void _projectConstraintsSimultaneous(const double dt);
+    /** Projects the elastic constraints in a RANDOM ORDER in a Gauss-Seidel fashion.
+     * Identical to _projectConstraintsSequential but iterates through the elements in a random order.
+     * @param dt : the time step
+     */
+    void _projectConstraintsSequentialRandomized(const double dt);
 
+    /** Projects the elastic constraints by solving the C_h and C_d for a single tetrahedral element SIMULTANEOUSLY.
+     * This ultimately involves solving a 2x2 system, resulting in a 2x1 dlambda with one term for the dlambda associated with C_h and the other associated with C_d.
+     * @param dt : the time step
+     */
+    void _projectConstraintsSimultaneous(const double dt);
+    
+    /** Projects the elastic constraints but updates the x-positions after finding all the dlambdas - i.e. keeps x FIXED during the computation of lambdas.
+     * @param dt : the time step
+     */
     void _projectConstraintsConstantX(const double dt);
+
+    /** Projects the elastic constraints, initializing the lambdas to a nonzero value depending on the constraint.
+     * This is identical to _projectConstraintsSequential but with an initialization of the lambda vector.
+     * @param dt : the time step
+      */
+    void _projectConstraintsSequentialInitLambda(const double dt);
+
+    void _projectConstraintsRuckerFull(const double dt);
 
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
@@ -69,7 +98,7 @@ class XPBDMeshObject : public ElasticMeshObject
      * M * (x^n+1 - x_inertial) - delC(x^n+1)^T * lam^n+1 = "primary residual"
      * C(x^n+1) + alpha * lam^n+1 = "constraint residual"
      */
-    void _calculateResiduals(const VerticesMat& inertial_positions, const Eigen::VectorXd& lambda_hs, const Eigen::VectorXd& lambda_ds);
+    void _calculateResiduals(const double dt, const VerticesMat& inertial_positions, const Eigen::VectorXd& lambda_hs, const Eigen::VectorXd& lambda_ds);
 
     void _calculateForces();
 
@@ -118,9 +147,20 @@ class XPBDMeshObject : public ElasticMeshObject
     /** The solve mode of XPBD */
     XPBDSolveMode _solve_mode;
 
+    /** Damping stiffness */
+    double _damping_stiffness;
 
-    // temp variables for beam bending
-    Eigen::Vector3d _initial_min_coords;
+    /** Calculate the residuals every step */
+    double _primary_residual;
+    double _constraint_residual;
+
+    /** For the initializing lambda method */
+    Eigen::VectorXd _initial_lambda_ds;
+    Eigen::VectorXd _initial_lambda_hs;
+
+    /** For the Rucker method */
+    std::vector<std::vector<std::pair<unsigned, unsigned> > > _constraints_per_position;
+
 
 
 

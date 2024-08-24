@@ -47,7 +47,7 @@ class Simulation
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
          */
-        void setup();
+        virtual void setup();
 
         /** Runs the simulation.
          * Spawns a separate thread to do updates.
@@ -55,7 +55,7 @@ class Simulation
         int run();
 
         /** Updates the simulation at a fixed time step. */
-        void update();
+        virtual void update();
 
         /** Notifies the simulation that a key has been pressed in the viewer.
          * @param key : the key that was pressed
@@ -64,9 +64,9 @@ class Simulation
          */
         void notifyKeyPressed(int key, int action, int modifiers);
     
-    private:
+    protected:
         /** Time step the simulation */
-        void _timeStep();
+        virtual void _timeStep();
 
         /** Update graphics in the sim */
         void _updateGraphics();
@@ -91,6 +91,8 @@ class Simulation
         double _end_time;
         /** Number of time steps taken */
         size_t _steps_taken;
+        /** Acceleration due to gravity */
+        double _g_accel;
 
         /** the Viewer which renders graphics
          * unique_ptr used here for lazy initialization, since easy3d::Viewer must be instantiated 

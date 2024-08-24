@@ -12,6 +12,9 @@ enum XPBDSolveMode
     SIMULTANEOUS,
     SEQUENTIAL,
     CONSTANTX,
+    SEQUENTIAL_RANDOMIZED,
+    SEQUENTIAL_INIT_LAMBDA,
+    RUCKER_FULL
 };
 
 class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
@@ -20,12 +23,17 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
     static std::optional<unsigned>& DEFAULT_NUM_SOLVER_ITERS() { static std::optional<unsigned> num_solver_iters(1); return num_solver_iters; }
     /** Static predefined default for solve mode */
     static std::optional<XPBDSolveMode>& DEFAULT_SOLVE_MODE() { static std::optional<XPBDSolveMode> solve_mode(XPBDSolveMode::SEQUENTIAL); return solve_mode; }
+    /** Static predefined default for damping stiffness */
+    static std::optional<double>& DEFAULT_DAMPING_STIFFNESS() { static std::optional<double> damping_stiffness(0); return damping_stiffness; }
 
     static std::map<std::string, XPBDSolveMode>& SOLVE_MODE_OPTIONS() 
     {
         static std::map<std::string, XPBDSolveMode> solve_mode_options{{"Simultaneous", XPBDSolveMode::SIMULTANEOUS},
                                                                        {"Sequential", XPBDSolveMode::SEQUENTIAL},
-                                                                       {"ConstantX", XPBDSolveMode::CONSTANTX}};
+                                                                       {"ConstantX", XPBDSolveMode::CONSTANTX},
+                                                                       {"Sequential-Randomized", XPBDSolveMode::SEQUENTIAL_RANDOMIZED},
+                                                                       {"Sequential-Init-Lambda", XPBDSolveMode::SEQUENTIAL_INIT_LAMBDA},
+                                                                       {"Rucker-Full", XPBDSolveMode::RUCKER_FULL}};
         return solve_mode_options;
     }
 
@@ -39,16 +47,19 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
         // extract parameters
         _extractParameter("num-solver-iters", node, _num_solver_iters, DEFAULT_NUM_SOLVER_ITERS());
         _extractParameterWithOptions("solve-mode", node, _solve_mode, SOLVE_MODE_OPTIONS(), DEFAULT_SOLVE_MODE());
+        _extractParameter("damping-stiffness", node, _damping_stiffness, DEFAULT_DAMPING_STIFFNESS());
     }
 
     // Getters
     std::optional<unsigned> numSolverIters() const { return _num_solver_iters.value; }
     std::optional<XPBDSolveMode> solveMode() const { return _solve_mode.value; }
+    std::optional<double> dampingStiffness() const { return _damping_stiffness.value; }
 
     protected:
     // Parameters
     ConfigParameter<unsigned> _num_solver_iters;
     ConfigParameter<XPBDSolveMode> _solve_mode;
+    ConfigParameter<double> _damping_stiffness;
 };
 
 #endif // __XPBD_MESH_OBJECT_CONFIG_HPP

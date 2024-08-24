@@ -112,6 +112,16 @@ std::vector<easy3d::vec3>& MeshObject::points()
     return _vertex_cache;
 }
 
+Eigen::Vector3d MeshObject::bboxMinCoords() const
+{
+    return _vertices.colwise().minCoeff();
+}
+
+Eigen::Vector3d MeshObject::bboxMaxCoords() const
+{
+    return _vertices.colwise().maxCoeff();
+}
+
 std::vector<unsigned int> MeshObject::facesAsFlatList() const
 {
     // each face (triangle) has 3 vertices
@@ -131,6 +141,35 @@ void MeshObject::setVertices(const VerticesMat& verts)
     // ensure that the vertex cache has the right size before updating it
     _vertex_cache.resize(_vertices.rows());
     updateVertexCache();
+}
+
+Eigen::Vector3d MeshObject::getVertex(const unsigned index) const
+{
+    assert(index < _vertices.rows());
+    return _vertices.row(index);
+}
+
+unsigned MeshObject::getClosestVertex(const double x, const double y, const double z) const
+{
+    auto sq_dist_to_vertex = [x, y, z] (const Eigen::Vector3d& vertex)
+    {
+        return (x-vertex(0))*(x-vertex(0)) + (y-vertex(1))*(y-vertex(1)) + (z-vertex(2))*(z-vertex(2));
+    };
+
+    unsigned closest_index = 0;
+    double closest_dist = sq_dist_to_vertex(_vertices.row(0));
+    // I'm sure there is a good way to do this with std
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        double dist = sq_dist_to_vertex(_vertices.row(i));
+        if (dist < closest_dist)
+        {
+            closest_index = i;
+            closest_dist = dist;
+        }
+    }
+
+    return closest_index;
 }
 
 void MeshObject::setFaces(const FacesMat& faces)
@@ -228,4 +267,39 @@ void MeshObject::moveTo(const Eigen::Vector3d& position, PositionReference ref)
 
     // apply the position offset
     _vertices.rowwise() += pos_offset.transpose();
+}
+
+void MeshObject::rotate(const Eigen::Vector3d& xyz_angles)
+{
+    const double x = xyz_angles(0) * M_PI / 180.0;
+    const double y = xyz_angles(1) * M_PI / 180.0;
+    const double z = xyz_angles(2) * M_PI / 180.0;
+    // using the "123" convention: rotate first about x axis, then about y, then about z
+    Eigen::Matrix3d rot_mat;
+    rot_mat(0,0) = std::cos(y) * std::cos(z);
+    rot_mat(0,1) = std::sin(x)*std::sin(y)*std::cos(z) - std::cos(x)*std::sin(z);
+    rot_mat(0,2) = std::cos(x)*std::sin(y)*std::cos(z) + std::sin(x)*std::sin(z);
+
+    rot_mat(1,0) = std::cos(y)*std::sin(z);
+    rot_mat(1,1) = std::sin(x)*std::sin(y)*std::sin(z) + std::cos(x)*std::cos(z);
+    rot_mat(1,2) = std::cos(x)*std::sin(y)*std::sin(z) - std::sin(x)*std::cos(z);
+
+    rot_mat(2,0) = -std::sin(y);
+    rot_mat(2,1) = std::sin(x)*std::cos(y);
+    rot_mat(2,2) = std::cos(x)*std::cos(y);
+    
+    rotate(rot_mat);
+}
+
+void MeshObject::rotate(const Eigen::Matrix3d& rot_mat)
+{
+    // compute the current size in each dimension
+    Eigen::Vector3d min_coords = _vertices.colwise().minCoeff();
+    Eigen::Vector3d max_coords = _vertices.colwise().maxCoeff();
+    Eigen::Vector3d size = max_coords - min_coords;
+    Eigen::Vector3d center_of_bbox = min_coords + size / 2;
+    _vertices.rowwise() += -center_of_bbox.transpose();
+    // vertices are row vectors, so transpose rotation matrix
+    _vertices = _vertices * rot_mat.transpose();
+    _vertices.rowwise() += center_of_bbox.transpose();
 }

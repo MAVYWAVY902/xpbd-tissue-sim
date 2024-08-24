@@ -23,6 +23,7 @@ class MeshObjectConfig : public Config
         _extractParameter("size", node, _size);
         _extractParameter("position", node, _initial_position);
         _extractParameter("velocity", node, _initial_velocity);
+        _extractParameter("rotation", node, _initial_rotation);
         
         _extractParameter("draw-points", node, _draw_points, DEFAULT_DRAW_POINTS());
         _extractParameter("color", node, _color, DEFAULT_COLOR());
@@ -34,6 +35,7 @@ class MeshObjectConfig : public Config
     std::optional<Eigen::Vector3d> size() const { return _size.value; }
     std::optional<Eigen::Vector3d> initialPosition() const { return _initial_position.value; }
     std::optional<Eigen::Vector3d> initialVelocity() const { return _initial_velocity.value; }
+    std::optional<Eigen::Vector3d> initialRotation() const { return _initial_rotation.value;}
     std::optional<bool> drawPoints() const { return _draw_points.value; }
     std::optional<Eigen::Vector4d> color() const { return _color.value; }
 
@@ -45,6 +47,7 @@ class MeshObjectConfig : public Config
     ConfigParameter<Eigen::Vector3d> _size;
     ConfigParameter<Eigen::Vector3d> _initial_position;
     ConfigParameter<Eigen::Vector3d> _initial_velocity;
+    ConfigParameter<Eigen::Vector3d> _initial_rotation;
 
     ConfigParameter<bool> _draw_points;
     ConfigParameter<Eigen::Vector4d> _color;

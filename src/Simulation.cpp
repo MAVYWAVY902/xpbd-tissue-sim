@@ -16,10 +16,11 @@ Simulation::Simulation(const std::string& config_filename)
     easy3d::initialize();
 
     // set simulation properties based on YAML file
-    _name = _config.name().value_or("");
-    _time_step = _config.timeStep().value_or(1e-3);
-    _end_time = _config.endTime().value_or(10);
+    _name = _config.name().value();
+    _time_step = _config.timeStep().value();
+    _end_time = _config.endTime().value();
     _time = 0;
+    _g_accel = _config.gAccel().value();
 
     // set the Simulation mode from the YAML config
     if (_config.simMode().has_value())
@@ -52,7 +53,7 @@ void Simulation::addObject(MeshObject* mesh_object)
 }
 
 void Simulation::setup()
-{
+{   
     for (const auto& obj_config : _config.meshObjectConfigs())
     {
         // try downcasting
@@ -118,7 +119,7 @@ void Simulation::_timeStep()
     // update each MeshObject
     for (auto& mo : _mesh_objects)
     {
-        mo->update(_time_step);
+        mo->update(_time_step, _g_accel);
     }
 
     // increment the time by the time step

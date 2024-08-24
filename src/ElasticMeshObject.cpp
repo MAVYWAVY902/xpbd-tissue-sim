@@ -62,11 +62,8 @@ ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
     std::string filename = config->filename().value_or("");
     _loadMeshFromFile(filename);
 
-    if (config->initialPosition().has_value())
-    {
-        moveTo(config->initialPosition().value(), PositionReference::CENTER);
-    }
-
+    // order matters here...
+    // first apply scaling before rotating - either through the max-size criteria or a user-specified size
     if (config->maxSize().has_value())
     {
         resize(config->maxSize().value());
@@ -77,20 +74,22 @@ ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
         resize(config->size().value());
     }
 
+    // then do rigid transformation - rotation and translation
+    if (config->initialRotation().has_value())
+    {
+        rotate(config->initialRotation().value());
+    }
+
+    if (config->initialPosition().has_value())
+    {
+        moveTo(config->initialPosition().value(), PositionReference::CENTER);
+    }
+
+    
+    // set initial velocity if specified in config
     if (config->initialVelocity().has_value())
     {
         _v.rowwise() = config->initialVelocity().value().transpose();
-    }
-
-    // for now, hard code that vertices at the far left of the object are fixed
-    _fixed_vertices = Eigen::Vector<bool, -1>::Zero(_vertices.rows());
-    Eigen::Vector3d min_coeff = _vertices.colwise().minCoeff();
-    for (int i = 0; i < _vertices.rows(); i++)
-    {
-        if (_vertices(i,1) == min_coeff(1))
-        {
-            _fixed_vertices(i) = true;
-        }
     }
 
     updateVertexCache();
@@ -114,6 +113,25 @@ ElasticMeshObject::ElasticMeshObject(const std::string& name, const VerticesMat&
 
     _v = VerticesMat::Zero(_vertices.rows(), 3);
 
+}
+
+void ElasticMeshObject::setVertices(const VerticesMat& verts)
+{
+    MeshObject::setVertices(verts);
+    _fixed_vertices = Eigen::Vector<bool, -1>::Zero(_vertices.rows());
+}
+
+void ElasticMeshObject::fixVerticesWithMinY()
+{
+    Eigen::Vector3d min_coeff = _vertices.colwise().minCoeff();
+    Eigen::Vector3d max_coeff = _vertices.colwise().maxCoeff();
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        if (_vertices(i,1) == min_coeff(1))
+        {
+            _fixed_vertices(i) = true;
+        }
+    }
 }
 
 void ElasticMeshObject::_loadMeshFromFile(const std::string& filename)

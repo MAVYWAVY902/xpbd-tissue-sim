@@ -17,6 +17,7 @@ target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with CGAL
 
 set(XPBD_FILES 
     "include/Simulation.hpp" 
+    "include/BeamSimulation.hpp"
     "include/ElasticMaterial.hpp"
     "include/MeshObject.hpp" 
     "include/RigidMeshObject.hpp"
@@ -31,6 +32,7 @@ set(XPBD_FILES
     "include/config/RigidMeshObjectConfig.hpp"
     "include/config/SimulationConfig.hpp"
     "src/Simulation.cpp" 
+    "src/BeamSimulation.cpp"
     "src/MeshObject.cpp" 
     "src/RigidMeshObject.cpp"
     "src/ElasticMeshObject.cpp"
@@ -42,3 +44,6 @@ add_library(XPBD ${XPBD_FILES} ) # create XPBD library
 target_link_libraries(XPBD easy3d::core easy3d::util easy3d::renderer easy3d::viewer MeshUtils yaml-cpp)
 add_executable(Test src/main.cpp)                    # create an executable target
 target_link_libraries(Test XPBD easy3d::viewer gmsh)       # link to necessary Easy3D modules (add more if needed, e.g., algo)
+
+add_executable(BeamTest src/beam_test_main.cpp)
+target_link_libraries(BeamTest XPBD easy3d::viewer gmsh)

@@ -43,6 +43,18 @@ class ElasticMeshObject : public MeshObject
      */
     explicit ElasticMeshObject(const std::string& name, const VerticesMat& verts, const ElementsMat& elems, const ElasticMaterial& material);
 
+    const ElasticMaterial& material() { return _material; }
+
+    /** Fixes all vertices in the mesh with the minimum y-value.
+     * Used in setting up cantilever beam experiments
+     */
+    void fixVerticesWithMinY();
+
+    /** Overrides setVertices in order to properly set size of _fixed_vertices
+     * @param verts : the new vertices matrix
+     */
+    void setVertices(const VerticesMat& verts) override;
+
     /** Sets new elements for the tetrahedral.
      * @param elems : the new matrix of elements - specified as a Nx4 matrix of vertex indices
      */

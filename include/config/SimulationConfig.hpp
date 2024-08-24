@@ -26,6 +26,8 @@ class SimulationConfig : public Config
     static std::optional<double>& DEFAULT_END_TIME() { static std::optional<double> end_time(10); return end_time; }
     /** Static predefined default for simulation mode */
     static std::optional<SimulationMode>& DEFAULT_SIM_MODE() { static std::optional<SimulationMode> sim_mode(SimulationMode::VISUALIZATION); return sim_mode; }
+    /** Static predefined default for acceleration due to gravity */
+    static std::optional<double>& DEFAULT_G_ACCEL() { static std::optional<double> g_accel(9.81); return g_accel; }
 
     static std::map<std::string, SimulationMode> SIM_MODE_OPTIONS()
     {
@@ -46,6 +48,7 @@ class SimulationConfig : public Config
         _extractParameter("time-step", node, _time_step, DEFAULT_TIME_STEP());
         _extractParameter("end-time", node, _end_time, DEFAULT_END_TIME());
         _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS(), DEFAULT_SIM_MODE());
+        _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -80,6 +83,7 @@ class SimulationConfig : public Config
     std::optional<double> timeStep() const { return _time_step.value; }
     std::optional<double> endTime() const { return _end_time.value; }
     std::optional<SimulationMode> simMode() const { return _sim_mode.value; }
+    std::optional<double> gAccel() const { return _g_accel.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const std::vector<std::unique_ptr<MeshObjectConfig> >& meshObjectConfigs() const { return _mesh_object_configs; }
@@ -89,6 +93,7 @@ class SimulationConfig : public Config
     ConfigParameter<double> _time_step;
     ConfigParameter<double> _end_time;
     ConfigParameter<SimulationMode> _sim_mode; 
+    ConfigParameter<double> _g_accel;
 
     /** List of MeshObject configs for each object in the Simulation */
     std::vector<std::unique_ptr<MeshObjectConfig>> _mesh_object_configs;

@@ -74,10 +74,17 @@ class MeshObject : public easy3d::Model
      */
     const std::vector<easy3d::vec3>& points() const override;
 
+    /** Returns the minimum coordinates from the bounding box of the mesh */
+    Eigen::Vector3d bboxMinCoords() const;
+
+    /** Returns the maximum coordinates from the bounding box of the mesh */
+    Eigen::Vector3d bboxMaxCoords() const; 
+
     /** Updates the mesh based on a time step 
      * @param dt : the time delta since the last update
+     * @param g_accel : the acceleration due to gravity
     */
-    virtual void update(const double dt) = 0;
+    virtual void update(const double dt, const double g_accel) = 0;
 
     /** Updates the graphics buffers associated with this mesh
      */
@@ -92,7 +99,22 @@ class MeshObject : public easy3d::Model
     /** Sets new vertices for the mesh. Also updates the vertex cache.
      * @param verts : the new matrix of vertices
      */
-    void setVertices(const VerticesMat& verts);
+    virtual void setVertices(const VerticesMat& verts);
+
+    /** Returns the vertex at the row index specified by the user.
+     * @param index : the row in the _vertices matrix
+     * @returns the vertex as an Eigen::Vector3d
+     */
+    Eigen::Vector3d getVertex(const unsigned index) const;
+
+    /** Finds the closest vertex to the specified (x,y,z) points, and returns the row index in the _vertices matrix.
+     * For now, just does an O(n) search through the vertices.
+     * @param x : the x coordinate
+     * @param y : the y coordinate
+     * @param z : the z coordinate
+     * @returns the row index of the closest vertex to (x,y,z)
+     */
+    unsigned getClosestVertex(const double x, const double y, const double z) const;
 
     /** Sets new faces for the mesh.
      * @param faces : the new matrix of faces
@@ -123,6 +145,18 @@ class MeshObject : public easy3d::Model
      */
     void moveTo(const Eigen::Vector3d& position, PositionReference reference = PositionReference::CENTER);
 
+
+    /** Rotates the mesh according to a vector of (x angle, y angle, and z angle) around its bounding box center
+     * Rotates x degrees about x-axis, then y degrees about y-axis, and then z degrees about z-axis
+     * @param xyz_angles : a 3-vector corresponding to successive rotation angles
+     */
+    void rotate(const Eigen::Vector3d& xyz_angles);
+
+    /** Rotates the mesh according to a rotation matrix around its bounding box center
+     * First moves the mesh to have its bounding box center at the origin, applies the rotation, and moves the mesh back its previous position.
+     * @param rot_mat : the rotation matrix used to rotate the vertices
+     */
+    void rotate(const Eigen::Matrix3d& rot_mat);
 
     protected:
     /** Updates the vertex cache. Should be called when the _vertices matrix has been changed.
@@ -156,6 +190,8 @@ class MeshObject : public easy3d::Model
 
     /** Whether or not to draw the points of the mesh */
     bool _draw_points;
+
+    
 
 };
 
