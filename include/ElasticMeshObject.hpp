@@ -5,6 +5,26 @@
 #include "ElasticMaterial.hpp"
 #include "config/ElasticMeshObjectConfig.hpp"
 
+/** A class for driving a vertex */
+class VertexDriver
+{
+    public:
+    typedef std::function<Eigen::Vector3d(const double t)> DriverFunction;
+
+    explicit VertexDriver(const std::string& name, unsigned vert_index, DriverFunction driver_function)
+        : _name(name), _vert_index(vert_index), _driver_function(driver_function)
+    {}
+    
+    Eigen::Vector3d evaluate(const double t) const { return _driver_function(t); }
+    unsigned vertexIndex() const { return _vert_index; }
+    std::string name() const { return _name; }
+
+    protected:
+    std::string _name;
+    unsigned _vert_index;
+    DriverFunction _driver_function;
+};
+
 /** A class for representing tetrahedral meshes with elastic material properties.
  * Each vertex in the mesh has its own velocity.
  * 
@@ -50,6 +70,27 @@ class ElasticMeshObject : public MeshObject
      */
     void fixVerticesWithMinY();
 
+    /** Fixes all vertices in the mesh with the minimum z-value.
+     * Used in setting up tissue experiments.
+     */
+    void fixVerticesWithMinZ();
+
+    /** Adds a new vertex driver */
+    void addVertexDriver(const VertexDriver& vd);
+
+    /** Stretches the mesh in each direction by a specified amount.
+     * I.e. for an x_stretch of 2, the mesh will be stretched by a factor of 2x in the x direction
+     * @param x_stretch : the factor by which to stretch (or compress) the mesh in the x direction
+     * @param y_stretch : the factor by which to stretch (or compress) the mesh in the y direction
+     * @param z_stretch : the factor by which to stretch (or compress) the mesh in the z direction
+     */
+    void stretch(const double x_stretch, const double y_stretch, const double z_stretch);
+
+    /** Collapses all vertices to the mesh's minimum z
+     * Used in stability experiments
+     */
+    void collapseToMinZ();
+
     /** Overrides setVertices in order to properly set size of _fixed_vertices
      * @param verts : the new vertices matrix
      */
@@ -80,6 +121,12 @@ class ElasticMeshObject : public MeshObject
      * If entry i is true, vertex i is fixed
      */
     Eigen::Vector<bool, -1> _fixed_vertices;
+
+    /** Keeps track of vertex drivers */
+    std::vector<VertexDriver> _vertex_drivers;
+
+    /** Previous vertex positions */
+    VerticesMat _x_prev;
 
     /** Per vertex velocity
      * Velocity is updated to be (x - x_prev) / dt

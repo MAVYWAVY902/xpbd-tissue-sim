@@ -94,12 +94,16 @@ ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
 
     updateVertexCache();
 
+    _x_prev = _vertices;
+
 }
 
 ElasticMeshObject::ElasticMeshObject(const std::string& name, const std::string& filename, const ElasticMaterial& material = ElasticMaterial::RUBBER())
     : MeshObject(name), _material(material)
 {
     _loadMeshFromFile(filename);
+    _v = VerticesMat::Zero(_vertices.rows(), 3);
+    _x_prev = _vertices;
 }
 
 ElasticMeshObject::ElasticMeshObject(const std::string& name, const VerticesMat& verts, const ElementsMat& elems, const ElasticMaterial& material = ElasticMaterial::RUBBER())
@@ -112,6 +116,7 @@ ElasticMeshObject::ElasticMeshObject(const std::string& name, const VerticesMat&
     _setFacesFromElements();
 
     _v = VerticesMat::Zero(_vertices.rows(), 3);
+    _x_prev = _vertices;
 
 }
 
@@ -132,6 +137,43 @@ void ElasticMeshObject::fixVerticesWithMinY()
             _fixed_vertices(i) = true;
         }
     }
+}
+
+void ElasticMeshObject::fixVerticesWithMinZ()
+{
+    Eigen::Vector3d min_coeff = _vertices.colwise().minCoeff();
+    Eigen::Vector3d max_coeff = _vertices.colwise().maxCoeff();
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        if (_vertices(i,2) == min_coeff(2))
+        {
+            _fixed_vertices(i) = true;
+        }
+    }
+}
+
+void ElasticMeshObject::addVertexDriver(const VertexDriver& vd)
+{
+    _vertex_drivers.push_back(vd);
+}
+
+void ElasticMeshObject::stretch(const double x_stretch, const double y_stretch, const double z_stretch)
+{
+    const Eigen::Vector3d& min_coords = bboxMinCoords();
+    const Eigen::Vector3d& max_coords = bboxMaxCoords(); 
+    resize((max_coords(0)-min_coords(0))*x_stretch, (max_coords(1)-min_coords(1))*y_stretch, (max_coords(2)-min_coords(2))*z_stretch);
+    _x_prev = _vertices;
+}
+
+void ElasticMeshObject::collapseToMinZ()
+{
+    const double min_z = bboxMinCoords()(2);
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        _vertices(i,2) = min_z;
+    }
+
+    _x_prev = _vertices;
 }
 
 void ElasticMeshObject::_loadMeshFromFile(const std::string& filename)

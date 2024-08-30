@@ -1,4 +1,5 @@
 #include "XPBDMeshObject.hpp"
+#include "Simulation.hpp"
 
 #include <easy3d/renderer/renderer.h>
 #include <easy3d/core/types.h>
@@ -42,6 +43,10 @@ XPBDMeshObject::XPBDMeshObject(const std::string& name, const VerticesMat& verts
 
 void XPBDMeshObject::_init()
 {
+    _dynamics_residual = 0;
+    _constraint_residual = 0;
+    _primary_residual = 0;
+    _vol_ratio = 1;
     _x_prev = _vertices;
 }
 
@@ -157,7 +162,7 @@ void XPBDMeshObject::update(const double dt, const double g_accel)
         _projectConstraintsRuckerFull(dt);
 
     auto t3 = std::chrono::steady_clock::now();
-    _projectCollisionConstraints();
+    _projectCollisionConstraints(dt);
     auto t4 = std::chrono::steady_clock::now();
     _updateVelocities(dt);
     auto t5 = std::chrono::steady_clock::now();
@@ -167,16 +172,6 @@ void XPBDMeshObject::update(const double dt, const double g_accel)
     // std::cout << "\tprojectConstraints took " << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << " us" << std::endl;
     // std::cout << "\tprojectCollisionConstraints took " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
     // std::cout << "\tupdateVelocities took " << std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count() << " us" << std::endl;
-}
-
-double XPBDMeshObject::primaryResidual()
-{
-    return _primary_residual;
-}
-
-double XPBDMeshObject::constraintResidual()
-{
-    return _constraint_residual;
 }
 
 std::string XPBDMeshObject::solveMode()
@@ -203,6 +198,12 @@ void XPBDMeshObject::_movePositionsIntertially(const double dt, const double g_a
     for (int i = 0; i < _vertices.rows(); i++)
     {
         _vertices(i,2) += -g_accel * dt * dt;
+    }
+
+    // update vertex drivers
+    for (const auto& driver : _vertex_drivers)
+    {
+        _vertices.row(driver.vertexIndex()) = driver.evaluate(_sim->time());
     }
     
 
@@ -529,43 +530,43 @@ void XPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
             C_d_grad_4 = -C_d_grads.col(0) - C_d_grads.col(1) - C_d_grads.col(2);
 
 
-            double dlam_d = 0;
-            double dlam_h = 0; 
+            const double inv_m1 = 1/m1;
+            const double inv_m2 = 1/m2;
+            const double inv_m3 = 1/m3;
+            const double inv_m4 = 1/m4;
 
-            /** SOLVE FOR DLAM SIMULTANEOUSLY */
-            // set up 2x2 system with both constraints
-            const double off_diagonal = 1/m1*C_h_grads.col(0).dot(C_d_grads.col(0)) +
-                                        1/m2*C_h_grads.col(1).dot(C_d_grads.col(1)) +
-                                        1/m3*C_h_grads.col(2).dot(C_d_grads.col(2)) +
-                                        1/m4*C_h_grad_4.dot(C_d_grad_4);
-            Eigen::Matrix2d A {  {1/m1*C_h_grads.col(0).squaredNorm() + 1/m2*C_h_grads.col(1).squaredNorm() + 1/m3*C_h_grads.col(2).squaredNorm() + 1/m4*C_h_grad_4.squaredNorm() + alpha_h/(dt*dt),
-                                        off_diagonal},
-                                        {off_diagonal,
-                                        1/m1*C_d_grads.col(0).squaredNorm() + 1/m2*C_d_grads.col(1).squaredNorm() + 1/m3*C_d_grads.col(2).squaredNorm() + 1/m4*C_d_grad_4.squaredNorm() + alpha_d/(dt*dt)
-            } };
+            // solve the 2x2 system
+            const double a11 = inv_m1*C_h_grads.col(0).squaredNorm() + 
+                               inv_m2*C_h_grads.col(1).squaredNorm() + 
+                               inv_m3*C_h_grads.col(2).squaredNorm() + 
+                               inv_m4*C_h_grad_4.squaredNorm() + 
+                               alpha_h/(dt*dt);
+            const double a12 = inv_m1*C_h_grads.col(0).dot(C_d_grads.col(0)) +
+                               inv_m2*C_h_grads.col(1).dot(C_d_grads.col(1)) +
+                               inv_m3*C_h_grads.col(2).dot(C_d_grads.col(2)) +
+                               inv_m4*C_h_grad_4.dot(C_d_grad_4);
+            const double a21 = a12;
+            const double a22 = inv_m1*C_d_grads.col(0).squaredNorm() + 
+                               inv_m2*C_d_grads.col(1).squaredNorm() + 
+                               inv_m3*C_d_grads.col(2).squaredNorm() + 
+                               inv_m4*C_d_grad_4.squaredNorm() + 
+                               alpha_d/(dt*dt);
+            const double k1 = -C_h - alpha_h / (dt*dt) * lambda_hs(i);
+            const double k2 = -C_d - alpha_d / (dt*dt) * lambda_ds(i);
 
-            Eigen::Vector2d b {  -C_h - alpha_h * lambda_hs(i) / (dt*dt),
-                                        -C_d - alpha_d * lambda_ds(i) / (dt*dt)    
-                                    };
+            const double detA = a11*a22 - a21*a12;
 
-            // solve the system
-            // TODO: can we use a faster system solve?
-            Eigen::ColPivHouseholderQR<Eigen::Matrix2d> dec(A);
-            const Eigen::Vector2d& dlambda = dec.solve(b);
+            const double dlam_h = (k1*a22 - k2*a12) / detA;
+            const double dlam_d = (a11*k2 - a21*k1) / detA;
 
-            dlam_h = dlambda(0);
-            dlam_d = dlambda(1);
+            // dlam_h = dlambda(0);
+            // dlam_d = dlambda(1);
 
             // update vertex positions
-            _vertices.row(elem(0)) += C_h_grads.col(0) * dlam_h/m1;
-            _vertices.row(elem(1)) += C_h_grads.col(1) * dlam_h/m2;
-            _vertices.row(elem(2)) += C_h_grads.col(2) * dlam_h/m3;
-            _vertices.row(elem(3)) += C_h_grad_4 * dlam_h/m4;
-
-            _vertices.row(elem(0)) += C_d_grads.col(0) * dlam_d/m1;
-            _vertices.row(elem(1)) += C_d_grads.col(1) * dlam_d/m2;
-            _vertices.row(elem(2)) += C_d_grads.col(2) * dlam_d/m3;
-            _vertices.row(elem(3)) += C_d_grad_4 * dlam_d/m4;
+            _vertices.row(elem(0)) += C_h_grads.col(0) * dlam_h * inv_m1 + C_d_grads.col(0) * dlam_d * inv_m1;
+            _vertices.row(elem(1)) += C_h_grads.col(1) * dlam_h * inv_m2 + C_d_grads.col(1) * dlam_d * inv_m2;
+            _vertices.row(elem(2)) += C_h_grads.col(2) * dlam_h * inv_m3 + C_d_grads.col(2) * dlam_d * inv_m3;
+            _vertices.row(elem(3)) += C_h_grad_4 * dlam_h * inv_m4 + C_d_grad_4 * dlam_d * inv_m4;
             
 
             // update Lagrange multipliers
@@ -894,7 +895,7 @@ void XPBDMeshObject::_projectConstraintsSequentialInitLambda(const double dt)
 void XPBDMeshObject::_projectConstraintsRuckerFull(const double dt)
 {
     VerticesMat inertial_positions = _vertices;
-    
+
     std::vector<Eigen::Matrix<double, 3, 4>> C_grads(_elements.rows()*2);
     Eigen::VectorXd alpha_tildes(_elements.rows()*2);
 
@@ -1183,20 +1184,22 @@ void XPBDMeshObject::_calculateResiduals(const double dt, const VerticesMat& ine
 
     _primary_residual = primary_residual_rms;
     _constraint_residual = constraint_residual_rms;
+    _dynamics_residual = dynamics_residual_rms;
+    _vol_ratio = cur_vols.sum() / _vols.sum();
 
     // std::cout << primary_residual << std::endl;
 
-    std::cout << name() << " Residuals:" << std::endl;
-    std::cout << "\tDynamics residual\t--\tRMS:\t" << dynamics_residual_rms << "\t\tAverage:\t" << dynamics_residual_abs_mean << std::endl;
-    std::cout << "\tPrimary residual\t--\tRMS:\t" << primary_residual_rms << "\t\tAverage:\t" << primary_residual_abs_mean << std::endl;
-    std::cout << "\tConstraint residual\t--\tRMS:\t" << constraint_residual_rms << "\t\tAverage:\t" << constraint_residual_abs_mean << std::endl;
-    std::cout << "\tLambda_h(0):\t" << lambda_hs(0) << "\tLambda_d(0):\t" << lambda_ds(0) << std::endl;
-    std::cout << "\tCurrent volume / initial volume:\t" << cur_vols.sum() / _vols.sum() << std::endl;
-    std::cout << "\tConstraint residuals for first element: " << constraint_residual(0) << "\t, " << constraint_residual(1) << std::endl;
+    // std::cout << name() << " Residuals:" << std::endl;
+    // std::cout << "\tDynamics residual\t--\tRMS:\t" << dynamics_residual_rms << "\t\tAverage:\t" << dynamics_residual_abs_mean << std::endl;
+    // std::cout << "\tPrimary residual\t--\tRMS:\t" << primary_residual_rms << "\t\tAverage:\t" << primary_residual_abs_mean << std::endl;
+    // std::cout << "\tConstraint residual\t--\tRMS:\t" << constraint_residual_rms << "\t\tAverage:\t" << constraint_residual_abs_mean << std::endl;
+    // std::cout << "\tLambda_h(0):\t" << lambda_hs(0) << "\tLambda_d(0):\t" << lambda_ds(0) << std::endl;
+    // std::cout << "\tCurrent volume / initial volume:\t" << cur_vols.sum() / _vols.sum() << std::endl;
+    // std::cout << "\tConstraint residuals for first element: " << constraint_residual(0) << "\t, " << constraint_residual(1) << std::endl;
     // std::cout << "\tForces:\n" << forces << std::endl;
 }
 
-void XPBDMeshObject::_projectCollisionConstraints()
+void XPBDMeshObject::_projectCollisionConstraints(const double dt)
 {
     // for now, forbid vertex z-positions going below 0
     for (unsigned i = 0; i < _vertices.rows(); i++)

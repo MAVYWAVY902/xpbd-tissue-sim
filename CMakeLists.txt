@@ -18,6 +18,8 @@ target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with CGAL
 set(XPBD_FILES 
     "include/Simulation.hpp" 
     "include/BeamSimulation.hpp"
+    "include/ResidualSimulation.hpp"
+    "include/TissueGraspingSimulation.hpp"
     "include/ElasticMaterial.hpp"
     "include/MeshObject.hpp" 
     "include/RigidMeshObject.hpp"
@@ -33,6 +35,8 @@ set(XPBD_FILES
     "include/config/SimulationConfig.hpp"
     "src/Simulation.cpp" 
     "src/BeamSimulation.cpp"
+    "src/ResidualSimulation.cpp"
+    "src/TissueGraspingSimulation.cpp"
     "src/MeshObject.cpp" 
     "src/RigidMeshObject.cpp"
     "src/ElasticMeshObject.cpp"
@@ -47,3 +51,6 @@ target_link_libraries(Test XPBD easy3d::viewer gmsh)       # link to necessary E
 
 add_executable(BeamTest src/beam_test_main.cpp)
 target_link_libraries(BeamTest XPBD easy3d::viewer gmsh)
+
+add_executable(TissueGraspingTest src/tissue_grasping_test_main.cpp)
+target_link_libraries(TissueGraspingTest XPBD easy3d::viewer gmsh)

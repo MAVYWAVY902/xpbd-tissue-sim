@@ -1,8 +1,8 @@
-name: "Bunnies"
+name: "blah"
 g-accel: 9.81 # m/s2
-sim-mode: "Visualization" #"Frame-by-frame"
-time-step: 1e-3
-end-time: 1000
+sim-mode: "Visualization"
+time-step: 1e-2
+end-time: 5
 objects:
   -
     name: "Cube1"

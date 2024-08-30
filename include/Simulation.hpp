@@ -44,6 +44,8 @@ class Simulation
         */        
         void addObject(MeshObject* mesh_obj);
 
+        double time() const { return _time; }
+
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
          */

@@ -12,6 +12,9 @@
 #include <Eigen/Dense>
 
 #include "config/MeshObjectConfig.hpp"
+// #include "Simulation.hpp"
+
+class Simulation;
 
 /** A class for representing mesh-based objects in the simulation.
  * Inherited classes will implement the material behavior associated with the meshes.
@@ -121,6 +124,8 @@ class MeshObject : public easy3d::Model
      */
     void setFaces(const FacesMat& faces);
 
+    void setSimulation(const Simulation* sim) { _sim = sim; }
+
     /** Resizes the mesh such that its maximum dimension is no larger than the specified size.
      * @param size_of_max_dim : the new size of the largest dimension of the mesh
      */
@@ -190,6 +195,9 @@ class MeshObject : public easy3d::Model
 
     /** Whether or not to draw the points of the mesh */
     bool _draw_points;
+
+    /** Store simulation object so we can query properties (such as current sim time) */
+    const Simulation* _sim;
 
     
 

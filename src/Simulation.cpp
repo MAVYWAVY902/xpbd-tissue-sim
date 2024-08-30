@@ -36,8 +36,11 @@ Simulation::Simulation(const std::string& config_filename)
 
 void Simulation::addObject(MeshObject* mesh_object)
 {
+    mesh_object->setSimulation(this);
+    
     // add new object to MeshObjects container
     _mesh_objects.push_back(mesh_object);
+    
 
     // add the Drawables for the new MeshObject to the Viewer
     for (const auto& pt_drawable : mesh_object->renderer()->points_drawables())
@@ -48,7 +51,6 @@ void Simulation::addObject(MeshObject* mesh_object)
     {
         _viewer->add_drawable(tri_drawable);
     }
-    
     
 }
 

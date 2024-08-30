@@ -1,4 +1,5 @@
 #include "MeshObject.hpp"
+#include "Simulation.hpp"
 
 #include <easy3d/renderer/renderer.h> 
 

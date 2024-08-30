@@ -39,8 +39,10 @@ class XPBDMeshObject : public ElasticMeshObject
     */
     void update(const double dt, const double g_accel) override;
 
-    double primaryResidual();
-    double constraintResidual();
+    double primaryResidual() { return _primary_residual; }
+    double dynamicsResidual() { return _dynamics_residual; }
+    double constraintResidual() { return _constraint_residual; }
+    double volumeRatio() { return _vol_ratio; }
 
     unsigned numSolverIters() { return _num_iters; }
     std::string solveMode();
@@ -103,7 +105,7 @@ class XPBDMeshObject : public ElasticMeshObject
     void _calculateForces();
 
     /** Projects the collision constraints onto the updated positions. */
-    void _projectCollisionConstraints();
+    void _projectCollisionConstraints(const double dt);
 
     /** Update the velocities based on the updated positions.
      * @param dt : the time step
@@ -134,11 +136,7 @@ class XPBDMeshObject : public ElasticMeshObject
      * 
      * Computed once for each vertex, upon initializaation of the mesh.
      */
-    // std::vector<double> _m;
     Eigen::VectorXd _m;
-
-    /** Previous vertex positions */
-    VerticesMat _x_prev;
 
     /** Number of Gauss-Seidel iterations
      */
@@ -153,6 +151,8 @@ class XPBDMeshObject : public ElasticMeshObject
     /** Calculate the residuals every step */
     double _primary_residual;
     double _constraint_residual;
+    double _dynamics_residual;
+    double _vol_ratio;
 
     /** For the initializing lambda method */
     Eigen::VectorXd _initial_lambda_ds;
