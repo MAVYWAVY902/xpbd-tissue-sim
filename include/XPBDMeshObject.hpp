@@ -92,6 +92,8 @@ class XPBDMeshObject : public ElasticMeshObject
       */
     void _projectConstraintsSequentialInitLambda(const double dt);
 
+    void _projectConstraintsSimultaneousInitLambda(const double dt);
+
     void _projectConstraintsRuckerFull(const double dt);
 
     /** Computes the residuals for the equations of motion.

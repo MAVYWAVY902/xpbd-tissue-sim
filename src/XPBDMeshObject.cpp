@@ -88,7 +88,7 @@ void XPBDMeshObject::_precomputeQuantities()
         _m(_elements(i,3)) += m_element/4;
     }
 
-    if (_solve_mode == XPBDSolveMode::SEQUENTIAL_INIT_LAMBDA)
+    if (_solve_mode == XPBDSolveMode::SEQUENTIAL_INIT_LAMBDA || _solve_mode == XPBDSolveMode::SIMULTANEOUS_INIT_LAMBDA)
     {
         _initial_lambda_ds = Eigen::VectorXd::Zero(_elements.rows());
         _initial_lambda_hs = Eigen::VectorXd::Zero(_elements.rows());
@@ -158,6 +158,8 @@ void XPBDMeshObject::update(const double dt, const double g_accel)
         _projectConstraintsSequentialRandomized(dt);
     else if (_solve_mode == XPBDSolveMode::SEQUENTIAL_INIT_LAMBDA)
         _projectConstraintsSequentialInitLambda(dt);
+    else if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_INIT_LAMBDA)
+        _projectConstraintsSimultaneousInitLambda(dt);
     else if (_solve_mode == XPBDSolveMode::RUCKER_FULL)
         _projectConstraintsRuckerFull(dt);
 
@@ -186,6 +188,8 @@ std::string XPBDMeshObject::solveMode()
         return "ConstantX";
     if (_solve_mode == XPBDSolveMode::SEQUENTIAL_INIT_LAMBDA)
         return "Sequential-Init-Lambda";
+    if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_INIT_LAMBDA)
+        return "Simultaneous-Init-Lambda";
     
     return "";
 }
@@ -738,35 +742,35 @@ void XPBDMeshObject::_projectConstraintsConstantX(const double dt)
 void XPBDMeshObject::_projectConstraintsSequentialInitLambda(const double dt)
 {
     // accumulated hydrostatic Lagrange multipliers
-    Eigen::VectorXd lambda_hs = _initial_lambda_hs/(dt*dt);//Eigen::VectorXd::Zero(_elements.rows());
+    Eigen::VectorXd lambda_hs = _initial_lambda_hs*(dt*dt);//Eigen::VectorXd::Zero(_elements.rows());
     // accumulated deviatoric Lagrange multipliers
-    Eigen::VectorXd lambda_ds = _initial_lambda_ds/(dt*dt);//Eigen::VectorXd::Zero(_elements.rows());
+    Eigen::VectorXd lambda_ds = _initial_lambda_ds*(dt*dt);//Eigen::VectorXd::Zero(_elements.rows());
 
     // calculate initial guesses for lambdas based on last constraint
-    for (int i = 0; i < _elements.rows(); i++)
-    {
-        const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
-        Eigen::Matrix3d X;
-        X.col(0) = _x_prev.row(elem(0)) - _x_prev.row(elem(3));
-        X.col(1) = _x_prev.row(elem(1)) - _x_prev.row(elem(3));
-        X.col(2) = _x_prev.row(elem(2)) - _x_prev.row(elem(3));
+    // for (int i = 0; i < _elements.rows(); i++)
+    // {
+    //     const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+    //     Eigen::Matrix3d X;
+    //     X.col(0) = _x_prev.row(elem(0)) - _x_prev.row(elem(3));
+    //     X.col(1) = _x_prev.row(elem(1)) - _x_prev.row(elem(3));
+    //     X.col(2) = _x_prev.row(elem(2)) - _x_prev.row(elem(3));
 
-        // compute F
-        Eigen::Matrix3d F = X * _Q[i];
+    //     // compute F
+    //     Eigen::Matrix3d F = X * _Q[i];
 
-        // compute constraint itself
-        const double C_d = std::sqrt(F.col(0).squaredNorm() + F.col(1).squaredNorm() + F.col(2).squaredNorm());
-        // compute the deviatoric alpha
-        const double alpha_d_tilde = 1/(_material.mu() * _vols[i]) / (dt*dt);
+    //     // compute constraint itself
+    //     const double C_d = std::sqrt(F.col(0).squaredNorm() + F.col(1).squaredNorm() + F.col(2).squaredNorm());
+    //     // compute the deviatoric alpha
+    //     const double alpha_d_tilde = 1/(_material.mu() * _vols[i]) / (dt*dt);
 
-        // compute constraint itself
-        const double C_h = F.determinant() - (1 + _material.mu()/_material.lambda());
-        // compute the hydrostatic alpha
-        const double alpha_h_tilde = 1/(_material.lambda() * _vols[i]) / (dt*dt);
+    //     // compute constraint itself
+    //     const double C_h = F.determinant() - (1 + _material.mu()/_material.lambda());
+    //     // compute the hydrostatic alpha
+    //     const double alpha_h_tilde = 1/(_material.lambda() * _vols[i]) / (dt*dt);
 
-        lambda_ds(i) = -1 / alpha_d_tilde * C_d;
-        lambda_hs(i) = -1 / alpha_h_tilde * C_h;
-    }
+    //     lambda_ds(i) = -1 / alpha_d_tilde * C_d;
+    //     lambda_hs(i) = -1 / alpha_h_tilde * C_h;
+    // }
 
     std::cout << "lambdad(0): " << lambda_ds(0) << std::endl;
     std::cout << "lambdah(0): " << lambda_hs(0) << std::endl;
@@ -882,6 +886,114 @@ void XPBDMeshObject::_projectConstraintsSequentialInitLambda(const double dt)
             _vertices.row(elem(1)) += C_h_grads.col(1) * dlam_h/m2;
             _vertices.row(elem(2)) += C_h_grads.col(2) * dlam_h/m3;
             _vertices.row(elem(3)) += C_h_grad_4 * dlam_h/m4;
+
+            // update Lagrange multipliers
+            lambda_hs(i) += dlam_h;
+            lambda_ds(i) += dlam_d;
+        }
+    }
+
+    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+}
+
+void XPBDMeshObject::_projectConstraintsSimultaneousInitLambda(const double dt)
+{
+    // accumulated hydrostatic Lagrange multipliers
+    Eigen::VectorXd lambda_hs = _initial_lambda_hs*(dt*dt);//Eigen::VectorXd::Zero(_elements.rows());
+    // accumulated deviatoric Lagrange multipliers
+    Eigen::VectorXd lambda_ds = _initial_lambda_ds*(dt*dt);//Eigen::VectorXd::Zero(_elements.rows());
+
+    // store positions before constraints are projected
+    // this is x-tilde, seen in XPBD eqn 8 - used for computing primary residual
+    VerticesMat inertial_positions = _vertices;
+
+    // define Eigen loop variables
+    Eigen::Matrix3d X, F, F_cross, C_h_grads, C_d_grads;
+    Eigen::Vector3d C_h_grad_4, C_d_grad_4;
+    for (unsigned gi = 0; gi < _num_iters; gi++)
+    {
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+            // create the deformed shape matrix from current deformed vertex positions
+            X.col(0) = _vertices.row(elem(0)) - _vertices.row(elem(3));
+            X.col(1) = _vertices.row(elem(1)) - _vertices.row(elem(3));
+            X.col(2) = _vertices.row(elem(2)) - _vertices.row(elem(3));
+
+            // extract masses of each vertex in the current element
+            const double m1 = _m[elem(0)];
+            const double m2 = _m[elem(1)];
+            const double m3 = _m[elem(2)];
+            const double m4 = _m[elem(3)];
+
+            // compute F
+            F = X * _Q[i];
+
+            /** HYDROSTATIC CONSTRAINT */
+            // compute constraint itself
+            const double C_h = F.determinant() - (1 + _material.mu()/_material.lambda());
+
+            // compute constraint gradient
+            F_cross.col(0) = F.col(1).cross(F.col(2));
+            F_cross.col(1) = F.col(2).cross(F.col(0));
+            F_cross.col(2) = F.col(0).cross(F.col(1));
+            C_h_grads = F_cross * _Q[i].transpose();
+            // compute the hydrostatic alpha
+            const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+            /** DEVIATORIC CONSTRAINT */
+            // compute constraint itself
+            const double C_d = std::sqrt(F.col(0).squaredNorm() + F.col(1).squaredNorm() + F.col(2).squaredNorm());
+
+            // compute constraint gradient
+            C_d_grads = 1/C_d * (F * _Q[i].transpose());
+            // compute the deviatoric alpha
+            const double alpha_d = 1/(_material.mu() * _vols[i]);
+
+            // by definition, the gradient for vertex 4 in the element is the negative sum of other gradients
+            C_h_grad_4 = -C_h_grads.col(0) - C_h_grads.col(1) - C_h_grads.col(2);
+            C_d_grad_4 = -C_d_grads.col(0) - C_d_grads.col(1) - C_d_grads.col(2);
+
+
+            const double inv_m1 = 1/m1;
+            const double inv_m2 = 1/m2;
+            const double inv_m3 = 1/m3;
+            const double inv_m4 = 1/m4;
+
+            // solve the 2x2 system
+            const double a11 = inv_m1*C_h_grads.col(0).squaredNorm() + 
+                               inv_m2*C_h_grads.col(1).squaredNorm() + 
+                               inv_m3*C_h_grads.col(2).squaredNorm() + 
+                               inv_m4*C_h_grad_4.squaredNorm() + 
+                               alpha_h/(dt*dt);
+            const double a12 = inv_m1*C_h_grads.col(0).dot(C_d_grads.col(0)) +
+                               inv_m2*C_h_grads.col(1).dot(C_d_grads.col(1)) +
+                               inv_m3*C_h_grads.col(2).dot(C_d_grads.col(2)) +
+                               inv_m4*C_h_grad_4.dot(C_d_grad_4);
+            const double a21 = a12;
+            const double a22 = inv_m1*C_d_grads.col(0).squaredNorm() + 
+                               inv_m2*C_d_grads.col(1).squaredNorm() + 
+                               inv_m3*C_d_grads.col(2).squaredNorm() + 
+                               inv_m4*C_d_grad_4.squaredNorm() + 
+                               alpha_d/(dt*dt);
+            const double k1 = -C_h - alpha_h / (dt*dt) * lambda_hs(i);
+            const double k2 = -C_d - alpha_d / (dt*dt) * lambda_ds(i);
+
+            const double detA = a11*a22 - a21*a12;
+
+            const double dlam_h = (k1*a22 - k2*a12) / detA;
+            const double dlam_d = (a11*k2 - a21*k1) / detA;
+
+            // dlam_h = dlambda(0);
+            // dlam_d = dlambda(1);
+
+            // update vertex positions
+            _vertices.row(elem(0)) += C_h_grads.col(0) * dlam_h * inv_m1 + C_d_grads.col(0) * dlam_d * inv_m1;
+            _vertices.row(elem(1)) += C_h_grads.col(1) * dlam_h * inv_m2 + C_d_grads.col(1) * dlam_d * inv_m2;
+            _vertices.row(elem(2)) += C_h_grads.col(2) * dlam_h * inv_m3 + C_d_grads.col(2) * dlam_d * inv_m3;
+            _vertices.row(elem(3)) += C_h_grad_4 * dlam_h * inv_m4 + C_d_grad_4 * dlam_d * inv_m4;
+            
 
             // update Lagrange multipliers
             lambda_hs(i) += dlam_h;

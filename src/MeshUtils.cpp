@@ -445,13 +445,18 @@ void MeshUtils::createTissueBlock(const std::string& filename, const double leng
         }
     }
 
+    int center_max_w = w/2;
+    int center_min_w = w/2;
+    int center_max_l = l/2;
+    int center_min_l = l/2;
+
     // l*w faces
     for (int li = 0; li < l; li++)
     {
         for (int wi = 0; wi < w; wi++)
         {
             //if (li >= li/4 && li <= 3*li/4 && wi >= wi/4 && wi <= 3*wi/4)
-            if (li == l/2 && wi == w/2)
+            if (li >= center_min_l && li <= center_max_l && wi >= center_min_w && wi <= center_max_w)
             {
                 for (int i = 0; i < high_res_multiplier+1; i++)
                 {
@@ -479,15 +484,38 @@ void MeshUtils::createTissueBlock(const std::string& filename, const double leng
                         std::cout << "Face2: " << v1 << ", " << v3 << ", " << v4 << std::endl;
                     }
                 }
+            }
+            else if (wi == center_min_w-1 && li >= center_min_l && li <= center_max_l)
+            {
+                for (int i = 0; i < high_res_multiplier+1; i++)
+                {
+                    Eigen::Vector3d vert({(wi+1)*elem_size, li*elem_size + i*high_res_elem_size, height});
+                    high_res_verts.push_back(vert);
+                }
+                int v00 = verts.size() + high_res_verts.size() - (high_res_multiplier+1);
+                // for (int i = 0; i < high_res_multiplier; i++)
+                // {
+                //     int v1 = v00 + i;
+                //     int v2 = v00 + i + 1;
+                //     if (i >= high_res_multiplier/2)
+                //     {
+                //         int v3 = index(wi, li+1, h);
+                //         Eigen::Vector3i face({v1, v2, v3});
+                //         faces.push_back(face);
+                //     }
+                //     else
+                //     {
+                //         int v3 = index(wi, li, h);
+                //         Eigen::Vector3i face({v1, v2, v3});
+                //         faces.push_back(face);
+                //     }
+                // }
 
-                int bf1 = index(li, wi, 0);
-                int bf2 = index(li, wi+1, 0);
-                int bf3 = index(li+1, wi+1, 0);
-                int bf4 = index(li+1, wi, 0);
-                Eigen::Vector3i bottom_face1({bf1, bf2, bf3});
-                Eigen::Vector3i bottom_face2({bf1, bf3, bf4});
-                faces.push_back(bottom_face1);
-                faces.push_back(bottom_face2);
+                int v1_mid = index(wi, li, h);
+                int v2_mid = v00 + high_res_multiplier/2;
+                int v3_mid = index(wi, li+1, h);
+                Eigen::Vector3i mid_face({v1_mid, v2_mid, v3_mid});
+                faces.push_back(mid_face);
             }
             else
             {
@@ -500,18 +528,18 @@ void MeshUtils::createTissueBlock(const std::string& filename, const double leng
                 Eigen::Vector3i top_face2({tf1, tf3, tf4});
                 faces.push_back(top_face1);
                 faces.push_back(top_face2);
-
-                int bf1 = index(li, wi, 0);
-                int bf2 = index(li, wi+1, 0);
-                int bf3 = index(li+1, wi+1, 0);
-                int bf4 = index(li+1, wi, 0);
-                Eigen::Vector3i bottom_face1({bf1, bf2, bf3});
-                Eigen::Vector3i bottom_face2({bf1, bf3, bf4});
-                faces.push_back(bottom_face1);
-                faces.push_back(bottom_face2);
-
                 face_ind += 4;
             }
+
+            int bf1 = index(li, wi, 0);
+            int bf2 = index(li, wi+1, 0);
+            int bf3 = index(li+1, wi+1, 0);
+            int bf4 = index(li+1, wi, 0);
+            Eigen::Vector3i bottom_face1({bf1, bf2, bf3});
+            Eigen::Vector3i bottom_face2({bf1, bf3, bf4});
+            faces.push_back(bottom_face1);
+            faces.push_back(bottom_face2);
+
         }
     }
     

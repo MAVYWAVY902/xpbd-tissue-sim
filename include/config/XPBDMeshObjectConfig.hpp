@@ -14,6 +14,7 @@ enum XPBDSolveMode
     CONSTANTX,
     SEQUENTIAL_RANDOMIZED,
     SEQUENTIAL_INIT_LAMBDA,
+    SIMULTANEOUS_INIT_LAMBDA,
     RUCKER_FULL
 };
 
@@ -33,6 +34,7 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
                                                                        {"ConstantX", XPBDSolveMode::CONSTANTX},
                                                                        {"Sequential-Randomized", XPBDSolveMode::SEQUENTIAL_RANDOMIZED},
                                                                        {"Sequential-Init-Lambda", XPBDSolveMode::SEQUENTIAL_INIT_LAMBDA},
+                                                                       {"Simultaneous-Init-Lambda", XPBDSolveMode::SIMULTANEOUS_INIT_LAMBDA},
                                                                        {"Rucker-Full", XPBDSolveMode::RUCKER_FULL}};
         return solve_mode_options;
     }
