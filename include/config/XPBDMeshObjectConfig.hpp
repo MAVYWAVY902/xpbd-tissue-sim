@@ -15,7 +15,8 @@ enum XPBDSolveMode
     SEQUENTIAL_RANDOMIZED,
     SEQUENTIAL_INIT_LAMBDA,
     SIMULTANEOUS_INIT_LAMBDA,
-    RUCKER_FULL
+    RUCKER_FULL,
+    SPLIT_DEVIATORIC_SEQUENTIAL
 };
 
 class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
@@ -35,7 +36,8 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
                                                                        {"Sequential-Randomized", XPBDSolveMode::SEQUENTIAL_RANDOMIZED},
                                                                        {"Sequential-Init-Lambda", XPBDSolveMode::SEQUENTIAL_INIT_LAMBDA},
                                                                        {"Simultaneous-Init-Lambda", XPBDSolveMode::SIMULTANEOUS_INIT_LAMBDA},
-                                                                       {"Rucker-Full", XPBDSolveMode::RUCKER_FULL}};
+                                                                       {"Rucker-Full", XPBDSolveMode::RUCKER_FULL},
+                                                                       {"Split-Deviatoric-Sequential", XPBDSolveMode::SPLIT_DEVIATORIC_SEQUENTIAL}};
         return solve_mode_options;
     }
 

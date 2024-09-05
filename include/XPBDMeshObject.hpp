@@ -96,6 +96,8 @@ class XPBDMeshObject : public ElasticMeshObject
 
     void _projectConstraintsRuckerFull(const double dt);
 
+    void _projectConstraintsSplitDeviatoricSequential(const double dt);
+
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
      * 
@@ -104,7 +106,11 @@ class XPBDMeshObject : public ElasticMeshObject
      */
     void _calculateResiduals(const double dt, const VerticesMat& inertial_positions, const Eigen::VectorXd& lambda_hs, const Eigen::VectorXd& lambda_ds);
 
+    void _calculateResidualsSplitDeviatoric(const double dt, const VerticesMat& inertial_positions, const Eigen::MatrixXd& lambdas);
+
     void _calculateForces();
+
+    void _calculateForcesSplitDeviatoric();
 
     /** Projects the collision constraints onto the updated positions. */
     void _projectCollisionConstraints(const double dt);
@@ -113,6 +119,12 @@ class XPBDMeshObject : public ElasticMeshObject
      * @param dt : the time step
      */
     void _updateVelocities(const double dt);
+
+    inline void _computeF(const unsigned elem_index, Eigen::Matrix3d& X, Eigen::Matrix3d& F);
+
+    inline double _computeDeviatoricConstraint(const Eigen::Matrix3d& F, const Eigen::Matrix3d& Q, Eigen::Matrix<double, 3, 4>& C_d_grads);
+
+    inline double _computeHydrostaticConstraint(const Eigen::Matrix3d& F, const Eigen::Matrix3d& Q, Eigen::Matrix3d& F_cross, Eigen::Matrix<double, 3, 4>& C_h_grads);
 
 
     /** Per element inverse reference shape matrix (Q)
@@ -139,6 +151,13 @@ class XPBDMeshObject : public ElasticMeshObject
      * Computed once for each vertex, upon initializaation of the mesh.
      */
     Eigen::VectorXd _m;
+
+    /** Loop variables
+     * Allocate once at the beginning to avoid constant reallocation of resources each time step
+     * each variable has _l prepended to indicate they are loop variables
+    */
+    Eigen::Matrix3d _lX, _lF, _lF_cross;
+    Eigen::Matrix<double, 3, 4> _lC_h_grads, _lC_d_grads;
 
     /** Number of Gauss-Seidel iterations
      */
