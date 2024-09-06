@@ -267,19 +267,44 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int ff3 = index(0, wi+1, hi+1);
             int ff4 = index(0, wi, hi+1);
 
-            Eigen::Vector3i front_face1({ff1, ff2, ff3});
-            Eigen::Vector3i front_face2({ff1, ff3, ff4});
-            faces.row(face_ind) = front_face1;
-            faces.row(face_ind+1) = front_face2;
+            int a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i front_face1({ff1, ff2, ff3});
+                Eigen::Vector3i front_face2({ff1, ff3, ff4});
+                faces.row(face_ind) = front_face1;
+                faces.row(face_ind+1) = front_face2;
+            }
+            else
+            {
+                Eigen::Vector3i front_face1({ff1, ff2, ff4});
+                Eigen::Vector3i front_face2({ff2, ff3, ff4});
+                faces.row(face_ind) = front_face1;
+                faces.row(face_ind+1) = front_face2;
+            }
+            
 
             int bf1 = index(l, wi, hi);
             int bf2 = index(l, wi+1, hi);
             int bf3 = index(l, wi+1, hi+1);
             int bf4 = index(l, wi, hi+1);
-            Eigen::Vector3i back_face1({bf1, bf2, bf3});
-            Eigen::Vector3i back_face2({bf1, bf3, bf4});
-            faces.row(face_ind+2) = back_face1;
-            faces.row(face_ind+3) = back_face2;
+
+            a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i back_face1({bf1, bf2, bf3});
+                Eigen::Vector3i back_face2({bf1, bf3, bf4});
+                faces.row(face_ind+2) = back_face1;
+                faces.row(face_ind+3) = back_face2;
+            }
+            else
+            {
+                Eigen::Vector3i back_face1({bf1, bf2, bf4});
+                Eigen::Vector3i back_face2({bf2, bf3, bf4});
+                faces.row(face_ind+2) = back_face1;
+                faces.row(face_ind+3) = back_face2;
+            }
+            
 
             face_ind += 4;
         }
@@ -294,19 +319,44 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int rf2 = index(li+1, w, hi);
             int rf3 = index(li+1, w, hi+1);
             int rf4 = index(li, w, hi+1);
-            Eigen::Vector3i right_face1({rf1, rf2, rf3});
-            Eigen::Vector3i right_face2({rf1, rf3, rf4});
-            faces.row(face_ind) = right_face1;
-            faces.row(face_ind+1) = right_face2;
+            
+            int a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i right_face1({rf1, rf2, rf3});
+                Eigen::Vector3i right_face2({rf1, rf3, rf4});
+                faces.row(face_ind) = right_face1;
+                faces.row(face_ind+1) = right_face2;
+            }
+            else
+            {
+                Eigen::Vector3i right_face1({rf1, rf2, rf4});
+                Eigen::Vector3i right_face2({rf2, rf3, rf4});
+                faces.row(face_ind) = right_face1;
+                faces.row(face_ind+1) = right_face2;
+            }
+            
 
             int lf1 = index(li, 0, hi);
             int lf2 = index(li+1, 0, hi);
             int lf3 = index(li+1, 0, hi+1);
             int lf4 = index(li, 0, hi+1);
-            Eigen::Vector3i left_face1({lf1, lf2, lf3});
-            Eigen::Vector3i left_face2({lf1, lf3, lf4});
-            faces.row(face_ind+2) = left_face1;
-            faces.row(face_ind+3) = left_face2;
+            a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i left_face1({lf1, lf2, lf3});
+                Eigen::Vector3i left_face2({lf1, lf3, lf4});
+                faces.row(face_ind+2) = left_face1;
+                faces.row(face_ind+3) = left_face2;
+            }
+            else
+            {
+                Eigen::Vector3i left_face1({lf1, lf2, lf4});
+                Eigen::Vector3i left_face2({lf2, lf3, lf4});
+                faces.row(face_ind+2) = left_face1;
+                faces.row(face_ind+3) = left_face2;
+            }
+            
 
             face_ind += 4;
         }
@@ -321,19 +371,43 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int tf2 = index(li, wi+1, h);
             int tf3 = index(li+1, wi+1, h);
             int tf4 = index(li+1, wi, h);
-            Eigen::Vector3i top_face1({tf1, tf2, tf3});
-            Eigen::Vector3i top_face2({tf1, tf3, tf4});
-            faces.row(face_ind) = top_face1;
-            faces.row(face_ind+1) = top_face2;
+            int a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i top_face1({tf1, tf2, tf3});
+                Eigen::Vector3i top_face2({tf1, tf3, tf4});
+                faces.row(face_ind) = top_face1;
+                faces.row(face_ind+1) = top_face2;
+            }
+            else
+            {
+                Eigen::Vector3i top_face1({tf1, tf2, tf4});
+                Eigen::Vector3i top_face2({tf2, tf3, tf4});
+                faces.row(face_ind) = top_face1;
+                faces.row(face_ind+1) = top_face2;
+            }
+            
 
             int bf1 = index(li, wi, 0);
             int bf2 = index(li, wi+1, 0);
             int bf3 = index(li+1, wi+1, 0);
             int bf4 = index(li+1, wi, 0);
-            Eigen::Vector3i bottom_face1({bf1, bf2, bf3});
-            Eigen::Vector3i bottom_face2({bf1, bf3, bf4});
-            faces.row(face_ind+2) = bottom_face1;
-            faces.row(face_ind+3) = bottom_face2;
+            a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i bottom_face1({bf1, bf2, bf3});
+                Eigen::Vector3i bottom_face2({bf1, bf3, bf4});
+                faces.row(face_ind+2) = bottom_face1;
+                faces.row(face_ind+3) = bottom_face2;
+            }
+            else
+            {
+                Eigen::Vector3i bottom_face1({bf1, bf2, bf4});
+                Eigen::Vector3i bottom_face2({bf2, bf3, bf4});
+                faces.row(face_ind+2) = bottom_face1;
+                faces.row(face_ind+3) = bottom_face2;
+            }
+            
 
             face_ind += 4;
         }

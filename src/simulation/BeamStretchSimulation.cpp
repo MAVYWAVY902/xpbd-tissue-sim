@@ -32,7 +32,7 @@ BeamStretchSimulation::BeamStretchSimulation(const std::string& config_filename)
 void BeamStretchSimulation::setup()
 {
     // uncomment to create the beam object
-    // MeshUtils::createBeamObj("../resource/beam/cube8.obj", 1, 1, 1, 16);
+    // MeshUtils::createBeamObj("../resource/beam/cube16.obj", 1, 1, 1, 16);
 
     // call the parent setup
     Simulation::setup();

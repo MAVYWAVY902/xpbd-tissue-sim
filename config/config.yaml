@@ -3,13 +3,13 @@ g-accel: 9.81 # m/s2
 # sim-mode: "Frame-by-frame"
 sim-mode: "Visualization"
 # sim-mode: "AFAP"
-time-step: 1e-2
+time-step: 5e-4
 end-time: 10
 objects:
   -
     name: "Cube1"
     type: "XPBDMeshObject"
-    filename: "../resource/cube/cube.msh"
+    filename: "../resource/beam/cube16.obj"
     material:
       name: "Soft Tissue"
       density: 1000
@@ -21,7 +21,7 @@ objects:
     position: [0, -0.1, 0.05]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
-    num-solver-iters: 100
+    num-solver-iters: 1
     damping-stiffness: 0
     # solve-mode: "Split-Deviatoric-Sequential"
     # solve-mode: "Split-Deviatoric-Simultaneous9"
