@@ -39,6 +39,13 @@ class Simulation
          */
         explicit Simulation(const std::string& config_filename);
 
+    protected:
+        /** Protected default constructor - only callable from derived objects
+         * Assumes that the _config object is set and exists
+         */
+        explicit Simulation();
+    
+    public:
         /** Adds a MeshObject to the simulation. Will add its Drawables to the Viewer as well.
          * @param mesh_obj : the MeshObject being added  
         */        
@@ -72,15 +79,18 @@ class Simulation
 
         /** Update graphics in the sim */
         void _updateGraphics();
+        
+        void _init();
 
     protected:
         /** YAML config dictionary for setting up the simulation */
-        // YAML::Node _config;
-
-        SimulationConfig _config;
+        std::unique_ptr<SimulationConfig> _config;
 
         /** Name of the simulation */
         std::string _name;
+
+        /** Description of the simulation */
+        std::string _description;
 
         /** How the simulation should be run */
         SimulationMode _sim_mode;

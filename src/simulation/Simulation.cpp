@@ -6,8 +6,7 @@
 
 #include <gmsh.h>
 
-Simulation::Simulation(const std::string& config_filename)
-    : _config(YAML::LoadFile(config_filename))
+void Simulation::_init()
 {
     // initialize gmsh
     gmsh::initialize();
@@ -16,22 +15,34 @@ Simulation::Simulation(const std::string& config_filename)
     easy3d::initialize();
 
     // set simulation properties based on YAML file
-    _name = _config.name().value();
-    _time_step = _config.timeStep().value();
-    _end_time = _config.endTime().value();
+    _name = _config->name().value();
+    _description = _config->description().value();
+    _time_step = _config->timeStep().value();
+    _end_time = _config->endTime().value();
     _time = 0;
-    _g_accel = _config.gAccel().value();
+    _g_accel = _config->gAccel().value();
 
     // set the Simulation mode from the YAML config
-    if (_config.simMode().has_value())
+    if (_config->simMode().has_value())
     {
-        _sim_mode = _config.simMode().value();
+        _sim_mode = _config->simMode().value();
     }
 
     // now we can create the Viewer
     _viewer = std::make_unique<TextRenderingViewer>(_name);
     _viewer->set_usage("");
     _viewer->registerSimulation(this);
+}
+
+Simulation::Simulation(const std::string& config_filename)
+{
+    _config = std::make_unique<SimulationConfig>(YAML::LoadFile(config_filename));
+    _init();
+}
+
+Simulation::Simulation()
+{
+
 }
 
 void Simulation::addObject(MeshObject* mesh_object)
@@ -56,7 +67,7 @@ void Simulation::addObject(MeshObject* mesh_object)
 
 void Simulation::setup()
 {   
-    for (const auto& obj_config : _config.meshObjectConfigs())
+    for (const auto& obj_config : _config->meshObjectConfigs())
     {
         // try downcasting
         if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))

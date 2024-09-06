@@ -21,6 +21,9 @@ class BeamStretchSimulation : public Simulation
 
     double _last_print_sim_time;
 
+    double _stretch_velocity;
+    double _stretch_time;
+
     std::ofstream _out_file;
 };
 

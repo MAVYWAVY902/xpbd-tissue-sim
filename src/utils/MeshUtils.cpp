@@ -250,8 +250,6 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             {
                 int ind = index(li, wi, hi);
                 Eigen::Vector3d vert({wi*elem_size, li*elem_size, hi*elem_size});
-                // std::cout << vert.transpose() << std::endl;
-                std::cout << ind << std::endl;
                 verts.row(ind) = vert;
             }
         }

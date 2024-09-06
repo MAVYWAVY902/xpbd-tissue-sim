@@ -28,7 +28,10 @@ class SimulationConfig : public Config
     static std::optional<SimulationMode>& DEFAULT_SIM_MODE() { static std::optional<SimulationMode> sim_mode(SimulationMode::VISUALIZATION); return sim_mode; }
     /** Static predefined default for acceleration due to gravity */
     static std::optional<double>& DEFAULT_G_ACCEL() { static std::optional<double> g_accel(9.81); return g_accel; }
+    /** Static predefined default for simulation description */
+    static std::optional<std::string>& DEFAULT_DESCRIPTION() { static std::optional<std::string> description(""); return description; }
 
+    /** Static predifined options for the simulation mode. Maps strings to the Simulation mode enum. */
     static std::map<std::string, SimulationMode> SIM_MODE_OPTIONS()
     {
         static std::map<std::string, SimulationMode> sim_mode_options{{"Visualization", SimulationMode::VISUALIZATION},
@@ -49,6 +52,7 @@ class SimulationConfig : public Config
         _extractParameter("end-time", node, _end_time, DEFAULT_END_TIME());
         _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS(), DEFAULT_SIM_MODE());
         _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
+        _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -88,6 +92,7 @@ class SimulationConfig : public Config
     std::optional<double> endTime() const { return _end_time.value; }
     std::optional<SimulationMode> simMode() const { return _sim_mode.value; }
     std::optional<double> gAccel() const { return _g_accel.value; }
+    std::optional<std::string> description() const { return _description.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const std::vector<std::unique_ptr<MeshObjectConfig> >& meshObjectConfigs() const { return _mesh_object_configs; }
@@ -98,6 +103,7 @@ class SimulationConfig : public Config
     ConfigParameter<double> _end_time;
     ConfigParameter<SimulationMode> _sim_mode; 
     ConfigParameter<double> _g_accel;
+    ConfigParameter<std::string> _description;
 
     /** List of MeshObject configs for each object in the Simulation */
     std::vector<std::unique_ptr<MeshObjectConfig>> _mesh_object_configs;
