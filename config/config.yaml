@@ -3,13 +3,13 @@ g-accel: 9.81 # m/s2
 # sim-mode: "Frame-by-frame"
 sim-mode: "Visualization"
 # sim-mode: "AFAP"
-time-step: 1e-2
-end-time: 5
+time-step: 1e-3
+end-time: 10
 objects:
   -
     name: "Cube1"
     type: "XPBDMeshObject"
-    filename: "../resource/cube.msh"
+    filename: "../resource/cube/cube.msh"
     material:
       name: "Rubber"
       density: 1000
@@ -18,7 +18,7 @@ objects:
     color: [1.0, 0.509, 0.0, 1.0]
     draw-points: false
     max-size: 5
-    position: [0, 5, 10]
+    position: [0, -5, 10]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
@@ -33,7 +33,7 @@ objects:
   - 
     name: "Cube2"
     type: "XPBDMeshObject"
-    filename: "../resource/cube.msh"
+    filename: "../resource/cube/cube.msh"
     material:
       name: "Rubber"
       density: 1000
@@ -42,7 +42,7 @@ objects:
     color: [1.0, 0.0, 0.0, 1.0]
     draw-points: false
     max-size: 5
-    position: [0, -5, 10]
+    position: [0, 5, 10]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
@@ -53,7 +53,7 @@ objects:
     name: "Ground"
     type: "RigidMeshObject"
     primitive-type: "Plane"
-    size: [0.1, 0.2, 0]
+    size: [10, 20, 0]
     position: [0, 0, 0]
     color: [1.0, 1.0, 1.0, 1.0]
 
