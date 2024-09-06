@@ -38,6 +38,10 @@ class MeshObjectConfig : public Config
     std::optional<Eigen::Vector3d> initialRotation() const { return _initial_rotation.value;}
     std::optional<bool> drawPoints() const { return _draw_points.value; }
     std::optional<Eigen::Vector4d> color() const { return _color.value; }
+    std::optional<double> timeStep() const { return _time_step.value; }
+
+    // Setters
+    void timeStep(const ConfigParameter<double>& time_step) { _time_step = time_step; }
 
     protected:
     // parameters
@@ -51,6 +55,8 @@ class MeshObjectConfig : public Config
 
     ConfigParameter<bool> _draw_points;
     ConfigParameter<Eigen::Vector4d> _color;
+
+    ConfigParameter<double> _time_step;
 };
 
 #endif // __MESH_OBJECT_CONFIG_HPP

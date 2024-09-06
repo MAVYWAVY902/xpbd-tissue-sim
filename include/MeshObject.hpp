@@ -199,6 +199,11 @@ class MeshObject : public easy3d::Model
     /** Store simulation object so we can query properties (such as current sim time) */
     const Simulation* _sim;
 
+    /** Time taken per time step (in seconds).
+     * We assume that this is constant throughout the simulation.
+     */
+    double _dt;
+
     
 
 };

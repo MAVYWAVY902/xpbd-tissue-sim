@@ -69,12 +69,16 @@ class SimulationConfig : public Config
 
             // create the specified type of object based on type string
             if (type == "XPBDMeshObject")
-            { 
-                _mesh_object_configs.push_back(std::make_unique<XPBDMeshObjectConfig>(obj_node));
+            {
+                std::unique_ptr<XPBDMeshObjectConfig> config = std::make_unique<XPBDMeshObjectConfig>(obj_node);
+                config->timeStep(_time_step); 
+                _mesh_object_configs.push_back(std::move(config));
             }
             if(type == "RigidMeshObject")
             {
-                _mesh_object_configs.push_back(std::make_unique<RigidMeshObjectConfig>(obj_node));
+                std::unique_ptr<RigidMeshObjectConfig> config = std::make_unique<RigidMeshObjectConfig>(obj_node);
+                config->timeStep(_time_step);
+                _mesh_object_configs.push_back(std::move(config));
             }
         }
     }

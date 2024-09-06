@@ -50,6 +50,13 @@ void XPBDMeshObject::_init()
     _lC_h_grads = Eigen::Matrix<double, 3, 4>::Zero();
     _lC_d_grads = Eigen::Matrix<double, 3, 4>::Zero();
 
+    _lCA_inv = Eigen::VectorXd::Zero(9);
+    _lB = Eigen::VectorXd::Zero(9);
+    _lb = Eigen::VectorXd::Zero(10);
+    _lA_invB = Eigen::VectorXd::Zero(9);
+    _lM = Eigen::MatrixXd::Zero(10,10);
+    _ldlam = Eigen::VectorXd::Zero(10);
+
     _dynamics_residual = 0;
     _constraint_residual = 0;
     _primary_residual = 0;
@@ -145,6 +152,62 @@ void XPBDMeshObject::_precomputeQuantities()
         }
     }
 
+    if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS9 || _solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10)
+    {
+        _A_inv.resize(_elements.rows());
+        Eigen::Matrix3d A;
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+            const double inv_m1 = 1.0/_m[elem(0)];
+            const double inv_m2 = 1.0/_m[elem(1)];
+            const double inv_m3 = 1.0/_m[elem(2)];
+            const double inv_m4 = 1.0/_m[elem(3)];
+
+            const double alpha_d = 1/(_material.mu() * _vols[i]);
+
+            A(0,0) =    inv_m1*_Q[i](0,0)*_Q[i](0,0) + 
+                        inv_m2*_Q[i](1,0)*_Q[i](1,0) + 
+                        inv_m3*_Q[i](2,0)*_Q[i](2,0) + 
+                        inv_m4*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0))*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + alpha_d/(_dt*_dt);
+            
+            A(0,1) =    inv_m1*_Q[i](0,0)*_Q[i](0,1) +
+                        inv_m2*_Q[i](1,0)*_Q[i](1,1) +
+                        inv_m3*_Q[i](2,0)*_Q[i](2,1) +
+                        inv_m4*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0))*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1));
+            
+            A(0,2) =    inv_m1*_Q[i](0,0)*_Q[i](0,2) +
+                        inv_m2*_Q[i](1,0)*_Q[i](1,2) + 
+                        inv_m3*_Q[i](2,0)*_Q[i](2,2) +
+                        inv_m4*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0))*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2));
+            
+            A(1,0) = A(0,1);
+            
+            A(1,1) =    inv_m1*_Q[i](0,1)*_Q[i](0,1) +
+                        inv_m2*_Q[i](1,1)*_Q[i](1,1) +
+                        inv_m3*_Q[i](2,1)*_Q[i](2,1) +
+                        inv_m4*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1))*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + alpha_d/(_dt*_dt);
+            
+            A(1,2) =    inv_m1*_Q[i](0,1)*_Q[i](0,2) +
+                        inv_m2*_Q[i](1,1)*_Q[i](1,2) +
+                        inv_m3*_Q[i](2,1)*_Q[i](2,2) +
+                        inv_m4*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1))*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2));
+
+            A(2,0) = A(0,2);
+            A(2,1) = A(1,2);
+
+            A(2,2) =    inv_m1*_Q[i](0,2)*_Q[i](0,2) +
+                        inv_m2*_Q[i](1,2)*_Q[i](1,2) +
+                        inv_m3*_Q[i](2,2)*_Q[i](2,2) +
+                        inv_m4*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2))*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2)) + alpha_d/(_dt*_dt);
+
+
+            _A_inv.at(i) = A.inverse(); 
+
+        }
+    }
+
     std::cout << "Precomputed quantities" << std::endl;
 
     if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SEQUENTIAL)
@@ -175,6 +238,10 @@ void XPBDMeshObject::update(const double dt, const double g_accel)
         _projectConstraintsRuckerFull(dt);
     else if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SEQUENTIAL)
         _projectConstraintsSplitDeviatoricSequential(dt);
+    else if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS9)
+        _projectConstraintsSplitDeviatoricSimultaneous9(dt);
+    else if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10)
+        _projectConstraintsSplitDeviatoricSimultaneous10(dt);
 
     auto t3 = std::chrono::steady_clock::now();
     _projectCollisionConstraints(dt);
@@ -205,6 +272,10 @@ std::string XPBDMeshObject::solveMode()
         return "Simultaneous-Init-Lambda";
     if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SEQUENTIAL)
         return "Split-Deviatoric-Sequential";
+    if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS9)
+        return "Split-Deviatoric-Simultaneous9";
+    if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10)
+        return "Split-Deviatoric-Simultaneous10";
     
     return "";
 }
@@ -320,7 +391,7 @@ void XPBDMeshObject::_projectConstraintsSequential(const double dt)
         }
     }
 
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    // _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
 }
 
 void XPBDMeshObject::_projectConstraintsSequentialRandomized(const double dt)
@@ -507,7 +578,7 @@ void XPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
         }
     }
 
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    // _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
     // _calculateForces();
 
 }
@@ -1127,6 +1198,265 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSequential(const double d
     _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
 }
 
+void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous9(const double dt)
+{
+    Eigen::MatrixXd lambdas = Eigen::MatrixXd::Zero(_elements.rows(), 10);
+
+    VerticesMat inertial_positions = _vertices;
+
+    Eigen::VectorXd b(9);
+    Eigen::VectorXd dlam(9);
+    for (unsigned gi = 0; gi < _num_iters; gi++)
+    {
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+            // extract masses of each vertex in the current element
+
+            const double inv_m1 = 1.0/_m[elem(0)];
+            const double inv_m2 = 1.0/_m[elem(1)];
+            const double inv_m3 = 1.0/_m[elem(2)];
+            const double inv_m4 = 1.0/_m[elem(3)];
+
+            // compute the deviatoric alpha
+            const double alpha_d = 1/(_material.mu() * _vols[i]);
+            const double alpha_d_tilde = alpha_d / (dt*dt);
+
+            // compute the deformation gradient
+            _computeF(i, _lX, _lF);
+
+            // calculate the RHS of the matrix eq (i.e. -C - alpha_tilde * lambda)
+            b(0) = -_lF(0,0) - alpha_d_tilde * lambdas(i,0);
+            b(1) = -_lF(0,1) - alpha_d_tilde * lambdas(i,1);
+            b(2) = -_lF(0,2) - alpha_d_tilde * lambdas(i,2);
+            b(3) = -_lF(1,0) - alpha_d_tilde * lambdas(i,3);
+            b(4) = -_lF(1,1) - alpha_d_tilde * lambdas(i,4);
+            b(5) = -_lF(1,2) - alpha_d_tilde * lambdas(i,5);
+            b(6) = -_lF(2,0) - alpha_d_tilde * lambdas(i,6);
+            b(7) = -_lF(2,1) - alpha_d_tilde * lambdas(i,7);
+            b(8) = -_lF(2,2) - alpha_d_tilde * lambdas(i,8);
+
+            // solve for dlams
+            dlam(Eigen::seq(0,2)) = _A_inv[i] * b(Eigen::seq(0,2));
+            dlam(Eigen::seq(3,5)) = _A_inv[i] * b(Eigen::seq(3,5));
+            dlam(Eigen::seq(6,8)) = _A_inv[i] * b(Eigen::seq(6,8));
+
+            // apply position updates
+            _vertices(elem(0), 0) += inv_m1 * (dlam(0)*_Q[i](0,0) + dlam(1)*_Q[i](0,1) + dlam(2)*_Q[i](0,2));
+            _vertices(elem(0), 1) += inv_m1 * (dlam(3)*_Q[i](0,0) + dlam(4)*_Q[i](0,1) + dlam(5)*_Q[i](0,2));
+            _vertices(elem(0), 2) += inv_m1 * (dlam(6)*_Q[i](0,0) + dlam(7)*_Q[i](0,1) + dlam(8)*_Q[i](0,2));
+
+            _vertices(elem(1), 0) += inv_m2 * (dlam(0)*_Q[i](1,0) + dlam(1)*_Q[i](1,1) + dlam(2)*_Q[i](1,2));
+            _vertices(elem(1), 1) += inv_m2 * (dlam(3)*_Q[i](1,0) + dlam(4)*_Q[i](1,1) + dlam(5)*_Q[i](1,2));
+            _vertices(elem(1), 2) += inv_m2 * (dlam(6)*_Q[i](1,0) + dlam(7)*_Q[i](1,1) + dlam(8)*_Q[i](1,2));
+
+            _vertices(elem(2), 0) += inv_m3 * (dlam(0)*_Q[i](2,0) + dlam(1)*_Q[i](2,1) + dlam(2)*_Q[i](2,2));
+            _vertices(elem(2), 1) += inv_m3 * (dlam(3)*_Q[i](2,0) + dlam(4)*_Q[i](2,1) + dlam(5)*_Q[i](2,2));
+            _vertices(elem(2), 2) += inv_m3 * (dlam(6)*_Q[i](2,0) + dlam(7)*_Q[i](2,1) + dlam(8)*_Q[i](2,2));
+
+            _vertices(elem(3), 0) += inv_m4 * (dlam(0)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + dlam(1)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + dlam(2)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2)));
+            _vertices(elem(3), 1) += inv_m4 * (dlam(3)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + dlam(4)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + dlam(5)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2))); 
+            _vertices(elem(3), 2) += inv_m4 * (dlam(6)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + dlam(7)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + dlam(8)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2)));
+
+            lambdas(i, Eigen::seq(0,8)) += dlam;
+
+            
+
+            /** HYDROSTATIC CONSTRAINT */
+
+            _computeF(i, _lX, _lF);
+            const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
+            // compute the hydrostatic alpha
+            const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+            const double dlam_h = (-C_h - alpha_h * lambdas(i,9) / (dt*dt)) / 
+                ((
+                    inv_m1*_lC_h_grads.col(0).squaredNorm() + 
+                    inv_m2*_lC_h_grads.col(1).squaredNorm() + 
+                    inv_m3*_lC_h_grads.col(2).squaredNorm() + 
+                    inv_m4*_lC_h_grads.col(3).squaredNorm()
+                 ) + alpha_h/(dt*dt));
+
+            _vertices.row(elem(0)) += _lC_h_grads.col(0) * dlam_h * inv_m1;
+            _vertices.row(elem(1)) += _lC_h_grads.col(1) * dlam_h * inv_m2;
+            _vertices.row(elem(2)) += _lC_h_grads.col(2) * dlam_h * inv_m3;
+            _vertices.row(elem(3)) += _lC_h_grads.col(3) * dlam_h * inv_m4;
+
+            // update Lagrange multipliers
+            // lambda_hs(i) += dlam_h;
+            lambdas(i,9) += dlam_h;
+
+        }
+
+        // _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+    }
+}
+
+void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous10(const double dt)
+{
+    Eigen::MatrixXd lambdas = Eigen::MatrixXd::Zero(_elements.rows(), 10);
+
+    // remember the inertial positions for residual calculation
+    VerticesMat inertial_positions = _vertices;
+
+    for (unsigned gi = 0; gi < _num_iters; gi++)
+    {
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+            // extract the inverse masses of each vertex in the current element
+            const double inv_m1 = 1.0/_m[elem(0)];
+            const double inv_m2 = 1.0/_m[elem(1)];
+            const double inv_m3 = 1.0/_m[elem(2)];
+            const double inv_m4 = 1.0/_m[elem(3)];
+
+        
+            // compute the deformation gradient
+            _computeF(i, _lX, _lF);
+
+            // compute the hydrostatic constraint and its gradients
+            const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
+            // compute the hydrostatic alpha
+            const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+
+            // compute the deviatoric alpha
+            const double alpha_d = 1/(_material.mu() * _vols[i]);
+            const double alpha_d_tilde = alpha_d / (dt*dt);
+
+            // calculate the RHS of the matrix eq (i.e. -C - alpha_tilde * lambda)
+            // and use lowercase b to represent this vector
+            _lb(0) = -_lF(0,0) - alpha_d_tilde * lambdas(i,0);
+            _lb(1) = -_lF(0,1) - alpha_d_tilde * lambdas(i,1);
+            _lb(2) = -_lF(0,2) - alpha_d_tilde * lambdas(i,2);
+            _lb(3) = -_lF(1,0) - alpha_d_tilde * lambdas(i,3);
+            _lb(4) = -_lF(1,1) - alpha_d_tilde * lambdas(i,4);
+            _lb(5) = -_lF(1,2) - alpha_d_tilde * lambdas(i,5);
+            _lb(6) = -_lF(2,0) - alpha_d_tilde * lambdas(i,6);
+            _lb(7) = -_lF(2,1) - alpha_d_tilde * lambdas(i,7);
+            _lb(8) = -_lF(2,2) - alpha_d_tilde * lambdas(i,8);
+            _lb(9) = -C_h - alpha_h / (dt*dt) * lambdas(i,9);
+
+            // form 10x10 LHS matrix inverse (i.e. the M in Mx=b)
+            // when solving for dlam, this is (delC M^-1 delC^T + alpha_tilde)
+            // we break the 10x10 into 4 matrices:
+            //   [ A B ]
+            //   [ C D ]
+            // A is 9x9 and constant (from the 9 deformation gradient constraints)
+            // B = C^T and is 9x1 and encodes the interaction between each deformation gradient constraint and the hydrostatic constraint gradient
+            // D is 1x1 and only depends on the hydrostatic constraint gradient
+            // now we can compute the inverse according to
+            //   [ A^-1 + A^-1B(D-CA^-1B)^-1CA^-1  -A^-1B(D-CA^-1B)^-1 ]
+            //   [        -(D-CA^-1B)^-1CA^-1           (D-CA^-1B)^-1  ]
+            //
+            // things to note:
+            // - (D-CA^-1B) is a scalar (i.e. 1x1), so taking its matrix inverse is trivial
+            // - A^-1 shows up a lot - however this can be precomputed since A is constant and block diagonal
+            // - the products CA^-1 and A^-1B show up a lot as well, and are 9-vectors
+            //
+            // A has special structure, which is that it is 9x9 block diagonal, with 3 3x3 constant matrices along its diagonal
+            // it can be shown that these 3x3 matrices along the diagonal are actually the same for a given A!
+            // That is what '_A_inv[i]' is - it is the 3x3 matrix inverse of these block diagonal matrices of A for a given element i
+            //
+            // Start by forming the B 9x1 matrix
+            _lB(0) = inv_m1*_Q[i](0,0)*_lC_h_grads(0,0) + inv_m2*_Q[i](1,0)*_lC_h_grads(0,1) + inv_m3*_Q[i](2,0)*_lC_h_grads(0,2) + inv_m4*(-_Q[i](0,0)-_Q[i](1,0)-_Q[i](2,0))*_lC_h_grads(0,3);
+            _lB(1) = inv_m1*_Q[i](0,1)*_lC_h_grads(0,0) + inv_m2*_Q[i](1,1)*_lC_h_grads(0,1) + inv_m3*_Q[i](2,1)*_lC_h_grads(0,2) + inv_m4*(-_Q[i](0,1)-_Q[i](1,1)-_Q[i](2,1))*_lC_h_grads(0,3);
+            _lB(2) = inv_m1*_Q[i](0,2)*_lC_h_grads(0,0) + inv_m2*_Q[i](1,2)*_lC_h_grads(0,1) + inv_m3*_Q[i](2,2)*_lC_h_grads(0,2) + inv_m4*(-_Q[i](0,2)-_Q[i](1,2)-_Q[i](2,2))*_lC_h_grads(0,3);
+            _lB(3) = inv_m1*_Q[i](0,0)*_lC_h_grads(1,0) + inv_m2*_Q[i](1,0)*_lC_h_grads(1,1) + inv_m3*_Q[i](2,0)*_lC_h_grads(1,2) + inv_m4*(-_Q[i](0,0)-_Q[i](1,0)-_Q[i](2,0))*_lC_h_grads(1,3);
+            _lB(4) = inv_m1*_Q[i](0,1)*_lC_h_grads(1,0) + inv_m2*_Q[i](1,1)*_lC_h_grads(1,1) + inv_m3*_Q[i](2,1)*_lC_h_grads(1,2) + inv_m4*(-_Q[i](0,1)-_Q[i](1,1)-_Q[i](2,1))*_lC_h_grads(1,3);
+            _lB(5) = inv_m1*_Q[i](0,2)*_lC_h_grads(1,0) + inv_m2*_Q[i](1,2)*_lC_h_grads(1,1) + inv_m3*_Q[i](2,2)*_lC_h_grads(1,2) + inv_m4*(-_Q[i](0,2)-_Q[i](1,2)-_Q[i](2,2))*_lC_h_grads(1,3);
+            _lB(6) = inv_m1*_Q[i](0,0)*_lC_h_grads(2,0) + inv_m2*_Q[i](1,0)*_lC_h_grads(2,1) + inv_m3*_Q[i](2,0)*_lC_h_grads(2,2) + inv_m4*(-_Q[i](0,0)-_Q[i](1,0)-_Q[i](2,0))*_lC_h_grads(2,3);
+            _lB(7) = inv_m1*_Q[i](0,1)*_lC_h_grads(2,0) + inv_m2*_Q[i](1,1)*_lC_h_grads(2,1) + inv_m3*_Q[i](2,1)*_lC_h_grads(2,2) + inv_m4*(-_Q[i](0,1)-_Q[i](1,1)-_Q[i](2,1))*_lC_h_grads(2,3);
+            _lB(8) = inv_m1*_Q[i](0,2)*_lC_h_grads(2,0) + inv_m2*_Q[i](1,2)*_lC_h_grads(2,1) + inv_m3*_Q[i](2,2)*_lC_h_grads(2,2) + inv_m4*(-_Q[i](0,2)-_Q[i](1,2)-_Q[i](2,2))*_lC_h_grads(2,3);
+
+            // compute the D 1x1 matrix - only has to do with the hydrostatic constraint gradient
+            const double D =    inv_m1*_lC_h_grads.col(0).squaredNorm() + 
+                                inv_m2*_lC_h_grads.col(1).squaredNorm() + 
+                                inv_m3*_lC_h_grads.col(2).squaredNorm() + 
+                                inv_m4*_lC_h_grads.col(3).squaredNorm() +
+                                alpha_h/(dt*dt);
+            
+            // compute the product CA^-1 - result is a 9-vector
+            // we take advantage of the block diagonal structure of A here so we don't have to do full 9x9 matrix multiplication
+            _lCA_inv(0) = _lB(Eigen::seq(0,2)).dot(_A_inv[i].col(0));
+            _lCA_inv(1) = _lB(Eigen::seq(0,2)).dot(_A_inv[i].col(1));
+            _lCA_inv(2) = _lB(Eigen::seq(0,2)).dot(_A_inv[i].col(2));
+            _lCA_inv(3) = _lB(Eigen::seq(3,5)).dot(_A_inv[i].col(0));
+            _lCA_inv(4) = _lB(Eigen::seq(3,5)).dot(_A_inv[i].col(1));
+            _lCA_inv(5) = _lB(Eigen::seq(3,5)).dot(_A_inv[i].col(2));
+            _lCA_inv(6) = _lB(Eigen::seq(6,8)).dot(_A_inv[i].col(0));
+            _lCA_inv(7) = _lB(Eigen::seq(6,8)).dot(_A_inv[i].col(1));
+            _lCA_inv(8) = _lB(Eigen::seq(6,8)).dot(_A_inv[i].col(2));
+
+            // compute the product A^-1B - result is a 9-vector
+            // we take advantage of the block diagonal structure of A here so we don't have to do full 9x9 matrix multiplication
+            _lA_invB(0) = _lB(Eigen::seq(0,2)).dot(_A_inv[i].row(0));
+            _lA_invB(1) = _lB(Eigen::seq(0,2)).dot(_A_inv[i].row(1));
+            _lA_invB(2) = _lB(Eigen::seq(0,2)).dot(_A_inv[i].row(2));
+            _lA_invB(3) = _lB(Eigen::seq(3,5)).dot(_A_inv[i].row(0));
+            _lA_invB(4) = _lB(Eigen::seq(3,5)).dot(_A_inv[i].row(1));
+            _lA_invB(5) = _lB(Eigen::seq(3,5)).dot(_A_inv[i].row(2));
+            _lA_invB(6) = _lB(Eigen::seq(6,8)).dot(_A_inv[i].row(0));
+            _lA_invB(7) = _lB(Eigen::seq(6,8)).dot(_A_inv[i].row(1));
+            _lA_invB(8) = _lB(Eigen::seq(6,8)).dot(_A_inv[i].row(2));
+
+            // compute (D-CA^-1B)^-1 - this product shows up a lot in the block matrix inversion formula
+            const double inv_D_minus_CA_invB = 1/(D - _lCA_inv.dot(_lB));
+
+            // assemble the 'M' 10x10 system matrix
+            // the 9x9 block is A^-1 + A^-1B(D-CA^-1B)^-1CA^-1
+            _lM.block<9,9>(0,0) = inv_D_minus_CA_invB * _lA_invB * _lCA_inv.transpose();
+            _lM.block<3,3>(0,0) += _A_inv[i];
+            _lM.block<3,3>(3,3) += _A_inv[i];
+            _lM.block<3,3>(6,6) += _A_inv[i];
+
+            // the 1x9 block in the bottommost row is -(D-CA^-1B)^-1CA^-1
+            _lM(9, Eigen::seq(0,8)) = -inv_D_minus_CA_invB * _lCA_inv;
+
+            // the 9x1 block in the rightmost column is -A^-1B(D-CA^-1B)^-1
+            _lM(Eigen::seq(0,8), 9) = -inv_D_minus_CA_invB * _lA_invB;
+            
+            // the 1x1 block in the bottom right corner is (D-CA^-1B)^-1
+            _lM(9,9) = inv_D_minus_CA_invB;
+ 
+            // solve for dlams through simple matrix multiplication
+            _ldlam = _lM*_lb;
+
+            // apply position updates
+            // for the deformation gradient constraints, the constraint gradients only affect one component of the position
+            //   i.e. the gradients of F11, F12, F13 only affect the x-component of position, F21, F22, F23 only affect the y-component of position, and F31, F32, F33 only affect the z-component
+            _vertices(elem(0), 0) += inv_m1 * (_ldlam(0)*_Q[i](0,0) + _ldlam(1)*_Q[i](0,1) + _ldlam(2)*_Q[i](0,2));
+            _vertices(elem(0), 1) += inv_m1 * (_ldlam(3)*_Q[i](0,0) + _ldlam(4)*_Q[i](0,1) + _ldlam(5)*_Q[i](0,2));
+            _vertices(elem(0), 2) += inv_m1 * (_ldlam(6)*_Q[i](0,0) + _ldlam(7)*_Q[i](0,1) + _ldlam(8)*_Q[i](0,2));
+
+            _vertices(elem(1), 0) += inv_m2 * (_ldlam(0)*_Q[i](1,0) + _ldlam(1)*_Q[i](1,1) + _ldlam(2)*_Q[i](1,2));
+            _vertices(elem(1), 1) += inv_m2 * (_ldlam(3)*_Q[i](1,0) + _ldlam(4)*_Q[i](1,1) + _ldlam(5)*_Q[i](1,2));
+            _vertices(elem(1), 2) += inv_m2 * (_ldlam(6)*_Q[i](1,0) + _ldlam(7)*_Q[i](1,1) + _ldlam(8)*_Q[i](1,2));
+
+            _vertices(elem(2), 0) += inv_m3 * (_ldlam(0)*_Q[i](2,0) + _ldlam(1)*_Q[i](2,1) + _ldlam(2)*_Q[i](2,2));
+            _vertices(elem(2), 1) += inv_m3 * (_ldlam(3)*_Q[i](2,0) + _ldlam(4)*_Q[i](2,1) + _ldlam(5)*_Q[i](2,2));
+            _vertices(elem(2), 2) += inv_m3 * (_ldlam(6)*_Q[i](2,0) + _ldlam(7)*_Q[i](2,1) + _ldlam(8)*_Q[i](2,2));
+
+            _vertices(elem(3), 0) += inv_m4 * (_ldlam(0)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + _ldlam(1)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + _ldlam(2)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2)));
+            _vertices(elem(3), 1) += inv_m4 * (_ldlam(3)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + _ldlam(4)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + _ldlam(5)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2))); 
+            _vertices(elem(3), 2) += inv_m4 * (_ldlam(6)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + _ldlam(7)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + _ldlam(8)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2)));
+
+            // apply position update from hydrostatic constraint
+            _vertices.row(elem(0)) += _lC_h_grads.col(0) * _ldlam(9) * inv_m1;
+            _vertices.row(elem(1)) += _lC_h_grads.col(1) * _ldlam(9) * inv_m2;
+            _vertices.row(elem(2)) += _lC_h_grads.col(2) * _ldlam(9) * inv_m3;
+            _vertices.row(elem(3)) += _lC_h_grads.col(3) * _ldlam(9) * inv_m4;
+
+            // update the overall lambdas using dlam
+            lambdas.row(i) += _ldlam;
+
+        }
+
+        // _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+    }
+}
+
 inline void XPBDMeshObject::_computeF(const unsigned elem_index, Eigen::Matrix3d& X, Eigen::Matrix3d& F)
 {
     // create the deformed shape matrix from current deformed vertex positions
@@ -1386,14 +1716,14 @@ void XPBDMeshObject::_calculateResiduals(const double dt, const VerticesMat& ine
 
     // std::cout << primary_residual << std::endl;
 
-    std::cout << name() << " Residuals:" << std::endl;
-    std::cout << "\tDynamics residual\t--\tRMS:\t" << dynamics_residual_rms << "\t\tAverage:\t" << dynamics_residual_abs_mean << std::endl;
-    std::cout << "\tPrimary residual\t--\tRMS:\t" << primary_residual_rms << "\t\tAverage:\t" << primary_residual_abs_mean << std::endl;
-    std::cout << "\tConstraint residual\t--\tRMS:\t" << constraint_residual_rms << "\t\tAverage:\t" << constraint_residual_abs_mean << std::endl;
-    // std::cout << "\tLambda_h(0):\t" << lambda_hs(0) << "\tLambda_d(0):\t" << lambda_ds(0) << std::endl;
-    std::cout << "\tCurrent volume / initial volume:\t" << cur_vols.sum() / _vols.sum() << std::endl;
-    std::cout << "\tConstraint residuals for first element: " << constraint_residual(0) << "\t, " << constraint_residual(1) << std::endl;
-    // std::cout << "\tForces:\n" << forces << std::endl;
+    // std::cout << name() << " Residuals:" << std::endl;
+    // std::cout << "\tDynamics residual\t--\tRMS:\t" << dynamics_residual_rms << "\t\tAverage:\t" << dynamics_residual_abs_mean << std::endl;
+    // std::cout << "\tPrimary residual\t--\tRMS:\t" << primary_residual_rms << "\t\tAverage:\t" << primary_residual_abs_mean << std::endl;
+    // std::cout << "\tConstraint residual\t--\tRMS:\t" << constraint_residual_rms << "\t\tAverage:\t" << constraint_residual_abs_mean << std::endl;
+    // // std::cout << "\tLambda_h(0):\t" << lambda_hs(0) << "\tLambda_d(0):\t" << lambda_ds(0) << std::endl;
+    // std::cout << "\tCurrent volume / initial volume:\t" << cur_vols.sum() / _vols.sum() << std::endl;
+    // std::cout << "\tConstraint residuals for first element: " << constraint_residual(0) << "\t, " << constraint_residual(1) << std::endl;
+    // // std::cout << "\tForces:\n" << forces << std::endl;
 }
 
 void XPBDMeshObject::_calculateResidualsSplitDeviatoric(const double dt, const VerticesMat& inertial_positions, const Eigen::MatrixXd& lambdas)
@@ -1510,13 +1840,13 @@ void XPBDMeshObject::_calculateResidualsSplitDeviatoric(const double dt, const V
     _dynamics_residual = dynamics_residual_rms;
     _vol_ratio = cur_vols.sum() / _vols.sum();
 
-    std::cout << name() << " Residuals:" << std::endl;
-    std::cout << "\tDynamics residual\t--\tRMS:\t" << dynamics_residual_rms << "\t\tAverage:\t" << dynamics_residual_abs_mean << std::endl;
-    std::cout << "\tPrimary residual\t--\tRMS:\t" << primary_residual_rms << "\t\tAverage:\t" << primary_residual_abs_mean << std::endl;
-    std::cout << "\tConstraint residual\t--\tRMS:\t" << constraint_residual_rms << "\t\tAverage:\t" << constraint_residual_abs_mean << std::endl;
-    // std::cout << "\tLambda_h(0):\t" << lambda_hs(0) << "\tLambda_d(0):\t" << lambda_ds(0) << std::endl;
-    std::cout << "\tCurrent volume / initial volume:\t" << cur_vols.sum() / _vols.sum() << std::endl;
-    std::cout << "\tConstraint residuals for first element: " << constraint_residual(0) << "\t, " << constraint_residual(1) << std::endl;
+    // std::cout << name() << " Residuals:" << std::endl;
+    // std::cout << "\tDynamics residual\t--\tRMS:\t" << dynamics_residual_rms << "\t\tAverage:\t" << dynamics_residual_abs_mean << std::endl;
+    // std::cout << "\tPrimary residual\t--\tRMS:\t" << primary_residual_rms << "\t\tAverage:\t" << primary_residual_abs_mean << std::endl;
+    // std::cout << "\tConstraint residual\t--\tRMS:\t" << constraint_residual_rms << "\t\tAverage:\t" << constraint_residual_abs_mean << std::endl;
+    // // std::cout << "\tLambda_h(0):\t" << lambda_hs(0) << "\tLambda_d(0):\t" << lambda_ds(0) << std::endl;
+    // std::cout << "\tCurrent volume / initial volume:\t" << cur_vols.sum() / _vols.sum() << std::endl;
+    // std::cout << "\tConstraint residuals for first element: " << constraint_residual(0) << "\t, " << constraint_residual(1) << std::endl;
     // std::cout << "\tForces:\n" << forces << std::endl;
 }
 

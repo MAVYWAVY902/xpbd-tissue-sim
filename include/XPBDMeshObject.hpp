@@ -98,6 +98,10 @@ class XPBDMeshObject : public ElasticMeshObject
 
     void _projectConstraintsSplitDeviatoricSequential(const double dt);
 
+    void _projectConstraintsSplitDeviatoricSimultaneous9(const double dt);
+
+    void _projectConstraintsSplitDeviatoricSimultaneous10(const double dt);
+
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
      * 
@@ -158,6 +162,9 @@ class XPBDMeshObject : public ElasticMeshObject
     */
     Eigen::Matrix3d _lX, _lF, _lF_cross;
     Eigen::Matrix<double, 3, 4> _lC_h_grads, _lC_d_grads;
+    // loop variables for the split deviatoric simultaneous method
+    Eigen::VectorXd _lB, _lCA_inv, _lA_invB, _ldlam, _lb;
+    Eigen::MatrixXd _lM;
 
     /** Number of Gauss-Seidel iterations
      */
@@ -181,6 +188,9 @@ class XPBDMeshObject : public ElasticMeshObject
 
     /** For the Rucker method */
     std::vector<std::vector<std::pair<unsigned, unsigned> > > _constraints_per_position;
+
+    /** For the Split Deviatoric Simultaneous method */
+    std::vector<Eigen::Matrix3d> _A_inv;
 
 
 

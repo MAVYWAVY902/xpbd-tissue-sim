@@ -74,6 +74,8 @@ MeshObject::MeshObject(const MeshObjectConfig* config)
 
     _draw_points = config->drawPoints().value_or(false);
 
+    _dt = config->timeStep().value();
+
     init();
 
 }
