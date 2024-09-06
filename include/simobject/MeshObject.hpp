@@ -119,6 +119,10 @@ class MeshObject : public easy3d::Model
      */
     unsigned getClosestVertex(const double x, const double y, const double z) const;
 
+    std::vector<unsigned> getVerticesWithX(const double x) const;
+    std::vector<unsigned> getVerticesWithY(const double y) const;
+    std::vector<unsigned> getVerticesWithZ(const double z) const;
+
     /** Sets new faces for the mesh.
      * @param faces : the new matrix of faces
      */

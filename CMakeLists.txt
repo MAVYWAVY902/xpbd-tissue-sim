@@ -25,6 +25,7 @@ set(XPBD_FILES
     "include/simulation/BeamSimulation.hpp"
     "include/simulation/ResidualSimulation.hpp"
     "include/simulation/TissueGraspingSimulation.hpp"
+    "include/simulation/BeamStretchSimulation.hpp"
     "include/simobject/ElasticMaterial.hpp"
     "include/simobject/MeshObject.hpp" 
     "include/simobject/RigidMeshObject.hpp"
@@ -42,12 +43,12 @@ set(XPBD_FILES
     "src/simulation/BeamSimulation.cpp"
     "src/simulation/ResidualSimulation.cpp"
     "src/simulation/TissueGraspingSimulation.cpp"
+    "src/simulation/BeamStretchSimulation.cpp"
     "src/simobject/MeshObject.cpp" 
     "src/simobject/RigidMeshObject.cpp"
     "src/simobject/ElasticMeshObject.cpp"
     "src/simobject/XPBDMeshObject.cpp"
     "src/graphics/TextRenderingViewer.cpp" 
-    
 )
 
 add_library(XPBD ${XPBD_FILES} ) # create XPBD library
@@ -60,3 +61,6 @@ target_link_libraries(BeamTest XPBD easy3d::viewer gmsh)
 
 add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
 target_link_libraries(TissueGraspingTest XPBD easy3d::viewer gmsh)
+
+add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
+target_link_libraries(BeamStretchTest XPBD easy3d::viewer gmsh)

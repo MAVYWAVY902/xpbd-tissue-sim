@@ -289,12 +289,6 @@ void XPBDMeshObject::_movePositionsIntertially(const double dt, const double g_a
     {
         _vertices(i,2) += -g_accel * dt * dt;
     }
-
-    // update vertex drivers
-    for (const auto& driver : _vertex_drivers)
-    {
-        _vertices.row(driver.vertexIndex()) = driver.evaluate(_sim->time());
-    }
     
 
 }
@@ -391,7 +385,7 @@ void XPBDMeshObject::_projectConstraintsSequential(const double dt)
         }
     }
 
-    // _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
 }
 
 void XPBDMeshObject::_projectConstraintsSequentialRandomized(const double dt)
@@ -578,7 +572,7 @@ void XPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
         }
     }
 
-    // _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
     // _calculateForces();
 
 }
@@ -1288,7 +1282,7 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous9(const doubl
 
         }
 
-        // _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+        _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
     }
 }
 
@@ -1453,7 +1447,7 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous10(const doub
 
         }
 
-        // _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+        _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
     }
 }
 
@@ -1868,6 +1862,12 @@ void XPBDMeshObject::_projectCollisionConstraints(const double dt)
         {
             _vertices.row(i) = _x_prev.row(i);
         }
+    }
+
+    // update vertex drivers
+    for (const auto& driver : _vertex_drivers)
+    {
+        _vertices.row(driver.vertexIndex()) = driver.evaluate(_sim->time());
     }
 }
 

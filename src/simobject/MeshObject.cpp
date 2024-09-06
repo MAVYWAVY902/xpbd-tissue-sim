@@ -47,25 +47,6 @@ MeshObject::MeshObject(const std::string& name)
     init();
 }
 
-// MeshObject::MeshObject(const std::string& name, const YAML::Node& config)
-//     : easy3d::Model(name), _color(1.0f, 1.0f, 1.0f, 1.0f)
-// {
-//     // read color from config, if it exists
-//     YAML::Node color_yaml_node = config["color"];
-//     if (color_yaml_node.Type() != YAML::NodeType::Null)
-//     {
-//         _color = easy3d::vec4(color_yaml_node[0].as<double>(), color_yaml_node[1].as<double>(), color_yaml_node[2].as<double>(), color_yaml_node[3].as<double>());
-//     }
-
-//     // read draw points flag from config
-//     YAML::Node draw_points_yaml_node = config["draw-points"];
-//     if (draw_points_yaml_node.Type() != YAML::NodeType::Null)
-//     {
-//         _draw_points = draw_points_yaml_node.as<bool>();
-//     }
-
-//     init();
-// }
 MeshObject::MeshObject(const MeshObjectConfig* config)
     : easy3d::Model(config->name().value_or(""))
 {
@@ -173,6 +154,48 @@ unsigned MeshObject::getClosestVertex(const double x, const double y, const doub
     }
 
     return closest_index;
+}
+
+std::vector<unsigned> MeshObject::getVerticesWithX(const double x) const
+{
+    std::vector<unsigned> verts;
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        if (_vertices(i,0) == x)
+        {
+            verts.push_back(i);
+        }
+    }
+
+    return verts;
+}
+
+std::vector<unsigned> MeshObject::getVerticesWithY(const double y) const
+{
+    std::vector<unsigned> verts;
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        if (_vertices(i,1) == y)
+        {
+            verts.push_back(i);
+        }
+    }
+
+    return verts;
+}
+
+std::vector<unsigned> MeshObject::getVerticesWithZ(const double z) const
+{
+    std::vector<unsigned> verts;
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        if (_vertices(i,2) == z)
+        {
+            verts.push_back(i);
+        }
+    }
+
+    return verts;
 }
 
 void MeshObject::setFaces(const FacesMat& faces)
