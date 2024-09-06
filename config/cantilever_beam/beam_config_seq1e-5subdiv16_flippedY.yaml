@@ -1,0 +1,25 @@
+name: "0.5x0.05x0.05_Beam_Seq1e-5subdiv16_flippedY"
+g-accel: 9.81 # m/s2
+sim-mode: "AFAP"
+time-step: 1e-5
+end-time: 3
+objects:
+  -
+    name: "Beam"
+    type: "XPBDMeshObject"
+    filename: "../resource/10x1x1_subdivided16_beam.obj"
+    material:
+      name: "Macklin"
+      density: 1000
+      E: 1e7
+      nu: 0.45
+    color: [1.0, 0.509, 0.0, 1.0]
+    draw-points: true
+    max-size: 0.5
+    position: [0, 0, 100]
+    rotation: [0, 180, 0]
+    damping-stiffness: 0
+    num-solver-iters: 1
+    solve-mode: "Sequential"
+
+
