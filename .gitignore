@@ -9,3 +9,7 @@ build/
 CMakeFiles/
 .vscode/
 Makefile
+
+# ignore .obj and .stl files
+*.obj
+*.stl
