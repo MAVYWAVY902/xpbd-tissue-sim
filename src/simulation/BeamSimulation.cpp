@@ -3,7 +3,7 @@
 
 
 BeamSimulation::BeamSimulation(const std::string& config_filename)
-    : Simulation(config_filename), _out_file("../output/out_" + _name + ".txt")
+    : OutputSimulation(config_filename)
 {
     _out_file << "Cantilever Beam Simulation\n";
 }
@@ -43,27 +43,9 @@ void BeamSimulation::setup()
     std::cout << "Beam tip: " << _mesh_objects[0]->getVertex(_beam_tip_vertex) << std::endl;
     _beam_tip_start = _mesh_objects[0]->getVertex(_beam_tip_vertex);
     _last_print_sim_time = _time;
-    _printInfo();
 }
 
-void BeamSimulation::update()
-{
-    Simulation::update();
-}
-
-void BeamSimulation::_timeStep()
-{
-    Simulation::_timeStep();
-
-    if (_time - _last_print_sim_time >= 1e-3)
-    {
-        _printInfo();
-        _last_print_sim_time = _time;
-    }
-
-}
-
-void BeamSimulation::_printInfo()
+void BeamSimulation::printInfo() const
 {
     const Eigen::Vector3d& beam_deflection = _beam_tip_start - _mesh_objects[0]->getVertex(_beam_tip_vertex);
 

@@ -2,14 +2,14 @@
 #include "MeshUtils.hpp"
 
 TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_filename)
-    : Simulation(config_filename)
+    : OutputSimulation(config_filename)
 {
-
+    _out_file << "Tissue Grasping Simulation" << std::endl;
 }
 
 void TissueGraspingSimulation::setup()
 {
-    MeshUtils::createTissueBlock("../resource/1x1x0.25_tissueblock4-2.obj", 1, 1, 0.25, 4, 2);
+    // MeshUtils::createTissueBlock("../resource/1x1x0.25_tissueblock4-2.obj", 1, 1, 0.25, 4, 2);
 
     Simulation::setup();
 
@@ -40,23 +40,7 @@ void TissueGraspingSimulation::setup()
     }
 }
 
-void TissueGraspingSimulation::update()
-{
-    Simulation::update();
-}
-
-void TissueGraspingSimulation::_timeStep()
-{
-    Simulation::_timeStep();
-
-    if (_time - _last_print_sim_time >= 1e-3)
-    {
-        _printInfo();
-        _last_print_sim_time = _time;
-    }
-}
-
-void TissueGraspingSimulation::_printInfo()
+void TissueGraspingSimulation::printInfo() const
 {
     double primary_residual = 0;
     double constraint_residual = 0;
@@ -74,5 +58,5 @@ void TissueGraspingSimulation::_printInfo()
         std::cout << "\tConstraint residual: " << elastic_mesh_object->constraintResidual() << std::endl;
         std::cout << "\tVolume ratio: " << elastic_mesh_object->volumeRatio() << std::endl;
     }
-    // _out_file << _time << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio << std::endl;
+    _out_file << _time << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio << std::endl;
 }

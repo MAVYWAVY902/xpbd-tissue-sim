@@ -79,8 +79,8 @@ class Simulation
 
         /** Update graphics in the sim */
         void _updateGraphics();
-        
-        void _init();
+
+        virtual void _init();
 
     protected:
         /** YAML config dictionary for setting up the simulation */

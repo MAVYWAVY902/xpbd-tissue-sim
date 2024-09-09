@@ -1,5 +1,6 @@
 #include "XPBDMeshObject.hpp"
 #include "Simulation.hpp"
+#include "OutputSimulation.hpp"
 
 #include <easy3d/renderer/renderer.h>
 #include <easy3d/core/types.h>
@@ -22,6 +23,8 @@ XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
     _solve_mode = config->solveMode().value();
 
     _damping_stiffness = config->dampingStiffness().value();
+
+    _residual_policy = config->residualPolicy().value();
 
     _init();
     _precomputeQuantities();
@@ -383,9 +386,26 @@ void XPBDMeshObject::_projectConstraintsSequential(const double dt)
             lambda_hs(i) += dlam_h;
             lambda_ds(i) += dlam_d;
         }
+
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
     }
 
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
+    
 }
 
 void XPBDMeshObject::_projectConstraintsSequentialRandomized(const double dt)
@@ -485,9 +505,25 @@ void XPBDMeshObject::_projectConstraintsSequentialRandomized(const double dt)
             lambda_hs(i) += dlam_h;
             lambda_ds(i) += dlam_d;
         }
+
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
     }
 
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
 }
 
 void XPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
@@ -570,10 +606,25 @@ void XPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
             lambda_hs(i) += dlam_h;
             lambda_ds(i) += dlam_d;
         }
+        
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
     }
 
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
-    // _calculateForces();
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
 
 }
 
@@ -704,7 +755,11 @@ void XPBDMeshObject::_projectConstraintsConstantX(const double dt)
 
     _vertices += position_updates;
 
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy != XPBDResidualPolicy::NEVER)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
 }
 
 void XPBDMeshObject::_projectConstraintsSequentialInitLambda(const double dt)
@@ -797,9 +852,25 @@ void XPBDMeshObject::_projectConstraintsSequentialInitLambda(const double dt)
             lambda_hs(i) += dlam_h;
             lambda_ds(i) += dlam_d;
         }
+
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
     }
 
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
 }
 
 void XPBDMeshObject::_projectConstraintsSimultaneousInitLambda(const double dt)
@@ -882,9 +953,25 @@ void XPBDMeshObject::_projectConstraintsSimultaneousInitLambda(const double dt)
             lambda_hs(i) += dlam_h;
             lambda_ds(i) += dlam_d;
         }
+
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
     }
 
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
 }
 
 void XPBDMeshObject::_projectConstraintsRuckerFull(const double dt)
@@ -999,7 +1086,13 @@ void XPBDMeshObject::_projectConstraintsRuckerFull(const double dt)
         lambda_hs(i) = lambda(2*i);
         lambda_ds(i) = lambda(2*i+1);
     }
-    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+
+
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy != XPBDResidualPolicy::NEVER)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
     
 }
 
@@ -1187,9 +1280,25 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSequential(const double d
             lambdas(i,9) += dlam_h;
 
         }
+
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
     }
 
-    _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+    }
 }
 
 void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous9(const double dt)
@@ -1282,6 +1391,22 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous9(const doubl
 
         }
 
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
+    }
+
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
         _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
     }
 }
@@ -1445,10 +1570,31 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous10(const doub
             // update the overall lambdas using dlam
             lambdas.row(i) += _ldlam;
 
+
+
+            
         }
 
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
+    }
+
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
         _calculateResidualsSplitDeviatoric(dt, inertial_positions, lambdas);
     }
+
+ 
 }
 
 inline void XPBDMeshObject::_computeF(const unsigned elem_index, Eigen::Matrix3d& X, Eigen::Matrix3d& F)

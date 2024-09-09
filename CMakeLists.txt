@@ -22,6 +22,7 @@ target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with CGAL
 
 set(XPBD_FILES 
     "include/simulation/Simulation.hpp" 
+    "include/simulation/OutputSimulation.hpp"
     "include/simulation/BeamSimulation.hpp"
     "include/simulation/ResidualSimulation.hpp"
     "include/simulation/TissueGraspingSimulation.hpp"
@@ -39,7 +40,8 @@ set(XPBD_FILES
     "include/config/ElasticMaterialConfig.hpp"
     "include/config/RigidMeshObjectConfig.hpp"
     "include/config/SimulationConfig.hpp"
-    "src/simulation/Simulation.cpp" 
+    "src/simulation/Simulation.cpp"
+    "src/simulation/OutputSimulation.cpp" 
     "src/simulation/BeamSimulation.cpp"
     "src/simulation/ResidualSimulation.cpp"
     "src/simulation/TissueGraspingSimulation.cpp"

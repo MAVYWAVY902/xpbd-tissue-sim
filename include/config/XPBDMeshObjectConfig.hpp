@@ -21,6 +21,13 @@ enum XPBDSolveMode
     SPLIT_DEVIATORIC_SIMULTANEOUS10
 };
 
+enum XPBDResidualPolicy
+{
+    NEVER,
+    EVERY_SUBSTEP,
+    EVERY_ITERATION
+};
+
 class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
 {
     /** Static predefined default for the number of solver iterations */
@@ -29,6 +36,8 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
     static std::optional<XPBDSolveMode>& DEFAULT_SOLVE_MODE() { static std::optional<XPBDSolveMode> solve_mode(XPBDSolveMode::SEQUENTIAL); return solve_mode; }
     /** Static predefined default for damping stiffness */
     static std::optional<double>& DEFAULT_DAMPING_STIFFNESS() { static std::optional<double> damping_stiffness(0); return damping_stiffness; }
+    /** Static predefined default for residual policy */
+    static std::optional<XPBDResidualPolicy>& DEFAULT_RESIDUAL_POLICY() { static std::optional<XPBDResidualPolicy> residual_policy(XPBDResidualPolicy::EVERY_SUBSTEP); return residual_policy; }
 
     static std::map<std::string, XPBDSolveMode>& SOLVE_MODE_OPTIONS() 
     {
@@ -45,6 +54,14 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
         return solve_mode_options;
     }
 
+    static std::map<std::string, XPBDResidualPolicy>& RESIDUAL_POLICY_OPTIONS()
+    {
+        static std::map<std::string, XPBDResidualPolicy> residual_policy_options{{"Never", XPBDResidualPolicy::NEVER},
+                                                                                 {"Every-Substep", XPBDResidualPolicy::EVERY_SUBSTEP},
+                                                                                 {"Every-Iteration", XPBDResidualPolicy::EVERY_ITERATION}};
+        return residual_policy_options;
+    }
+
     public:
     /** Creates a Config from a YAML node, which consists of the specialized parameters needed for XPBDMeshObject.
      * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
@@ -56,18 +73,21 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
         _extractParameter("num-solver-iters", node, _num_solver_iters, DEFAULT_NUM_SOLVER_ITERS());
         _extractParameterWithOptions("solve-mode", node, _solve_mode, SOLVE_MODE_OPTIONS(), DEFAULT_SOLVE_MODE());
         _extractParameter("damping-stiffness", node, _damping_stiffness, DEFAULT_DAMPING_STIFFNESS());
+        _extractParameterWithOptions("residual-policy", node, _residual_policy, RESIDUAL_POLICY_OPTIONS(), DEFAULT_RESIDUAL_POLICY());
     }
 
     // Getters
     std::optional<unsigned> numSolverIters() const { return _num_solver_iters.value; }
     std::optional<XPBDSolveMode> solveMode() const { return _solve_mode.value; }
     std::optional<double> dampingStiffness() const { return _damping_stiffness.value; }
+    std::optional<XPBDResidualPolicy> residualPolicy() const { return _residual_policy.value; }
 
     protected:
     // Parameters
     ConfigParameter<unsigned> _num_solver_iters;
     ConfigParameter<XPBDSolveMode> _solve_mode;
     ConfigParameter<double> _damping_stiffness;
+    ConfigParameter<XPBDResidualPolicy> _residual_policy;
 };
 
 #endif // __XPBD_MESH_OBJECT_CONFIG_HPP

@@ -173,6 +173,9 @@ class XPBDMeshObject : public ElasticMeshObject
     /** The solve mode of XPBD */
     XPBDSolveMode _solve_mode;
 
+    /** Residual policy of XPBD - i.e. when to calculate the residual */
+    XPBDResidualPolicy _residual_policy;
+
     /** Damping stiffness */
     double _damping_stiffness;
 

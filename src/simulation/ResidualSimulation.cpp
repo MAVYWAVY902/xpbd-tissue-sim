@@ -3,7 +3,7 @@
 
 
 ResidualSimulation::ResidualSimulation(const std::string& config_filename)
-    : Simulation(config_filename), _out_file("../output/out_" + _name + ".txt")
+    : OutputSimulation(config_filename)
 {
     _out_file << "Residual Simulation\n";
 }
@@ -31,29 +31,9 @@ void ResidualSimulation::setup()
     }
 
     _out_file << "\n\nTime(s) DynamicsResidual PrimaryResidual ConstraintResidual VolumeRatio" << std::endl;
-    _printInfo();
-
-    // _updateGraphics();
 }
 
-void ResidualSimulation::update()
-{
-    Simulation::update();
-}
-
-void ResidualSimulation::_timeStep()
-{
-    Simulation::_timeStep();
-
-    if (_time - _last_print_sim_time >= 1e-3)
-    {
-        _printInfo();
-        _last_print_sim_time = _time;
-    }
-
-}
-
-void ResidualSimulation::_printInfo()
+void ResidualSimulation::printInfo() const
 {
     double primary_residual = 0;
     double constraint_residual = 0;

@@ -5,16 +5,13 @@
 #include <regex>
 
 BeamStretchSimulation::BeamStretchSimulation(const std::string& config_filename)
-    : Simulation()
+    : OutputSimulation()
 {
     // create a more specialized config object specifically for BeamStretchSimulations
     _config = std::make_unique<BeamStretchSimulationConfig>(YAML::LoadFile(config_filename));
 
     // initialize quantities using config object
     _init();
-
-    // initialize the output file
-    _out_file = std::ofstream("../output/beam_stretch/out_" + _name + ".txt");
 
     // extract the stretch velocity and time from the config object
     BeamStretchSimulationConfig* beam_stretch_simulation_config = dynamic_cast<BeamStretchSimulationConfig*>(_config.get());
@@ -104,23 +101,7 @@ void BeamStretchSimulation::setup()
     _out_file << std::endl;
 }
 
-void BeamStretchSimulation::update()
-{
-    Simulation::update();
-}
-
-void BeamStretchSimulation::_timeStep()
-{
-    Simulation::_timeStep();
-
-    if (_time - _last_print_sim_time >= 1e-3)
-    {
-        _printInfo();
-        _last_print_sim_time = _time;
-    }
-}
-
-void BeamStretchSimulation::_printInfo()
+void BeamStretchSimulation::printInfo() const
 {
     double primary_residual = 0;
     double constraint_residual = 0;

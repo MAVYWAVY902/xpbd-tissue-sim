@@ -1,10 +1,10 @@
 #ifndef __BEAM_STRETCH_SIMULATION_HPP
 #define __BEAM_STRETCH_SIMULATION_HPP
 
-#include "Simulation.hpp"
+#include "OutputSimulation.hpp"
 #include <Eigen/Dense>
 
-class BeamStretchSimulation : public Simulation
+class BeamStretchSimulation : public OutputSimulation
 {
     public:
 
@@ -12,19 +12,10 @@ class BeamStretchSimulation : public Simulation
 
     virtual void setup() override;
 
-    virtual void update() override;
-
-    protected:
-    virtual void _timeStep() override;
-
-    void _printInfo();
-
-    double _last_print_sim_time;
+    virtual void printInfo() const override;
 
     double _stretch_velocity;
     double _stretch_time;
-
-    std::ofstream _out_file;
 };
 
 #endif // __BEAM_STRETCH_SIMULATION_HPP
