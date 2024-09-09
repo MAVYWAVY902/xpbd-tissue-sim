@@ -13,8 +13,13 @@ void OutputSimulation::_init()
     OutputSimulationConfig* output_simulation_config = dynamic_cast<OutputSimulationConfig*>(_config.get());
     _print_interval_s = output_simulation_config->printInterval().value();
 
+    std::string output_folder = output_simulation_config->outputFolder().value();
+    if (output_folder.back() != '/')
+    {
+        output_folder += "/";
+    }
     // initialize the output file
-    _out_file = std::ofstream("../output/beam_stretch/out_" + _name + ".txt");
+    _out_file = std::ofstream(output_folder + _name + "_output.txt");
 }
 
 OutputSimulation::OutputSimulation()

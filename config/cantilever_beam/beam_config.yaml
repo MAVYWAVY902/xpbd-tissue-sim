@@ -1,24 +1,26 @@
-name: "beam"
+name: "cantilevered_flesh_cube"
+output-folder: "../output/cantilever_beam"
 g-accel: 9.81 # m/s2
 sim-mode: "AFAP"
-time-step: 1e-5
-end-time: 3
+time-step: 1e-3
+end-time: 1
 objects:
   -
-    name: "Beam"
+    name: "Cube1"
     type: "XPBDMeshObject"
-    filename: "../resource/10x1x1_subdivided_beam.obj"
+    filename: "../resource/beam/cube8.msh"
     material:
-      name: "Macklin"
+      name: "Soft Tissue"
       density: 1000
-      E: 1e7
+      E: 6e4
       nu: 0.45
     color: [1.0, 0.509, 0.0, 1.0]
     draw-points: true
     max-size: 0.5
     position: [0, 0, 100]
     damping-stiffness: 0
-    num-solver-iters: 1
+    num-solver-iters: 100
+    residual-policy: "Every-Iteration"
     solve-mode: "Simultaneous"
 
 

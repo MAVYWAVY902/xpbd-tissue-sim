@@ -4,6 +4,9 @@ description: "0.1m cubes are compressed by 0.05m/s for 1 second, then are held c
 # Print rate
 print-interval: 1e-1
 
+# Output folder
+output-folder: "../output/beam_stretch"
+
 # Beam stretch simulation specific
 stretch-velocity: 0.5 # m/s
 stretch-time: 1 # s
