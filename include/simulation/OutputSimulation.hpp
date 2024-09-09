@@ -13,6 +13,7 @@ class OutputSimulation : public Simulation
     explicit OutputSimulation();
 
     public:
+    virtual std::string type() const override { return "OutputSimulation"; }
     virtual void printInfo() const = 0;
 
     protected:

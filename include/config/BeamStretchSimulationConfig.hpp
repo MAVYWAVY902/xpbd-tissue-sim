@@ -1,9 +1,9 @@
 #ifndef __BEAM_STRETCH_SIMULATION_CONFIG_HPP
 #define __BEAM_STRETCH_SIMULATION_CONFIG_HPP
 
-#include "SimulationConfig.hpp"
+#include "OutputSimulationConfig.hpp"
 
-class BeamStretchSimulationConfig : public SimulationConfig
+class BeamStretchSimulationConfig : public OutputSimulationConfig
 {
     /** Static predefined default for simulation time step */
     static std::optional<double>& DEFAULT_STRETCH_VELOCITY() { static std::optional<double> velocity(0); return velocity; }
@@ -12,7 +12,7 @@ class BeamStretchSimulationConfig : public SimulationConfig
 
     public:
     explicit BeamStretchSimulationConfig(const YAML::Node& node)
-        : SimulationConfig(node)
+        : OutputSimulationConfig(node)
     {
         _extractParameter("stretch-velocity", node, _stretch_velocity, DEFAULT_STRETCH_VELOCITY());
         _extractParameter("stretch-time", node, _stretch_time, DEFAULT_STRETCH_TIME());

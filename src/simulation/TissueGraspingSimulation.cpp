@@ -13,6 +13,8 @@ void TissueGraspingSimulation::setup()
 
     Simulation::setup();
 
+    _out_file << toString() << std::endl;
+
     if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(_mesh_objects[0]))
     {
         elastic_mesh_object->fixVerticesWithMinZ();
@@ -32,11 +34,7 @@ void TissueGraspingSimulation::setup()
         VertexDriver vd("tissue grasping", vertex_ind, func);
         elastic_mesh_object->addVertexDriver(vd);
 
-        _out_file << "Material:\n\t" << "Density: " << elastic_mesh_object->material().density() << std::endl;
-        _out_file << "\tE: " << elastic_mesh_object->material().E() << std::endl;
-        _out_file << "\tnu: " << elastic_mesh_object->material().nu() << std::endl;
-        _out_file << "\tmu: " << elastic_mesh_object->material().mu() << std::endl;
-        _out_file << "\tlambda: " << elastic_mesh_object->material().lambda() << std::endl;
+        _out_file << elastic_mesh_object->toString() << std::endl;
     }
 }
 

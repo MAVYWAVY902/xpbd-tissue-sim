@@ -43,6 +43,12 @@ class ElasticMaterial
 
     // define getters for the material properties
     std::string name() const { return _name; }
+    std::string toString() const 
+    {
+        // write material information to file
+        return "Elastic Material '" + name() + "':\n\tDensity: " + std::to_string(density()) + "\n\tE: " + std::to_string(E()) + 
+        "\n\tnu: " + std::to_string(nu()) + "\n\tmu: " + std::to_string(mu()) + "\n\tlambda: " + std::to_string(lambda());
+    }
     double density() const { return _density; }
     double E() const { return _E; }
     double nu() const { return _nu; }

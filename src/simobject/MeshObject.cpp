@@ -67,6 +67,11 @@ MeshObject::MeshObject(const std::string& name, const VerticesMat& verts, const 
     init();
 }
 
+std::string MeshObject::toString() const
+{
+    return type() + " '" + name() + "':\n\tNum Vertices: " + std::to_string(_vertices.rows()) + "\n\tNum faces: " + std::to_string(_faces.rows());  
+}
+
 void MeshObject::updateGraphics()
 {
     // update the vertex cache, which is what the renderer uses to update the vertex positions

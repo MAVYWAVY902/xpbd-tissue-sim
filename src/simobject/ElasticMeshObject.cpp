@@ -120,6 +120,12 @@ ElasticMeshObject::ElasticMeshObject(const std::string& name, const VerticesMat&
 
 }
 
+std::string ElasticMeshObject::toString() const
+{
+    return MeshObject::toString() + "\n\tNum elements: " + std::to_string(_elements.rows()) +
+        "\n" + _material.toString(); 
+}
+
 void ElasticMeshObject::setVertices(const VerticesMat& verts)
 {
     MeshObject::setVertices(verts);

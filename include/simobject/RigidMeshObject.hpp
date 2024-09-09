@@ -37,6 +37,8 @@ class RigidMeshObject : public MeshObject
      */
     explicit RigidMeshObject(const std::string& name, const VerticesMat& verts, const FacesMat& faces);
 
+    virtual std::string type() const override { return "RigidMeshObject"; }
+
     /** Updates the object for a given time step.
      * @param dt : the time step
      */

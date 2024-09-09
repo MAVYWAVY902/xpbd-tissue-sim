@@ -220,6 +220,12 @@ void XPBDMeshObject::_precomputeQuantities()
     // _calculateForces();
 }
 
+std::string XPBDMeshObject::toString() const
+{
+    return ElasticMeshObject::toString() + "\n\tSolve mode: " + solveMode() +
+        "\n\tNum solver iterations: " + std::to_string(_num_iters) + "\n\tDamping stiffness: " + std::to_string(_damping_stiffness);
+}
+
 void XPBDMeshObject::update(const double dt, const double g_accel)
 {
     auto t1 = std::chrono::steady_clock::now();
@@ -259,7 +265,7 @@ void XPBDMeshObject::update(const double dt, const double g_accel)
     // std::cout << "\tupdateVelocities took " << std::chrono::duration_cast<std::chrono::microseconds>(t5 - t4).count() << " us" << std::endl;
 }
 
-std::string XPBDMeshObject::solveMode()
+std::string XPBDMeshObject::solveMode() const
 {
     if (_solve_mode == XPBDSolveMode::SEQUENTIAL)
         return "Sequential";

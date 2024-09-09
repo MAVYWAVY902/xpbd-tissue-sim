@@ -63,6 +63,9 @@ class ElasticMeshObject : public MeshObject
      */
     explicit ElasticMeshObject(const std::string& name, const VerticesMat& verts, const ElementsMat& elems, const ElasticMaterial& material);
 
+    virtual std::string toString() const override;
+    virtual std::string type() const override { return "ElasticMeshObject"; }
+
     const ElasticMaterial& material() { return _material; }
 
     /** Fixes all vertices in the mesh with the minimum y-value.

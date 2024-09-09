@@ -46,6 +46,9 @@ class Simulation
         explicit Simulation();
     
     public:
+        virtual std::string toString() const;
+        virtual std::string type() const { return "Simulation"; }
+
         /** Adds a MeshObject to the simulation. Will add its Drawables to the Viewer as well.
          * @param mesh_obj : the MeshObject being added  
         */        

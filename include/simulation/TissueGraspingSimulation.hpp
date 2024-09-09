@@ -10,6 +10,8 @@ class TissueGraspingSimulation : public OutputSimulation
 
     explicit TissueGraspingSimulation(const std::string& config_filename);
 
+    virtual std::string type() const override { return "TissueGraspingSimulation"; }
+
     virtual void setup() override;
 
     virtual void printInfo() const override;

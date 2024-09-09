@@ -63,6 +63,9 @@ class MeshObject : public easy3d::Model
     */
     explicit MeshObject(const std::string& name, const VerticesMat& verts, const FacesMat& faces);
 
+    virtual std::string toString() const;
+    virtual std::string type() const { return "MeshObject"; }
+
     /** Returns the vec3 vertex cache.
      * Does NOT check if vertices are stale.
      * 

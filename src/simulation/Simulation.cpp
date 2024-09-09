@@ -45,6 +45,12 @@ Simulation::Simulation()
 
 }
 
+std::string Simulation::toString() const
+{
+    return  type() + " '" + _name + "':\n\tTime step: " + std::to_string(_time_step) + " s\n\tEnd time: " + std::to_string(_end_time) +
+        " s\n\tGravity: " + std::to_string(_g_accel) + " m/s^2";
+}
+
 void Simulation::addObject(MeshObject* mesh_object)
 {
     mesh_object->setSimulation(this);

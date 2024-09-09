@@ -20,10 +20,11 @@ BeamStretchSimulation::BeamStretchSimulation(const std::string& config_filename)
 
     // write some general info about the simulation to file
     _out_file << "Beam Stretch Simulation" << std::endl;
-    _out_file << _description << std::endl;
+}
 
-    _out_file << "Stretch velocity: " << _stretch_velocity << " m/s" << std::endl;
-    _out_file << "Stretching time: " << _stretch_time << " s" << std::endl;
+std::string BeamStretchSimulation::toString() const
+{
+    return Simulation::toString() + "\n\tStretch velocity: " + std::to_string(_stretch_velocity) + "m/s\n\tStretch time: " + std::to_string(_stretch_time) + " s"; 
 }
 
 void BeamStretchSimulation::setup()
@@ -33,6 +34,8 @@ void BeamStretchSimulation::setup()
 
     // call the parent setup
     Simulation::setup();
+
+    _out_file << toString() << std::endl;
 
     for (auto& mesh_object : _mesh_objects) {
 
@@ -70,20 +73,8 @@ void BeamStretchSimulation::setup()
                 elastic_mesh_object->addVertexDriver(vd);
             }
 
-            // write material information to file
-            _out_file << "\n" << elastic_mesh_object->name() + " Material:\n\t" << "Density: " << elastic_mesh_object->material().density() << std::endl;
-            _out_file << "\tE: " << elastic_mesh_object->material().E() << std::endl;
-            _out_file << "\tnu: " << elastic_mesh_object->material().nu() << std::endl;
-            _out_file << "\tmu: " << elastic_mesh_object->material().mu() << std::endl;
-            _out_file << "\tlambda: " << elastic_mesh_object->material().lambda() << std::endl;
-        }
-
-        // write XPBD-configuration-specific information to file
-        if (XPBDMeshObject* xpbd_mesh_object = dynamic_cast<XPBDMeshObject*>(mesh_object))
-        {
-            _out_file << "\nXPBD:" << std::endl;
-            _out_file << "\tNum solver iters: " << xpbd_mesh_object->numSolverIters() << std::endl;
-            _out_file << "\tSolve mode: " << xpbd_mesh_object->solveMode() << std::endl;
+            // write mesh object information to file
+            _out_file << elastic_mesh_object->toString() << "\n" << std::endl;
         }
     }
 

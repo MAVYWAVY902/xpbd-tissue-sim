@@ -10,6 +10,9 @@ class BeamStretchSimulation : public OutputSimulation
 
     explicit BeamStretchSimulation(const std::string& config_filename);
 
+    virtual std::string toString() const override;
+    virtual std::string type() const override { return "BeamStretchSimulation"; }
+
     virtual void setup() override;
 
     virtual void printInfo() const override;

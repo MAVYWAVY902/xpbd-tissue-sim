@@ -1,6 +1,9 @@
 name: "beam_stretch"
 description: "0.1m cubes are compressed by 0.05m/s for 1 second, then are held compressed for 1 second"
 
+# Print rate
+print-interval: 1e-1
+
 # Beam stretch simulation specific
 stretch-velocity: 0.5 # m/s
 stretch-time: 1 # s
@@ -55,8 +58,9 @@ objects:
     position: [0, 0, 0.85]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
-    num-solver-iters: 1
+    num-solver-iters: 100
     damping-stiffness: 0
+    residual-policy: "Every-Iteration"
     # solve-mode: "Split-Deviatoric-Sequential"
     # solve-mode: "Split-Deviatoric-Simultaneous9"
     # solve-mode: "Split-Deviatoric-Simultaneous10"

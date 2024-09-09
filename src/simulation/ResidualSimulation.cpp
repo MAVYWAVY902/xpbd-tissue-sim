@@ -12,22 +12,10 @@ void ResidualSimulation::setup()
 {
     Simulation::setup();
 
-    _out_file << "Time step: " << _time_step << std::endl;
+    _out_file << toString() << std::endl;
     if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(_mesh_objects[0]))
     {
-        // elastic_mesh_object->stretch(0.5, 0.5, 0.5);
-        _out_file << "Material:\n\t" << "Density: " << elastic_mesh_object->material().density() << std::endl;
-        _out_file << "\tE: " << elastic_mesh_object->material().E() << std::endl;
-        _out_file << "\tnu: " << elastic_mesh_object->material().nu() << std::endl;
-        _out_file << "\tmu: " << elastic_mesh_object->material().mu() << std::endl;
-        _out_file << "\tlambda: " << elastic_mesh_object->material().lambda() << std::endl;
-    }
-
-    if (XPBDMeshObject* xpbd_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[0]))
-    {
-        _out_file << "\nXPBD:" << std::endl;
-        _out_file << "\tNum solver iters: " << xpbd_mesh_object->numSolverIters() << std::endl;
-        _out_file << "\tSolve mode: " << xpbd_mesh_object->solveMode() << std::endl;
+        _out_file << elastic_mesh_object->toString() << std::endl;
     }
 
     _out_file << "\n\nTime(s) DynamicsResidual PrimaryResidual ConstraintResidual VolumeRatio" << std::endl;

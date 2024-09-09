@@ -10,6 +10,8 @@ class BeamSimulation : public OutputSimulation
 
     explicit BeamSimulation(const std::string& config_filename);
 
+    virtual std::string type() const override { return "BeamSimulation"; }
+
     virtual void setup() override;
 
     virtual void printInfo() const;

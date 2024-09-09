@@ -34,6 +34,9 @@ class XPBDMeshObject : public ElasticMeshObject
      */
     explicit XPBDMeshObject(const std::string& name, const VerticesMat& verts, const ElementsMat& elems, const ElasticMaterial& material = ElasticMaterial::RUBBER());
 
+    virtual std::string toString() const override;
+    virtual std::string type() const override { return "XPBDMeshObject"; }
+
     /** Updates the mesh based on a time step 
      * @param dt : the time delta since the last update
     */
@@ -45,7 +48,7 @@ class XPBDMeshObject : public ElasticMeshObject
     double volumeRatio() { return _vol_ratio; }
 
     unsigned numSolverIters() { return _num_iters; }
-    std::string solveMode();
+    std::string solveMode() const;
     
     private:
     /** Helper method to initialize upon instantiation */
