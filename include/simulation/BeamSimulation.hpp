@@ -16,8 +16,8 @@ class BeamSimulation : public OutputSimulation
 
     virtual void printInfo() const;
 
-    unsigned _beam_tip_vertex;
-    Eigen::Vector3d _beam_tip_start;
+    std::vector<unsigned> _beams_tip_vertex;
+    std::vector<Eigen::Vector3d> _beams_tip_start;
 };
 
 #endif // __BEAM_SIMULATION_HPP

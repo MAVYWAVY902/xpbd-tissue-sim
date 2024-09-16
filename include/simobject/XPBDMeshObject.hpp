@@ -105,6 +105,10 @@ class XPBDMeshObject : public ElasticMeshObject
 
     void _projectConstraintsSplitDeviatoricSimultaneous10(const double dt);
 
+    void _projectConstraintsSplitDeviatoricSimultaneous10LLT(const double dt);
+
+    void _projectConstraintsFirstOrderSimultaneous(const double dt);
+
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
      * 
@@ -197,6 +201,10 @@ class XPBDMeshObject : public ElasticMeshObject
 
     /** For the Split Deviatoric Simultaneous method */
     std::vector<Eigen::Matrix3d> _A_inv;
+    std::vector<Eigen::Matrix3d> _A;
+
+    /** For the First Order Simultaneous method */
+    double _mass_to_damping_multiplier;
 
 
 

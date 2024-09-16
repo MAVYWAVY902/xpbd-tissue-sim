@@ -2,14 +2,14 @@ name: "beam_stretch"
 description: "0.1m cubes are compressed by 0.05m/s for 1 second, then are held compressed for 1 second"
 
 # Print rate
-print-interval: 1e-1
+print-interval: 1e-3
 
 # Output folder
 output-folder: "../output/beam_stretch"
 
 # Beam stretch simulation specific
-stretch-velocity: 0.5 # m/s
-stretch-time: 1 # s
+stretch-velocity: 1 # m/s
+stretch-time: 3 # s
 
 # acceleration due to gravity
 g-accel: 9.81 # m/s2
@@ -19,32 +19,33 @@ g-accel: 9.81 # m/s2
 # sim-mode: "Visualization"
 sim-mode: "AFAP"
 
-time-step: 1e-3
-end-time: 2
+time-step: 2e-3
+end-time: 4
 objects:
-  # -
-  #   name: "Cube1"
-  #   type: "XPBDMeshObject"
-  #   filename: "../resource/beam/cube16.msh"
-  #   material:
-  #     name: "Soft Tissue"
-  #     density: 1000
-  #     E: 6e4
-  #     nu: 0.4
-  #   color: [1.0, 0.509, 0.0, 1.0]
-  #   draw-points: false
-  #   max-size: 0.1
-  #   position: [0, 0, 1]
-  #   velocity: [0, 0, 0]
-  #   rotation: [0, 0, 0]
-  #   num-solver-iters: 1
-  #   damping-stiffness: 0
-  #   # solve-mode: "Split-Deviatoric-Sequential"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous9"
-  #   solve-mode: "Split-Deviatoric-Simultaneous10"
-  #   # solve-mode: "Sequential"
-  #   # solve-mode: "Simultaneous"
-  #   # solve-mode: "Sequential-Init-Lambda"
+  -
+    name: "Cube1"
+    type: "XPBDMeshObject"
+    filename: "../resource/beam/cube16.msh"
+    material:
+      name: "Soft Tissue"
+      density: 1000
+      E: 6e4
+      nu: 0.4
+    color: [1.0, 0.509, 0.0, 1.0]
+    draw-points: false
+    max-size: 0.1
+    position: [0, 0, 1]
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]
+    num-solver-iters: 1
+    damping-stiffness: 0
+    residual-policy: "Every-Substep"
+    # solve-mode: "Split-Deviatoric-Sequential"
+    # solve-mode: "Split-Deviatoric-Simultaneous9"
+    solve-mode: "Split-Deviatoric-Simultaneous10"
+    # solve-mode: "Sequential"
+    # solve-mode: "Simultaneous"
+    # solve-mode: "Sequential-Init-Lambda"
 
   -
     name: "Cube2"
@@ -61,9 +62,9 @@ objects:
     position: [0, 0, 0.85]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
-    num-solver-iters: 100
+    num-solver-iters: 1
     damping-stiffness: 0
-    residual-policy: "Every-Iteration"
+    residual-policy: "Every-Substep"
     # solve-mode: "Split-Deviatoric-Sequential"
     # solve-mode: "Split-Deviatoric-Simultaneous9"
     # solve-mode: "Split-Deviatoric-Simultaneous10"
