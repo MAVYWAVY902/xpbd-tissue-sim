@@ -32,11 +32,13 @@ set(XPBD_FILES
     "include/simobject/RigidMeshObject.hpp"
     "include/simobject/ElasticMeshObject.hpp"
     "include/simobject/XPBDMeshObject.hpp"
+    "include/simobject/FastFEMMeshObject.hpp"
     "include/graphics/TextRenderingViewer.hpp" 
     "include/config/Config.hpp"
     "include/config/MeshObjectConfig.hpp"
     "include/config/ElasticMeshObjectConfig.hpp"
     "include/config/XPBDMeshObjectConfig.hpp"
+    "include/config/FastFEMMeshObjectConfig.hpp"
     "include/config/ElasticMaterialConfig.hpp"
     "include/config/RigidMeshObjectConfig.hpp"
     "include/config/SimulationConfig.hpp"
@@ -50,6 +52,7 @@ set(XPBD_FILES
     "src/simobject/RigidMeshObject.cpp"
     "src/simobject/ElasticMeshObject.cpp"
     "src/simobject/XPBDMeshObject.cpp"
+    "src/simobject/FastFEMMeshObject.cpp"
     "src/graphics/TextRenderingViewer.cpp" 
 )
 
