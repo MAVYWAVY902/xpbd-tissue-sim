@@ -81,6 +81,11 @@ void Simulation::setup()
             XPBDMeshObject* new_obj = new XPBDMeshObject(xpbd_config);
             addObject(new_obj);
         }
+        else if (FastFEMMeshObjectConfig* fem_config = dynamic_cast<FastFEMMeshObjectConfig*>(obj_config.get()))
+        {
+            FastFEMMeshObject* new_obj = new FastFEMMeshObject(fem_config);
+            addObject(new_obj);
+        }
         else if (RigidMeshObjectConfig* rigid_config = dynamic_cast<RigidMeshObjectConfig*>(obj_config.get()))
         {
             RigidMeshObject* new_obj = new RigidMeshObject(rigid_config);

@@ -1,14 +1,14 @@
 name: "blah"
-g-accel: 9.81 # m/s2
-# sim-mode: "Frame-by-frame"
-sim-mode: "AFAP"
+g-accel: 0 # m/s2
+sim-mode: "Frame-by-frame"
+# sim-mode: "Visualization"
 # sim-mode: "AFAP"
-time-step: 1e-2
+time-step: 1e-3
 end-time: 200
 objects:
   -
     name: "Cube1"
-    type: "XPBDMeshObject"
+    type: "FastFEMMeshObject"
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     filename: "../resource/beam/cube8.msh"
     material:
@@ -18,8 +18,8 @@ objects:
       nu: 0.45
     color: [1.0, 0.509, 0.0, 1.0]
     draw-points: false
-    max-size: 1
-    position: [0, 1, 1]
+    max-size: 0.5
+    position: [0, 1, 0.5]
     velocity: [0, 0, 0]
     rotation: [0, 0, 90]
     num-solver-iters: 1
@@ -30,7 +30,8 @@ objects:
     # solve-mode: "Split-Deviatoric-Simultaneous9"
     # solve-mode: "Split-Deviatoric-Simultaneous10"
     # solve-mode: "Sequential"
-    solve-mode: "First-Order-Simultaneous"
+    # solve-mode: "Simultaneous"
+    # solve-mode: "First-Order-Simultaneous"
     # solve-mode: "Sequential-Init-Lambda"
     # solve-mode: "First-Order-Simultaneous"
 
@@ -45,7 +46,7 @@ objects:
       nu: 0.45
     color: [1.0, 0.0, 0.0, 1.0]
     draw-points: false
-    max-size: 1
+    max-size: 0.5
     position: [0, -1, 0.5]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
@@ -57,9 +58,9 @@ objects:
     # solve-mode: "Split-Deviatoric-Simultaneous9"
     # solve-mode: "Split-Deviatoric-Simultaneous10"
     # solve-mode: "Sequential"
-    # solve-mode: "Simultaneous"
+    solve-mode: "Simultaneous"
     # solve-mode: "Sequential-Init-Lambda"
-    solve-mode: "First-Order-Simultaneous"
+    # solve-mode: "First-Order-Simultaneous"
   
   -
     name: "Ground"

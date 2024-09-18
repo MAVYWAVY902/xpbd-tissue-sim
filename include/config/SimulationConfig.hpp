@@ -4,6 +4,7 @@
 #include "config/MeshObjectConfig.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
+#include "config/FastFEMMeshObjectConfig.hpp"
 
 
 /** Enum defining the different ways the simulation can be run 
@@ -76,6 +77,12 @@ class SimulationConfig : public Config
             {
                 std::unique_ptr<XPBDMeshObjectConfig> config = std::make_unique<XPBDMeshObjectConfig>(obj_node);
                 config->timeStep(_time_step); 
+                _mesh_object_configs.push_back(std::move(config));
+            }
+            if (type == "FastFEMMeshObject")
+            {
+                std::unique_ptr<FastFEMMeshObjectConfig> config = std::make_unique<FastFEMMeshObjectConfig>(obj_node);
+                config->timeStep(_time_step);
                 _mesh_object_configs.push_back(std::move(config));
             }
             if(type == "RigidMeshObject")

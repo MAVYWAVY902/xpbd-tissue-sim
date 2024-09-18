@@ -17,6 +17,7 @@
 #include "TextRenderingViewer.hpp"
 #include "RigidMeshObject.hpp"
 #include "XPBDMeshObject.hpp"
+#include "FastFEMMeshObject.hpp"
 
 #include "config/SimulationConfig.hpp"
 
