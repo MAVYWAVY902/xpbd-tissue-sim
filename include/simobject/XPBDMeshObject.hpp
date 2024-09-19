@@ -109,6 +109,14 @@ class XPBDMeshObject : public ElasticMeshObject
 
     void _projectConstraintsFirstOrderSimultaneous(const double dt);
 
+    void _projectConstraintsSequentialG(const double dt);
+
+    void _projectConstraintsSimultaneousG(const double dt);
+
+    void _projectConstraintsSplitDeviatoricSimultaneous9G(const double dt);
+
+    void _projectConstraintsSplitDeviatoricSimultaneous10G(const double dt);
+
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
      * 

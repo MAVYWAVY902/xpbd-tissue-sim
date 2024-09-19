@@ -20,7 +20,11 @@ enum XPBDSolveMode
     SPLIT_DEVIATORIC_SIMULTANEOUS9,
     SPLIT_DEVIATORIC_SIMULTANEOUS10,
     SPLIT_DEVIATORIC_SIMULTANEOUS10_LLT,
-    FIRST_ORDER_SIMULTANEOUS
+    FIRST_ORDER_SIMULTANEOUS,
+    SEQUENTIAL_G,
+    SIMULTANEOUS_G,
+    SPLIT_DEVIATORIC_SIMULTANEOUS9_G,
+    SPLIT_DEVIATORIC_SIMULTANEOUS10_G
 };
 
 enum XPBDResidualPolicy
@@ -56,7 +60,11 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
                                                                        {"Split-Deviatoric-Simultaneous9", XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS9},
                                                                        {"Split-Deviatoric-Simultaneous10", XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10},
                                                                        {"Split-Deviatoric-Simultaneous10-LLT", XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10_LLT},
-                                                                       {"First-Order-Simultaneous", XPBDSolveMode::FIRST_ORDER_SIMULTANEOUS}};
+                                                                       {"First-Order-Simultaneous", XPBDSolveMode::FIRST_ORDER_SIMULTANEOUS},
+                                                                       {"Sequential-g", XPBDSolveMode::SEQUENTIAL_G},
+                                                                       {"Simultaneous-g", XPBDSolveMode::SIMULTANEOUS_G},
+                                                                       {"Split-Deviatoric-Simultaneous9-g", XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS9_G},
+                                                                       {"Split-Deviatoric-Simultaneous10-g", XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10_G}};
         return solve_mode_options;
     }
 
