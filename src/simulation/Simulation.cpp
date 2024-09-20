@@ -173,11 +173,21 @@ void Simulation::notifyKeyPressed(int /* key */, int action, int /* modifiers */
     // action = 2 ==> key hold event
     
     // if key is pressed down or held, we want to time step
-    if (action > 0)
+    if (_sim_mode == SimulationMode::FRAME_BY_FRAME && action > 0)
     {
         _timeStep();
         _updateGraphics();
     }
+}
+
+void Simulation::notifyMouseButtonPressed(int /* button */, int /* action */, int /* modifiers */)
+{
+    // button = 0 ==> left mouse button
+    // button = 1 ==> right mouse button
+    // action = 0 ==> mouse up
+    // action = 1 ==> mouse down
+    
+    // do nothing
 }
 
 int Simulation::run()

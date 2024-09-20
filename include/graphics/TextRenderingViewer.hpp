@@ -138,6 +138,9 @@ class TextRenderingViewer : public easy3d::Viewer
     /** Triggered on key-press events */
     bool callback_event_keyboard(int key, int action, int modifiers) override;
 
+    /** Triggered on mouse press events */
+    bool callback_event_mouse_button(int button, int action, int modifiers) override;
+
     private:
     /** The TextRenderer responsible for drawing the text on screen. */
     std::unique_ptr<easy3d::TextRenderer> _text_renderer;

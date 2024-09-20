@@ -88,6 +88,16 @@ bool TextRenderingViewer::callback_event_keyboard(int key, int action, int modif
     return Viewer::callback_event_keyboard(key, action, modifiers);
 }
 
+bool TextRenderingViewer::callback_event_mouse_button(int button, int action, int modifiers)
+{
+    if (_simulation)
+    {
+        _simulation->notifyMouseButtonPressed(button, action, modifiers);
+    }
+
+    return Viewer::callback_event_mouse_button(button, action, modifiers);
+}
+
 void TextRenderingViewer::init()
 {
     Viewer::init();

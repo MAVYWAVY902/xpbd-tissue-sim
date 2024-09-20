@@ -1,27 +1,30 @@
 name: "TissueGrasping"
 g-accel: 9.81 # m/s2
 sim-mode: "Visualization"
-time-step: 1e-5
+# sim-mode: "Frame-by-frame"
+time-step: 1e-2
 end-time: 10
 objects:
   -
-    name: "Cube1"
+    name: "TissueBlock"
     type: "XPBDMeshObject"
-    filename: "../resource/1x1x0.25_tissueblock4-2.obj"
+    filename: "../resource/tissue/tissue_block1x1x0.1_4subdiv.msh"
     material:
       name: "Soft Tissue"
       density: 1000
-      E: 1e6
+      E: 6e4
       nu: 0.4999
     color: [1.0, 0.509, 0.0, 1.0]
     draw-points: false
-    max-size: 0.1
-    position: [0, 0, 0.025]
+    max-size: 1
+    position: [0, 0, 0.5]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
     damping-stiffness: 0
-    solve-mode: "Simultaneous"
+    mass-to-damping-multiplier: 10000
+    solve-mode: "First-Order-Simultaneous"
+    # solve-mode: "Simultaneous"
 
   - 
     # name: "Cube2"
@@ -42,12 +45,12 @@ objects:
     # damping-stiffness: 100000
     # solve-mode: "Sequential"
   
-  -
-    name: "Ground"
-    type: "RigidMeshObject"
-    primitive-type: "Plane"
-    size: [0.2, 0.2, 0]
-    position: [0, 0, 0]
-    color: [1.0, 1.0, 1.0, 1.0]
+  # -
+  #   name: "Ground"
+  #   type: "RigidMeshObject"
+  #   primitive-type: "Plane"
+  #   size: [0.2, 0.2, 0]
+  #   position: [0, 0, 0]
+  #   color: [1.0, 1.0, 1.0, 1.0]
 
 

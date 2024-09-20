@@ -75,7 +75,9 @@ class Simulation
          * @param action : the action performed on the keyboard
          * @param modifiers : the modifiers (i.e. Shift, Ctrl, Alt)
          */
-        void notifyKeyPressed(int key, int action, int modifiers);
+        virtual void notifyKeyPressed(int key, int action, int modifiers);
+
+        virtual void notifyMouseButtonPressed(int button, int action, int modifiers);
     
     protected:
         /** Time step the simulation */
