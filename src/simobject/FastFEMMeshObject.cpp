@@ -120,8 +120,9 @@ void FastFEMMeshObject::_precomputeQuantities()
 
     // compute system matrix and Cholesky factorization
     Eigen::SparseMatrix<double> M_plus_DT_K_D = (M + D.transpose() * K * D);
+    _LHS = M_plus_DT_K_D;
 
-    Eigen::SimplicialLLT<Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::NaturalOrdering<int>> LLT;
+    Eigen::SimplicialLLT<Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::AMDOrdering<int>> LLT;
     LLT.compute(M_plus_DT_K_D);
     _perm = LLT.permutationP();
     _perm_inv = LLT.permutationPinv();
@@ -165,10 +166,12 @@ void FastFEMMeshObject::_solveOptimizationProblem()
         _computeF(e, _lX, _lF);
 
         // APD
-        // _computeAPD(_lF, _quaternions[e]);
+        _computeAPD(_lF, _quaternions[e]);
 
         // convert quaternion to rotation matrix
         _quaternionToRotationMatrix(_quaternions[e], _lR);
+
+        // std::cout << _lR << std::endl;
 
         // R <- R-F
         _lR -= _lF;
@@ -179,43 +182,43 @@ void FastFEMMeshObject::_solveOptimizationProblem()
         _RHS(Eigen::seqN(3*_elements(e,3),3)) += _K_vec(e)*(_lR.col(0)*_Dt[e](0,3) + _lR.col(1)*_Dt[e](1,3) + _lR.col(2)*_Dt[e](2,3));
     }
 
-    std::cout << _RHS << std::endl;
+    // std::cout << _RHS << std::endl;
 
     // solve the linear system (taken exactly from Kugelstadt code)
     //permutation of the RHS because of Eigen's fill-in reduction
-	// for (size_t i = 0; i < _RHS.size(); i++)
-	// 	_RHS_perm[_perm.indices()[i]] = _RHS[i];
+	for (size_t i = 0; i < _RHS.size(); i++)
+		_RHS_perm[_perm.indices()[i]] = _RHS[i];
 
-	// //foreward substitution
-	// for (int k = 0; k<_matL.outerSize(); ++k)
-	// 	for (Eigen::SparseMatrix<double, Eigen::ColMajor>::InnerIterator it(_matL, k); it; ++it)
-	// 		if (it.row() == it.col())
-	// 			_RHS_perm[it.row()] = _RHS_perm[it.row()] / it.value();
-	// 		else
-	// 			_RHS_perm[it.row()] -= it.value() * _RHS_perm[it.col()];
+	//foreward substitution
+	for (int k = 0; k<_matL.outerSize(); ++k)
+		for (Eigen::SparseMatrix<double, Eigen::ColMajor>::InnerIterator it(_matL, k); it; ++it)
+			if (it.row() == it.col())
+				_RHS_perm[it.row()] = _RHS_perm[it.row()] / it.value();
+			else
+				_RHS_perm[it.row()] -= it.value() * _RHS_perm[it.col()];
 		
-	// //backward substitution
-	// for (int k = _matLT.outerSize() - 1; k >= 0 ; --k)
-	// 	for (Eigen::SparseMatrix<double, Eigen::ColMajor>::ReverseInnerIterator it(_matLT, k); it; --it)
-	// 		if (it.row() == it.col())
-	// 			_RHS_perm[it.row()] = _RHS_perm[it.row()] / it.value();
-	// 		else
-	// 			_RHS_perm[it.row()] -= it.value() * _RHS_perm[it.col()];
+	//backward substitution
+	for (int k = _matLT.outerSize() - 1; k >= 0 ; --k)
+		for (Eigen::SparseMatrix<double, Eigen::ColMajor>::ReverseInnerIterator it(_matLT, k); it; --it)
+			if (it.row() == it.col())
+				_RHS_perm[it.row()] = _RHS_perm[it.row()] / it.value();
+			else
+				_RHS_perm[it.row()] -= it.value() * _RHS_perm[it.col()];
 	
-	// //invert permutation
-	// for (size_t i = 0; i < _RHS.size(); i++)
-	// 	_RHS[_perm_inv.indices()[i]] = _RHS_perm[i];
+	//invert permutation
+	for (size_t i = 0; i < _RHS.size(); i++)
+		_RHS[_perm_inv.indices()[i]] = _RHS_perm[i];
 
-    Eigen::SimplicialLLT<Eigen::SparseMatrix<double, Eigen::ColMajor> > solver; 
-    Eigen::SparseMatrix<double, Eigen::ColMajor> A = _matL * _matLT;
-    solver.compute(A);
-    Eigen::VectorXd x = solver.solve(_RHS);
+    // Eigen::SimplicialLLT<Eigen::SparseMatrix<double, Eigen::ColMajor> > solver; 
+    // Eigen::SparseMatrix<double, Eigen::ColMajor> A = _matL * _matLT;
+    // solver.compute(_LHS);
+    // Eigen::VectorXd x = solver.solve(_RHS);
 
     for (size_t i = 0; i < _vertices.rows(); i++)
     {
-        _vertices(i,0) += x(3*i);
-        _vertices(i,1) += x(3*i+1);
-        _vertices(i,2) += x(3*i+2);
+        _vertices(i,0) += _RHS(3*i);
+        _vertices(i,1) += _RHS(3*i+1);
+        _vertices(i,2) += _RHS(3*i+2);
     }
 
 }
@@ -234,7 +237,7 @@ void FastFEMMeshObject::_solveVolumeConstraints()
             const double inv_m3 = 1.0/_masses[_elements(e,2)];
             const double inv_m4 = 1.0/_masses[_elements(e,3)];
 
-
+            _computeF(e, _lX, _lF);
             const double C_h = _computeHydrostaticConstraint(_lF, _Q[e], _lF_cross, _lC_h_grads);
 
             // compute the hydrostatic alpha
@@ -328,9 +331,13 @@ inline void FastFEMMeshObject::_computeAPD(const Eigen::Matrix3d& F, Eigen::Vect
 		omega[2] *= factor;
 
         // instead of clamping use gradient descent (I have no idea how this works, taken from the Kugelstadt code)
-        if (omega.dot(gradient) > 0.0)
-            omega = gradient * -0.125;
+        // if (omega.dot(gradient) > 0.0)
+        //     omega = gradient * -0.125;
         
+        const double omega_mag = omega.norm();
+        if (omega_mag > M_PI)
+            omega /= (omega_mag/M_PI);
+
         const double l_omega2 = omega.squaredNorm();
         const double w = (1.0 - l_omega2) / (1.0 + l_omega2);
         const Eigen::Vector3d vec = omega * (2.0 / (1.0 + l_omega2));

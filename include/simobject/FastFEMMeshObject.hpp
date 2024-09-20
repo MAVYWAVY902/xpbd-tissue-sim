@@ -45,6 +45,7 @@ class FastFEMMeshObject : public ElasticMeshObject
     Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> _perm_inv;
 
     Eigen::VectorXd _RHS, _RHS_perm;
+    Eigen::SparseMatrix<double, Eigen::ColMajor> _LHS;
 
     std::vector<Eigen::Matrix<double, 3, 4> > _Dt;
     Eigen::VectorXd _K_vec;

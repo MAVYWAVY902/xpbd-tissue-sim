@@ -8,9 +8,11 @@ end-time: 200
 objects:
   -
     name: "Cube1"
-    type: "XPBDMeshObject"
-    filename: "../resource/general/stanford_bunny_lowpoly.msh"
+    # type: "XPBDMeshObject"
+    type: "FastFEMMeshObject"
+    # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/general/single.msh"
+    filename: "../resource/beam/cube8.msh"
     material:
       name: "Soft Tissue"
       density: 1000
@@ -21,53 +23,53 @@ objects:
     max-size: 1
     position: [0, 0.75, 1]
     velocity: [0, 0, 0]
-    rotation: [0, 0, 90]
+    rotation: [0, 0, 0]
     num-solver-iters: 2
     damping-stiffness: 0
     mass-to-damping-multiplier: 100
-    residual-policy: "Never"
+    residual-policy: "Every-Substep"
     # solve-mode: "Split-Deviatoric-Sequential"
     # solve-mode: "Split-Deviatoric-Simultaneous9"
     # solve-mode: "Split-Deviatoric-Simultaneous10"
-    # solve-mode: "Sequential"
+    solve-mode: "Sequential"
     # solve-mode: "Simultaneous"
     # solve-mode: "Sequential-Init-Lambda"
     # solve-mode: "First-Order-Simultaneous"
     # solve-mode: "Sequential-g"
     # solve-mode: "Simultaneous-g"
     # solve-mode: "Split-Deviatoric-Simultaneous9-g"
-    solve-mode: "Split-Deviatoric-Simultaneous10-g"
+    # solve-mode: "Split-Deviatoric-Simultaneous10-g"
 
-  # -
-  #   name: "Cube2"
-  #   type: "XPBDMeshObject"
-  #   filename: "../resource/beam/cube8.msh"
-  #   material:
-  #     name: "Soft Tissue"
-  #     density: 1000
-  #     E: 6e4
-  #     nu: 0.45
-  #   color: [1.0, 0.0, 0.0, 1.0]
-  #   draw-points: false
-  #   max-size: 1
-  #   position: [0, -0.75, 1]
-  #   velocity: [0, 0, 0]
-  #   rotation: [0, 0, 0]
-  #   num-solver-iters: 1
-  #   damping-stiffness: 0
-  #   mass-to-damping-multiplier: 10
-  #   residual-policy: "Never"
-  #   # solve-mode: "Split-Deviatoric-Sequential"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous9"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
-  #   # solve-mode: "Sequential"
-  #   # solve-mode: "Simultaneous"
-  #   solve-mode: "First-Order-Simultaneous"
-  #   # solve-mode: "Sequential-Init-Lambda"
-  #   # solve-mode: "First-Order-Simultaneous"
-  #   # solve-mode: "Sequential-g"
-  #   # solve-mode: "Simultaneous-g"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous9-g"
+  -
+    name: "Cube2"
+    type: "XPBDMeshObject"
+    filename: "../resource/beam/cube8.msh"
+    material:
+      name: "Soft Tissue"
+      density: 1000
+      E: 6e4
+      nu: 0.45
+    color: [1.0, 0.0, 0.0, 1.0]
+    draw-points: false
+    max-size: 1
+    position: [0, -0.75, 1]
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]
+    num-solver-iters: 1
+    damping-stiffness: 0
+    mass-to-damping-multiplier: 10
+    residual-policy: "Never"
+    # solve-mode: "Split-Deviatoric-Sequential"
+    # solve-mode: "Split-Deviatoric-Simultaneous9"
+    # solve-mode: "Split-Deviatoric-Simultaneous10"
+    # solve-mode: "Sequential"
+    solve-mode: "Simultaneous"
+    # solve-mode: "First-Order-Simultaneous"
+    # solve-mode: "Sequential-Init-Lambda"
+    # solve-mode: "First-Order-Simultaneous"
+    # solve-mode: "Sequential-g"
+    # solve-mode: "Simultaneous-g"
+    # solve-mode: "Split-Deviatoric-Simultaneous9-g"
   
   -
     name: "Ground"
