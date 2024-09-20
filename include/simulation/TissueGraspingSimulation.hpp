@@ -18,12 +18,20 @@ class TissueGraspingSimulation : public OutputSimulation
 
     virtual void notifyMouseButtonPressed(int button, int action, int modifiers) override;
 
+    virtual void notifyMouseMoved(double x, double y) override;
+
     protected:
 
     void _toggleTissueGrasping();
+    std::set<unsigned> _getAllVerticesInGraspingArea();
+
+    double _grasp_size;
+    double _z_scaling;
 
     bool _grasping;
-    std::vector<unsigned> _grasped_vertices;
+    Eigen::Vector2d _mouse_pos_2d;
+    Eigen::Vector3d _mouse_pos_3d;
+    std::vector<std::shared_ptr<StaticVertexDriver> > _grasped_vertex_drivers;
     ElasticMeshObject* _tissue_block;
 };
 

@@ -3001,7 +3001,7 @@ void XPBDMeshObject::_projectCollisionConstraints(const double dt)
     // update vertex drivers
     for (const auto& driver : _vertex_drivers)
     {
-        _vertices.row(driver.vertexIndex()) = driver.evaluate(_sim->time());
+        _vertices.row(driver->vertexIndex()) = driver->evaluate(_sim->time());
     }
 }
 

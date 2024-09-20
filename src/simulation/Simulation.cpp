@@ -190,6 +190,11 @@ void Simulation::notifyMouseButtonPressed(int /* button */, int /* action */, in
     // do nothing
 }
 
+void Simulation::notifyMouseMoved(double /* x */, double /* y */)
+{
+    // do nothing
+}
+
 int Simulation::run()
 {
     // first, setup

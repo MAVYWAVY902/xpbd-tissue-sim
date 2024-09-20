@@ -158,7 +158,7 @@ void ElasticMeshObject::fixVerticesWithMinZ()
     }
 }
 
-void ElasticMeshObject::addVertexDriver(const VertexDriver& vd)
+void ElasticMeshObject::addVertexDriver(const std::shared_ptr<VertexDriver>& vd)
 {
     _vertex_drivers.push_back(vd);
 }
@@ -166,9 +166,7 @@ void ElasticMeshObject::addVertexDriver(const VertexDriver& vd)
 void ElasticMeshObject::removeVertexDriver(const unsigned vertex)
 {
     // just do a brute force search
-    _vertex_drivers.erase(std::remove_if(_vertex_drivers.begin(), _vertex_drivers.end(), [=](const VertexDriver& vd){ return vd.vertexIndex() == vertex; }), _vertex_drivers.end());
-
-    std::cout << "New vertex drivers size: " << _vertex_drivers.size() << std::endl;
+    _vertex_drivers.erase(std::remove_if(_vertex_drivers.begin(), _vertex_drivers.end(), [=](const std::shared_ptr<VertexDriver>& vd){ return vd->vertexIndex() == vertex; }), _vertex_drivers.end());
 }
 
 void ElasticMeshObject::stretch(const double x_stretch, const double y_stretch, const double z_stretch)

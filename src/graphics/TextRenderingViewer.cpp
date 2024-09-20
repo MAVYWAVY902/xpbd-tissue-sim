@@ -98,6 +98,16 @@ bool TextRenderingViewer::callback_event_mouse_button(int button, int action, in
     return Viewer::callback_event_mouse_button(button, action, modifiers);
 }
 
+bool TextRenderingViewer::callback_event_cursor_pos(double x, double y)
+{
+    if (_simulation)
+    {
+        _simulation->notifyMouseMoved(x, y);
+    }
+
+    return Viewer::callback_event_cursor_pos(x, y);
+}
+
 void TextRenderingViewer::init()
 {
     Viewer::init();

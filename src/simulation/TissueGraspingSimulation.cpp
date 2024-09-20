@@ -1,9 +1,21 @@
 #include "TissueGraspingSimulation.hpp"
 #include "MeshUtils.hpp"
+#include "TissueGraspingSimulationConfig.hpp"
 
 TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_filename)
-    : OutputSimulation(config_filename)
+    : OutputSimulation()
 {
+    // create a more specialized config object specifically for BeamStretchSimulations
+    _config = std::make_unique<TissueGraspingSimulationConfig>(YAML::LoadFile(config_filename));
+
+    // initialize quantities using config object
+    _init();
+
+    // extract the stretch velocity and time from the config object
+    TissueGraspingSimulationConfig* tissue_grasping_simulation_config = dynamic_cast<TissueGraspingSimulationConfig*>(_config.get());
+    _grasp_size = tissue_grasping_simulation_config->graspSize().value();
+    _z_scaling = tissue_grasping_simulation_config->zScaling().value();
+
     _out_file << "Tissue Grasping Simulation" << std::endl;
 }
 
@@ -62,39 +74,92 @@ void TissueGraspingSimulation::notifyMouseButtonPressed(int button, int action, 
     }
 }
 
+void TissueGraspingSimulation::notifyMouseMoved(double x, double y)
+{
+    
+
+    bool found;
+    easy3d::vec3 mouse_pt = _viewer->point_under_pixel(x, y, found);
+    Eigen::Vector3d new_mouse_pos;
+    new_mouse_pos(0) = mouse_pt.x;
+    new_mouse_pos(1) = mouse_pt.y;
+    new_mouse_pos(2) = mouse_pt.z;
+
+    for (const auto& vd : _grasped_vertex_drivers)
+    {
+        Eigen::Vector3d new_position;
+        new_position(0) = vd->position()(0);
+        new_position(1) = vd->position()(1);
+        new_position(2) = vd->position()(2) - _z_scaling*(y - _mouse_pos_2d(1));
+        vd->setPosition(new_position);
+    }
+
+    _mouse_pos_3d = new_mouse_pos;
+
+    _mouse_pos_2d(0) = x;
+    _mouse_pos_2d(1) = y;
+
+    
+}
+
 void TissueGraspingSimulation::_toggleTissueGrasping()
 {
     if (_grasping)
     {
-        for (const auto& v : _grasped_vertices)
+        for (const auto& vd : _grasped_vertex_drivers)
         {
-            _tissue_block->removeVertexDriver(v);
+            _tissue_block->removeVertexDriver(vd->vertexIndex());
         }
-        _grasped_vertices.clear();
+        _grasped_vertex_drivers.clear();
 
         _grasping = false;
     }
     else
     {
-        // grab middle vertex and lift it up
-        const Eigen::Vector3d& min_coords = _tissue_block->bboxMinCoords();
-        const Eigen::Vector3d& max_coords = _tissue_block->bboxMaxCoords();
-        Eigen::Vector3d vertex_grab_pos({min_coords(0) + (max_coords(0)-min_coords(0))*0.5, 
-                                        min_coords(1) + (max_coords(1)-min_coords(1))*0.5,
-                                        max_coords(2)});
-        unsigned vertex_ind = _tissue_block->getClosestVertex(vertex_grab_pos(0), vertex_grab_pos(1), vertex_grab_pos(2));
+        std::set<unsigned> vertices_to_grasp = _getAllVerticesInGraspingArea();
+        for (const auto& v : vertices_to_grasp)
+        {
+            // grab middle vertex and lift it up
+            
+            Eigen::Vector3d vertex_pos = _tissue_block->getVertex(v);
 
-        const double cur_time = _time;
 
-        VertexDriver::DriverFunction func = [=] (const double t) {
-            return Eigen::Vector3d({vertex_grab_pos(0), vertex_grab_pos(1), vertex_grab_pos(2) + 0.5*(t-cur_time)});
-        };
+            std::shared_ptr<StaticVertexDriver> vd = std::make_shared<StaticVertexDriver>("tissue grasping", v, vertex_pos);
+            _tissue_block->addVertexDriver(vd);
 
-        VertexDriver vd("tissue grasping", vertex_ind, func);
-        _tissue_block->addVertexDriver(vd);
-
-        _grasped_vertices.push_back(vertex_ind);
+            _grasped_vertex_drivers.push_back(vd);
+        }
+        
 
         _grasping = true;
     }
+}
+
+std::set<unsigned> TissueGraspingSimulation::_getAllVerticesInGraspingArea()
+{
+    std::set<unsigned> vertices_to_grasp;
+    const double step = 1e-3; // some small value to capture all vertices on the top plane inside the area
+    // const double grab_size = 0.05;
+
+    const int num_steps = _grasp_size / step;
+
+    const Eigen::Vector3d& min_coords = _tissue_block->bboxMinCoords();
+    const Eigen::Vector3d& max_coords = _tissue_block->bboxMaxCoords();
+    Eigen::Vector3d vertex_grab_pos({min_coords(0) + (max_coords(0)-min_coords(0))*0.5, 
+                                    min_coords(1) + (max_coords(1)-min_coords(1))*0.5,
+                                    max_coords(2)});
+    
+    for (int i = 0; i <= num_steps; i++)
+    {
+        for (int j = 0; j <= num_steps; j++)
+        {
+            // grab middle vertex and lift it up
+            
+            unsigned vertex_ind = _tissue_block->getClosestVertex(vertex_grab_pos(0) - _grasp_size/2 + i*step, vertex_grab_pos(1) - _grasp_size/2 + j*step, vertex_grab_pos(2));
+
+            vertices_to_grasp.insert(vertex_ind);
+        }
+    }
+
+    return vertices_to_grasp;
 }

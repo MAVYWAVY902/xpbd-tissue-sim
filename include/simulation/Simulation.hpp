@@ -78,6 +78,8 @@ class Simulation
         virtual void notifyKeyPressed(int key, int action, int modifiers);
 
         virtual void notifyMouseButtonPressed(int button, int action, int modifiers);
+
+        virtual void notifyMouseMoved(double x, double y);
     
     protected:
         /** Time step the simulation */

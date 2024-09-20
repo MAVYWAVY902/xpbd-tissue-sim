@@ -15,7 +15,7 @@ class VertexDriver
         : _name(name), _vert_index(vert_index), _driver_function(driver_function)
     {}
     
-    Eigen::Vector3d evaluate(const double t) const { return _driver_function(t); }
+    virtual Eigen::Vector3d evaluate(const double t) const { return _driver_function(t); }
     unsigned vertexIndex() const { return _vert_index; }
     std::string name() const { return _name; }
 
@@ -23,6 +23,21 @@ class VertexDriver
     std::string _name;
     unsigned _vert_index;
     DriverFunction _driver_function;
+};
+
+class StaticVertexDriver : public VertexDriver
+{
+    public:
+    explicit StaticVertexDriver(const std::string& name, unsigned vert_index, const Eigen::Vector3d& position)
+        : VertexDriver(name, vert_index, [=](const double t){ return position; }), _position(position)
+    {}
+
+    virtual Eigen::Vector3d evaluate(const double t) const { return _position; }
+    void setPosition(const Eigen::Vector3d& new_position) { _position = new_position; }
+    Eigen::Vector3d position() { return _position; }
+
+    protected:
+    Eigen::Vector3d _position;
 };
 
 /** A class for representing tetrahedral meshes with elastic material properties.
@@ -79,7 +94,7 @@ class ElasticMeshObject : public MeshObject
     void fixVerticesWithMinZ();
 
     /** Adds a new vertex driver */
-    void addVertexDriver(const VertexDriver& vd);
+    void addVertexDriver(const std::shared_ptr<VertexDriver>& vd);
 
     /** Removes a vertex driver */
     void removeVertexDriver(const unsigned vertex);
@@ -129,7 +144,7 @@ class ElasticMeshObject : public MeshObject
     Eigen::Vector<bool, -1> _fixed_vertices;
 
     /** Keeps track of vertex drivers */
-    std::vector<VertexDriver> _vertex_drivers;
+    std::vector<std::shared_ptr<VertexDriver> > _vertex_drivers;
 
     /** Previous vertex positions */
     VerticesMat _x_prev;

@@ -69,7 +69,7 @@ void BeamStretchSimulation::setup()
                 };
 
                 // add the vertex river to the mesh object
-                VertexDriver vd("vertex"+std::to_string(i), free_end_verts[i], func);
+                std::shared_ptr<VertexDriver> vd = std::make_shared<VertexDriver>("vertex"+std::to_string(i), free_end_verts[i], func);
                 elastic_mesh_object->addVertexDriver(vd);
             }
 

@@ -1,7 +1,13 @@
 name: "TissueGrasping"
+
+# Tissue grasping simulation-specific parameters
+z-scaling: 0.001    # scaling factor for converting vertical mouse movement with vertical tissue displacement
+grasp-size: 0.05    # the size of the area to grasp
+
 g-accel: 9.81 # m/s2
-sim-mode: "Visualization"
+# sim-mode: "Visualization"
 # sim-mode: "Frame-by-frame"
+sim-mode: "AFAP"
 time-step: 1e-2
 end-time: 10
 objects:
@@ -23,6 +29,7 @@ objects:
     num-solver-iters: 1
     damping-stiffness: 0
     mass-to-damping-multiplier: 10000
+    residual-policy: "Never"
     solve-mode: "First-Order-Simultaneous"
     # solve-mode: "Simultaneous"
 
