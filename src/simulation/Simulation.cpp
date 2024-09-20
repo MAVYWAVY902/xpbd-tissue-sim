@@ -21,6 +21,7 @@ void Simulation::_init()
     _end_time = _config->endTime().value();
     _time = 0;
     _g_accel = _config->gAccel().value();
+    _viewer_refresh_time = 1/_config->fps().value()*1000;
 
     // set the Simulation mode from the YAML config
     if (_config->simMode().has_value())
@@ -122,7 +123,7 @@ void Simulation::update()
         // the time in ms since the viewer was last redrawn
         auto time_since_last_redraw_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - last_redraw).count();
         // we want ~30 fps, so update the viewer every 33 ms
-        if (time_since_last_redraw_ms > 33)
+        if (time_since_last_redraw_ms > _viewer_refresh_time)
         {
             _updateGraphics();
 

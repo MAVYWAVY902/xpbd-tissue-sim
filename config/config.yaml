@@ -4,6 +4,7 @@ g-accel: 9.81 # m/s2
 sim-mode: "Visualization"
 # sim-mode: "AFAP"
 time-step: 1e-3
+fps: 30
 end-time: 200
 objects:
   -

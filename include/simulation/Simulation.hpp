@@ -109,6 +109,8 @@ class Simulation
         size_t _steps_taken;
         /** Acceleration due to gravity */
         double _g_accel;
+        /** Time to wait inbetween viewer updates (in ms). This is 1/fps */
+        int _viewer_refresh_time;
 
         /** the Viewer which renders graphics
          * unique_ptr used here for lazy initialization, since easy3d::Viewer must be instantiated 

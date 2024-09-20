@@ -31,6 +31,8 @@ class SimulationConfig : public Config
     static std::optional<double>& DEFAULT_G_ACCEL() { static std::optional<double> g_accel(9.81); return g_accel; }
     /** Static predefined default for simulation description */
     static std::optional<std::string>& DEFAULT_DESCRIPTION() { static std::optional<std::string> description(""); return description; }
+    /** Static predefined default for simulation FPS */
+    static std::optional<double>& DEFAULT_FPS() { static std::optional<double> fps(30.0); return fps; }
 
     /** Static predifined options for the simulation mode. Maps strings to the Simulation mode enum. */
     static std::map<std::string, SimulationMode> SIM_MODE_OPTIONS()
@@ -54,6 +56,7 @@ class SimulationConfig : public Config
         _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS(), DEFAULT_SIM_MODE());
         _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
         _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
+        _extractParameter("fps", node, _fps, DEFAULT_FPS());
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -100,6 +103,7 @@ class SimulationConfig : public Config
     std::optional<SimulationMode> simMode() const { return _sim_mode.value; }
     std::optional<double> gAccel() const { return _g_accel.value; }
     std::optional<std::string> description() const { return _description.value; }
+    std::optional<double> fps() const { return _fps.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const std::vector<std::unique_ptr<MeshObjectConfig> >& meshObjectConfigs() const { return _mesh_object_configs; }
@@ -111,6 +115,7 @@ class SimulationConfig : public Config
     ConfigParameter<SimulationMode> _sim_mode; 
     ConfigParameter<double> _g_accel;
     ConfigParameter<std::string> _description;
+    ConfigParameter<double> _fps;
 
     /** List of MeshObject configs for each object in the Simulation */
     std::vector<std::unique_ptr<MeshObjectConfig>> _mesh_object_configs;
