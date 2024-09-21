@@ -47,6 +47,8 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
 
     static std::optional<double>& DEFAULT_MASS_TO_DAMPING_MULTIPLIER() { static std::optional<double> mass_to_damping(1); return mass_to_damping; }
 
+    static std::optional<double>& DEFAULT_G_SCALING() { static std::optional<double> g_scaling(1); return g_scaling; }
+
     static std::map<std::string, XPBDSolveMode>& SOLVE_MODE_OPTIONS() 
     {
         static std::map<std::string, XPBDSolveMode> solve_mode_options{{"Simultaneous", XPBDSolveMode::SIMULTANEOUS},
@@ -89,6 +91,8 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
         _extractParameter("damping-stiffness", node, _damping_stiffness, DEFAULT_DAMPING_STIFFNESS());
         _extractParameterWithOptions("residual-policy", node, _residual_policy, RESIDUAL_POLICY_OPTIONS(), DEFAULT_RESIDUAL_POLICY());
         _extractParameter("mass-to-damping-multiplier", node, _mass_to_damping_multiplier, DEFAULT_MASS_TO_DAMPING_MULTIPLIER());
+        _extractParameter("g-scaling", node, _g_scaling, DEFAULT_G_SCALING());
+        
     }
 
     // Getters
@@ -97,6 +101,7 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
     std::optional<double> dampingStiffness() const { return _damping_stiffness.value; }
     std::optional<XPBDResidualPolicy> residualPolicy() const { return _residual_policy.value; }
     std::optional<double> massToDampingMultiplier() const { return _mass_to_damping_multiplier.value; }
+    std::optional<double> gScaling() const { return _g_scaling.value; }
 
     protected:
     // Parameters
@@ -105,6 +110,7 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
     ConfigParameter<double> _damping_stiffness;
     ConfigParameter<XPBDResidualPolicy> _residual_policy;
     ConfigParameter<double> _mass_to_damping_multiplier;
+    ConfigParameter<double> _g_scaling;
 };
 
 #endif // __XPBD_MESH_OBJECT_CONFIG_HPP

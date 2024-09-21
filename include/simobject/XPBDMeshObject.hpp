@@ -214,6 +214,9 @@ class XPBDMeshObject : public ElasticMeshObject
     /** For the First Order Simultaneous method */
     double _mass_to_damping_multiplier;
 
+    /** For the methods that incorporate g (i.e. Sequential-g, Simultaneous-g, etc.) */
+    double _g_scaling;
+
 
 
 

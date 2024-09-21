@@ -28,6 +28,8 @@ XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
 
     _mass_to_damping_multiplier = config->massToDampingMultiplier().value();
 
+    _g_scaling = config->gScaling().value();
+
     _init();
     _precomputeQuantities();
 }
@@ -669,23 +671,23 @@ void XPBDMeshObject::_projectConstraintsSequentialG(const double dt)
             // compute the deviatoric alpha
             const double alpha_d = 1/(_material.mu() * _vols[i]);
 
-            const double delC_Minv_delC_alpha_d = (inv_m1)*_lC_d_grads.col(0).squaredNorm() + 
+            const double delC_Minv_delC_d = (inv_m1)*_lC_d_grads.col(0).squaredNorm() + 
                     (inv_m2)*_lC_d_grads.col(1).squaredNorm() + 
                     (inv_m3)*_lC_d_grads.col(2).squaredNorm() + 
-                    (inv_m4)*_lC_d_grads.col(3).squaredNorm() +
-                    alpha_d/(dt*dt);
+                    (inv_m4)*_lC_d_grads.col(3).squaredNorm(); 
+            const double delC_Minv_delC_alpha_d = delC_Minv_delC_d + alpha_d/(dt*dt);
             
             const double delC_x_d = _lC_d_grads.col(0).dot(x_minus_x_tilde.row(elem(0))) +
                                     _lC_d_grads.col(1).dot(x_minus_x_tilde.row(elem(1))) +
                                     _lC_d_grads.col(2).dot(x_minus_x_tilde.row(elem(2))) +
                                     _lC_d_grads.col(3).dot(x_minus_x_tilde.row(elem(3)));
 
-            const double dlam_d = (-C_d - delC_Minv_delC_alpha_d * lambda_ds(i) + delC_x_d) / delC_Minv_delC_alpha_d;
+            const double dlam_d = (-C_d - (_g_scaling * delC_Minv_delC_d + alpha_d/(dt*dt)) * lambda_ds(i) + _g_scaling * delC_x_d) / delC_Minv_delC_alpha_d;
 
-            _vertices.row(elem(0)) += _lC_d_grads.col(0) * (dlam_d + lambda_ds(i)) * inv_m1 - x_minus_x_tilde.row(elem(0)).transpose();
-            _vertices.row(elem(1)) += _lC_d_grads.col(1) * (dlam_d + lambda_ds(i)) * inv_m2 - x_minus_x_tilde.row(elem(1)).transpose();
-            _vertices.row(elem(2)) += _lC_d_grads.col(2) * (dlam_d + lambda_ds(i)) * inv_m3 - x_minus_x_tilde.row(elem(2)).transpose();
-            _vertices.row(elem(3)) += _lC_d_grads.col(3) * (dlam_d + lambda_ds(i)) * inv_m4 - x_minus_x_tilde.row(elem(3)).transpose();
+            _vertices.row(elem(0)) += _lC_d_grads.col(0) * (dlam_d + lambda_ds(i)) * inv_m1 - _g_scaling * x_minus_x_tilde.row(elem(0)).transpose();
+            _vertices.row(elem(1)) += _lC_d_grads.col(1) * (dlam_d + lambda_ds(i)) * inv_m2 - _g_scaling * x_minus_x_tilde.row(elem(1)).transpose();
+            _vertices.row(elem(2)) += _lC_d_grads.col(2) * (dlam_d + lambda_ds(i)) * inv_m3 - _g_scaling * x_minus_x_tilde.row(elem(2)).transpose();
+            _vertices.row(elem(3)) += _lC_d_grads.col(3) * (dlam_d + lambda_ds(i)) * inv_m4 - _g_scaling * x_minus_x_tilde.row(elem(3)).transpose();
 
 
             /** HYDROSTATIC CONSTRAINT */
@@ -695,24 +697,24 @@ void XPBDMeshObject::_projectConstraintsSequentialG(const double dt)
             // compute the hydrostatic alpha
             const double alpha_h = 1/(_material.lambda() * _vols[i]);
             
-            const double delC_Minv_delC_alpha_h = (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
+            const double delC_Minv_delC_h = (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
                     (inv_m2)*_lC_h_grads.col(1).squaredNorm() + 
                     (inv_m3)*_lC_h_grads.col(2).squaredNorm() + 
-                    (inv_m4)*_lC_h_grads.col(3).squaredNorm() + 
-                    alpha_h/(dt*dt);
+                    (inv_m4)*_lC_h_grads.col(3).squaredNorm();
+            const double delC_Minv_delC_alpha_h = delC_Minv_delC_h + alpha_h/(dt*dt);
 
             const double delC_x_h = _lC_h_grads.col(0).dot(x_minus_x_tilde.row(elem(0))) +
                                     _lC_h_grads.col(1).dot(x_minus_x_tilde.row(elem(1))) +
                                     _lC_h_grads.col(2).dot(x_minus_x_tilde.row(elem(2))) +
                                     _lC_h_grads.col(3).dot(x_minus_x_tilde.row(elem(3)));
 
-            const double dlam_h = (-C_h - delC_Minv_delC_alpha_h * lambda_hs(i) + delC_x_h) / delC_Minv_delC_alpha_h;
+            const double dlam_h = (-C_h - (_g_scaling*delC_Minv_delC_h + alpha_h/(dt*dt)) * lambda_hs(i) + _g_scaling * delC_x_h) / delC_Minv_delC_alpha_h;
                     
 
-            _vertices.row(elem(0)) += _lC_h_grads.col(0) * (dlam_h + lambda_hs(i)) * inv_m1 - x_minus_x_tilde.row(elem(0)).transpose();
-            _vertices.row(elem(1)) += _lC_h_grads.col(1) * (dlam_h + lambda_hs(i)) * inv_m2 - x_minus_x_tilde.row(elem(1)).transpose();
-            _vertices.row(elem(2)) += _lC_h_grads.col(2) * (dlam_h + lambda_hs(i)) * inv_m3 - x_minus_x_tilde.row(elem(2)).transpose();
-            _vertices.row(elem(3)) += _lC_h_grads.col(3) * (dlam_h + lambda_hs(i)) * inv_m4 - x_minus_x_tilde.row(elem(3)).transpose();
+            _vertices.row(elem(0)) += _lC_h_grads.col(0) * (dlam_h + _g_scaling * lambda_hs(i)) * inv_m1 - _g_scaling * x_minus_x_tilde.row(elem(0)).transpose();
+            _vertices.row(elem(1)) += _lC_h_grads.col(1) * (dlam_h + _g_scaling * lambda_hs(i)) * inv_m2 - _g_scaling * x_minus_x_tilde.row(elem(1)).transpose();
+            _vertices.row(elem(2)) += _lC_h_grads.col(2) * (dlam_h + _g_scaling * lambda_hs(i)) * inv_m3 - _g_scaling * x_minus_x_tilde.row(elem(2)).transpose();
+            _vertices.row(elem(3)) += _lC_h_grads.col(3) * (dlam_h + _g_scaling * lambda_hs(i)) * inv_m4 - _g_scaling * x_minus_x_tilde.row(elem(3)).transpose();
 
             // update Lagrange multipliers
             lambda_hs(i) += dlam_h;
@@ -894,20 +896,24 @@ void XPBDMeshObject::_projectConstraintsSimultaneousG(const double dt)
             // const Eigen::Vector3d x_minus_x_tilde4 = _vertices.row(elem(3)) - inertial_positions.row(elem(3));
 
             // solve the 2x2 system
-            const double a11 = inv_m1*_lC_h_grads.col(0).squaredNorm() + 
+            const double delC_Minv_delC_h = inv_m1*_lC_h_grads.col(0).squaredNorm() + 
                                inv_m2*_lC_h_grads.col(1).squaredNorm() + 
                                inv_m3*_lC_h_grads.col(2).squaredNorm() + 
-                               inv_m4*_lC_h_grads.col(3).squaredNorm() + 
+                               inv_m4*_lC_h_grads.col(3).squaredNorm();
+
+            const double delC_Minv_delC_d = inv_m1*_lC_d_grads.col(0).squaredNorm() + 
+                               inv_m2*_lC_d_grads.col(1).squaredNorm() + 
+                               inv_m3*_lC_d_grads.col(2).squaredNorm() + 
+                               inv_m4*_lC_d_grads.col(3).squaredNorm();
+
+            const double a11 = delC_Minv_delC_h + 
                                alpha_h/(dt*dt);
             const double a12 = inv_m1*_lC_h_grads.col(0).dot(_lC_d_grads.col(0)) +
                                inv_m2*_lC_h_grads.col(1).dot(_lC_d_grads.col(1)) +
                                inv_m3*_lC_h_grads.col(2).dot(_lC_d_grads.col(2)) +
                                inv_m4*_lC_h_grads.col(3).dot(_lC_d_grads.col(3));
             const double a21 = a12;
-            const double a22 = inv_m1*_lC_d_grads.col(0).squaredNorm() + 
-                               inv_m2*_lC_d_grads.col(1).squaredNorm() + 
-                               inv_m3*_lC_d_grads.col(2).squaredNorm() + 
-                               inv_m4*_lC_d_grads.col(3).squaredNorm() + 
+            const double a22 = delC_Minv_delC_d + 
                                alpha_d/(dt*dt);
 
             const double delC_x_d = _lC_d_grads.col(0).dot(x_minus_x_tilde.row(elem(0))) +
@@ -920,8 +926,8 @@ void XPBDMeshObject::_projectConstraintsSimultaneousG(const double dt)
                                     _lC_h_grads.col(2).dot(x_minus_x_tilde.row(elem(2))) +
                                     _lC_h_grads.col(3).dot(x_minus_x_tilde.row(elem(3)));
 
-            const double k1 = -C_h - (a11*lambda_hs(i) + a12*lambda_ds(i)) + delC_x_h;
-            const double k2 = -C_d - (a21*lambda_hs(i) + a22*lambda_ds(i)) + delC_x_d;
+            const double k1 = -C_h - ((_g_scaling*delC_Minv_delC_h + alpha_h/(dt*dt))*lambda_hs(i) + _g_scaling*a12*lambda_ds(i)) + _g_scaling*delC_x_h;
+            const double k2 = -C_d - (_g_scaling*a21*lambda_hs(i) + (_g_scaling*delC_Minv_delC_d + alpha_d/(dt*dt))*lambda_ds(i)) + _g_scaling*delC_x_d;
 
             const double detA = a11*a22 - a21*a12;
 
@@ -930,10 +936,10 @@ void XPBDMeshObject::_projectConstraintsSimultaneousG(const double dt)
 
 
             // update vertex positions
-            _vertices.row(elem(0)) += _lC_h_grads.col(0) * (dlam_h + lambda_hs(i)) * inv_m1 + _lC_d_grads.col(0) * (dlam_d + lambda_ds(i)) * inv_m1 - x_minus_x_tilde.row(elem(0)).transpose();
-            _vertices.row(elem(1)) += _lC_h_grads.col(1) * (dlam_h + lambda_hs(i)) * inv_m2 + _lC_d_grads.col(1) * (dlam_d + lambda_ds(i)) * inv_m2 - x_minus_x_tilde.row(elem(1)).transpose();
-            _vertices.row(elem(2)) += _lC_h_grads.col(2) * (dlam_h + lambda_hs(i)) * inv_m3 + _lC_d_grads.col(2) * (dlam_d + lambda_ds(i)) * inv_m3 - x_minus_x_tilde.row(elem(2)).transpose();
-            _vertices.row(elem(3)) += _lC_h_grads.col(3) * (dlam_h + lambda_hs(i)) * inv_m4 + _lC_d_grads.col(3) * (dlam_d + lambda_ds(i)) * inv_m4 - x_minus_x_tilde.row(elem(3)).transpose();
+            _vertices.row(elem(0)) += _lC_h_grads.col(0) * (dlam_h + _g_scaling*lambda_hs(i)) * inv_m1 + _lC_d_grads.col(0) * (dlam_d + _g_scaling*lambda_ds(i)) * inv_m1 - _g_scaling*x_minus_x_tilde.row(elem(0)).transpose();
+            _vertices.row(elem(1)) += _lC_h_grads.col(1) * (dlam_h + _g_scaling*lambda_hs(i)) * inv_m2 + _lC_d_grads.col(1) * (dlam_d + _g_scaling*lambda_ds(i)) * inv_m2 - _g_scaling*x_minus_x_tilde.row(elem(1)).transpose();
+            _vertices.row(elem(2)) += _lC_h_grads.col(2) * (dlam_h + _g_scaling*lambda_hs(i)) * inv_m3 + _lC_d_grads.col(2) * (dlam_d + _g_scaling*lambda_ds(i)) * inv_m3 - _g_scaling*x_minus_x_tilde.row(elem(2)).transpose();
+            _vertices.row(elem(3)) += _lC_h_grads.col(3) * (dlam_h + _g_scaling*lambda_hs(i)) * inv_m4 + _lC_d_grads.col(3) * (dlam_d + _g_scaling*lambda_ds(i)) * inv_m4 - _g_scaling*x_minus_x_tilde.row(elem(3)).transpose();
             
 
             // update Lagrange multipliers
@@ -1805,19 +1811,19 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous9G(const doub
                                     (-_Q[i](0,2)-_Q[i](1,2)-_Q[i](2,2))*x_minus_x_tilde(elem(3),2);
 
             // calculate the RHS of the matrix eq (i.e. -C - alpha_tilde * lambda)
-            b(0) = -_lF(0,0) + delC_x_1;// - alpha_d_tilde * lambdas(i,0);
-            b(1) = -_lF(0,1) + delC_x_2;// - alpha_d_tilde * lambdas(i,1);
-            b(2) = -_lF(0,2) + delC_x_3;// - alpha_d_tilde * lambdas(i,2);
-            b(3) = -_lF(1,0) + delC_x_4;// - alpha_d_tilde * lambdas(i,3);
-            b(4) = -_lF(1,1) + delC_x_5;// - alpha_d_tilde * lambdas(i,4);
-            b(5) = -_lF(1,2) + delC_x_6;// - alpha_d_tilde * lambdas(i,5);
-            b(6) = -_lF(2,0) + delC_x_7;// - alpha_d_tilde * lambdas(i,6);
-            b(7) = -_lF(2,1) + delC_x_8;// - alpha_d_tilde * lambdas(i,7);
-            b(8) = -_lF(2,2) + delC_x_9;// - alpha_d_tilde * lambdas(i,8);
+            b(0) = -_lF(0,0) + _g_scaling*delC_x_1;
+            b(1) = -_lF(0,1) + _g_scaling*delC_x_2;
+            b(2) = -_lF(0,2) + _g_scaling*delC_x_3;
+            b(3) = -_lF(1,0) + _g_scaling*delC_x_4;
+            b(4) = -_lF(1,1) + _g_scaling*delC_x_5;
+            b(5) = -_lF(1,2) + _g_scaling*delC_x_6;
+            b(6) = -_lF(2,0) + _g_scaling*delC_x_7;
+            b(7) = -_lF(2,1) + _g_scaling*delC_x_8;
+            b(8) = -_lF(2,2) + _g_scaling*delC_x_9;
 
-            b(Eigen::seq(0,2)) -= _A[i]*lambdas(i,Eigen::seq(0,2)).transpose();
-            b(Eigen::seq(3,5)) -= _A[i]*lambdas(i,Eigen::seq(3,5)).transpose();
-            b(Eigen::seq(6,8)) -= _A[i]*lambdas(i,Eigen::seq(6,8)).transpose();
+            b(Eigen::seq(0,2)) += -_g_scaling*_A[i]*lambdas(i,Eigen::seq(0,2)).transpose() + (_g_scaling-1)*alpha_d_tilde*lambdas(i,Eigen::seq(0,2)).transpose();
+            b(Eigen::seq(3,5)) += -_g_scaling*_A[i]*lambdas(i,Eigen::seq(3,5)).transpose() + (_g_scaling-1)*alpha_d_tilde*lambdas(i,Eigen::seq(3,5)).transpose();
+            b(Eigen::seq(6,8)) += -_g_scaling*_A[i]*lambdas(i,Eigen::seq(6,8)).transpose() + (_g_scaling-1)*alpha_d_tilde*lambdas(i,Eigen::seq(6,8)).transpose();
 
             // solve for dlams
             dlam(Eigen::seq(0,2)) = _A_inv[i] * b(Eigen::seq(0,2));
@@ -1825,26 +1831,26 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous9G(const doub
             dlam(Eigen::seq(6,8)) = _A_inv[i] * b(Eigen::seq(6,8));
 
             // apply position updates
-            Eigen::VectorXd dlam_plus_lam = dlam + lambdas(i, Eigen::seq(0,8)).transpose(); 
+            Eigen::VectorXd dlam_plus_lam = dlam + _g_scaling*lambdas(i, Eigen::seq(0,8)).transpose(); 
             _vertices(elem(0), 0) += inv_m1 * (dlam_plus_lam(0)*_Q[i](0,0) + dlam_plus_lam(1)*_Q[i](0,1) + dlam_plus_lam(2)*_Q[i](0,2));
             _vertices(elem(0), 1) += inv_m1 * (dlam_plus_lam(3)*_Q[i](0,0) + dlam_plus_lam(4)*_Q[i](0,1) + dlam_plus_lam(5)*_Q[i](0,2));
             _vertices(elem(0), 2) += inv_m1 * (dlam_plus_lam(6)*_Q[i](0,0) + dlam_plus_lam(7)*_Q[i](0,1) + dlam_plus_lam(8)*_Q[i](0,2));
-            _vertices.row(elem(0)) -= x_minus_x_tilde.row(elem(0));
+            _vertices.row(elem(0)) -= _g_scaling*x_minus_x_tilde.row(elem(0));
 
             _vertices(elem(1), 0) += inv_m2 * (dlam_plus_lam(0)*_Q[i](1,0) + dlam_plus_lam(1)*_Q[i](1,1) + dlam_plus_lam(2)*_Q[i](1,2));
             _vertices(elem(1), 1) += inv_m2 * (dlam_plus_lam(3)*_Q[i](1,0) + dlam_plus_lam(4)*_Q[i](1,1) + dlam_plus_lam(5)*_Q[i](1,2));
             _vertices(elem(1), 2) += inv_m2 * (dlam_plus_lam(6)*_Q[i](1,0) + dlam_plus_lam(7)*_Q[i](1,1) + dlam_plus_lam(8)*_Q[i](1,2));
-            _vertices.row(elem(1)) -= x_minus_x_tilde.row(elem(1));
+            _vertices.row(elem(1)) -= _g_scaling*x_minus_x_tilde.row(elem(1));
 
             _vertices(elem(2), 0) += inv_m3 * (dlam_plus_lam(0)*_Q[i](2,0) + dlam_plus_lam(1)*_Q[i](2,1) + dlam_plus_lam(2)*_Q[i](2,2));
             _vertices(elem(2), 1) += inv_m3 * (dlam_plus_lam(3)*_Q[i](2,0) + dlam_plus_lam(4)*_Q[i](2,1) + dlam_plus_lam(5)*_Q[i](2,2));
             _vertices(elem(2), 2) += inv_m3 * (dlam_plus_lam(6)*_Q[i](2,0) + dlam_plus_lam(7)*_Q[i](2,1) + dlam_plus_lam(8)*_Q[i](2,2));
-            _vertices.row(elem(2)) -= x_minus_x_tilde.row(elem(2));
+            _vertices.row(elem(2)) -= _g_scaling*x_minus_x_tilde.row(elem(2));
 
             _vertices(elem(3), 0) += inv_m4 * (dlam_plus_lam(0)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + dlam_plus_lam(1)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + dlam_plus_lam(2)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2)));
             _vertices(elem(3), 1) += inv_m4 * (dlam_plus_lam(3)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + dlam_plus_lam(4)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + dlam_plus_lam(5)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2))); 
             _vertices(elem(3), 2) += inv_m4 * (dlam_plus_lam(6)*(-_Q[i](0,0) - _Q[i](1,0) - _Q[i](2,0)) + dlam_plus_lam(7)*(-_Q[i](0,1) - _Q[i](1,1) - _Q[i](2,1)) + dlam_plus_lam(8)*(-_Q[i](0,2) - _Q[i](1,2) - _Q[i](2,2)));
-            _vertices.row(elem(3)) -= x_minus_x_tilde.row(elem(3));
+            _vertices.row(elem(3)) -= _g_scaling*x_minus_x_tilde.row(elem(3));
 
             lambdas(i, Eigen::seq(0,8)) += dlam;
 
@@ -1856,25 +1862,25 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous9G(const doub
             const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
             // compute the hydrostatic alpha
             const double alpha_h = 1/(_material.lambda() * _vols[i]);
-
-            const double delC_Minv_delC_alpha_h = (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
+            
+            const double delC_Minv_delC_h = (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
                     (inv_m2)*_lC_h_grads.col(1).squaredNorm() + 
                     (inv_m3)*_lC_h_grads.col(2).squaredNorm() + 
-                    (inv_m4)*_lC_h_grads.col(3).squaredNorm() + 
-                    alpha_h/(dt*dt);
+                    (inv_m4)*_lC_h_grads.col(3).squaredNorm();
+            const double delC_Minv_delC_alpha_h = delC_Minv_delC_h + alpha_h/(dt*dt);
 
             const double delC_x_h = _lC_h_grads.col(0).dot(x_minus_x_tilde.row(elem(0))) +
                                     _lC_h_grads.col(1).dot(x_minus_x_tilde.row(elem(1))) +
                                     _lC_h_grads.col(2).dot(x_minus_x_tilde.row(elem(2))) +
                                     _lC_h_grads.col(3).dot(x_minus_x_tilde.row(elem(3)));
 
-            const double dlam_h = (-C_h - delC_Minv_delC_alpha_h * lambdas(i,9) + delC_x_h) / delC_Minv_delC_alpha_h;
+            const double dlam_h = (-C_h - (_g_scaling*delC_Minv_delC_h + alpha_h/(dt*dt)) * lambdas(i,9) + _g_scaling * delC_x_h) / delC_Minv_delC_alpha_h;
                     
 
-            _vertices.row(elem(0)) += _lC_h_grads.col(0) * (dlam_h + lambdas(i,9)) * inv_m1 - x_minus_x_tilde.row(elem(0)).transpose();
-            _vertices.row(elem(1)) += _lC_h_grads.col(1) * (dlam_h + lambdas(i,9)) * inv_m2 - x_minus_x_tilde.row(elem(1)).transpose();
-            _vertices.row(elem(2)) += _lC_h_grads.col(2) * (dlam_h + lambdas(i,9)) * inv_m3 - x_minus_x_tilde.row(elem(2)).transpose();
-            _vertices.row(elem(3)) += _lC_h_grads.col(3) * (dlam_h + lambdas(i,9)) * inv_m4 - x_minus_x_tilde.row(elem(3)).transpose();
+            _vertices.row(elem(0)) += _lC_h_grads.col(0) * (dlam_h + _g_scaling * lambdas(i,9)) * inv_m1 - _g_scaling * x_minus_x_tilde.row(elem(0)).transpose();
+            _vertices.row(elem(1)) += _lC_h_grads.col(1) * (dlam_h + _g_scaling * lambdas(i,9)) * inv_m2 - _g_scaling * x_minus_x_tilde.row(elem(1)).transpose();
+            _vertices.row(elem(2)) += _lC_h_grads.col(2) * (dlam_h + _g_scaling * lambdas(i,9)) * inv_m3 - _g_scaling * x_minus_x_tilde.row(elem(2)).transpose();
+            _vertices.row(elem(3)) += _lC_h_grads.col(3) * (dlam_h + _g_scaling * lambdas(i,9)) * inv_m4 - _g_scaling * x_minus_x_tilde.row(elem(3)).transpose();
 
             // update Lagrange multipliers
             // lambda_hs(i) += dlam_h;
@@ -2276,6 +2282,7 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous10G(const dou
             const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
             // compute the hydrostatic alpha
             const double alpha_h = 1/(_material.lambda() * _vols[i]);
+            const double alpha_h_tilde = alpha_h / (dt*dt);
 
 
             // compute the deviatoric alpha
@@ -2320,7 +2327,7 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous10G(const dou
                                 inv_m2*_lC_h_grads.col(1).squaredNorm() + 
                                 inv_m3*_lC_h_grads.col(2).squaredNorm() + 
                                 inv_m4*_lC_h_grads.col(3).squaredNorm() +
-                                alpha_h/(dt*dt);
+                                alpha_h_tilde;
             
             // compute the product CA^-1 - result is a 9-vector
             // we take advantage of the block diagonal structure of A here so we don't have to do full 9x9 matrix multiplication
@@ -2409,21 +2416,21 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous10G(const dou
                                      _lC_h_grads.col(3).dot(x_minus_x_tilde.row(elem(3)));
 
             // calculate the RHS of the matrix eq (i.e. -C - alpha_tilde * lambda)
-            _lb(0) = -_lF(0,0) + delC_x_1;// - alpha_d_tilde * lambdas(i,0);
-            _lb(1) = -_lF(0,1) + delC_x_2;// - alpha_d_tilde * lambdas(i,1);
-            _lb(2) = -_lF(0,2) + delC_x_3;// - alpha_d_tilde * lambdas(i,2);
-            _lb(3) = -_lF(1,0) + delC_x_4;// - alpha_d_tilde * lambdas(i,3);
-            _lb(4) = -_lF(1,1) + delC_x_5;// - alpha_d_tilde * lambdas(i,4);
-            _lb(5) = -_lF(1,2) + delC_x_6;// - alpha_d_tilde * lambdas(i,5);
-            _lb(6) = -_lF(2,0) + delC_x_7;// - alpha_d_tilde * lambdas(i,6);
-            _lb(7) = -_lF(2,1) + delC_x_8;// - alpha_d_tilde * lambdas(i,7);
-            _lb(8) = -_lF(2,2) + delC_x_9;// - alpha_d_tilde * lambdas(i,8);
-            _lb(9) = -C_h + delC_x_10;
-            _lb(Eigen::seq(0,2)) -= _A[i]*lambdas(i,Eigen::seq(0,2)).transpose();
-            _lb(Eigen::seq(3,5)) -= _A[i]*lambdas(i,Eigen::seq(3,5)).transpose();
-            _lb(Eigen::seq(6,8)) -= _A[i]*lambdas(i,Eigen::seq(6,8)).transpose();
-            _lb(Eigen::seq(0,8)) -= _lB*lambdas(i,9);
-            _lb(9) -= _lB.dot(lambdas(i,Eigen::seq(0,8))) + D*lambdas(i,9);
+            _lb(0) = -_lF(0,0) + _g_scaling*delC_x_1;
+            _lb(1) = -_lF(0,1) + _g_scaling*delC_x_2;
+            _lb(2) = -_lF(0,2) + _g_scaling*delC_x_3;
+            _lb(3) = -_lF(1,0) + _g_scaling*delC_x_4;
+            _lb(4) = -_lF(1,1) + _g_scaling*delC_x_5;
+            _lb(5) = -_lF(1,2) + _g_scaling*delC_x_6;
+            _lb(6) = -_lF(2,0) + _g_scaling*delC_x_7;
+            _lb(7) = -_lF(2,1) + _g_scaling*delC_x_8;
+            _lb(8) = -_lF(2,2) + _g_scaling*delC_x_9;
+            _lb(9) = -C_h + _g_scaling*delC_x_10;
+            _lb(Eigen::seq(0,2)) += -_g_scaling*_A[i]*lambdas(i,Eigen::seq(0,2)).transpose() + (_g_scaling-1)*alpha_d_tilde*lambdas(i,Eigen::seq(0,2)).transpose();
+            _lb(Eigen::seq(3,5)) += -_g_scaling*_A[i]*lambdas(i,Eigen::seq(3,5)).transpose() + (_g_scaling-1)*alpha_d_tilde*lambdas(i,Eigen::seq(3,5)).transpose();
+            _lb(Eigen::seq(6,8)) += -_g_scaling*_A[i]*lambdas(i,Eigen::seq(6,8)).transpose() + (_g_scaling-1)*alpha_d_tilde*lambdas(i,Eigen::seq(6,8)).transpose();
+            _lb(Eigen::seq(0,8)) += -_g_scaling*_lB*lambdas(i,9);
+            _lb(9) += -_g_scaling*_lB.dot(lambdas(i,Eigen::seq(0,8))) - _g_scaling*D*lambdas(i,9) + (_g_scaling-1)*alpha_h_tilde*lambdas(i,9);
  
             // solve for dlams through simple matrix multiplication
             _ldlam = _lM*_lb;
@@ -2431,7 +2438,7 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous10G(const dou
             // apply position updates
             // for the deformation gradient constraints, the constraint gradients only affect one component of the position
             //   i.e. the gradients of F11, F12, F13 only affect the x-component of position, F21, F22, F23 only affect the y-component of position, and F31, F32, F33 only affect the z-component
-            Eigen::VectorXd dlam_plus_lam = _ldlam + lambdas.row(i).transpose(); 
+            Eigen::VectorXd dlam_plus_lam = _ldlam + _g_scaling*lambdas.row(i).transpose(); 
             
             _vertices(elem(0), 0) += inv_m1 * (dlam_plus_lam(0)*_Q[i](0,0) + dlam_plus_lam(1)*_Q[i](0,1) + dlam_plus_lam(2)*_Q[i](0,2));
             _vertices(elem(0), 1) += inv_m1 * (dlam_plus_lam(3)*_Q[i](0,0) + dlam_plus_lam(4)*_Q[i](0,1) + dlam_plus_lam(5)*_Q[i](0,2));
@@ -2454,10 +2461,10 @@ void XPBDMeshObject::_projectConstraintsSplitDeviatoricSimultaneous10G(const dou
             // _vertices.row(elem(3)) -= x_minus_x_tilde.row(elem(3));
 
             // apply position update from hydrostatic constraint
-            _vertices.row(elem(0)) += _lC_h_grads.col(0) * dlam_plus_lam(9) * inv_m1 - x_minus_x_tilde.row(elem(0)).transpose();
-            _vertices.row(elem(1)) += _lC_h_grads.col(1) * dlam_plus_lam(9) * inv_m2 - x_minus_x_tilde.row(elem(1)).transpose();
-            _vertices.row(elem(2)) += _lC_h_grads.col(2) * dlam_plus_lam(9) * inv_m3 - x_minus_x_tilde.row(elem(2)).transpose();
-            _vertices.row(elem(3)) += _lC_h_grads.col(3) * dlam_plus_lam(9) * inv_m4 - x_minus_x_tilde.row(elem(3)).transpose();
+            _vertices.row(elem(0)) += _lC_h_grads.col(0) * dlam_plus_lam(9) * inv_m1 - _g_scaling*x_minus_x_tilde.row(elem(0)).transpose();
+            _vertices.row(elem(1)) += _lC_h_grads.col(1) * dlam_plus_lam(9) * inv_m2 - _g_scaling*x_minus_x_tilde.row(elem(1)).transpose();
+            _vertices.row(elem(2)) += _lC_h_grads.col(2) * dlam_plus_lam(9) * inv_m3 - _g_scaling*x_minus_x_tilde.row(elem(2)).transpose();
+            _vertices.row(elem(3)) += _lC_h_grads.col(3) * dlam_plus_lam(9) * inv_m4 - _g_scaling*x_minus_x_tilde.row(elem(3)).transpose();
 
             // update the overall lambdas using dlam
             lambdas.row(i) += _ldlam;
