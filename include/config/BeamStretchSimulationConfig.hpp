@@ -14,15 +14,19 @@ class BeamStretchSimulationConfig : public OutputSimulationConfig
     explicit BeamStretchSimulationConfig(const YAML::Node& node)
         : OutputSimulationConfig(node)
     {
+        // extract the parameters from the config file
         _extractParameter("stretch-velocity", node, _stretch_velocity, DEFAULT_STRETCH_VELOCITY());
         _extractParameter("stretch-time", node, _stretch_time, DEFAULT_STRETCH_TIME());
     }
 
+    // getters
     std::optional<double> stretchVelocity() const { return _stretch_velocity.value; }
     std::optional<double> stretchTime() const { return _stretch_time.value; }
 
     protected:
-    ConfigParameter<double> _stretch_velocity; // in m/s
+    /** The velocity of the beam stretching, in m/s. Use a negative value for beam compression. */
+    ConfigParameter<double> _stretch_velocity;
+    /** The amount of time to stretch the beam. */
     ConfigParameter<double> _stretch_time; // in s
 };
 

@@ -9,6 +9,7 @@ find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # req
 find_package(assimp REQUIRED)
 
 include_directories("./include")
+include_directories("./include/common")
 include_directories("./include/config")
 include_directories("./include/graphics")
 include_directories("./include/simobject")
@@ -20,7 +21,8 @@ add_library(MeshUtils include/utils/MeshUtils.hpp src/utils/MeshUtils.cpp) # cre
 set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with CGAL
 
-set(XPBD_FILES 
+set(XPBD_FILES
+    "include/common/colors.hpp"
     "include/simulation/Simulation.hpp" 
     "include/simulation/OutputSimulation.hpp"
     "include/simulation/BeamSimulation.hpp"

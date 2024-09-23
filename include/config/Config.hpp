@@ -8,6 +8,8 @@
 #include <optional>
 #include <iostream>
 
+#include "colors.hpp"
+
 /** Simple templated struct that stores a parameter from a YAML config.
  * The name field is the name of the YAML parameter.
  * The value is the value of the YAML parameter. Note the use of std::optional to represent YAML parameters that are null or missing.
@@ -39,6 +41,8 @@ class Config
     {
         // load the name parameter
         _extractParameter("name", node, _name, DEFAULT_NAME());
+
+        std::cout << "\nExtracting parameters for object with name " << BOLD << name().value() << RST << "..." << std::endl;
     }
 
     /** Declare virtual destructor for polymorphism */
@@ -74,14 +78,13 @@ class Config
             else
             {
                 // parameter in YAML node exists, but is null
-                std::cerr << "Parameter with name " << param_name << " is null (did you forget to set it?)" << std::endl;
+                std::cerr << KYEL << "\tParameter with name " << BOLD << param_name << RST << KYEL << " is null (did you forget to set it?)" << RST << std::endl;
             }
         }
         catch (const std::exception& e)
         {
             // parameter in YAML does not exist
-            std::cerr << e.what() << '\n';
-            std::cerr << "Parameter name " << param_name << " does not exist or is not of the type " << typeid(T).name() << "." << std::endl;
+            std::cerr << KYEL << "\tParameter " << BOLD << param_name << RST << KYEL << " not found for this object, or is not of the expected type." << RST << std::endl;
         }
 
         // if we get to here, the parameter was not specified so set the default value
@@ -89,7 +92,7 @@ class Config
 
         if (default_value.has_value())
         {
-            std::cout << "Setting parameter " << param_name << " to default value of " << default_value.value() << std::endl;
+            std::cout << "\tSetting parameter " << BOLD << param_name << RST << " to default value of " << BOLD << default_value.value() << RST << std::endl;
         }
     }
 
@@ -111,18 +114,19 @@ class Config
                 }
                 else
                 {
-                    std::cerr << key << " is not a valid option for parameter " << param_name << "! Valid options are ";
+                    std::cerr << KRED << BOLD << "\t" << key << RST << KRED << " is not a valid option for parameter " << BOLD << param_name << RST << KRED << "! Valid options are ";
                     for (const auto& [k, v] : options)
                     {
                         std::cerr << k << "; ";
                     }
-                    std::cerr << std::endl;
+                    std::cerr << RST << std::endl;
                 }
             }
         }
         catch(const std::exception& e)
         {
-            std::cerr << e.what() << '\n';
+            // parameter in YAML does not exist
+            std::cerr << KYEL << "\tParameter " << BOLD << param_name << RST << KYEL << " not found for this object, or is not of the expected type." << RST << std::endl;
         }
 
         // if we get to here, the parameter was not specified so set the default value
@@ -130,7 +134,7 @@ class Config
 
         if (default_value.has_value())
         {
-            std::cout << "Setting parameter " << param_name << " to default value of " << default_value.value() << std::endl;
+            std::cout << "\tSetting parameter " << BOLD << param_name << RST << " to default value of " << BOLD << default_value.value() << RST << std::endl;
         }
     }
 
@@ -160,20 +164,20 @@ class Config
                 }
                 else
                 {
-                    std::cerr << "Expected exactly 3 values for the parameter " << param_name << std::endl;
+                    std::cerr << KRED << "\tExpected exactly 3 values for the parameter " << BOLD << param_name << RST << std::endl;
                 }
                 
             }
             else
             {
                 // parameter in YAML node exists, but is null
-                std::cerr << "Parameter with name " << param_name << " is null (did you forget to set it?)" << std::endl;
+                std::cerr << "\tParameter with name " << param_name << " is null (did you forget to set it?)" << RST << std::endl;
             }
         }
         catch(const std::exception& e)
         {
             // parameter in YAML does not exist
-            std::cerr << e.what() << '\n';
+            std::cerr << KYEL << "\tParameter " << BOLD << param_name << RST << KYEL << " not found for this object, or is not of the expected type." << RST << std::endl;
         }
 
         // if we get to here, there was an issue with the parameter
@@ -181,7 +185,7 @@ class Config
 
         if (default_value.has_value())
         {
-            std::cout << "Setting parameter " << param_name << " to default value of " << default_value.value() << std::endl;
+            std::cout << "\tSetting parameter " << BOLD << param_name << RST << " to default value of " << BOLD << default_value.value() << RST << std::endl;
         }
         
     }
@@ -213,20 +217,20 @@ class Config
                 }
                 else
                 {
-                    std::cerr << "Expected exactly 4 values for the parameter " << param_name << std::endl;
+                    std::cerr << KRED << "\tExpected exactly 4 values for the parameter " << BOLD << param_name << RST << std::endl;
                 }
                 
             }
             else
             {
                 // parameter in YAML node eixsts, but is null
-                std::cerr << "Parameter with name " << param_name << " is null (did you forget to set it?)" << std::endl;
+                std::cerr << KYEL << "\tParameter with name " << BOLD << param_name << RST << KYEL << " is null (did you forget to set it?)" << RST << std::endl;
             }
         }
         catch(const std::exception& e)
         {
             // parameter in YAML does not exist
-            std::cerr << e.what() << '\n';
+            std::cerr << KYEL << "\tParameter " << BOLD << param_name << RST << KYEL << " not found for this object, or is not of the expected type." << RST << std::endl;
         }
 
         // if we get to here, there was an issue with the parameter, so set the default
@@ -234,7 +238,7 @@ class Config
 
         if (default_value.has_value())
         {
-            std::cout << "Setting parameter " << param_name << " to default value of " << default_value.value() << std::endl;
+            std::cout << "\tSetting parameter " << BOLD << param_name << RST << " to default value of " << BOLD << default_value.value() << RST << std::endl;
         }
         
     }

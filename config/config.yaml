@@ -38,7 +38,7 @@ objects:
     # solve-mode: "Sequential-Init-Lambda"
     # solve-mode: "First-Order-Simultaneous"
     # solve-mode: "Sequential-g"
-    solve-mode: "Simultaneous-g"
+    solve-mode: "Simultaneous-g1"
     # solve-mode: "Split-Deviatoric-Simultaneous9-g"
     # solve-mode: "Split-Deviatoric-Simultaneous10-g"
 
