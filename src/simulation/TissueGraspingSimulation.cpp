@@ -25,6 +25,10 @@ void TissueGraspingSimulation::setup()
 
     Simulation::setup();
 
+    _viewer->enableMouseInteraction(false);
+    
+    
+
     _out_file << toString() << std::endl;
 
     if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(_mesh_objects[0]))
@@ -33,6 +37,9 @@ void TissueGraspingSimulation::setup()
     }
     
     assert(_tissue_block);
+
+    // change camera orientation to 45 degrees looking down at the block of tissue
+    _viewer->camera()->setViewDirection(easy3d::vec3(1, 0, -1));
 
     _tissue_block->fixVerticesWithMinZ();
 
@@ -93,6 +100,10 @@ void TissueGraspingSimulation::notifyMouseMoved(double x, double y)
         new_position(2) = vd->position()(2) - _z_scaling*(y - _mouse_pos_2d(1));
         vd->setPosition(new_position);
     }
+    // for (const auto& vd : _grasped_vertex_drivers)
+    // {
+    //     vd->setPosition(new_mouse_pos);
+    // }
 
     _mouse_pos_3d = new_mouse_pos;
 

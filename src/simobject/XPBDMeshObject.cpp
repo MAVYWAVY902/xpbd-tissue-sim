@@ -363,6 +363,14 @@ std::string XPBDMeshObject::solveMode() const
         return "Split-Deviatoric-Simultaneous10-LLT";
     if (_solve_mode == XPBDSolveMode::FIRST_ORDER_SIMULTANEOUS)
         return "First-Order-Simultaneous";
+    if (_solve_mode == XPBDSolveMode::SEQUENTIAL_G)
+        return "Sequential-g";
+    if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_G)
+        return "Simultaneous-g";
+    if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS9_G)
+        return "Split-Deviatoric-Simultaneous9-g";
+    if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10_G)
+        return "Split-Deviatoric-Simultaneous10-g";
     
     return "";
 }

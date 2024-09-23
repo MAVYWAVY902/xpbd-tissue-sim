@@ -125,6 +125,12 @@ class TextRenderingViewer : public easy3d::Viewer
      */
     void registerSimulation(Simulation* simulation) { _simulation = simulation; }
 
+    /** Set whether or not to enable mouse interaction with the viewer.
+     * Note: this will still pass mouse events along to the Simulation, but will disable the default response to mouse events by the Easy3d viewer.
+     * @param allow : whether or not to enable mouse interaction with the viewer
+     */
+    void enableMouseInteraction(bool enable) { _enable_mouse_interaction = enable; }
+
     protected:
     /** Overridden draw method from easy3d::Viewer, with added functionality to draw each TextSpec. */
     void draw() const override;
@@ -153,6 +159,11 @@ class TextRenderingViewer : public easy3d::Viewer
      * Used to notify Simulation object when a key is pressed (which applies when using the Frame-by-frame simulation mode)
      */
     Simulation* _simulation;
+
+    /** Whether or not the default Viewer response to mouse events is enabled.
+     * E.g. normally when the user clicks and drags the Viewer window, the view of the camera is rotated. In some interactive sims we may not want that.
+     */
+    bool _enable_mouse_interaction;
 };
 
 #endif // __TEXT_RENDERING_VIEWER_HPP

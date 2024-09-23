@@ -111,6 +111,13 @@ Eigen::Vector3d MeshObject::bboxMaxCoords() const
     return _vertices.colwise().maxCoeff();
 }
 
+Eigen::Vector3d MeshObject::bboxCenterCoords() const
+{
+    Eigen::Vector3d mins = bboxMinCoords();
+    Eigen::Vector3d maxs = bboxMaxCoords();
+    return mins + (maxs - mins)/2;
+}
+
 std::vector<unsigned int> MeshObject::facesAsFlatList() const
 {
     // each face (triangle) has 3 vertices

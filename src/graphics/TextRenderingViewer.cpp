@@ -82,6 +82,7 @@ bool TextRenderingViewer::callback_event_keyboard(int key, int action, int modif
 {
     if (_simulation)
     {
+        // notify the simulation that a key was pressed
         _simulation->notifyKeyPressed(key, action, modifiers);
     }
 
@@ -92,20 +93,31 @@ bool TextRenderingViewer::callback_event_mouse_button(int button, int action, in
 {
     if (_simulation)
     {
+        // notify the simulation that a mouse button was pressed
         _simulation->notifyMouseButtonPressed(button, action, modifiers);
     }
 
-    return Viewer::callback_event_mouse_button(button, action, modifiers);
+    // if mouse interaction is enabled, pass on the event to easy3d::Viewer
+    if (_enable_mouse_interaction)
+        return Viewer::callback_event_mouse_button(button, action, modifiers);
+    else
+        return true;
+    
 }
 
 bool TextRenderingViewer::callback_event_cursor_pos(double x, double y)
 {
     if (_simulation)
     {
+        // notify the simulation that the mouse was moved
         _simulation->notifyMouseMoved(x, y);
     }
 
-    return Viewer::callback_event_cursor_pos(x, y);
+    // if mouse interaction is enabled, pass onthe event to easy3d::Viewer
+    if (_enable_mouse_interaction)
+        return Viewer::callback_event_cursor_pos(x, y);
+    else
+        return true;
 }
 
 void TextRenderingViewer::init()

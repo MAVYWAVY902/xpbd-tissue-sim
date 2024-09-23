@@ -2,7 +2,7 @@ name: "TissueGrasping"
 
 # Tissue grasping simulation-specific parameters
 z-scaling: 0.001    # scaling factor for converting vertical mouse movement with vertical tissue displacement
-grasp-size: 0.05    # the size of the area to grasp
+grasp-size: 0.02   # the size of the area to grasp
 
 g-accel: 9.81 # m/s2
 sim-mode: "Visualization"

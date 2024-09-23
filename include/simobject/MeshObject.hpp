@@ -86,6 +86,9 @@ class MeshObject : public easy3d::Model
     /** Returns the maximum coordinates from the bounding box of the mesh */
     Eigen::Vector3d bboxMaxCoords() const; 
 
+    /** Returns the coordinates of the center from the bounding box of the mesh. */
+    Eigen::Vector3d bboxCenterCoords() const;
+
     /** Updates the mesh based on a time step 
      * @param dt : the time delta since the last update
      * @param g_accel : the acceleration due to gravity
