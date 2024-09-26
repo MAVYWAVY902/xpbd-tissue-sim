@@ -9,7 +9,7 @@ output-folder: "../output/beam_stretch"
 
 # Beam stretch simulation specific
 stretch-velocity: 1 # m/s
-stretch-time: 3 # s
+stretch-time: 1 # s
 
 # acceleration due to gravity
 g-accel: 9.81 # m/s2
@@ -25,7 +25,7 @@ objects:
   -
     name: "Cube1"
     type: "XPBDMeshObject"
-    filename: "../resource/beam/cube16.msh"
+    filename: "../resource/cube/cube8.msh"
     material:
       name: "Soft Tissue"
       density: 1000
@@ -50,7 +50,7 @@ objects:
   -
     name: "Cube2"
     type: "XPBDMeshObject"
-    filename: "../resource/beam/cube16.msh"
+    filename: "../resource/cube/cube8.msh"
     material:
       name: "Soft Tissue"
       density: 1000

@@ -5,12 +5,34 @@ z-scaling: 0.001    # scaling factor for converting vertical mouse movement with
 grasp-size: 0.02   # the size of the area to grasp
 
 g-accel: 9.81 # m/s2
-sim-mode: "Visualization"
+# sim-mode: "Visualization"
 # sim-mode: "Frame-by-frame"
-# sim-mode: "AFAP"
+sim-mode: "AFAP"
 time-step: 1e-2
 end-time: 10
 objects:
+  -
+    name: "TissueBlock"
+    type: "XPBDMeshObject"
+    filename: "../resource/tissue/tissue_block1x1x0.1_4subdiv.msh"
+    material:
+      name: "Soft Tissue"
+      density: 1000
+      E: 6e4
+      nu: 0.4999
+    color: [1.0, 0.509, 0.0, 1.0]
+    draw-points: false
+    max-size: 1
+    position: [0, 0, 0.5]
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]
+    num-solver-iters: 1
+    damping-stiffness: 0
+    mass-to-damping-multiplier: 10000
+    residual-policy: "Never"
+    solve-mode: "First-Order-Simultaneous"
+    # solve-mode: "Simultaneous"
+
   -
     name: "TissueBlock"
     type: "XPBDMeshObject"

@@ -64,9 +64,10 @@ void XPBDMeshObject::_init()
     _lM = Eigen::MatrixXd::Zero(10,10);
     _ldlam = Eigen::VectorXd::Zero(10);
 
-    _dynamics_residual = 0;
-    _constraint_residual = 0;
-    _primary_residual = 0;
+    _primary_residual = VerticesMat::Zero(_vertices.rows(), 3);
+    _dynamics_residual_rms = 0;
+    _constraint_residual_rms = 0;
+    _primary_residual_rms = 0;
     _vol_ratio = 1;
     _x_prev = _vertices;
 }
@@ -273,6 +274,64 @@ void XPBDMeshObject::_precomputeQuantities()
         }
     }
 
+    if (_solve_mode == XPBDSolveMode::TRUE_GAUSS_SEIDEL)
+    {
+        _neighbor_elements.resize(_elements.rows());
+        // lazy O(n^2) loop looking for neighboring elements
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            for (int j = 0; j < _elements.rows(); j++)
+            {
+                if (i == j) continue;
+                // dumb check for shared vertices
+                if (_elements(j,0) == _elements(i,0) ||
+                    _elements(j,1) == _elements(i,0) ||
+                    _elements(j,2) == _elements(i,0) ||
+                    _elements(j,3) == _elements(i,0) ||
+                    _elements(j,0) == _elements(i,1) ||
+                    _elements(j,1) == _elements(i,1) ||
+                    _elements(j,2) == _elements(i,1) ||
+                    _elements(j,3) == _elements(i,1) ||
+                    _elements(j,0) == _elements(i,2) ||
+                    _elements(j,1) == _elements(i,2) ||
+                    _elements(j,2) == _elements(i,2) ||
+                    _elements(j,3) == _elements(i,2) ||
+                    _elements(j,0) == _elements(i,3) ||
+                    _elements(j,1) == _elements(i,3) ||
+                    _elements(j,2) == _elements(i,3) ||
+                    _elements(j,3) == _elements(i,3))
+                {
+                    _neighbor_elements[i].push_back(j);
+                }
+            }
+        }
+
+        double avg_mesh_connectivity = 0;
+        for (const auto& neighbors : _neighbor_elements)
+        {
+            avg_mesh_connectivity += neighbors.size();
+        }
+        avg_mesh_connectivity /= _elements.rows();
+        std::cout << "Avg mesh connectivity: " << avg_mesh_connectivity << std::endl;
+
+        for (const auto& e : _neighbor_elements[0])
+        {
+            std::cout << e << ", ";
+        }
+        std::cout << std::endl;
+    }
+
+    if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G)
+    {
+        _num_elements_with_position = Eigen::VectorXd::Zero(_vertices.rows());
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            _num_elements_with_position(_elements(i,0))++;
+            _num_elements_with_position(_elements(i,1))++;
+            _num_elements_with_position(_elements(i,2))++;
+            _num_elements_with_position(_elements(i,3))++;
+        }
+    }
     std::cout << "Precomputed quantities" << std::endl;
 
     if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SEQUENTIAL)
@@ -290,9 +349,9 @@ std::string XPBDMeshObject::toString() const
 
 void XPBDMeshObject::update(const double dt, const double g_accel)
 {
-    auto t1 = std::chrono::steady_clock::now();
+    // auto t1 = std::chrono::steady_clock::now();
     _movePositionsIntertially(dt, g_accel);
-    auto t2 = std::chrono::steady_clock::now();
+    // auto t2 = std::chrono::steady_clock::now();
     if (_solve_mode == XPBDSolveMode::SEQUENTIAL)
         _projectConstraintsSequential(dt);
     else if (_solve_mode == XPBDSolveMode::SIMULTANEOUS)
@@ -325,12 +384,16 @@ void XPBDMeshObject::update(const double dt, const double g_accel)
         _projectConstraintsSplitDeviatoricSimultaneous9G(dt);
     else if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10_G)
         _projectConstraintsSplitDeviatoricSimultaneous10G(dt);
+    else if (_solve_mode == XPBDSolveMode::TRUE_GAUSS_SEIDEL)
+        _projectConstraintsTrueGaussSeidel(dt);
+    else if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G)
+        _projectConstraintsSimultaneousDistributedG(dt);
 
-    auto t3 = std::chrono::steady_clock::now();
+    // auto t3 = std::chrono::steady_clock::now();
     _projectCollisionConstraints(dt);
-    auto t4 = std::chrono::steady_clock::now();
+    // auto t4 = std::chrono::steady_clock::now();
     _updateVelocities(dt);
-    auto t5 = std::chrono::steady_clock::now();
+    // auto t5 = std::chrono::steady_clock::now();
 
     // std::cout << "XPBDMeshObject::update =========" << std::endl;
     // std::cout << "\tmovePositionsInertially took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
@@ -371,6 +434,10 @@ std::string XPBDMeshObject::solveMode() const
         return "Split-Deviatoric-Simultaneous9-g";
     if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10_G)
         return "Split-Deviatoric-Simultaneous10-g";
+    if (_solve_mode == XPBDSolveMode::TRUE_GAUSS_SEIDEL)
+        return "True-Gauss-Seidel";
+    if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G)
+        return "Simultaneous-Distributed-g";
     
     return "";
 }
@@ -936,6 +1003,9 @@ void XPBDMeshObject::_projectConstraintsSimultaneousG(const double dt)
 
             const double k1 = -C_h - ((_g_scaling*delC_Minv_delC_h + alpha_h/(dt*dt))*lambda_hs(i) + _g_scaling*a12*lambda_ds(i)) + _g_scaling*delC_x_h;
             const double k2 = -C_d - (_g_scaling*a21*lambda_hs(i) + (_g_scaling*delC_Minv_delC_d + alpha_d/(dt*dt))*lambda_ds(i)) + _g_scaling*delC_x_d;
+
+            // const double k1 = -C_h - alpha_h/(dt*dt)*lambda_hs(i);
+            // const double k2 = -C_d - alpha_d/(dt*dt)*lambda_ds(i);
 
             const double detA = a11*a22 - a21*a12;
 
@@ -2600,6 +2670,138 @@ void XPBDMeshObject::_projectConstraintsFirstOrderSimultaneous(const double dt)
     }
 }
 
+void XPBDMeshObject::_projectConstraintsTrueGaussSeidel(const double dt)
+{
+    assert(0);
+}
+
+void XPBDMeshObject::_projectConstraintsSimultaneousDistributedG(const double dt)
+{
+    // accumulated hydrostatic Lagrange multipliers
+    Eigen::VectorXd lambda_hs = Eigen::VectorXd::Zero(_elements.rows());
+    // accumulated deviatoric Lagrange multipliers
+    Eigen::VectorXd lambda_ds = Eigen::VectorXd::Zero(_elements.rows());
+
+    _primary_residual = VerticesMat::Zero(_vertices.rows(), 3);
+
+    // store positions before constraints are projected
+    // this is x-tilde, seen in XPBD eqn 8 - used for computing primary residual
+    VerticesMat inertial_positions = _vertices;
+
+    VerticesMat x_minus_x_tilde = _vertices - inertial_positions;
+
+    for (unsigned gi = 0; gi < _num_iters; gi++)
+    {
+        x_minus_x_tilde = _vertices - inertial_positions;
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+            // extract masses of each vertex in the current element
+            const double m1 = _m[elem(0)];
+            const double m2 = _m[elem(1)];
+            const double m3 = _m[elem(2)];
+            const double m4 = _m[elem(3)];
+
+            _computeF(i, _lX, _lF);
+
+            /** DEVIATORIC CONSTRAINT */
+            const double C_d = _computeDeviatoricConstraint(_lF, _Q[i], _lC_d_grads);
+
+            // compute the deviatoric alpha
+            const double alpha_d = 1/(_material.mu() * _vols[i]);
+
+            /** HYDROSTATIC CONSTRAINT */
+
+            const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
+
+            // compute the hydrostatic alpha
+            const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+
+            const double inv_m1 = 1/m1;
+            const double inv_m2 = 1/m2;
+            const double inv_m3 = 1/m3;
+            const double inv_m4 = 1/m4;
+
+            // const Eigen::Vector3d x_minus_x_tilde1 = _vertices.row(elem(0)) - inertial_positions.row(elem(0));
+            // const Eigen::Vector3d x_minus_x_tilde2 = _vertices.row(elem(1)) - inertial_positions.row(elem(1));
+            // const Eigen::Vector3d x_minus_x_tilde3 = _vertices.row(elem(2)) - inertial_positions.row(elem(2));
+            // const Eigen::Vector3d x_minus_x_tilde4 = _vertices.row(elem(3)) - inertial_positions.row(elem(3));
+
+            // solve the 2x2 system
+            const double delC_Minv_delC_h = inv_m1*_lC_h_grads.col(0).squaredNorm() + 
+                               inv_m2*_lC_h_grads.col(1).squaredNorm() + 
+                               inv_m3*_lC_h_grads.col(2).squaredNorm() + 
+                               inv_m4*_lC_h_grads.col(3).squaredNorm();
+
+            const double delC_Minv_delC_d = inv_m1*_lC_d_grads.col(0).squaredNorm() + 
+                               inv_m2*_lC_d_grads.col(1).squaredNorm() + 
+                               inv_m3*_lC_d_grads.col(2).squaredNorm() + 
+                               inv_m4*_lC_d_grads.col(3).squaredNorm();
+
+            const double a11 = delC_Minv_delC_h + 
+                               alpha_h/(dt*dt);
+            const double a12 = inv_m1*_lC_h_grads.col(0).dot(_lC_d_grads.col(0)) +
+                               inv_m2*_lC_h_grads.col(1).dot(_lC_d_grads.col(1)) +
+                               inv_m3*_lC_h_grads.col(2).dot(_lC_d_grads.col(2)) +
+                               inv_m4*_lC_h_grads.col(3).dot(_lC_d_grads.col(3));
+            const double a21 = a12;
+            const double a22 = delC_Minv_delC_d + 
+                               alpha_d/(dt*dt);
+
+            const double delC_x_d = _lC_d_grads.col(0).dot(x_minus_x_tilde.row(elem(0))) +
+                                    _lC_d_grads.col(1).dot(x_minus_x_tilde.row(elem(1))) +
+                                    _lC_d_grads.col(2).dot(x_minus_x_tilde.row(elem(2))) +
+                                    _lC_d_grads.col(3).dot(x_minus_x_tilde.row(elem(3)));
+
+            const double delC_x_h = _lC_h_grads.col(0).dot(x_minus_x_tilde.row(elem(0))) +
+                                    _lC_h_grads.col(1).dot(x_minus_x_tilde.row(elem(1))) +
+                                    _lC_h_grads.col(2).dot(x_minus_x_tilde.row(elem(2))) +
+                                    _lC_h_grads.col(3).dot(x_minus_x_tilde.row(elem(3)));
+
+            // const double k1 = -C_h - ((_g_scaling*delC_Minv_delC_h + alpha_h/(dt*dt))*lambda_hs(i) + _g_scaling*a12*lambda_ds(i)) + _g_scaling*delC_x_h;
+            // const double k2 = -C_d - (_g_scaling*a21*lambda_hs(i) + (_g_scaling*delC_Minv_delC_d + alpha_d/(dt*dt))*lambda_ds(i)) + _g_scaling*delC_x_d;
+
+            const Eigen::Vector3d scaled_g0 = _primary_residual.row(elem(0)) / _num_elements_with_position(elem(0));
+            const Eigen::Vector3d scaled_g1 = _primary_residual.row(elem(1)) / _num_elements_with_position(elem(1));
+            const Eigen::Vector3d scaled_g2 = _primary_residual.row(elem(2)) / _num_elements_with_position(elem(2));
+            const Eigen::Vector3d scaled_g3 = _primary_residual.row(elem(3)) / _num_elements_with_position(elem(3));
+
+            const double k1 = -C_h - alpha_h/(dt*dt)*lambda_hs(i) + 
+                                inv_m1*(_lC_h_grads.col(0).dot(scaled_g0)) +
+                                inv_m2*(_lC_h_grads.col(1).dot(scaled_g1)) +
+                                inv_m3*(_lC_h_grads.col(2).dot(scaled_g2)) +
+                                inv_m4*(_lC_h_grads.col(3).dot(scaled_g3));
+
+            const double k2 = -C_d - alpha_d/(dt*dt)*lambda_ds(i) +
+                                inv_m1*(_lC_d_grads.col(0).dot(scaled_g0)) +
+                                inv_m2*(_lC_d_grads.col(1).dot(scaled_g1)) + 
+                                inv_m3*(_lC_d_grads.col(2).dot(scaled_g2)) +
+                                inv_m4*(_lC_d_grads.col(3).dot(scaled_g3));
+
+            const double detA = a11*a22 - a21*a12;
+
+            const double dlam_h = (k1*a22 - k2*a12) / detA;
+            const double dlam_d = (a11*k2 - a21*k1) / detA;
+
+
+            // update vertex positions
+            _vertices.row(elem(0)) += _lC_h_grads.col(0) * dlam_h * inv_m1 + _lC_d_grads.col(0) * dlam_d * inv_m1 - inv_m1 * scaled_g0;
+            _vertices.row(elem(1)) += _lC_h_grads.col(1) * dlam_h * inv_m2 + _lC_d_grads.col(1) * dlam_d * inv_m2 - inv_m2 * scaled_g1;
+            _vertices.row(elem(2)) += _lC_h_grads.col(2) * dlam_h * inv_m3 + _lC_d_grads.col(2) * dlam_d * inv_m3 - inv_m3 * scaled_g2;
+            _vertices.row(elem(3)) += _lC_h_grads.col(3) * dlam_h * inv_m4 + _lC_d_grads.col(3) * dlam_d * inv_m4 - inv_m4 * scaled_g3;
+            
+
+            // update Lagrange multipliers
+            lambda_hs(i) += dlam_h;
+            lambda_ds(i) += dlam_d;
+        }
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
+    // _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+}
+
 inline void XPBDMeshObject::_computeF(const unsigned elem_index, Eigen::Matrix3d& X, Eigen::Matrix3d& F)
 {
     // create the deformed shape matrix from current deformed vertex positions
@@ -2837,9 +3039,9 @@ void XPBDMeshObject::_calculateResiduals(const double dt, const VerticesMat& ine
      
 
    
-    VerticesMat primary_residual = Mx - del_C_lam;
+    _primary_residual = Mx - del_C_lam;
     // const double primary_residual_abs_mean = primary_residual.cwiseAbs().mean();
-    const double primary_residual_rms = std::sqrt(primary_residual.squaredNorm()/primary_residual.size());
+    const double primary_residual_rms = std::sqrt(_primary_residual.squaredNorm()/_primary_residual.size());
     
     VerticesMat Mxdt2 = Mx.array() / (dt*dt);
     // std::cout << "mxdt2: " << Mxdt2(0,2) << "\tforce: " << del_C_alpha_C(0,2) << std::endl;
@@ -2852,9 +3054,9 @@ void XPBDMeshObject::_calculateResiduals(const double dt, const VerticesMat& ine
     const double constraint_residual_rms = std::sqrt(constraint_residual.squaredNorm()/constraint_residual.size());
     // const double constraint_residual_abs_mean = constraint_residual.cwiseAbs().mean();
 
-    _primary_residual = primary_residual_rms;
-    _constraint_residual = constraint_residual_rms;
-    _dynamics_residual = dynamics_residual_rms;
+    _primary_residual_rms = primary_residual_rms;
+    _constraint_residual_rms = constraint_residual_rms;
+    _dynamics_residual_rms = dynamics_residual_rms;
     _vol_ratio = cur_vols.sum() / _vols.sum();
 
     // std::cout << primary_residual << std::endl;
@@ -2963,9 +3165,9 @@ void XPBDMeshObject::_calculateResidualsSplitDeviatoric(const double dt, const V
      
 
    
-    VerticesMat primary_residual = Mx - del_C_lam;
+    _primary_residual = Mx - del_C_lam;
     // const double primary_residual_abs_mean = primary_residual.cwiseAbs().mean();
-    const double primary_residual_rms = std::sqrt(primary_residual.squaredNorm()/primary_residual.size());
+    const double primary_residual_rms = std::sqrt(_primary_residual.squaredNorm()/_primary_residual.size());
     
     VerticesMat Mxdt2 = Mx.array() / (dt*dt);
     // std::cout << "mxdt2: " << Mxdt2(0,2) << "\tforce: " << del_C_alpha_C(0,2) << std::endl;
@@ -2978,9 +3180,9 @@ void XPBDMeshObject::_calculateResidualsSplitDeviatoric(const double dt, const V
     const double constraint_residual_rms = std::sqrt(constraint_residual.squaredNorm()/constraint_residual.size());
     // const double constraint_residual_abs_mean = constraint_residual.cwiseAbs().mean();
 
-    _primary_residual = primary_residual_rms;
-    _constraint_residual = constraint_residual_rms;
-    _dynamics_residual = dynamics_residual_rms;
+    _primary_residual_rms = primary_residual_rms;
+    _constraint_residual_rms = constraint_residual_rms;
+    _dynamics_residual_rms = dynamics_residual_rms;
     _vol_ratio = cur_vols.sum() / _vols.sum();
 
     // std::cout << name() << " Residuals:" << std::endl;

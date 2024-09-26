@@ -42,9 +42,9 @@ class XPBDMeshObject : public ElasticMeshObject
     */
     void update(const double dt, const double g_accel) override;
 
-    double primaryResidual() { return _primary_residual; }
-    double dynamicsResidual() { return _dynamics_residual; }
-    double constraintResidual() { return _constraint_residual; }
+    double primaryResidual() { return _primary_residual_rms; }
+    double dynamicsResidual() { return _dynamics_residual_rms; }
+    double constraintResidual() { return _constraint_residual_rms; }
     double volumeRatio() { return _vol_ratio; }
 
     unsigned numSolverIters() { return _num_iters; }
@@ -116,6 +116,10 @@ class XPBDMeshObject : public ElasticMeshObject
     void _projectConstraintsSplitDeviatoricSimultaneous9G(const double dt);
 
     void _projectConstraintsSplitDeviatoricSimultaneous10G(const double dt);
+
+    void _projectConstraintsTrueGaussSeidel(const double dt);
+
+    void _projectConstraintsSimultaneousDistributedG(const double dt);
 
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
@@ -195,10 +199,11 @@ class XPBDMeshObject : public ElasticMeshObject
     double _damping_stiffness;
 
     /** Calculate the residuals every step */
-    double _primary_residual;
-    double _constraint_residual;
-    double _dynamics_residual;
+    double _primary_residual_rms;
+    double _constraint_residual_rms;
+    double _dynamics_residual_rms;
     double _vol_ratio;
+    VerticesMat _primary_residual;
 
     /** For the initializing lambda method */
     Eigen::VectorXd _initial_lambda_ds;
@@ -216,6 +221,15 @@ class XPBDMeshObject : public ElasticMeshObject
 
     /** For the methods that incorporate g (i.e. Sequential-g, Simultaneous-g, etc.) */
     double _g_scaling;
+
+    /** For the true Gauss-Seidel method */
+    // keeps track of neighboring elements i.e. elements that share a vertex
+    // entry i in the vector is a list of neighboring elements for element i
+    std::vector<std::vector<unsigned> > _neighbor_elements;
+
+    /** For the distributed-g methods */
+    // keeps track of the number of elements that share position i
+    Eigen::VectorXd _num_elements_with_position;
 
 
 

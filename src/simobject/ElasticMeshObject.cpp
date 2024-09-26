@@ -169,6 +169,11 @@ void ElasticMeshObject::removeVertexDriver(const unsigned vertex)
     _vertex_drivers.erase(std::remove_if(_vertex_drivers.begin(), _vertex_drivers.end(), [=](const std::shared_ptr<VertexDriver>& vd){ return vd->vertexIndex() == vertex; }), _vertex_drivers.end());
 }
 
+void ElasticMeshObject::clearVertexDrivers()
+{
+    _vertex_drivers.clear();
+}
+
 void ElasticMeshObject::stretch(const double x_stretch, const double y_stretch, const double z_stretch)
 {
     const Eigen::Vector3d& min_coords = bboxMinCoords();

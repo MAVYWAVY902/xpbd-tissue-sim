@@ -99,6 +99,9 @@ class ElasticMeshObject : public MeshObject
     /** Removes a vertex driver */
     void removeVertexDriver(const unsigned vertex);
 
+    /** Removes all vertex drivers. */
+    void clearVertexDrivers();
+
     /** Stretches the mesh in each direction by a specified amount.
      * I.e. for an x_stretch of 2, the mesh will be stretched by a factor of 2x in the x direction
      * @param x_stretch : the factor by which to stretch (or compress) the mesh in the x direction
