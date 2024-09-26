@@ -68,7 +68,7 @@ docker kill sim-dev-1
 When spinning up and attaching to the container again, you **do not need to rebuild the container** (unless dependencies or the `Dockerfile` have changed). Simply use:
 ```
 docker compose up -d
-docker exec -t sim-dev-1 /bin/bash
+docker exec -it sim-dev-1 /bin/bash
 ```
 
 ### Windows
