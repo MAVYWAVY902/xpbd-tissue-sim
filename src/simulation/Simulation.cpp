@@ -23,6 +23,8 @@ void Simulation::_init()
     _g_accel = _config->gAccel().value();
     _viewer_refresh_time = 1/_config->fps().value()*1000;
 
+    _haptic_device_manager = std::make_unique<HapticDeviceManager>();
+
     // set the Simulation mode from the YAML config
     if (_config->simMode().has_value())
     {
@@ -125,6 +127,7 @@ void Simulation::update()
         // we want ~30 fps, so update the viewer every 33 ms
         if (time_since_last_redraw_ms > _viewer_refresh_time)
         {
+            // std::cout << _haptic_device_manager->getPosition() << std::endl;
             _updateGraphics();
 
             last_redraw = std::chrono::steady_clock::now();

@@ -42,7 +42,8 @@ void OutputSimulation::_timeStep()
 {
     Simulation::_timeStep();
 
-    if (_time - _last_print_sim_time >= _print_interval_s)
+    const double eps = 1e-12;
+    if (_time - _last_print_sim_time + eps >= _print_interval_s)
     {
         printInfo();
         _last_print_sim_time = _time;

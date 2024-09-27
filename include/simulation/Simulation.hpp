@@ -21,6 +21,8 @@
 
 #include "config/SimulationConfig.hpp"
 
+#include "HapticDeviceManager.hpp"
+
 #include <yaml-cpp/yaml.h>
 
 #include <thread>
@@ -124,6 +126,9 @@ class Simulation
 
         /** storage of all MeshObjects in the simulation */
         std::vector<MeshObject*> _mesh_objects;
+
+        /** Manages haptic device(s) */
+        std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
 };
 
 #endif

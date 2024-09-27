@@ -10,6 +10,7 @@ find_package(assimp REQUIRED)
 
 include_directories("./include")
 include_directories("./include/common")
+include_directories("./include/haptics")
 include_directories("./include/config")
 include_directories("./include/graphics")
 include_directories("./include/simobject")
@@ -23,6 +24,7 @@ target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with CGAL
 
 set(XPBD_FILES
     "include/common/colors.hpp"
+    "include/haptics/HapticDeviceManager.hpp"
     "include/simulation/Simulation.hpp" 
     "include/simulation/OutputSimulation.hpp"
     "include/simulation/BeamSimulation.hpp"
@@ -44,6 +46,7 @@ set(XPBD_FILES
     "include/config/ElasticMaterialConfig.hpp"
     "include/config/RigidMeshObjectConfig.hpp"
     "include/config/SimulationConfig.hpp"
+    "src/haptics/HapticDeviceManager.cpp"
     "src/simulation/Simulation.cpp"
     "src/simulation/OutputSimulation.cpp" 
     "src/simulation/BeamSimulation.cpp"
@@ -59,7 +62,7 @@ set(XPBD_FILES
 )
 
 add_library(XPBD ${XPBD_FILES} ) # create XPBD library
-target_link_libraries(XPBD easy3d::core easy3d::util easy3d::renderer easy3d::viewer MeshUtils yaml-cpp)
+target_link_libraries(XPBD easy3d::core easy3d::util easy3d::renderer easy3d::viewer MeshUtils yaml-cpp HD HDU)
 add_executable(Test src/exec/main.cpp)                    # create an executable target
 target_link_libraries(Test XPBD easy3d::viewer gmsh)       # link to necessary Easy3D modules (add more if needed, e.g., algo)
 
@@ -71,3 +74,6 @@ target_link_libraries(TissueGraspingTest XPBD easy3d::viewer gmsh)
 
 add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
 target_link_libraries(BeamStretchTest XPBD easy3d::viewer gmsh)
+
+add_executable(HapticTest src/exec/haptic_main.cpp)
+target_link_libraries(HapticTest XPBD easy3d::viewer gmsh)
