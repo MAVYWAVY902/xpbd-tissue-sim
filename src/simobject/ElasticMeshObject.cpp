@@ -212,6 +212,7 @@ void ElasticMeshObject::_loadMeshFromFile(const std::string& filename)
     // if the input file is a .stl, use gmsh to convert to .msh
     else if (input_file_extension == ".stl")
     {
+        MeshUtils::convertToSTL(filename);
         MeshUtils::convertSTLtoMSH(filename);
     }
 

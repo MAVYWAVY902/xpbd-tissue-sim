@@ -23,8 +23,6 @@ void Simulation::_init()
     _g_accel = _config->gAccel().value();
     _viewer_refresh_time = 1/_config->fps().value()*1000;
 
-    _haptic_device_manager = std::make_unique<HapticDeviceManager>();
-
     // set the Simulation mode from the YAML config
     if (_config->simMode().has_value())
     {
@@ -35,6 +33,7 @@ void Simulation::_init()
     _viewer = std::make_unique<TextRenderingViewer>(_name);
     _viewer->set_usage("");
     _viewer->registerSimulation(this);
+    _viewer->resize(1000,650);
 }
 
 Simulation::Simulation(const std::string& config_filename)

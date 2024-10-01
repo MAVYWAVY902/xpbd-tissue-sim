@@ -26,7 +26,11 @@ enum XPBDSolveMode
     SPLIT_DEVIATORIC_SIMULTANEOUS9_G,
     SPLIT_DEVIATORIC_SIMULTANEOUS10_G,
     TRUE_GAUSS_SEIDEL,
-    SIMULTANEOUS_DISTRIBUTED_G
+    SEQUENTIAL_DISTRIBUTED_G,
+    SIMULTANEOUS_DISTRIBUTED_G,
+    SIMULTANEOUS_DISTRIBUTED_G_INIT_LAMBDA,
+    SIMULTANEOUS_DISTRIBUTED_G_ORDERED,
+    SIMULTANEOUS_DAMPED_NEWTON
 };
 
 enum XPBDResidualPolicy
@@ -70,7 +74,11 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
                                                                        {"Split-Deviatoric-Simultaneous9-g", XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS9_G},
                                                                        {"Split-Deviatoric-Simultaneous10-g", XPBDSolveMode::SPLIT_DEVIATORIC_SIMULTANEOUS10_G},
                                                                        {"True-Gauss-Seidel", XPBDSolveMode::TRUE_GAUSS_SEIDEL},
-                                                                       {"Simultaneous-Distributed-g", XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G}};
+                                                                       {"Sequential-Distributed-g", XPBDSolveMode::SEQUENTIAL_DISTRIBUTED_G},
+                                                                       {"Simultaneous-Distributed-g", XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G},
+                                                                       {"Simultaneous-Distributed-g-Init-Lambda", XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G_INIT_LAMBDA},
+                                                                       {"Simultaneous-Distributed-g-Ordered", XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G_ORDERED},
+                                                                       {"Simultaneous-Damped-Newton", XPBDSolveMode::SIMULTANEOUS_DAMPED_NEWTON}};
         return solve_mode_options;
     }
 

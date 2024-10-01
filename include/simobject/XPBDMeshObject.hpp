@@ -119,7 +119,15 @@ class XPBDMeshObject : public ElasticMeshObject
 
     void _projectConstraintsTrueGaussSeidel(const double dt);
 
+    void _projectConstraintsSequentialDistributedG(const double dt);
+
     void _projectConstraintsSimultaneousDistributedG(const double dt);
+
+    void _projectConstraintsSimultaneousDistributedGInitLambda(const double dt);
+
+    void _projectConstraintsSimultaneousDistributedGOrdered(const double dt);
+
+    void _projectConstraintsSimultaneousDampedNewton(const double dt);
 
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
@@ -230,6 +238,9 @@ class XPBDMeshObject : public ElasticMeshObject
     /** For the distributed-g methods */
     // keeps track of the number of elements that share position i
     Eigen::VectorXd _num_elements_with_position;
+
+    /** For "ordered" methods that traverse the elements in a set order */
+    std::vector<int> _element_order;
 
 
 

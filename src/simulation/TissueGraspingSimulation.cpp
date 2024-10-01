@@ -1,6 +1,5 @@
 #include "TissueGraspingSimulation.hpp"
 #include "MeshUtils.hpp"
-#include "TissueGraspingSimulationConfig.hpp"
 
 TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_filename)
     : OutputSimulation()
@@ -11,10 +10,18 @@ TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_fil
     // initialize quantities using config object
     _init();
 
+
     // extract the stretch velocity and time from the config object
     TissueGraspingSimulationConfig* tissue_grasping_simulation_config = dynamic_cast<TissueGraspingSimulationConfig*>(_config.get());
     _grasp_size = tissue_grasping_simulation_config->graspSize().value();
     _z_scaling = tissue_grasping_simulation_config->zScaling().value();
+    _input_device = tissue_grasping_simulation_config->inputDevice().value();
+
+    if (_input_device == SimulationInputDevice::HAPTIC)
+    {
+        std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
+        _haptic_device_manager = std::make_unique<HapticDeviceManager>();
+    }
 
     _out_file << "Tissue Grasping Simulation" << std::endl;
 }
@@ -47,8 +54,35 @@ void TissueGraspingSimulation::setup()
     
 }
 
+void TissueGraspingSimulation::_timeStep()
+{
+    if (_input_device == SimulationInputDevice::HAPTIC)
+    {
+        if (!_grasping && _haptic_device_manager->button1Pressed())
+            _toggleTissueGrasping();
+        else if (_grasping && !_haptic_device_manager->button1Pressed())
+            _toggleTissueGrasping();
+
+        const Eigen::Vector3d haptic_position = _haptic_device_manager->position()/100;
+        Eigen::Vector3d position;
+        position(0) = -haptic_position(2);
+        position(1) = -haptic_position(0);
+        position(2) = haptic_position(1);
+
+
+        for (const auto& vd : _grasped_vertex_drivers)
+        {
+            vd->setPosition(position);
+        }
+    }
+
+    OutputSimulation::_timeStep();
+}
+
 void TissueGraspingSimulation::printInfo() const
 {
+    // std::cout << "Button1: " << _haptic_device_manager->button1Pressed() << "\tButton 2: " << _haptic_device_manager->button2Pressed() << std::endl;
+
     double primary_residual = 0;
     double constraint_residual = 0;
     double dynamics_residual = 0;
@@ -70,6 +104,11 @@ void TissueGraspingSimulation::printInfo() const
 
 void TissueGraspingSimulation::notifyMouseButtonPressed(int button, int action, int /* modifiers*/)
 {
+    if (_input_device != SimulationInputDevice::MOUSE)
+    {
+        return;
+    }
+
     // button = 0 ==> left mouse button
     // button = 1 ==> right mouse button
     // action = 0 ==> mouse up
@@ -84,6 +123,10 @@ void TissueGraspingSimulation::notifyMouseButtonPressed(int button, int action, 
 void TissueGraspingSimulation::notifyMouseMoved(double x, double y)
 {
     
+    if (_input_device != SimulationInputDevice::MOUSE)
+    {
+        return;
+    }
 
     bool found;
     easy3d::vec3 mouse_pt = _viewer->point_under_pixel(x, y, found);
