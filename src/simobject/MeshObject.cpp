@@ -136,6 +136,8 @@ void MeshObject::setVertices(const VerticesMat& verts)
     _vertices = verts;
     // ensure that the vertex cache has the right size before updating it
     _vertex_cache.resize(_vertices.rows());
+    // ensure that surface vertices vector has the right size
+    _vertex_on_surface.resize(_vertices.rows());
     updateVertexCache();
 }
 
@@ -157,6 +159,33 @@ unsigned MeshObject::getClosestVertex(const double x, const double y, const doub
     // I'm sure there is a good way to do this with std
     for (int i = 0; i < _vertices.rows(); i++)
     {
+        double dist = sq_dist_to_vertex(_vertices.row(i));
+        if (dist < closest_dist)
+        {
+            closest_index = i;
+            closest_dist = dist;
+        }
+    }
+
+    return closest_index;
+}
+
+unsigned MeshObject::getClosestSurfaceVertex(const double x, const double y, const double z) const
+{
+    auto sq_dist_to_vertex = [x, y, z] (const Eigen::Vector3d& vertex)
+    {
+        return (x-vertex(0))*(x-vertex(0)) + (y-vertex(1))*(y-vertex(1)) + (z-vertex(2))*(z-vertex(2));
+    };
+
+    unsigned closest_index = 0;
+    double closest_dist = sq_dist_to_vertex(_vertices.row(0));
+    // I'm sure there is a good way to do this with std
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        // only consider vertices on the mesh surface
+        if (!_vertex_on_surface.at(i))
+            continue;
+
         double dist = sq_dist_to_vertex(_vertices.row(i));
         if (dist < closest_dist)
         {
@@ -213,6 +242,15 @@ std::vector<unsigned> MeshObject::getVerticesWithZ(const double z) const
 void MeshObject::setFaces(const FacesMat& faces)
 {
     _faces = faces;
+
+    // iterate through surface faces to see which vertices are on the surface
+    _vertex_on_surface.assign(_vertices.rows(), 0);
+    for (const auto& face : _faces.rowwise())
+    {
+        _vertex_on_surface.at(face(0)) = true;
+        _vertex_on_surface.at(face(1)) = true;
+        _vertex_on_surface.at(face(2)) = true;
+    }
 }
 
 void MeshObject::resize(const double size_of_max_dim)

@@ -132,6 +132,11 @@ void ElasticMeshObject::setVertices(const VerticesMat& verts)
     _fixed_vertices = Eigen::Vector<bool, -1>::Zero(_vertices.rows());
 }
 
+void ElasticMeshObject::fixVertex(unsigned vertex)
+{
+    _fixed_vertices(vertex) = true;
+}
+
 void ElasticMeshObject::fixVerticesWithMinY()
 {
     Eigen::Vector3d min_coeff = _vertices.colwise().minCoeff();
@@ -212,16 +217,17 @@ void ElasticMeshObject::_loadMeshFromFile(const std::string& filename)
     // if the input file is a .stl, use gmsh to convert to .msh
     else if (input_file_extension == ".stl")
     {
-        MeshUtils::convertToSTL(filename);
         MeshUtils::convertSTLtoMSH(filename);
     }
 
     // load the vertices and elements from .msh file
     VerticesMat loaded_verts;
     ElementsMat loaded_elems;
-    MeshUtils::loadMeshDataFromGmshFile(msh_filename, loaded_verts, loaded_elems);
+    FacesMat loaded_surface_faces;
+    MeshUtils::loadMeshDataFromGmshFile(msh_filename, loaded_verts, loaded_surface_faces, loaded_elems);
     
     std::cout << "Number of loaded vertices: " << loaded_verts.rows() << std::endl;
+    std::cout << "Number of loaded surface faces: " << loaded_surface_faces.rows() << std::endl;
     std::cout << "Number of loaded elements: " << loaded_elems.rows() << std::endl;
 
     std::cout << "Created a new mesh object from filename " << filename << "!" << std::endl;
@@ -229,6 +235,7 @@ void ElasticMeshObject::_loadMeshFromFile(const std::string& filename)
     // set the new vertices and elements
     setVertices(loaded_verts);
     setElements(loaded_elems);
+    setFaces(loaded_surface_faces);
 
     // set the velocities to all be 0, AFTER vertices have been loaded
     _v = VerticesMat::Zero(_vertices.rows(), 3);
@@ -269,6 +276,6 @@ void ElasticMeshObject::setElements(const ElementsMat& elems)
 {
     _elements = elems;
     // set the faces from the new matrix of elements
-    _setFacesFromElements();
+    // _setFacesFromElements();
 
 }

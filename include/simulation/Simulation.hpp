@@ -86,7 +86,7 @@ class Simulation
         virtual void _timeStep();
 
         /** Update graphics in the sim */
-        void _updateGraphics();
+        virtual void _updateGraphics();
 
         virtual void _init();
 

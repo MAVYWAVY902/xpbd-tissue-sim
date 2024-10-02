@@ -125,6 +125,15 @@ class MeshObject : public easy3d::Model
      */
     unsigned getClosestVertex(const double x, const double y, const double z) const;
 
+    /** Finds the closest vertex on the mesh surface to the specified (x,y,z) points, and returns the row index in the _vertices matrix.
+     * For now, just does an O(n) search through the vertices.
+     * @param x : the x coordinate
+     * @param y : the y coordinate
+     * @param z : the z coordinate
+     * @returns the row index of the closest surface vertex to (x,y,z)
+     */
+    unsigned getClosestSurfaceVertex(const double x, const double y, const double z) const;
+
     std::vector<unsigned> getVerticesWithX(const double x) const;
     std::vector<unsigned> getVerticesWithY(const double y) const;
     std::vector<unsigned> getVerticesWithZ(const double z) const;
@@ -194,6 +203,12 @@ class MeshObject : public easy3d::Model
     VerticesMat _vertices;
     /** Nx3 faces matrix */
     FacesMat _faces;
+
+    /** Keeps track of surface vertices
+     * 1: on the surface of the mesh
+     * 0: not on the surface of the mesh
+     */
+    std::vector<bool> _vertex_on_surface;
 
     /** Vector of vec3 vertices that is continually updated as _vertices changes.
      * Used by easy3d to update the vertex buffers (i.e. the positions) of the geometry on the graphics side.

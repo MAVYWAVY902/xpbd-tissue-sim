@@ -22,11 +22,21 @@ class TissueGraspingSimulation : public OutputSimulation
 
     virtual void notifyMouseMoved(double x, double y) override;
 
+    /** Notifies the simulation that a key has been pressed in the viewer.
+         * @param key : the key that was pressed
+         * @param action : the action performed on the keyboard
+         * @param modifiers : the modifiers (i.e. Shift, Ctrl, Alt)
+         */
+    virtual void notifyKeyPressed(int key, int action, int modifiers) override;
+
     protected:
 
-    void _timeStep() override;
+    // void _timeStep() override;
+    void _updateGraphics() override;
     void _toggleTissueGrasping();
     std::set<unsigned> _getAllVerticesInGraspingArea();
+
+    Eigen::Vector3d _transformInputPosition(const Eigen::Vector3d& input_position);
 
     double _grasp_size;
     double _z_scaling;
@@ -37,6 +47,8 @@ class TissueGraspingSimulation : public OutputSimulation
     Eigen::Vector3d _mouse_pos_3d;
     std::vector<std::shared_ptr<StaticVertexDriver> > _grasped_vertex_drivers;
     ElasticMeshObject* _tissue_block;
+    RigidMeshObject* _grasp_tip;
+    Eigen::Vector3d _grasp_tip_position;
 
     /** Manages haptic device(s) */
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;

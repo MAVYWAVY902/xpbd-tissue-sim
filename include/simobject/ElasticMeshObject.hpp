@@ -93,6 +93,8 @@ class ElasticMeshObject : public MeshObject
      */
     void fixVerticesWithMinZ();
 
+    void fixVertex(unsigned index);
+
     /** Adds a new vertex driver */
     void addVertexDriver(const std::shared_ptr<VertexDriver>& vd);
 

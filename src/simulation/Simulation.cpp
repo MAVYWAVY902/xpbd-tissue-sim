@@ -210,6 +210,6 @@ int Simulation::run()
     }
 
     // run the Viewer
-    _viewer->fit_screen();
+    // _viewer->fit_screen();
     return _viewer->run();
 }

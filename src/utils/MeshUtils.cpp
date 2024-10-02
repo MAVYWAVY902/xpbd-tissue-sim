@@ -703,7 +703,7 @@ void MeshUtils::convertSTLtoMSH(const std::string& filename)
     
 }
 
-void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3>& verts, Eigen::Matrix<unsigned, -1, 4>& elems)
+void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems)
 {
     std::cout << "MeshUtils::loadMeshDataFromGmshFile - loading mesh data from " << filename << " as a MeshObject..." << std::endl;
 
@@ -771,11 +771,18 @@ void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Mat
 
         // Extract all tetrahedra into a flat vector
         std::vector<unsigned> tetrahedra_vertex_indices;
+        // Extract all surface triangles into a flat vector
+        std::vector<unsigned> triangle_vertex_indices;
         for (unsigned i = 0; i < elemTypes.size(); i++)
         {
             if (elemTypes[i] == 4)
             {
                 tetrahedra_vertex_indices.insert(tetrahedra_vertex_indices.end(), elemNodeTags[i].begin(), elemNodeTags[i].end());
+            }
+
+            if (elemTypes[i] == 2)
+            {
+                triangle_vertex_indices.insert(triangle_vertex_indices.end(), elemNodeTags[i].begin(), elemNodeTags[i].end());
             }
         }
 
@@ -788,6 +795,16 @@ void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Mat
             elems(elem_offset + i, 1) = tetrahedra_vertex_indices[i*4 + 1] - 1;
             elems(elem_offset + i, 2) = tetrahedra_vertex_indices[i*4 + 2] - 1;
             elems(elem_offset + i, 3) = tetrahedra_vertex_indices[i*4 + 3] - 1;
+        }
+
+        unsigned face_offset = surface_faces.rows();
+        unsigned num_faces = triangle_vertex_indices.size()/3;
+        surface_faces.conservativeResize(face_offset + num_faces, 3);
+        for (unsigned i = 0; i < num_faces; i++)
+        {
+            surface_faces(face_offset + i, 0) = triangle_vertex_indices[i*3] - 1;
+            surface_faces(face_offset + i, 1) = triangle_vertex_indices[i*3 + 1] - 1;
+            surface_faces(face_offset + i, 2) = triangle_vertex_indices[i*3 + 2] - 1;
         }
     }
 
