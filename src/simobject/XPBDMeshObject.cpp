@@ -374,6 +374,17 @@ void XPBDMeshObject::_precomputeQuantities()
         std::cout << "\t last element in indices list is " << _element_order.back() << " which has connectivity " << element_connectivity[_element_order.back()] << std::endl;
 
     }
+
+
+    double max_q = 0;
+    for (int i = 0; i < _elements.rows(); i++)
+    {
+        double q = _Q.at(i).maxCoeff();
+        if (q > max_q)
+            max_q = q;
+    }
+    std::cout << "Max of all Q: " << max_q << std::endl;
+
     std::cout << "Precomputed quantities" << std::endl;
 
     if (_solve_mode == XPBDSolveMode::SPLIT_DEVIATORIC_SEQUENTIAL)
@@ -438,6 +449,12 @@ void XPBDMeshObject::update(const double dt, const double g_accel)
         _projectConstraintsSimultaneousDampedNewton(dt);
     else if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G_ORDERED)
         _projectConstraintsSimultaneousDistributedGOrdered(dt);
+    else if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_JACOBI)
+        _projectConstraintsSimultaneousJacobi(dt);
+    else if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI)
+        _projectConstraintsSimultaneousConvergentJacobi(dt);
+    else if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI_LINE_SEARCH)
+        _projectConstraintsSimultaneousConvergentJacobiLineSearch(dt);
 
     // auto t3 = std::chrono::steady_clock::now();
     _projectCollisionConstraints(dt);
@@ -496,6 +513,12 @@ std::string XPBDMeshObject::solveMode() const
         return "Simultaneous-Damped-Newton";
     if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G_ORDERED)
         return "Simultaneous-Distributed-g-Ordered";
+    if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_JACOBI)
+        return "Simultaneous-Jacobi";
+    if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI)
+        return "Simultaneous-Convergent-Jacobi";
+    if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI_LINE_SEARCH)
+        return "Simultaneous-Jacobi-Line-Search";
     
     return "";
 }
@@ -2759,10 +2782,10 @@ void XPBDMeshObject::_projectConstraintsSequentialDistributedG(const double dt)
             const double inv_m3 = 1.0/_m[elem(2)];
             const double inv_m4 = 1.0/_m[elem(3)];
 
-            const Eigen::Vector3d scaled_g0 = _primary_residual.row(elem(0)) / (4*_num_elements_with_position(elem(0)));
-            const Eigen::Vector3d scaled_g1 = _primary_residual.row(elem(1)) / (4*_num_elements_with_position(elem(1)));
-            const Eigen::Vector3d scaled_g2 = _primary_residual.row(elem(2)) / (4*_num_elements_with_position(elem(2)));
-            const Eigen::Vector3d scaled_g3 = _primary_residual.row(elem(3)) / (4*_num_elements_with_position(elem(3)));
+            const Eigen::Vector3d scaled_g0 = _primary_residual.row(elem(0)) / (2*_num_elements_with_position(elem(0)));
+            const Eigen::Vector3d scaled_g1 = _primary_residual.row(elem(1)) / (2*_num_elements_with_position(elem(1)));
+            const Eigen::Vector3d scaled_g2 = _primary_residual.row(elem(2)) / (2*_num_elements_with_position(elem(2)));
+            const Eigen::Vector3d scaled_g3 = _primary_residual.row(elem(3)) / (2*_num_elements_with_position(elem(3)));
 
 
             /** DEVIATORIC CONSTRAINT */
@@ -2921,10 +2944,10 @@ void XPBDMeshObject::_projectConstraintsSimultaneousDistributedG(const double dt
             const double a22 = delC_Minv_delC_d + 
                                alpha_d/(dt*dt);
 
-            const Eigen::Vector3d scaled_g0 = _primary_residual.row(elem(0)) / (2*_num_elements_with_position(elem(0)));
-            const Eigen::Vector3d scaled_g1 = _primary_residual.row(elem(1)) / (2*_num_elements_with_position(elem(1)));
-            const Eigen::Vector3d scaled_g2 = _primary_residual.row(elem(2)) / (2*_num_elements_with_position(elem(2)));
-            const Eigen::Vector3d scaled_g3 = _primary_residual.row(elem(3)) / (2*_num_elements_with_position(elem(3)));
+            const Eigen::Vector3d scaled_g0 = _primary_residual.row(elem(0)) / (_num_elements_with_position(elem(0)));
+            const Eigen::Vector3d scaled_g1 = _primary_residual.row(elem(1)) / (_num_elements_with_position(elem(1)));
+            const Eigen::Vector3d scaled_g2 = _primary_residual.row(elem(2)) / (_num_elements_with_position(elem(2)));
+            const Eigen::Vector3d scaled_g3 = _primary_residual.row(elem(3)) / (_num_elements_with_position(elem(3)));
 
             const double k1 = -C_h - alpha_h/(dt*dt)*lambda_hs(i) + 
                                 inv_m1*(_lC_h_grads.col(0).dot(scaled_g0)) +
@@ -3384,6 +3407,355 @@ void XPBDMeshObject::_projectConstraintsSimultaneousDistributedGOrdered(const do
     }
 }
 
+
+void XPBDMeshObject::_projectConstraintsSimultaneousJacobi(const double dt)
+{
+    // accumulated hydrostatic Lagrange multipliers
+    Eigen::VectorXd lambda_hs = Eigen::VectorXd::Zero(_elements.rows());
+    // accumulated deviatoric Lagrange multipliers
+    Eigen::VectorXd lambda_ds = Eigen::VectorXd::Zero(_elements.rows());
+
+    // store positions before constraints are projected
+    // this is x-tilde, seen in XPBD eqn 8 - used for computing primary residual
+    VerticesMat inertial_positions = _vertices;
+
+    for (unsigned gi = 0; gi < _num_iters; gi++)
+    {
+        VerticesMat dx = VerticesMat::Zero(_vertices.rows(), 3);
+
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+            // extract masses of each vertex in the current element
+            const double m1 = _m[elem(0)];
+            const double m2 = _m[elem(1)];
+            const double m3 = _m[elem(2)];
+            const double m4 = _m[elem(3)];
+
+            _computeF(i, _lX, _lF);
+
+            /** DEVIATORIC CONSTRAINT */
+            const double C_d = _computeDeviatoricConstraint(_lF, _Q[i], _lC_d_grads);
+
+            // compute the deviatoric alpha
+            const double alpha_d = 1/(_material.mu() * _vols[i]);
+
+            /** HYDROSTATIC CONSTRAINT */
+
+            const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
+
+            // compute the hydrostatic alpha
+            const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+
+            const double inv_m1 = 1/m1;
+            const double inv_m2 = 1/m2;
+            const double inv_m3 = 1/m3;
+            const double inv_m4 = 1/m4;
+
+            // solve the 2x2 system
+            const double a11 = inv_m1*_lC_h_grads.col(0).squaredNorm() + 
+                               inv_m2*_lC_h_grads.col(1).squaredNorm() + 
+                               inv_m3*_lC_h_grads.col(2).squaredNorm() + 
+                               inv_m4*_lC_h_grads.col(3).squaredNorm() + 
+                               alpha_h/(dt*dt);
+            const double a12 = inv_m1*_lC_h_grads.col(0).dot(_lC_d_grads.col(0)) +
+                               inv_m2*_lC_h_grads.col(1).dot(_lC_d_grads.col(1)) +
+                               inv_m3*_lC_h_grads.col(2).dot(_lC_d_grads.col(2)) +
+                               inv_m4*_lC_h_grads.col(3).dot(_lC_d_grads.col(3));
+            const double a21 = a12;
+            const double a22 = inv_m1*_lC_d_grads.col(0).squaredNorm() + 
+                               inv_m2*_lC_d_grads.col(1).squaredNorm() + 
+                               inv_m3*_lC_d_grads.col(2).squaredNorm() + 
+                               inv_m4*_lC_d_grads.col(3).squaredNorm() + 
+                               alpha_d/(dt*dt);
+            const double k1 = (-C_h - alpha_h / (dt*dt) * lambda_hs(i));
+            const double k2 = (-C_d - alpha_d / (dt*dt) * lambda_ds(i));
+
+            const double detA = a11*a22 - a21*a12;
+
+            const double dlam_h = (k1*a22 - k2*a12) / detA;
+            const double dlam_d = (a11*k2 - a21*k1) / detA;
+
+            // update Lagrange multipliers
+            lambda_hs(i) += dlam_h;
+            lambda_ds(i) += dlam_d;
+
+
+            // update nodal forces (delC*lambda)
+            dx.row(elem(0)) += inv_m1 * (_lC_h_grads.col(0) * dlam_h + _lC_d_grads.col(0) * dlam_d);
+            dx.row(elem(1)) += inv_m2 * (_lC_h_grads.col(1) * dlam_h + _lC_d_grads.col(1) * dlam_d);
+            dx.row(elem(2)) += inv_m3 * (_lC_h_grads.col(2) * dlam_h + _lC_d_grads.col(2) * dlam_d);
+            dx.row(elem(3)) += inv_m4 * (_lC_h_grads.col(3) * dlam_h + _lC_d_grads.col(3) * dlam_d);
+        }
+
+        _vertices += dx;
+        
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
+    }
+
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
+}
+
+void XPBDMeshObject::_projectConstraintsSimultaneousConvergentJacobi(const double dt)
+{
+    // accumulated hydrostatic Lagrange multipliers
+    Eigen::VectorXd lambda_hs = Eigen::VectorXd::Zero(_elements.rows());
+    // accumulated deviatoric Lagrange multipliers
+    Eigen::VectorXd lambda_ds = Eigen::VectorXd::Zero(_elements.rows());
+
+    // store positions before constraints are projected
+    // this is x-tilde, seen in XPBD eqn 8 - used for computing primary residual
+    VerticesMat inertial_positions = _vertices;
+
+    for (unsigned gi = 0; gi < _num_iters; gi++)
+    {
+        VerticesMat nodal_forces = VerticesMat::Zero(_vertices.rows(), 3);
+
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+            // extract masses of each vertex in the current element
+            const double m1 = _m[elem(0)];
+            const double m2 = _m[elem(1)];
+            const double m3 = _m[elem(2)];
+            const double m4 = _m[elem(3)];
+
+            _computeF(i, _lX, _lF);
+
+            /** DEVIATORIC CONSTRAINT */
+            const double C_d = _computeDeviatoricConstraint(_lF, _Q[i], _lC_d_grads);
+
+            // compute the deviatoric alpha
+            const double alpha_d = 1/(_material.mu() * _vols[i]);
+
+            /** HYDROSTATIC CONSTRAINT */
+
+            const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
+
+            // compute the hydrostatic alpha
+            const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+
+            const double inv_m1 = 1/m1;
+            const double inv_m2 = 1/m2;
+            const double inv_m3 = 1/m3;
+            const double inv_m4 = 1/m4;
+
+            // solve the 2x2 system
+            const double a11 = inv_m1*_lC_h_grads.col(0).squaredNorm() + 
+                               inv_m2*_lC_h_grads.col(1).squaredNorm() + 
+                               inv_m3*_lC_h_grads.col(2).squaredNorm() + 
+                               inv_m4*_lC_h_grads.col(3).squaredNorm() + 
+                               alpha_h/(dt*dt);
+            const double a12 = inv_m1*_lC_h_grads.col(0).dot(_lC_d_grads.col(0)) +
+                               inv_m2*_lC_h_grads.col(1).dot(_lC_d_grads.col(1)) +
+                               inv_m3*_lC_h_grads.col(2).dot(_lC_d_grads.col(2)) +
+                               inv_m4*_lC_h_grads.col(3).dot(_lC_d_grads.col(3));
+            const double a21 = a12;
+            const double a22 = inv_m1*_lC_d_grads.col(0).squaredNorm() + 
+                               inv_m2*_lC_d_grads.col(1).squaredNorm() + 
+                               inv_m3*_lC_d_grads.col(2).squaredNorm() + 
+                               inv_m4*_lC_d_grads.col(3).squaredNorm() + 
+                               alpha_d/(dt*dt);
+            const double k1 = (-C_h - alpha_h / (dt*dt) * lambda_hs(i));
+            const double k2 = (-C_d - alpha_d / (dt*dt) * lambda_ds(i));
+
+            const double detA = a11*a22 - a21*a12;
+
+            const double dlam_h = (k1*a22 - k2*a12) / detA;
+            const double dlam_d = (a11*k2 - a21*k1) / detA;
+
+            // update Lagrange multipliers
+            lambda_hs(i) += dlam_h;
+            lambda_ds(i) += dlam_d;
+
+
+            // update nodal forces (delC*lambda)
+            nodal_forces.row(elem(0)) += inv_m1 * (_lC_h_grads.col(0) * lambda_hs(i) + _lC_d_grads.col(0) * lambda_ds(i));
+            nodal_forces.row(elem(1)) += inv_m2 * (_lC_h_grads.col(1) * lambda_hs(i) + _lC_d_grads.col(1) * lambda_ds(i));
+            nodal_forces.row(elem(2)) += inv_m3 * (_lC_h_grads.col(2) * lambda_hs(i) + _lC_d_grads.col(2) * lambda_ds(i));
+            nodal_forces.row(elem(3)) += inv_m4 * (_lC_h_grads.col(3) * lambda_hs(i) + _lC_d_grads.col(3) * lambda_ds(i));
+        }
+
+        _vertices = inertial_positions + nodal_forces;
+        
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
+    }
+
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
+}
+
+void XPBDMeshObject::_projectConstraintsSimultaneousConvergentJacobiLineSearch(const double dt)
+{
+    // accumulated hydrostatic Lagrange multipliers
+    Eigen::VectorXd lambda_hs = Eigen::VectorXd::Zero(_elements.rows());
+    // accumulated deviatoric Lagrange multipliers
+    Eigen::VectorXd lambda_ds = Eigen::VectorXd::Zero(_elements.rows());
+
+    // accumulated hydrostatic Lagrange multipliers
+    Eigen::VectorXd dlam_ds = Eigen::VectorXd::Zero(_elements.rows());
+    // accumulated deviatoric Lagrange multipliers
+    Eigen::VectorXd dlam_hs = Eigen::VectorXd::Zero(_elements.rows());
+
+    // store positions before constraints are projected
+    // this is x-tilde, seen in XPBD eqn 8 - used for computing primary residual
+    VerticesMat inertial_positions = _vertices;
+    VerticesMat latest_vertices = _vertices;
+
+    _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    double last_c_res_rms = _constraint_residual_rms;
+
+    const int max_line_search_iters = 10;
+    VerticesMat nodal_forces = VerticesMat::Zero(_vertices.rows(), 3);
+
+    for (unsigned gi = 0; gi < _num_iters; gi++)
+    {
+        double s = 1;
+        double c_res_rms = 0;
+
+        for (int li = 0; li < max_line_search_iters; li++)
+        {
+            nodal_forces = VerticesMat::Zero(_vertices.rows(), 3);
+
+            for (int i = 0; i < _elements.rows(); i++)
+            {
+                const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+
+                // extract masses of each vertex in the current element
+                const double m1 = _m[elem(0)];
+                const double m2 = _m[elem(1)];
+                const double m3 = _m[elem(2)];
+                const double m4 = _m[elem(3)];
+
+                _computeF(i, _lX, _lF);
+
+                /** DEVIATORIC CONSTRAINT */
+                const double C_d = _computeDeviatoricConstraint(_lF, _Q[i], _lC_d_grads);
+
+                // compute the deviatoric alpha
+                const double alpha_d = 1/(_material.mu() * _vols[i]);
+
+                /** HYDROSTATIC CONSTRAINT */
+
+                const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
+
+                // compute the hydrostatic alpha
+                const double alpha_h = 1/(_material.lambda() * _vols[i]);
+
+
+                const double inv_m1 = 1/m1;
+                const double inv_m2 = 1/m2;
+                const double inv_m3 = 1/m3;
+                const double inv_m4 = 1/m4;
+
+                // solve the 2x2 system
+                const double a11 = inv_m1*_lC_h_grads.col(0).squaredNorm() + 
+                                inv_m2*_lC_h_grads.col(1).squaredNorm() + 
+                                inv_m3*_lC_h_grads.col(2).squaredNorm() + 
+                                inv_m4*_lC_h_grads.col(3).squaredNorm() + 
+                                alpha_h/(dt*dt);
+                const double a12 = inv_m1*_lC_h_grads.col(0).dot(_lC_d_grads.col(0)) +
+                                inv_m2*_lC_h_grads.col(1).dot(_lC_d_grads.col(1)) +
+                                inv_m3*_lC_h_grads.col(2).dot(_lC_d_grads.col(2)) +
+                                inv_m4*_lC_h_grads.col(3).dot(_lC_d_grads.col(3));
+                const double a21 = a12;
+                const double a22 = inv_m1*_lC_d_grads.col(0).squaredNorm() + 
+                                inv_m2*_lC_d_grads.col(1).squaredNorm() + 
+                                inv_m3*_lC_d_grads.col(2).squaredNorm() + 
+                                inv_m4*_lC_d_grads.col(3).squaredNorm() + 
+                                alpha_d/(dt*dt);
+                const double k1 = s*(-C_h - alpha_h / (dt*dt) * lambda_hs(i));
+                const double k2 = s*(-C_d - alpha_d / (dt*dt) * lambda_ds(i));
+
+                const double detA = a11*a22 - a21*a12;
+
+                dlam_hs(i) = (k1*a22 - k2*a12) / detA;
+                dlam_ds(i) = (a11*k2 - a21*k1) / detA;
+
+                // add contributions to constraint residual
+                const double new_lam_d = lambda_ds(i) + dlam_ds(i);
+                const double new_lam_h = lambda_hs(i) + dlam_hs(i);
+
+
+                // update nodal forces (delC*lambda)
+                nodal_forces.row(elem(0)) += inv_m1 * (_lC_h_grads.col(0) * new_lam_h + _lC_d_grads.col(0) * new_lam_d);
+                nodal_forces.row(elem(1)) += inv_m2 * (_lC_h_grads.col(1) * new_lam_h + _lC_d_grads.col(1) * new_lam_d);
+                nodal_forces.row(elem(2)) += inv_m3 * (_lC_h_grads.col(2) * new_lam_h + _lC_d_grads.col(2) * new_lam_d);
+                nodal_forces.row(elem(3)) += inv_m4 * (_lC_h_grads.col(3) * new_lam_h + _lC_d_grads.col(3) * new_lam_d);
+            
+            }
+
+            _vertices = inertial_positions + nodal_forces;
+            _calculateResiduals(dt, inertial_positions, lambda_hs+dlam_hs, lambda_ds+dlam_ds);
+
+            std::cout << "Last res: " << last_c_res_rms << "\tNew res: " << _constraint_residual_rms <<std::endl;
+            if (_constraint_residual_rms < last_c_res_rms)
+            {
+                // update Lagrange multipliers
+                lambda_hs += dlam_hs;
+                lambda_ds += dlam_ds;
+                last_c_res_rms = _constraint_residual_rms;
+                latest_vertices = _vertices;
+                break;
+            }
+
+            _vertices = latest_vertices;
+            s /= 5.0;
+            std::cout << "Constraint residual increased!\tNew h scaling: " << s << std::endl;
+        }
+
+        
+        
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
+    }
+
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
+}
 
 inline void XPBDMeshObject::_computeF(const unsigned elem_index, Eigen::Matrix3d& X, Eigen::Matrix3d& F)
 {

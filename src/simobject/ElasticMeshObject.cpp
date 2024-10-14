@@ -198,6 +198,68 @@ void ElasticMeshObject::collapseToMinZ()
     _x_prev = _vertices;
 }
 
+double ElasticMeshObject::smallestEdgeLength()
+{
+    double min_length = std::numeric_limits<double>::max();
+    for (const auto& elem : _elements.rowwise())
+    {
+        const Eigen::Vector3d& v1 = _vertices.row(elem(0));
+        const Eigen::Vector3d& v2 = _vertices.row(elem(1));
+        const Eigen::Vector3d& v3 = _vertices.row(elem(2));
+        const Eigen::Vector3d& v4 = _vertices.row(elem(3));
+
+        double v1v2 = (v1-v2).norm();
+        double v1v3 = (v1-v3).norm();
+        double v1v4 = (v1-v4).norm();
+        double v2v3 = (v2-v3).norm();
+        double v2v4 = (v2-v4).norm();
+        double v3v4 = (v3-v4).norm();
+
+        // double v1v2 = (v1-v2).cwiseAbs().minCoeff();
+        // double v1v3 = (v1-v3).cwiseAbs().minCoeff();
+        // double v1v4 = (v1-v4).cwiseAbs().minCoeff();
+        // double v2v3 = (v2-v3).cwiseAbs().minCoeff();
+        // double v2v4 = (v2-v4).cwiseAbs().minCoeff();
+        // double v3v4 = (v3-v4).cwiseAbs().minCoeff();
+
+        if (v1v2 < min_length) min_length = v1v2;
+        if (v1v3 < min_length) min_length = v1v3;
+        if (v1v4 < min_length) min_length = v1v4;
+        if (v2v3 < min_length) min_length = v2v3;
+        if (v2v4 < min_length) min_length = v2v4;
+        if (v3v4 < min_length) min_length = v3v4;
+    }
+
+    return min_length;
+}
+
+double ElasticMeshObject::smallestVolume()
+{
+    double min_vol = std::numeric_limits<double>::max();
+    for (unsigned i = 0; i < _elements.rows(); i++)
+    {
+        // compute Q for each element
+        const Eigen::Vector3d& X1 = _vertices.row(_elements(i,0));
+        const Eigen::Vector3d& X2 = _vertices.row(_elements(i,1));
+        const Eigen::Vector3d& X3 = _vertices.row(_elements(i,2));
+        const Eigen::Vector3d& X4 = _vertices.row(_elements(i,3));
+
+        Eigen::Matrix3d X;
+        X.col(0) = (X1 - X4);
+        X.col(1) = (X2 - X4);
+        X.col(2) = (X3 - X4);
+
+        // compute volume from X
+        double vol = std::abs(X.determinant()/6);
+        
+        if (vol < min_vol) 
+            min_vol = vol;
+        
+    }
+
+    return min_vol;
+}
+
 void ElasticMeshObject::_loadMeshFromFile(const std::string& filename)
 {
     std::filesystem::path path(filename);

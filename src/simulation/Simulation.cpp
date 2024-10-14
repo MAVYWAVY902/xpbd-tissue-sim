@@ -81,6 +81,12 @@ void Simulation::setup()
         if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
         {
             XPBDMeshObject* new_obj = new XPBDMeshObject(xpbd_config);
+            // if (XPBDMeshObject* xpbdmo = dynamic_cast<XPBDMeshObject*>(mesh_object))
+        // {
+            std::cout << "Smallest edge length for " << new_obj->name() << ": " << new_obj->smallestEdgeLength() << std::endl;
+            std::cout << "Smallest tet volume for " << new_obj->name() << ": " << new_obj->smallestVolume() << std::endl;
+
+        // }
             addObject(new_obj);
         }
         else if (FastFEMMeshObjectConfig* fem_config = dynamic_cast<FastFEMMeshObjectConfig*>(obj_config.get()))

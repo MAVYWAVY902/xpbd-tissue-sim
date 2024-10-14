@@ -129,6 +129,12 @@ class XPBDMeshObject : public ElasticMeshObject
 
     void _projectConstraintsSimultaneousDampedNewton(const double dt);
 
+    void _projectConstraintsSimultaneousJacobi(const double dt);
+
+    void _projectConstraintsSimultaneousConvergentJacobi(const double dt);
+
+    void _projectConstraintsSimultaneousConvergentJacobiLineSearch(const double dt);
+
     /** Computes the residuals for the equations of motion.
      * See equations 8 and 9 in XPBD (Muller and Macklin 2016)
      * 

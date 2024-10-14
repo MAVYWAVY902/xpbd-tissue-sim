@@ -17,6 +17,8 @@ TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_fil
     _z_scaling = tissue_grasping_simulation_config->zScaling().value();
     _input_device = tissue_grasping_simulation_config->inputDevice().value();
 
+    _grasp_tip_rotation = Eigen::Matrix3d::Identity();
+
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
@@ -36,7 +38,7 @@ void TissueGraspingSimulation::setup()
     
     _grasp_tip = new RigidMeshObject("grasp_tip", "../resource/general/Cursor.stl");
     _grasp_tip->moveTo(Eigen::Vector3d(0,0,0));
-    _grasp_tip->resize(0.003);
+    _grasp_tip->resize(0.01);
     addObject(_grasp_tip);
 
     _out_file << toString() << std::endl;
@@ -87,12 +89,31 @@ void TissueGraspingSimulation::_updateGraphics()
             _toggleTissueGrasping();
 
         const Eigen::Vector3d haptic_position = _haptic_device_manager->position()/500;
-        easy3d::vec3 position_offset_easy3d = _viewer->camera()->position();
+        
+        
         _grasp_tip_position = _transformInputPosition(haptic_position);
 
         // std::cout << "Position: " << _grasp_tip_position(0) << ", " << _grasp_tip_position(1) << ", " << _grasp_tip_position(2) << std::endl;
         
+        Eigen::Matrix3d camera_rotation;
+        easy3d::vec3 view_dir_easy3d = _viewer->camera()->viewDirection();
+        easy3d::vec3 up_vec_easy3d = _viewer->camera()->upVector();
+        easy3d::vec3 right_vec_easy3d = -_viewer->camera()->rightVector();
+        Eigen::Vector3d view_dir(view_dir_easy3d[0], view_dir_easy3d[1], view_dir_easy3d[2]);
+        Eigen::Vector3d up_vec(up_vec_easy3d[0], up_vec_easy3d[1], up_vec_easy3d[2]);
+        Eigen::Vector3d right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2]);
+        camera_rotation.row(0) = right_vec;
+        camera_rotation.row(1) = up_vec;
+        camera_rotation.row(2) = view_dir;
+
+        const Eigen::Matrix3d haptic_orientation = camera_rotation*_haptic_device_manager->orientation();
+
         _grasp_tip->moveTo(_grasp_tip_position);
+        Eigen::Matrix3d rot_transpose = _grasp_tip_rotation.transpose();
+        // _grasp_tip->rotate(rot_transpose);
+        // _grasp_tip->rotate(haptic_orientation);
+
+        _grasp_tip_rotation = haptic_orientation;
 
         for (const auto& vd : _grasped_vertex_drivers)
         {

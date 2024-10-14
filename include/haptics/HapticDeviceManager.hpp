@@ -16,6 +16,7 @@ struct HapticDeviceData
     HDboolean button1_state;
     HDboolean button2_state;
     hduVector3Dd device_position;
+    HDdouble device_transform[16];
     HDErrorInfo error;
 };
 
@@ -28,6 +29,7 @@ class HapticDeviceManager
     ~HapticDeviceManager();
 
     Eigen::Vector3d position();
+    Eigen::Matrix3d orientation();
     bool button1Pressed();
     bool button2Pressed();
 
@@ -41,13 +43,14 @@ class HapticDeviceManager
     // void setButtonPressed(const bool pressed) { _button_pressed = pressed; }
     void copyState();
     void setStale(const bool stale) { _stale = stale; }
-    inline void setDeviceData(const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position);
+    inline void setDeviceData(const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform);
 
     HHD _hHD;
     HapticDeviceData _device_data;
     Eigen::Vector3d _position;
     bool _button1_pressed;
     bool _button2_pressed;
+    Eigen::Matrix3d _orientation;
     bool _stale;
 };
 

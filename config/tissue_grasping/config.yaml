@@ -3,7 +3,7 @@ name: "TissueGrasping"
 # Tissue grasping simulation-specific parameters
 z-scaling: 0.001    # scaling factor for converting vertical mouse movement with vertical tissue displacement
 grasp-size: 0.02   # the size of the area to grasp
-input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
+input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 
 g-accel: 0 # m/s2
 # sim-mode: "Visualization"
@@ -32,7 +32,8 @@ objects:
     damping-stiffness: 0
     mass-to-damping-multiplier: 10000
     residual-policy: "Never"
-    solve-mode: "First-Order-Simultaneous"
+    # solve-mode: "First-Order-Simultaneous"
+    solve-mode: "Simultaneous-Jacobi"
     # solve-mode: "Simultaneous"
 
   - 

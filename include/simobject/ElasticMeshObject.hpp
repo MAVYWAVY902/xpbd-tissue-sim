@@ -112,6 +112,12 @@ class ElasticMeshObject : public MeshObject
      */
     void stretch(const double x_stretch, const double y_stretch, const double z_stretch);
 
+    /** Finds the shortest edge in the mesh and returns its length. */
+    double smallestEdgeLength();
+
+    /** Finds the smallest element by volume in the mesh and returns its volume. */
+    double smallestVolume();
+
     /** Collapses all vertices to the mesh's minimum z
      * Used in stability experiments
      */

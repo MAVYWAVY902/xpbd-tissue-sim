@@ -30,7 +30,10 @@ enum XPBDSolveMode
     SIMULTANEOUS_DISTRIBUTED_G,
     SIMULTANEOUS_DISTRIBUTED_G_INIT_LAMBDA,
     SIMULTANEOUS_DISTRIBUTED_G_ORDERED,
-    SIMULTANEOUS_DAMPED_NEWTON
+    SIMULTANEOUS_DAMPED_NEWTON,
+    SIMULTANEOUS_JACOBI,
+    SIMULTANEOUS_CONVERGENT_JACOBI,
+    SIMULTANEOUS_CONVERGENT_JACOBI_LINE_SEARCH
 };
 
 enum XPBDResidualPolicy
@@ -78,7 +81,10 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
                                                                        {"Simultaneous-Distributed-g", XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G},
                                                                        {"Simultaneous-Distributed-g-Init-Lambda", XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G_INIT_LAMBDA},
                                                                        {"Simultaneous-Distributed-g-Ordered", XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G_ORDERED},
-                                                                       {"Simultaneous-Damped-Newton", XPBDSolveMode::SIMULTANEOUS_DAMPED_NEWTON}};
+                                                                       {"Simultaneous-Damped-Newton", XPBDSolveMode::SIMULTANEOUS_DAMPED_NEWTON},
+                                                                       {"Simultaneous-Jacobi", XPBDSolveMode::SIMULTANEOUS_JACOBI},
+                                                                       {"Simultaneous-Convergent-Jacobi", XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI},
+                                                                       {"Simultaneous-Convergent-Jacobi-Line-Search", XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI_LINE_SEARCH}};
         return solve_mode_options;
     }
 

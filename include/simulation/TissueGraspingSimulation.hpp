@@ -49,6 +49,7 @@ class TissueGraspingSimulation : public OutputSimulation
     ElasticMeshObject* _tissue_block;
     RigidMeshObject* _grasp_tip;
     Eigen::Vector3d _grasp_tip_position;
+    Eigen::Matrix3d _grasp_tip_rotation;
 
     /** Manages haptic device(s) */
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
