@@ -27,54 +27,38 @@ objects:
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
-    mass-to-damping-multiplier: 0.7
+    mass-to-damping-multiplier: 1
     # residual-policy: "Every-Iteration"
     # solve-mode: "Sequential"
     solve-mode: "Simultaneous"
     # solve-mode: "Simultaneous-Jacobi"
     # solve-mode: "Simultaneous-Convergent-Jacobi"
-  # -
-  #   name: "Cube2"
-  #   type: "XPBDMeshObject"
-  #   # type: "FastFEMMeshObject"
-  #   # filename: "../resource/general/stanford_bunny_lowpoly.msh"
-  #   # filename: "../resource/general/single.msh"
-  #   filename: "../resource/cube/cube8.msh"
-  #   # filename: "../resource/tissue/Prostate.stl"
-  #   material:
-  #     name: "Soft Tissue"
-  #     density: 1000
-  #     E: 6e4
-  #     nu: 0.4
-  #   color: [1.0, 0.0, 0.0, 1.0]
-  #   draw-points: false
-  #   max-size: 0.5
-  #   position: [0, -0.7, 0.25]
-  #   velocity: [0, 0, 0]
-  #   rotation: [0, 0, 0]
-  #   num-solver-iters: 10
-  #   damping-stiffness: 0
-  #   # mass-to-damping-multiplier: 100
-  #   # g-scaling: 0.01666
-  #   # residual-policy: "Every-Iteration"
-  #   # solve-mode: "Split-Deviatoric-Sequential"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous9"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
-  #   # solve-mode: "Sequential"
-  #   # solve-mode: "Simultaneous"
-  #   # solve-mode: "Sequential-Init-Lambda"
-  #   # solve-mode: "First-Order-Simultaneous"
-  #   # solve-mode: "Sequential-g"
-  #   solve-mode: "Simultaneous"
-  #   # solve-mode: "Sequential-Distributed-g"
-  #   # solve-mode: "Simultaneous-Distributed-g"
-  #   # solve-mode: "Simultaneous-Distributed-g-Init-Lambda"
-  #   # solve-mode: "Simultaneous-Distributed-g-Ordered"
-  #   # solve-mode: "Simultaneous-Damped-Newton"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous9-g"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous10-g"
-  #   # solve-mode: "True-Gauss-Seidel"
-  #   # solve-mode: "Simultaneous-Jacobi"
+  -
+    name: "Cube2"
+    type: "FirstOrderXPBDMeshObject"
+    # filename: "../resource/general/stanford_bunny_lowpoly.msh"
+    # filename: "../resource/general/single.msh"
+    filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/cube/cube16.msh"
+    # filename: "../resource/tissue/Prostate.msh"
+    material:
+      name: "Soft Tissue"
+      density: 100
+      E: 6e4
+      nu: 0.45
+    color: [1.0, 0.5, 0.0, 1.0]
+    draw-points: false
+    max-size: 10
+    position: [0, 12, 5]
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]
+    num-solver-iters: 10
+    mass-to-damping-multiplier: 1
+    # residual-policy: "Every-Iteration"
+    # solve-mode: "Sequential"
+    # solve-mode: "Simultaneous"
+    solve-mode: "Simultaneous-Jacobi"
+    # solve-mode: "Simultaneous-Convergent-Jacobi"
 
   
   # -
