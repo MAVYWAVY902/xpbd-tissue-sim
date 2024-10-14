@@ -1,6 +1,8 @@
 #include "BeamSimulation.hpp"
 #include "MeshUtils.hpp"
 
+#include "XPBDMeshObject.hpp"
+
 #include <regex>
 
 

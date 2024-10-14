@@ -2,6 +2,8 @@
 #include "MeshUtils.hpp"
 #include <regex>
 
+#include "XPBDMeshObject.hpp"
+
 
 ResidualSimulation::ResidualSimulation(const std::string& config_filename)
     : OutputSimulation(config_filename)

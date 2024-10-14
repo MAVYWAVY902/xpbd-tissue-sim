@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <iostream>
+#include <type_traits>
 
 #include "colors.hpp"
 
@@ -134,7 +135,15 @@ class Config
 
         if (default_value.has_value())
         {
-            std::cout << "\tSetting parameter " << BOLD << param_name << RST << " to default value of " << BOLD << default_value.value() << RST << std::endl;
+            K key;
+            for (auto &i : options) {
+                if (i.second == default_value.value()) {
+                    key = i.first;
+                    break;
+                }
+            }
+            std::cout << "\tSetting parameter " << BOLD << param_name << RST << " to default value of " << BOLD << key << RST << std::endl;
+            
         }
     }
 

@@ -15,9 +15,7 @@
 #include <assimp/Importer.hpp>
 
 #include "TextRenderingViewer.hpp"
-#include "RigidMeshObject.hpp"
-#include "XPBDMeshObject.hpp"
-#include "FastFEMMeshObject.hpp"
+#include "MeshObject.hpp"
 
 #include "config/SimulationConfig.hpp"
 

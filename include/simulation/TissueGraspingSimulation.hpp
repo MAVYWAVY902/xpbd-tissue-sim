@@ -4,6 +4,8 @@
 #include "OutputSimulation.hpp"
 #include "HapticDeviceManager.hpp"
 #include "TissueGraspingSimulationConfig.hpp"
+#include "XPBDMeshObject.hpp"
+#include "RigidMeshObject.hpp"
 #include <Eigen/Dense>
 
 class TissueGraspingSimulation : public OutputSimulation

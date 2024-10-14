@@ -7,9 +7,9 @@
  * SIMULTANEOUS: solves the hydrostatic and deviatoric constraints for each element simultaneously as a 2x2 system. Still iterates sequentially through each element.
  * SEQUENTIAL: solves the hydrostatic and deviatoric constraints for each element sequentially in true Gauss-Seidel fashion
  */
-enum XPBDSolveMode
+enum class XPBDSolveMode
 {
-    SIMULTANEOUS,
+    SIMULTANEOUS=0,
     SEQUENTIAL,
     CONSTANTX,
     SEQUENTIAL_RANDOMIZED,
@@ -36,9 +36,9 @@ enum XPBDSolveMode
     SIMULTANEOUS_CONVERGENT_JACOBI_LINE_SEARCH
 };
 
-enum XPBDResidualPolicy
+enum class XPBDResidualPolicy
 {
-    NEVER,
+    NEVER=0,
     EVERY_SUBSTEP,
     EVERY_ITERATION
 };

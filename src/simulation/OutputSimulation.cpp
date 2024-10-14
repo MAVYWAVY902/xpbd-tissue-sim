@@ -2,6 +2,8 @@
 #include "OutputSimulationConfig.hpp"
 #include "MeshUtils.hpp"
 
+#include "XPBDMeshObject.hpp"
+
 
 void OutputSimulation::_init()
 {

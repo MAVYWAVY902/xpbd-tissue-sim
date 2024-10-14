@@ -1,6 +1,12 @@
 #include "Simulation.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
+#include "config/FirstOrderXPBDMeshObjectConfig.hpp"
+
+#include "RigidMeshObject.hpp"
+#include "XPBDMeshObject.hpp"
+#include "FirstOrderXPBDMeshObject.hpp"
+#include "FastFEMMeshObject.hpp"
 
 #include "MeshUtils.hpp"
 
@@ -87,6 +93,11 @@ void Simulation::setup()
             std::cout << "Smallest tet volume for " << new_obj->name() << ": " << new_obj->smallestVolume() << std::endl;
 
         // }
+            addObject(new_obj);
+        }
+        else if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
+        {
+            FirstOrderXPBDMeshObject* new_obj = new FirstOrderXPBDMeshObject(xpbd_config);
             addObject(new_obj);
         }
         else if (FastFEMMeshObjectConfig* fem_config = dynamic_cast<FastFEMMeshObjectConfig*>(obj_config.get()))

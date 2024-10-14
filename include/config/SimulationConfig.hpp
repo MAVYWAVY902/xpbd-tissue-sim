@@ -3,6 +3,7 @@
 
 #include "config/MeshObjectConfig.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
+#include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
 #include "config/FastFEMMeshObjectConfig.hpp"
 
@@ -12,9 +13,9 @@
  * AFAP: run the simulation As Fast As Possible - i.e. do not slow updates
  * FRAME_BY_FRAME: allow the user to step the simulation forward, time step by time step, using the keyboard
 */
-enum SimulationMode
+enum class SimulationMode
 {
-    VISUALIZATION,
+    VISUALIZATION=0,
     AFAP,
     FRAME_BY_FRAME
 };
@@ -82,13 +83,19 @@ class SimulationConfig : public Config
                 config->timeStep(_time_step); 
                 _mesh_object_configs.push_back(std::move(config));
             }
+            if (type == "FirstOrderXPBDMeshObject")
+            {
+                std::unique_ptr<FirstOrderXPBDMeshObjectConfig> config = std::make_unique<FirstOrderXPBDMeshObjectConfig>(obj_node);
+                config->timeStep(_time_step);
+                _mesh_object_configs.push_back(std::move(config));
+            }
             if (type == "FastFEMMeshObject")
             {
                 std::unique_ptr<FastFEMMeshObjectConfig> config = std::make_unique<FastFEMMeshObjectConfig>(obj_node);
                 config->timeStep(_time_step);
                 _mesh_object_configs.push_back(std::move(config));
             }
-            if(type == "RigidMeshObject")
+            if (type == "RigidMeshObject")
             {
                 std::unique_ptr<RigidMeshObjectConfig> config = std::make_unique<RigidMeshObjectConfig>(obj_node);
                 config->timeStep(_time_step);

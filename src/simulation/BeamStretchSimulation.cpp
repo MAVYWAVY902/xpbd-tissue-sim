@@ -2,6 +2,8 @@
 #include "MeshUtils.hpp"
 #include "BeamStretchSimulationConfig.hpp"
 
+#include "XPBDMeshObject.hpp"
+
 #include <regex>
 
 BeamStretchSimulation::BeamStretchSimulation(const std::string& config_filename)
