@@ -26,7 +26,7 @@ objects:
     position: [0, 0, 5]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
-    num-solver-iters: 1
+    num-solver-iters: 10
     mass-to-damping-multiplier: 1
     # residual-policy: "Every-Iteration"
     # solve-mode: "Sequential"
@@ -46,7 +46,7 @@ objects:
       density: 100
       E: 6e4
       nu: 0.45
-    color: [1.0, 0.5, 0.0, 1.0]
+    color: [1.0, 0.0, 0.0, 1.0]
     draw-points: false
     max-size: 10
     position: [0, 12, 5]
@@ -55,9 +55,9 @@ objects:
     num-solver-iters: 10
     mass-to-damping-multiplier: 1
     # residual-policy: "Every-Iteration"
-    # solve-mode: "Sequential"
+    solve-mode: "Sequential"
     # solve-mode: "Simultaneous"
-    solve-mode: "Simultaneous-Jacobi"
+    # solve-mode: "Simultaneous-Jacobi"
     # solve-mode: "Simultaneous-Convergent-Jacobi"
 
   

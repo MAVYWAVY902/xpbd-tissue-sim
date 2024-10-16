@@ -31,6 +31,8 @@ void FirstOrderXPBDMeshObject::_init()
     _primary_residual_rms = 0;
     _vol_ratio = 1;
     _x_prev = _vertices;
+
+    _jacobi_scaling = 1;
 }
 
 void FirstOrderXPBDMeshObject::_precomputeQuantities()
@@ -70,6 +72,20 @@ void FirstOrderXPBDMeshObject::_precomputeQuantities()
         _m(_elements(i,2)) += m_element/4;
         _m(_elements(i,3)) += m_element/4;
     }
+
+    // compute the number of elements that share a given node
+    _num_elements_with_position = Eigen::VectorXi::Zero(_vertices.rows());
+    for (int i = 0; i < _elements.rows(); i++)
+    {
+        _num_elements_with_position(_elements(i,0))++;
+        _num_elements_with_position(_elements(i,1))++;
+        _num_elements_with_position(_elements(i,2))++;
+        _num_elements_with_position(_elements(i,3))++;
+    }
+    _jacobi_scaling = 1.0/_num_elements_with_position.maxCoeff();
+    std::cout << "\nJacobi scaling: " << _jacobi_scaling << std::endl;
+
+    std::cout << "\nSmallest Edge Length: " << smallestEdgeLength() << std::endl;
 }
 
 std::string FirstOrderXPBDMeshObject::toString() const
@@ -124,7 +140,7 @@ void FirstOrderXPBDMeshObject::_movePositionsIntertially(const double dt, const 
 {
     for (int i = 0; i < _vertices.rows(); i++)
     {
-        _vertices(i,2) += -g_accel * dt / _mass_to_damping_multiplier;
+        _vertices(i,2) += -g_accel*_m[i] * dt / _mass_to_damping_multiplier;
     }   
 }
 
@@ -245,10 +261,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
             // extract masses of each vertex in the current element
-            const double b1 = _m[elem(0)] * _mass_to_damping_multiplier;
-            const double b2 = _m[elem(1)] * _mass_to_damping_multiplier;
-            const double b3 = _m[elem(2)] * _mass_to_damping_multiplier;
-            const double b4 = _m[elem(3)] * _mass_to_damping_multiplier;
+            const double b1 = _mass_to_damping_multiplier;// * _m[elem(0)] ;
+            const double b2 = _mass_to_damping_multiplier;// * _m[elem(1)] ;
+            const double b3 = _mass_to_damping_multiplier;// * _m[elem(2)] ;
+            const double b4 = _mass_to_damping_multiplier;// * _m[elem(3)] ;
 
             _computeF(i, _lX, _lF);
 
@@ -350,10 +366,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousJacobi(const doubl
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
             // extract masses of each vertex in the current element
-            const double b1 = _m[elem(0)] * _mass_to_damping_multiplier;
-            const double b2 = _m[elem(1)] * _mass_to_damping_multiplier;
-            const double b3 = _m[elem(2)] * _mass_to_damping_multiplier;
-            const double b4 = _m[elem(3)] * _mass_to_damping_multiplier;
+            const double b1 = _mass_to_damping_multiplier * _m[elem(0)] ;
+            const double b2 = _mass_to_damping_multiplier * _m[elem(1)] ;
+            const double b3 = _mass_to_damping_multiplier * _m[elem(2)] ;
+            const double b4 = _mass_to_damping_multiplier * _m[elem(3)] ;
 
             _computeF(i, _lX, _lF);
 
@@ -407,11 +423,16 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousJacobi(const doubl
             lambda_ds(i) += dlam_d;
 
 
+            const double scaling1 = 1.0;///_num_elements_with_position(elem(0));
+            const double scaling2 = 1.0;///_num_elements_with_position(elem(1));
+            const double scaling3 = 1.0;///_num_elements_with_position(elem(2));
+            const double scaling4 = 1.0;///_num_elements_with_position(elem(3));
+
             // update nodal forces (delC*lambda)
-            dx.row(elem(0)) += inv_b1 * (_lC_h_grads.col(0) * dlam_h + _lC_d_grads.col(0) * dlam_d);
-            dx.row(elem(1)) += inv_b2 * (_lC_h_grads.col(1) * dlam_h + _lC_d_grads.col(1) * dlam_d);
-            dx.row(elem(2)) += inv_b3 * (_lC_h_grads.col(2) * dlam_h + _lC_d_grads.col(2) * dlam_d);
-            dx.row(elem(3)) += inv_b4 * (_lC_h_grads.col(3) * dlam_h + _lC_d_grads.col(3) * dlam_d);
+            dx.row(elem(0)) += scaling1 * inv_b1 * (_lC_h_grads.col(0) * dlam_h + _lC_d_grads.col(0) * dlam_d);
+            dx.row(elem(1)) += scaling2 * inv_b2 * (_lC_h_grads.col(1) * dlam_h + _lC_d_grads.col(1) * dlam_d);
+            dx.row(elem(2)) += scaling3 * inv_b3 * (_lC_h_grads.col(2) * dlam_h + _lC_d_grads.col(2) * dlam_d);
+            dx.row(elem(3)) += scaling4 * inv_b4 * (_lC_h_grads.col(3) * dlam_h + _lC_d_grads.col(3) * dlam_d);
         }
 
         _vertices += dx;

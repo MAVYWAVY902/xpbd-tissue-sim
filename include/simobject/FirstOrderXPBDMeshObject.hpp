@@ -136,8 +136,11 @@ class FirstOrderXPBDMeshObject : public ElasticMeshObject
     double _vol_ratio;
     VerticesMat _primary_residual;
 
-    /** For the First Order Simultaneous method */
     double _mass_to_damping_multiplier;
+    double _jacobi_scaling;
+
+    // keeps track of the number of elements that share position i
+    Eigen::VectorXi _num_elements_with_position;
 
 
 

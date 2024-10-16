@@ -28,16 +28,15 @@ objects:
     position: [0, 0, 5]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
-    num-solver-iters: 1
+    num-solver-iters: 10
     damping-stiffness: 0
-    mass-to-damping-multiplier: 4
     # g-scaling: 0.01666
     # residual-policy: "Every-Iteration"
     # solve-mode: "Split-Deviatoric-Sequential"
     # solve-mode: "Split-Deviatoric-Simultaneous9"
     # solve-mode: "Split-Deviatoric-Simultaneous10"
     # solve-mode: "Sequential"
-    solve-mode: "Simultaneous"
+    # solve-mode: "Simultaneous"
     # solve-mode: "Sequential-Init-Lambda"
     # solve-mode: "First-Order-Simultaneous"
     # solve-mode: "Sequential-g"
@@ -50,7 +49,7 @@ objects:
     # solve-mode: "Split-Deviatoric-Simultaneous9-g"
     # solve-mode: "Split-Deviatoric-Simultaneous10-g"
     # solve-mode: "True-Gauss-Seidel"
-    # solve-mode: "Simultaneous-Jacobi"
+    solve-mode: "Simultaneous-Jacobi"
     # solve-mode: "Simultaneous-Convergent-Jacobi"
     # solve-mode: "Simultaneous-Jacobi-Line-Search"
   # -

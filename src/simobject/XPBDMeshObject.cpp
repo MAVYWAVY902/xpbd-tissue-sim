@@ -324,7 +324,8 @@ void XPBDMeshObject::_precomputeQuantities()
         std::cout << std::endl;
     }
 
-    if (_solve_mode == XPBDSolveMode::SEQUENTIAL_DISTRIBUTED_G || _solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G || _solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G_INIT_LAMBDA)
+    if (_solve_mode == XPBDSolveMode::SEQUENTIAL_DISTRIBUTED_G || _solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G || _solve_mode == XPBDSolveMode::SIMULTANEOUS_DISTRIBUTED_G_INIT_LAMBDA ||
+        _solve_mode == XPBDSolveMode::SIMULTANEOUS_JACOBI || _solve_mode == XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI)
     {
         _num_elements_with_position = Eigen::VectorXd::Zero(_vertices.rows());
         for (int i = 0; i < _elements.rows(); i++)
@@ -3482,12 +3483,16 @@ void XPBDMeshObject::_projectConstraintsSimultaneousJacobi(const double dt)
             lambda_hs(i) += dlam_h;
             lambda_ds(i) += dlam_d;
 
+            const double scaling1 = 1.0/_num_elements_with_position(elem(0));
+            const double scaling2 = 1.0/_num_elements_with_position(elem(1));
+            const double scaling3 = 1.0/_num_elements_with_position(elem(2));
+            const double scaling4 = 1.0/_num_elements_with_position(elem(3));
 
             // update nodal forces (delC*lambda)
-            dx.row(elem(0)) += inv_m1 * (_lC_h_grads.col(0) * dlam_h + _lC_d_grads.col(0) * dlam_d);
-            dx.row(elem(1)) += inv_m2 * (_lC_h_grads.col(1) * dlam_h + _lC_d_grads.col(1) * dlam_d);
-            dx.row(elem(2)) += inv_m3 * (_lC_h_grads.col(2) * dlam_h + _lC_d_grads.col(2) * dlam_d);
-            dx.row(elem(3)) += inv_m4 * (_lC_h_grads.col(3) * dlam_h + _lC_d_grads.col(3) * dlam_d);
+            dx.row(elem(0)) += scaling1 * inv_m1 * (_lC_h_grads.col(0) * dlam_h + _lC_d_grads.col(0) * dlam_d);
+            dx.row(elem(1)) += scaling2 * inv_m2 * (_lC_h_grads.col(1) * dlam_h + _lC_d_grads.col(1) * dlam_d);
+            dx.row(elem(2)) += scaling3 * inv_m3 * (_lC_h_grads.col(2) * dlam_h + _lC_d_grads.col(2) * dlam_d);
+            dx.row(elem(3)) += scaling4 * inv_m4 * (_lC_h_grads.col(3) * dlam_h + _lC_d_grads.col(3) * dlam_d);
         }
 
         _vertices += dx;

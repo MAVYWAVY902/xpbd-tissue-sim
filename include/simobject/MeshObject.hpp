@@ -80,6 +80,8 @@ class MeshObject : public easy3d::Model
      */
     const std::vector<easy3d::vec3>& points() const override;
 
+    VerticesMat vertices() const { return _vertices; }
+
     /** Returns the minimum coordinates from the bounding box of the mesh */
     Eigen::Vector3d bboxMinCoords() const;
 
