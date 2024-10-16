@@ -31,7 +31,7 @@ class FirstOrderXPBDMeshObjectConfig : public ElasticMeshObjectConfig
     /** Static predefined default for residual policy */
     static std::optional<FirstOrderXPBDResidualPolicy>& DEFAULT_RESIDUAL_POLICY() { static std::optional<FirstOrderXPBDResidualPolicy> residual_policy(FirstOrderXPBDResidualPolicy::EVERY_SUBSTEP); return residual_policy; }
 
-    static std::optional<double>& DEFAULT_MASS_TO_DAMPING_MULTIPLIER() { static std::optional<double> mass_to_damping(1); return mass_to_damping; }
+    static std::optional<double>& DEFAULT_DAMPING_MULTIPLIER() { static std::optional<double> damping(1); return damping; }
 
     static std::map<std::string, FirstOrderXPBDSolveMode>& SOLVE_MODE_OPTIONS() 
     {
@@ -61,7 +61,7 @@ class FirstOrderXPBDMeshObjectConfig : public ElasticMeshObjectConfig
         _extractParameter("num-solver-iters", node, _num_solver_iters, DEFAULT_NUM_SOLVER_ITERS());
         _extractParameterWithOptions("solve-mode", node, _solve_mode, SOLVE_MODE_OPTIONS(), DEFAULT_SOLVE_MODE());
         _extractParameterWithOptions("residual-policy", node, _residual_policy, RESIDUAL_POLICY_OPTIONS(), DEFAULT_RESIDUAL_POLICY());
-        _extractParameter("mass-to-damping-multiplier", node, _mass_to_damping_multiplier, DEFAULT_MASS_TO_DAMPING_MULTIPLIER());        
+        _extractParameter("damping-multiplier", node, _damping_multiplier, DEFAULT_DAMPING_MULTIPLIER());        
     }
 
     // Getters
@@ -69,7 +69,7 @@ class FirstOrderXPBDMeshObjectConfig : public ElasticMeshObjectConfig
     std::optional<FirstOrderXPBDSolveMode> solveMode() const { return _solve_mode.value; }
     std::optional<double> dampingStiffness() const { return _damping_stiffness.value; }
     std::optional<FirstOrderXPBDResidualPolicy> residualPolicy() const { return _residual_policy.value; }
-    std::optional<double> massToDampingMultiplier() const { return _mass_to_damping_multiplier.value; }
+    std::optional<double> dampingMultiplier() const { return _damping_multiplier.value; }
     std::optional<double> gScaling() const { return _g_scaling.value; }
 
     protected:
@@ -78,7 +78,7 @@ class FirstOrderXPBDMeshObjectConfig : public ElasticMeshObjectConfig
     ConfigParameter<FirstOrderXPBDSolveMode> _solve_mode;
     ConfigParameter<double> _damping_stiffness;
     ConfigParameter<FirstOrderXPBDResidualPolicy> _residual_policy;
-    ConfigParameter<double> _mass_to_damping_multiplier;
+    ConfigParameter<double> _damping_multiplier;
     ConfigParameter<double> _g_scaling;
 };
 

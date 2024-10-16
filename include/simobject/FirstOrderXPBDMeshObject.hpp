@@ -112,6 +112,13 @@ class FirstOrderXPBDMeshObject : public ElasticMeshObject
      */
     Eigen::VectorXd _m;
 
+    /** Per vertex volume
+     * The total volume of all elements attached to a given node.
+     * 
+     * Computed once for each vertex, upon initialization of the mesh.
+     */
+    Eigen::VectorXd _v_volume;
+
     /** Loop variables
      * Allocate once at the beginning to avoid constant reallocation of resources each time step
      * each variable has _l prepended to indicate they are loop variables
@@ -136,7 +143,7 @@ class FirstOrderXPBDMeshObject : public ElasticMeshObject
     double _vol_ratio;
     VerticesMat _primary_residual;
 
-    double _mass_to_damping_multiplier;
+    double _damping_multiplier;
     double _jacobi_scaling;
 
     // keeps track of the number of elements that share position i

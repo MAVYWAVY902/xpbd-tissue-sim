@@ -9,17 +9,17 @@ output-folder: "../output/initial_deformation"
 
 # Initial deformation simulation specific
 deformation-type: "Volumetric-Expansion"
-deformation-factor: 1000
+deformation-factor: 10
 
 # acceleration due to gravity
 g-accel: 0 # m/s2
 
 # type of simulation to run
-# sim-mode: "Frame-by-frame"
-sim-mode: "Visualization"
+sim-mode: "Frame-by-frame"
+# sim-mode: "Visualization"
 # sim-mode: "AFAP"
 
-time-step: 1e-2
+time-step: 1e-3
 end-time: 4
 objects:
   -
@@ -30,16 +30,16 @@ objects:
     material:
       name: "Soft Tissue"
       density: 1000
-      E: 6e5
+      E: 6e4
       nu: 0.45
     color: [1.0, 0.509, 0.0, 1.0]
     draw-points: false
-    max-size: 0.5 #1
+    max-size: 0.05 #1
     position: [0, 0, 10]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
-    num-solver-iters: 100
-    mass-to-damping-multiplier: 100 #2
+    num-solver-iters: 1
+    damping-multiplier: 1650000 #2
     residual-policy: "Every-Substep"
     # solve-mode: "Split-Deviatoric-Sequential"
     # solve-mode: "Split-Deviatoric-Simultaneous9"

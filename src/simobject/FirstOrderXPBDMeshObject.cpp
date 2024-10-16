@@ -10,7 +10,7 @@ FirstOrderXPBDMeshObject::FirstOrderXPBDMeshObject(const FirstOrderXPBDMeshObjec
 
     _residual_policy = config->residualPolicy().value();
 
-    _mass_to_damping_multiplier = config->massToDampingMultiplier().value();
+    _damping_multiplier = config->dampingMultiplier().value();
 
     _init();
     _precomputeQuantities();
@@ -18,6 +18,14 @@ FirstOrderXPBDMeshObject::FirstOrderXPBDMeshObject(const FirstOrderXPBDMeshObjec
 
 void FirstOrderXPBDMeshObject::_init()
 {
+    // reserve space for vectors
+    // Q and volumes are per-element
+    _Q.resize(_elements.rows());
+    _vols.conservativeResize(_elements.rows());
+    // masses are per-vertex
+    _m = Eigen::VectorXd::Zero(_vertices.rows());
+    _v_volume = Eigen::VectorXd::Zero(_vertices.rows());
+
     // initialize loop variables to zeroes
     _lX = Eigen::Matrix3d::Zero();
     _lF = Eigen::Matrix3d::Zero();
@@ -37,13 +45,7 @@ void FirstOrderXPBDMeshObject::_init()
 
 void FirstOrderXPBDMeshObject::_precomputeQuantities()
 {
-    // reserve space for vectors
-    // Q and volumes are per-element
-    _Q.resize(_elements.rows());
-    _vols.conservativeResize(_elements.rows());
-    // masses are per-vertex
-    _m = Eigen::VectorXd::Zero(_vertices.rows());
-
+    
     for (unsigned i = 0; i < _elements.rows(); i++)
     {
         // compute Q for each element
@@ -71,6 +73,12 @@ void FirstOrderXPBDMeshObject::_precomputeQuantities()
         _m(_elements(i,1)) += m_element/4;
         _m(_elements(i,2)) += m_element/4;
         _m(_elements(i,3)) += m_element/4;
+
+        // add up total volume attached to each vertex
+        _v_volume(_elements(i,0)) += vol;
+        _v_volume(_elements(i,1)) += vol;
+        _v_volume(_elements(i,2)) += vol;
+        _v_volume(_elements(i,3)) += vol;
     }
 
     // compute the number of elements that share a given node
@@ -92,7 +100,7 @@ std::string FirstOrderXPBDMeshObject::toString() const
 {
     return ElasticMeshObject::toString() + "\n\tSolve mode: " + solveMode() +
         "\n\tNum solver iterations: " + std::to_string(_num_iters) +
-        "\n\tMass-to-damping multiplier: " + std::to_string(_mass_to_damping_multiplier);
+        "\n\tMass-to-damping multiplier: " + std::to_string(_damping_multiplier);
 }
 
 void FirstOrderXPBDMeshObject::update(const double dt, const double g_accel)
@@ -140,7 +148,7 @@ void FirstOrderXPBDMeshObject::_movePositionsIntertially(const double dt, const 
 {
     for (int i = 0; i < _vertices.rows(); i++)
     {
-        _vertices(i,2) += -g_accel*_m[i] * dt / _mass_to_damping_multiplier;
+        _vertices(i,2) += -g_accel*_m[i] * dt / _damping_multiplier;
     }   
 }
 
@@ -165,10 +173,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSequential(const double dt)
         {
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
             // extract masses of each vertex in the current element
-            const double b1 = _m[elem(0)] * _mass_to_damping_multiplier;
-            const double b2 = _m[elem(1)] * _mass_to_damping_multiplier;
-            const double b3 = _m[elem(2)] * _mass_to_damping_multiplier;
-            const double b4 = _m[elem(3)] * _mass_to_damping_multiplier;
+            const double b1 = _v_volume[elem(0)] * _damping_multiplier;
+            const double b2 = _v_volume[elem(1)] * _damping_multiplier;
+            const double b3 = _v_volume[elem(2)] * _damping_multiplier;
+            const double b4 = _v_volume[elem(3)] * _damping_multiplier;
 
             // extract masses of each vertex in the current element
             const double inv_b1 = 1.0/b1;
@@ -261,10 +269,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
             // extract masses of each vertex in the current element
-            const double b1 = _mass_to_damping_multiplier;// * _m[elem(0)] ;
-            const double b2 = _mass_to_damping_multiplier;// * _m[elem(1)] ;
-            const double b3 = _mass_to_damping_multiplier;// * _m[elem(2)] ;
-            const double b4 = _mass_to_damping_multiplier;// * _m[elem(3)] ;
+            const double b1 = _v_volume[elem(0)] * _damping_multiplier;
+            const double b2 = _v_volume[elem(1)] * _damping_multiplier;
+            const double b3 = _v_volume[elem(2)] * _damping_multiplier;
+            const double b4 = _v_volume[elem(3)] * _damping_multiplier;
 
             _computeF(i, _lX, _lF);
 
@@ -366,10 +374,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousJacobi(const doubl
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
             // extract masses of each vertex in the current element
-            const double b1 = _mass_to_damping_multiplier * _m[elem(0)] ;
-            const double b2 = _mass_to_damping_multiplier * _m[elem(1)] ;
-            const double b3 = _mass_to_damping_multiplier * _m[elem(2)] ;
-            const double b4 = _mass_to_damping_multiplier * _m[elem(3)] ;
+            const double b1 = _damping_multiplier * _v_volume[elem(0)] ;
+            const double b2 = _damping_multiplier * _v_volume[elem(1)] ;
+            const double b3 = _damping_multiplier * _v_volume[elem(2)] ;
+            const double b4 = _damping_multiplier * _v_volume[elem(3)] ;
 
             _computeF(i, _lX, _lF);
 
@@ -477,10 +485,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousConvergentJacobi(c
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
             // extract masses of each vertex in the current element
-            const double b1 = _m[elem(0)] * _mass_to_damping_multiplier;
-            const double b2 = _m[elem(1)] * _mass_to_damping_multiplier;
-            const double b3 = _m[elem(2)] * _mass_to_damping_multiplier;
-            const double b4 = _m[elem(3)] * _mass_to_damping_multiplier;
+            const double b1 = _v_volume[elem(0)] * _damping_multiplier;
+            const double b2 = _v_volume[elem(1)] * _damping_multiplier;
+            const double b3 = _v_volume[elem(2)] * _damping_multiplier;
+            const double b4 = _v_volume[elem(3)] * _damping_multiplier;
 
             _computeF(i, _lX, _lF);
 
