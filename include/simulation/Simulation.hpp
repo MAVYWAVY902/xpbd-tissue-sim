@@ -18,6 +18,7 @@
 #include "MeshObject.hpp"
 
 #include "config/SimulationConfig.hpp"
+#include "collision/CollisionScene.hpp"
 
 #include <yaml-cpp/yaml.h>
 
@@ -51,7 +52,7 @@ class Simulation
         /** Adds a MeshObject to the simulation. Will add its Drawables to the Viewer as well.
          * @param mesh_obj : the MeshObject being added  
         */        
-        void addObject(MeshObject* mesh_obj);
+        void addObject(std::shared_ptr<MeshObject> mesh_obj);
 
         double time() const { return _time; }
 
@@ -121,7 +122,9 @@ class Simulation
         std::unique_ptr<TextRenderingViewer> _viewer;
 
         /** storage of all MeshObjects in the simulation */
-        std::vector<MeshObject*> _mesh_objects;
+        std::vector<std::shared_ptr<MeshObject>> _mesh_objects;
+
+        std::unique_ptr<CollisionScene> _collision_scene;
 };
 
 #endif

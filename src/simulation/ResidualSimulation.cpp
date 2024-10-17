@@ -18,7 +18,7 @@ void ResidualSimulation::setup()
     _out_file << toString() << std::endl;
 
     for (auto& mesh_object : _mesh_objects) {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object))
+        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
         {
             _out_file << "\n" << elastic_mesh_object->toString() << std::endl;
         }
@@ -28,7 +28,7 @@ void ResidualSimulation::setup()
     _out_file << "\nTime(s)";
     for (auto& mesh_object : _mesh_objects)
     {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object))
+        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
         {
             std::regex r("\\s+");
             const std::string& name = std::regex_replace(elastic_mesh_object->name(), r, "");
@@ -50,7 +50,7 @@ void ResidualSimulation::printInfo() const
         double primary_residual = 0;
         double constraint_residual = 0;
         double volume_ratio = 1;
-        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[i]))
+        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[i].get()))
         {
             primary_residual = elastic_mesh_object->primaryResidual();
             constraint_residual = elastic_mesh_object->constraintResidual();

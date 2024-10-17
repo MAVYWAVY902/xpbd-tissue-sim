@@ -48,8 +48,8 @@ class TissueGraspingSimulation : public OutputSimulation
     Eigen::Vector2d _mouse_pos_2d;
     Eigen::Vector3d _mouse_pos_3d;
     std::vector<std::shared_ptr<StaticVertexDriver> > _grasped_vertex_drivers;
-    ElasticMeshObject* _tissue_block;
-    RigidMeshObject* _grasp_tip;
+    std::shared_ptr<ElasticMeshObject> _tissue_block;
+    std::shared_ptr<RigidMeshObject> _grasp_tip;
     Eigen::Vector3d _grasp_tip_position;
     Eigen::Matrix3d _grasp_tip_rotation;
 

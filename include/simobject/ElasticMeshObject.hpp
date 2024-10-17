@@ -83,6 +83,8 @@ class ElasticMeshObject : public MeshObject
 
     const ElasticMaterial& material() { return _material; }
 
+    VerticesMat velocities() const override { return _v; }
+
     /** Fixes all vertices in the mesh with the minimum y-value.
      * Used in setting up cantilever beam experiments
      */

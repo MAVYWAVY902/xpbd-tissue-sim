@@ -8,8 +8,11 @@ list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build")
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)
 
+add_subdirectory("/thirdparty/bvh" build)
+
 include_directories("./include")
 include_directories("./include/common")
+include_directories("./include/collision")
 include_directories("./include/haptics")
 include_directories("./include/config")
 include_directories("./include/graphics")
@@ -24,6 +27,7 @@ target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with CGAL
 
 set(XPBD_FILES
     "include/common/colors.hpp"
+    "include/collision/CollisionScene.hpp"
     "include/haptics/HapticDeviceManager.hpp"
     "include/simulation/Simulation.hpp" 
     "include/simulation/OutputSimulation.hpp"
@@ -53,6 +57,7 @@ set(XPBD_FILES
     "include/config/BeamStretchSimulationConfig.hpp"
     "include/config/TissueGraspingSimulationConfig.hpp"
     "include/config/InitialDeformationSimulationConfig.hpp"
+    "src/collision/CollisionScene.cpp"
     "src/haptics/HapticDeviceManager.cpp"
     "src/simulation/Simulation.cpp"
     "src/simulation/OutputSimulation.cpp" 
@@ -71,7 +76,7 @@ set(XPBD_FILES
 )
 
 add_library(XPBD ${XPBD_FILES} ) # create XPBD library
-target_link_libraries(XPBD easy3d::core easy3d::util easy3d::renderer easy3d::viewer MeshUtils yaml-cpp HD HDU)
+target_link_libraries(XPBD easy3d::core easy3d::util easy3d::renderer easy3d::viewer MeshUtils yaml-cpp HD HDU bvh)
 add_executable(Test src/exec/main.cpp)                    # create an executable target
 target_link_libraries(Test XPBD easy3d::viewer gmsh)       # link to necessary Easy3D modules (add more if needed, e.g., algo)
 

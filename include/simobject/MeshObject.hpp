@@ -82,6 +82,10 @@ class MeshObject : public easy3d::Model
 
     VerticesMat vertices() const { return _vertices; }
 
+    FacesMat faces() const { return _faces; }
+
+    virtual VerticesMat velocities() const = 0;
+
     /** Returns the minimum coordinates from the bounding box of the mesh */
     Eigen::Vector3d bboxMinCoords() const;
 

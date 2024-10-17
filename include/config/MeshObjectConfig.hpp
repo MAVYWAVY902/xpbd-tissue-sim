@@ -8,6 +8,7 @@ class MeshObjectConfig : public Config
     /** Static predefined default for whether or not to draw mesh points */
     static std::optional<bool>& DEFAULT_DRAW_POINTS() { static std::optional<bool> draw_points(false); return draw_points; }
     static std::optional<Eigen::Vector4d>& DEFAULT_COLOR() { static std::optional<Eigen::Vector4d> color({1.0, 1.0, 1.0, 1.0}); return color; }
+    static std::optional<bool>& DEFAULT_COLLISIONS() { static std::optional<bool> collisions(false); return collisions; }
 
     public:
     /** Creates a MeshObjectConfig from a YAML node, which consists of the parameters needed for a MeshObject
@@ -24,6 +25,8 @@ class MeshObjectConfig : public Config
         _extractParameter("position", node, _initial_position);
         _extractParameter("velocity", node, _initial_velocity);
         _extractParameter("rotation", node, _initial_rotation);
+
+        _extractParameter("collisions", node, _collisions, DEFAULT_COLLISIONS());
         
         _extractParameter("draw-points", node, _draw_points, DEFAULT_DRAW_POINTS());
         _extractParameter("color", node, _color, DEFAULT_COLOR());
@@ -36,6 +39,7 @@ class MeshObjectConfig : public Config
     std::optional<Eigen::Vector3d> initialPosition() const { return _initial_position.value; }
     std::optional<Eigen::Vector3d> initialVelocity() const { return _initial_velocity.value; }
     std::optional<Eigen::Vector3d> initialRotation() const { return _initial_rotation.value;}
+    std::optional<bool> collisions() const { return _collisions.value; }
     std::optional<bool> drawPoints() const { return _draw_points.value; }
     std::optional<Eigen::Vector4d> color() const { return _color.value; }
     std::optional<double> timeStep() const { return _time_step.value; }
@@ -52,6 +56,8 @@ class MeshObjectConfig : public Config
     ConfigParameter<Eigen::Vector3d> _initial_position;
     ConfigParameter<Eigen::Vector3d> _initial_velocity;
     ConfigParameter<Eigen::Vector3d> _initial_rotation;
+
+    ConfigParameter<bool> _collisions;
 
     ConfigParameter<bool> _draw_points;
     ConfigParameter<Eigen::Vector4d> _color;

@@ -21,7 +21,7 @@ void BeamSimulation::setup()
     _out_file << toString() << std::endl;
 
     for (auto& mesh_object : _mesh_objects) {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object))
+        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
         {
             elastic_mesh_object->fixVerticesWithMinY();
             _out_file << elastic_mesh_object->toString() << std::endl;
@@ -41,7 +41,7 @@ void BeamSimulation::setup()
     _out_file << "\nTime(s)";
     for (auto& mesh_object : _mesh_objects)
     {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object))
+        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
         {
             std::regex r("\\s+");
             const std::string& name = std::regex_replace(elastic_mesh_object->name(), r, "");
@@ -65,7 +65,7 @@ void BeamSimulation::printInfo() const
         double primary_residual = 0;
         double constraint_residual = 0;
         double volume_ratio = 1;
-        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[i]))
+        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[i].get()))
         {
             primary_residual = elastic_mesh_object->primaryResidual();
             constraint_residual = elastic_mesh_object->constraintResidual();

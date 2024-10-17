@@ -36,14 +36,14 @@ void TissueGraspingSimulation::setup()
 
     // _viewer->enableMouseInteraction(false);
     
-    _grasp_tip = new RigidMeshObject("grasp_tip", "../resource/general/Cursor.stl");
+    _grasp_tip = std::make_shared<RigidMeshObject>("grasp_tip", "../resource/general/Cursor.stl");
     _grasp_tip->moveTo(Eigen::Vector3d(0,0,0));
     _grasp_tip->resize(0.01);
     addObject(_grasp_tip);
 
     _out_file << toString() << std::endl;
 
-    if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(_mesh_objects[0]))
+    if (std::shared_ptr<ElasticMeshObject> elastic_mesh_object = std::dynamic_pointer_cast<ElasticMeshObject>(_mesh_objects[0]))
     {
         _tissue_block = elastic_mesh_object;
     }
@@ -132,7 +132,7 @@ void TissueGraspingSimulation::printInfo() const
     double constraint_residual = 0;
     double dynamics_residual = 0;
     double volume_ratio = 1;
-    if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(_tissue_block))
+    if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(_tissue_block.get()))
     {
         primary_residual = elastic_mesh_object->primaryResidual();
         constraint_residual = elastic_mesh_object->constraintResidual();

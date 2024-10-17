@@ -45,7 +45,7 @@ void InitialDeformationSimulation::setup()
         initial_vertices.push_back(mesh_object->vertices());
 
         // fix the minY face of the beam, and attach drivers to stretch the maxY face of the beam
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object))
+        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
         {
             if (_deformation_type == DeformationType::VOLUMETRIC_EXPANSION)
             {
@@ -68,7 +68,7 @@ void InitialDeformationSimulation::setup()
     _out_file << "\nTime(s)";
     for (auto& mesh_object : _mesh_objects)
     {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object))
+        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
         {
             std::regex r("\\s+");
             const std::string& name = std::regex_replace(elastic_mesh_object->name(), r, "");
@@ -86,7 +86,7 @@ void InitialDeformationSimulation::printInfo() const
     double volume_ratio = 1;
     _out_file << _time;
     for (int i = 0; i < _mesh_objects.size(); i++) {
-        MeshObject* mesh_object = _mesh_objects[i];
+        MeshObject* mesh_object = _mesh_objects[i].get();
 
         MeshObject::VerticesMat current_vertices = mesh_object->vertices();
         double frob_norm_ss_err = (current_vertices - initial_vertices[i]).norm();

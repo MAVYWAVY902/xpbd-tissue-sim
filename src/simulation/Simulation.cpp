@@ -35,6 +35,9 @@ void Simulation::_init()
         _sim_mode = _config->simMode().value();
     }
 
+    // initialize the collision scene
+    _collision_scene = std::make_unique<CollisionScene>(_time_step, 0.05, 8000);
+
     // now we can create the Viewer
     _viewer = std::make_unique<TextRenderingViewer>(_name);
     _viewer->set_usage("");
@@ -59,7 +62,7 @@ std::string Simulation::toString() const
         " s\n\tGravity: " + std::to_string(_g_accel) + " m/s^2";
 }
 
-void Simulation::addObject(MeshObject* mesh_object)
+void Simulation::addObject(std::shared_ptr<MeshObject> mesh_object)
 {
     mesh_object->setSimulation(this);
     
@@ -86,7 +89,7 @@ void Simulation::setup()
         // try downcasting
         if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
         {
-            XPBDMeshObject* new_obj = new XPBDMeshObject(xpbd_config);
+            std::shared_ptr<XPBDMeshObject> new_obj = std::make_shared<XPBDMeshObject>(xpbd_config);
             // if (XPBDMeshObject* xpbdmo = dynamic_cast<XPBDMeshObject*>(mesh_object))
         // {
             std::cout << "Smallest edge length for " << new_obj->name() << ": " << new_obj->smallestEdgeLength() << std::endl;
@@ -94,21 +97,41 @@ void Simulation::setup()
 
         // }
             addObject(new_obj);
+
+            if (xpbd_config->collisions().value())
+            {
+                _collision_scene->addObject(new_obj);
+            }
         }
         else if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
         {
-            FirstOrderXPBDMeshObject* new_obj = new FirstOrderXPBDMeshObject(xpbd_config);
+            std::shared_ptr<FirstOrderXPBDMeshObject> new_obj = std::make_shared<FirstOrderXPBDMeshObject>(xpbd_config);
             addObject(new_obj);
+
+            if (xpbd_config->collisions().value())
+            {
+                _collision_scene->addObject(new_obj);
+            }
         }
         else if (FastFEMMeshObjectConfig* fem_config = dynamic_cast<FastFEMMeshObjectConfig*>(obj_config.get()))
         {
-            FastFEMMeshObject* new_obj = new FastFEMMeshObject(fem_config);
+            std::shared_ptr<FastFEMMeshObject> new_obj = std::make_shared<FastFEMMeshObject>(fem_config);
             addObject(new_obj);
+
+            if (fem_config->collisions().value())
+            {
+                _collision_scene->addObject(new_obj);
+            }
         }
         else if (RigidMeshObjectConfig* rigid_config = dynamic_cast<RigidMeshObjectConfig*>(obj_config.get()))
         {
-            RigidMeshObject* new_obj = new RigidMeshObject(rigid_config);
+            std::shared_ptr<RigidMeshObject> new_obj = std::make_shared<RigidMeshObject>(rigid_config);
             addObject(new_obj);
+
+            if (rigid_config->collisions().value())
+            {
+                _collision_scene->addObject(new_obj);
+            }
         }
     }
 
@@ -165,6 +188,9 @@ void Simulation::_timeStep()
     {
         mo->update(_time_step, _g_accel);
     }
+
+    // run collision detection
+    _collision_scene->collideObjects();
 
     // increment the time by the time step
     _time += _time_step;

@@ -42,7 +42,7 @@ void BeamStretchSimulation::setup()
     for (auto& mesh_object : _mesh_objects) {
 
         // fix the minY face of the beam, and attach drivers to stretch the maxY face of the beam
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object))
+        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
         {
             // fix one minY side of the beam
             elastic_mesh_object->fixVerticesWithMinY();
@@ -84,7 +84,7 @@ void BeamStretchSimulation::setup()
     _out_file << "\nTime(s)";
     for (auto& mesh_object : _mesh_objects)
     {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object))
+        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
         {
             std::regex r("\\s+");
             const std::string& name = std::regex_replace(elastic_mesh_object->name(), r, "");
@@ -102,7 +102,7 @@ void BeamStretchSimulation::printInfo() const
     double volume_ratio = 1;
     _out_file << _time;
     for (auto& mesh_object : _mesh_objects) {
-        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(mesh_object))
+        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(mesh_object.get()))
         {
             primary_residual = elastic_mesh_object->primaryResidual();
             constraint_residual = elastic_mesh_object->constraintResidual();
