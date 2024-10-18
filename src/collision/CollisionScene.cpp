@@ -14,6 +14,8 @@ void CollisionScene::addObject(std::shared_ptr<MeshObject> new_obj)
 
 void CollisionScene::collideObjects()
 {
+    if (_objects.size() == 0)
+        return;
     // clear potential collisions
     _potential_collisions.clear();
 
@@ -31,6 +33,10 @@ void CollisionScene::collideObjects()
         MeshObject::VerticesMat obj_velocities = _objects[oi]->velocities();
         for (int vi = 0; vi < obj_vertices.rows(); vi++)
         {
+            // only consider surface vertices
+            if (!_objects[oi]->vertexOnSurface(vi))
+                continue;
+
             // current cell
             int cur_i = static_cast<int>(obj_vertices(vi,0)/_cell_size);
             int cur_j = static_cast<int>(obj_vertices(vi,1)/_cell_size);
@@ -107,7 +113,7 @@ void CollisionScene::collideObjects()
 
                             // do collision detection
                             const Eigen::Vector3d ray_origin = _objects[obj_ind]->vertices().row(vert_ind);
-                            const Eigen::Vector3d ray_vector = _objects[obj_ind]->velocities().row(vert_ind) * _dt;
+                            const Eigen::Vector3d ray_vector = _objects[obj_ind]->velocities().row(vert_ind) * _dt * 2; // multiply by 2 as a factor of safety
                             bool predictive_collision = _rayTriangleIntersection(ray_origin, ray_vector, obj_vertices.row(obj_faces(fi,0)), obj_vertices.row(obj_faces(fi,1)), obj_vertices.row(obj_faces(fi,2)));
                             if (predictive_collision)
                             {

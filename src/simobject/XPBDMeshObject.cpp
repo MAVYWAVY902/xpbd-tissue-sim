@@ -401,6 +401,15 @@ std::string XPBDMeshObject::toString() const
         "\n\tNum solver iterations: " + std::to_string(_num_iters) + "\n\tDamping stiffness: " + std::to_string(_damping_stiffness);
 }
 
+void XPBDMeshObject::addSelfCollision(const unsigned vertex_index, const unsigned face_index)
+{
+    SelfCollision sc;
+    sc.vertex = vertex_index;
+    sc.face = face_index;
+    sc.num_updates = 0;
+    _self_collisions.push_back(sc);
+}
+
 void XPBDMeshObject::update(const double dt, const double g_accel)
 {
     // auto t1 = std::chrono::steady_clock::now();
@@ -4180,6 +4189,77 @@ void XPBDMeshObject::_projectCollisionConstraints(const double dt)
     {
         _vertices.row(driver->vertexIndex()) = driver->evaluate(_sim->time());
     }
+
+    // resolve self-collisions
+    std::vector<unsigned> self_collisions_to_remove;
+    for (unsigned gi = 0; gi < 1; gi++) {
+        for (unsigned i = 0; i < _self_collisions.size(); i++)
+        {
+            unsigned vertex_ind = _self_collisions[i].vertex;
+            unsigned face_ind = _self_collisions[i].face;
+
+            const Eigen::Vector3d q = _vertices.row(vertex_ind);
+            const Eigen::Vector3d p1 = _vertices.row(_faces(face_ind,0));
+            const Eigen::Vector3d p2 = _vertices.row(_faces(face_ind,1));
+            const Eigen::Vector3d p3 = _vertices.row(_faces(face_ind,2));
+            const Eigen::Vector3d a = (p2-p1).cross(p3-p1);
+            const double norm_a = a.norm();
+
+            const double C = (q-p1).dot(a/norm_a) - 0.001;
+
+            if (C < 0)
+            {
+                std::cout << "\nCOLLISION!" << std::endl;
+                std::cout << "C: " << C << std::endl;
+                const double inv_mq = 1.0/_m[vertex_ind];
+                const double inv_mp1 = 1.0/_m[_faces(face_ind,0)];
+                const double inv_mp2 = 1.0/_m[_faces(face_ind,1)];
+                const double inv_mp3 = 1.0/_m[_faces(face_ind,2)];
+
+                const Eigen::Vector3d delC_q = a/norm_a;
+                const Eigen::Vector3d q_min_p1dA = (q-p1).transpose()*(Eigen::Matrix3d::Identity()/norm_a - a*a.transpose()/(norm_a*norm_a*norm_a));
+
+                const Eigen::Vector3d delC_p1 = -a/norm_a - (p3-p2).cross(q_min_p1dA);
+                const Eigen::Vector3d delC_p2 = (p3-p1).cross(q_min_p1dA);
+                const Eigen::Vector3d delC_p3 = (p1-p2).cross(q_min_p1dA);
+
+                // alpha = 0 (0 compliance)
+                const double dlam = -C / (inv_mq * delC_q.squaredNorm() + inv_mp1 * delC_p1.squaredNorm() + inv_mp2 * delC_p2.squaredNorm() + inv_mp3 * delC_p3.squaredNorm());
+
+                std::cout << "q position update: " << inv_mq * delC_q * dlam << std::endl;
+
+                _vertices.row(vertex_ind) += inv_mq * delC_q * dlam;
+                _vertices.row(_faces(face_ind,0)) += inv_mp1 * delC_p1 * dlam;
+                _vertices.row(_faces(face_ind,1)) += inv_mp2 * delC_p2 * dlam;
+                _vertices.row(_faces(face_ind,2)) += inv_mp3 * delC_p3 * dlam;
+
+                const Eigen::Vector3d q = _vertices.row(vertex_ind);
+                const Eigen::Vector3d p1 = _vertices.row(_faces(face_ind,0));
+                const Eigen::Vector3d p2 = _vertices.row(_faces(face_ind,1));
+                const Eigen::Vector3d p3 = _vertices.row(_faces(face_ind,2));
+                const Eigen::Vector3d a = (p2-p1).cross(p3-p1);
+                const double norm_a = a.norm();
+
+                const double C = (q-p1).dot(a/norm_a);
+                std::cout << "New C: " << C << std::endl;
+            }
+
+            _self_collisions[i].num_updates++;
+            if (_self_collisions[i].num_updates > 10)
+            {
+                self_collisions_to_remove.push_back(i);
+            }
+        }
+    }
+
+    // remove old collision constraints
+    for (int i = self_collisions_to_remove.size()-1; i >= 0; i--)
+    {
+        _self_collisions.erase(_self_collisions.begin() + self_collisions_to_remove[i]);
+    }
+
+    // clear the self-collision constraints
+    // _self_collisions.clear();
 }
 
 void XPBDMeshObject::_updateVelocities(const double dt)

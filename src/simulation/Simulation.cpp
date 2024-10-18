@@ -36,7 +36,7 @@ void Simulation::_init()
     }
 
     // initialize the collision scene
-    _collision_scene = std::make_unique<CollisionScene>(_time_step, 0.05, 8000);
+    _collision_scene = std::make_unique<CollisionScene>(_time_step, 0.05, 20000);
 
     // now we can create the Viewer
     _viewer = std::make_unique<TextRenderingViewer>(_name);
@@ -190,7 +190,24 @@ void Simulation::_timeStep()
     }
 
     // run collision detection
+    auto t1 = std::chrono::steady_clock::now();
     _collision_scene->collideObjects();
+    std::vector<Collision> potential_collisions = _collision_scene->potentialCollisions();
+    // for now, just do self-collisions
+    // TODO: REFACTOR THIS WHOLE THING
+    for (const auto& c : potential_collisions)
+    {
+        if (c.obj1_ind == c.obj2_ind)
+        {
+            if (XPBDMeshObject* xpbd_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[c.obj1_ind].get()))
+            {
+               xpbd_mesh_object->addSelfCollision(c.vertex_ind, c.face_ind);
+            }
+            
+        }
+    }
+    auto t2 = std::chrono::steady_clock::now();
+    std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
     // increment the time by the time step
     _time += _time_step;

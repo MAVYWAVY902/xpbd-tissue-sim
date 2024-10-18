@@ -86,6 +86,8 @@ class MeshObject : public easy3d::Model
 
     virtual VerticesMat velocities() const = 0;
 
+    bool vertexOnSurface(const unsigned index) const { return _vertex_on_surface[index]; }
+
     /** Returns the minimum coordinates from the bounding box of the mesh */
     Eigen::Vector3d bboxMinCoords() const;
 

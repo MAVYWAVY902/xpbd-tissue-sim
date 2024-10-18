@@ -29,6 +29,8 @@ class CollisionScene
 
     void collideObjects();
 
+    std::vector<Collision> potentialCollisions() const { return _potential_collisions; };
+
     protected:
 
     inline int _hash(int i, int j, int k) const;

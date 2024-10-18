@@ -5,6 +5,14 @@
 #include "ElasticMaterial.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 
+
+struct SelfCollision
+{
+    unsigned vertex;
+    unsigned face;
+    unsigned num_updates;
+};
+
 /** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
  *  "A Constraint-based Formulation of Stable Neo-Hookean Materials" by Macklin and Muller (2021).
  *  Refer to the paper and preceding papers for details on the XPBD approach.
@@ -50,6 +58,8 @@ class XPBDMeshObject : public ElasticMeshObject
     unsigned numSolverIters() { return _num_iters; }
     std::string solveMode() const;
     
+    void addSelfCollision(const unsigned vertex_ind, const unsigned face_ind);
+
     private:
     /** Helper method to initialize upon instantiation */
     void _init();
@@ -247,6 +257,12 @@ class XPBDMeshObject : public ElasticMeshObject
 
     /** For "ordered" methods that traverse the elements in a set order */
     std::vector<int> _element_order;
+
+    /** Keeps track of potential self collisions. Cleared after every time step.
+     * First index is the vertex index, second index is the face index that the vertex will potentially be colliding with.
+     * Third index is how many updates this collision constraint has been around for. After a certain number, we will remove it.
+     */
+    std::vector<SelfCollision> _self_collisions;
 
 
 
