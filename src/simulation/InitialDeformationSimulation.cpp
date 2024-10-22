@@ -34,6 +34,8 @@ std::string InitialDeformationSimulation::deformationType() const
         return "Volumetric Expansion";
     if (_deformation_type == DeformationType::VOLUMETRIC_COMPRESSION)
         return "Volumetric Compression";
+    if (_deformation_type == DeformationType::COLLAPSE_TO_PLANE)
+        return "Collapse to Plane";
 }
 
 std::string InitialDeformationSimulation::toString() const
@@ -65,6 +67,10 @@ void InitialDeformationSimulation::setup()
             {
                 double scaling = 1/std::cbrt(_deformation_factor);
                 elastic_mesh_object->stretch(scaling, scaling, scaling);
+            }
+            else if (_deformation_type == DeformationType::COLLAPSE_TO_PLANE)
+            {
+                elastic_mesh_object->stretch(1, 1, 0);
             }
             
 

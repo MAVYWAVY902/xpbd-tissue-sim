@@ -8,16 +8,16 @@ print-interval: 3e-6
 output-folder: "../output/initial_deformation"
 
 # Initial deformation simulation specific
-deformation-type: "Volumetric-Expansion"
+deformation-type: "Collapse-To-Plane"
 deformation-factor: 2
 
 # acceleration due to gravity
 g-accel: 0 # m/s2
 
 # type of simulation to run
-# sim-mode: "Frame-by-frame"
+sim-mode: "Frame-by-frame"
 # sim-mode: "Visualization"
-sim-mode: "AFAP"
+# sim-mode: "AFAP"
 
 time-step: 3e-4
 end-time: 0.3

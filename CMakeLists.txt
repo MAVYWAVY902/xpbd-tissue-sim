@@ -36,6 +36,7 @@ set(XPBD_FILES
     "include/simulation/TissueGraspingSimulation.hpp"
     "include/simulation/BeamStretchSimulation.hpp"
     "include/simulation/InitialDeformationSimulation.hpp"
+    "include/simulation/StaticLoadingSimulation.hpp"
     "include/simobject/ElasticMaterial.hpp"
     "include/simobject/MeshObject.hpp" 
     "include/simobject/RigidMeshObject.hpp"
@@ -57,6 +58,7 @@ set(XPBD_FILES
     "include/config/BeamStretchSimulationConfig.hpp"
     "include/config/TissueGraspingSimulationConfig.hpp"
     "include/config/InitialDeformationSimulationConfig.hpp"
+    "include/config/StaticLoadingSimulationConfig.hpp"
     "src/collision/CollisionScene.cpp"
     "src/haptics/HapticDeviceManager.cpp"
     "src/simulation/Simulation.cpp"
@@ -66,6 +68,7 @@ set(XPBD_FILES
     "src/simulation/TissueGraspingSimulation.cpp"
     "src/simulation/BeamStretchSimulation.cpp"
     "src/simulation/InitialDeformationSimulation.cpp"
+    "src/simulation/StaticLoadingSimulation.cpp"
     "src/simobject/MeshObject.cpp" 
     "src/simobject/RigidMeshObject.cpp"
     "src/simobject/ElasticMeshObject.cpp"
@@ -91,6 +94,9 @@ target_link_libraries(BeamStretchTest XPBD easy3d::viewer gmsh)
 
 add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
 target_link_libraries(InitialDeformationTest XPBD easy3d::viewer gmsh)
+
+add_executable(StaticLoadingTest src/exec/static_loading_test_main.cpp)
+target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
 
 add_executable(HapticTest src/exec/haptic_main.cpp)
 target_link_libraries(HapticTest XPBD easy3d::viewer gmsh)

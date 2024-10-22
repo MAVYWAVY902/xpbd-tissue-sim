@@ -6,7 +6,8 @@
 enum class DeformationType
 {
     VOLUMETRIC_EXPANSION=0,
-    VOLUMETRIC_COMPRESSION
+    VOLUMETRIC_COMPRESSION,
+    COLLAPSE_TO_PLANE
 };
 
 class InitialDeformationSimulationConfig : public OutputSimulationConfig
@@ -20,7 +21,8 @@ class InitialDeformationSimulationConfig : public OutputSimulationConfig
     static std::map<std::string, DeformationType> DEFORMATION_TYPE_OPTIONS()
     {
         static std::map<std::string, DeformationType> deformation_type_options{{"Volumetric-Expansion", DeformationType::VOLUMETRIC_EXPANSION},
-                                                                               {"Volumetric-Compression", DeformationType::VOLUMETRIC_COMPRESSION}};
+                                                                               {"Volumetric-Compression", DeformationType::VOLUMETRIC_COMPRESSION},
+                                                                               {"Collapse-To-Plane", DeformationType::COLLAPSE_TO_PLANE}};
         return deformation_type_options;
     }
 
