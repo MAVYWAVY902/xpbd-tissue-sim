@@ -11,6 +11,7 @@ class InitialDeformationSimulation : public OutputSimulation
 
     explicit InitialDeformationSimulation(const std::string& config_filename);
 
+    std::string deformationType() const;
     virtual std::string toString() const override;
     virtual std::string type() const override { return "InitialDeformationSimulation"; }
 

@@ -1,0 +1,112 @@
+name: "firstorder_vs_normal_cube"
+output-folder: "../output/cantilever_beam"
+g-accel: 9.81 # m/s2
+# sim-mode: "AFAP"
+sim-mode: "Visualization"
+time-step: 1e-6
+end-time: 1
+objects:
+  -
+    name: "FirstOrderCube1"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8.msh"
+    material:
+      name: "Macklin"
+      density: 1000
+      E: 6e4
+      nu: 0.45
+    color: [1.0, 0.509, 0.0, 1.0]
+    draw-points: false
+    max-size: 0.5
+    position: [0, 0, 1]
+    damping-stiffness: 0
+    num-solver-iters: 1
+    damping-multiplier: 0.75
+    residual-policy: "Every-Substep"
+    # solve-mode: "Simultaneous"
+    solve-mode: "Simultaneous-Constant-B"
+    # solve-mode: "Sequential"
+
+  # -
+  #   name: "FirstOrderCube2"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [1.0, 0.509, 0.0, 1.0]
+  #   draw-points: false
+  #   max-size: 0.5
+  #   position: [0, 1, 1]
+  #   damping-stiffness: 0
+  #   num-solver-iters: 10
+  #   damping-multiplier: 2
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   # solve-mode: "First-Order-Simultaneous"
+  #   solve-mode: "Simultaneous"
+
+  # -
+  #   name: "FirstOrderCube3"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [1.0, 0.509, 0.0, 1.0]
+  #   draw-points: false
+  #   max-size: 0.5
+  #   position: [0, 2, 1]
+  #   damping-stiffness: 0
+  #   num-solver-iters: 10
+  #   damping-multiplier: 8
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   # solve-mode: "First-Order-Simultaneous"
+  #   solve-mode: "Simultaneous"
+
+  # -
+  #   name: "FirstOrderCube3"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [1.0, 0.509, 0.0, 1.0]
+  #   draw-points: false
+  #   max-size: 0.5
+  #   position: [0, 2, 1]
+  #   damping-stiffness: 0
+  #   num-solver-iters: 10
+  #   damping-multiplier: 32
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   # solve-mode: "First-Order-Simultaneous"
+  #   solve-mode: "Simultaneous"
+
+  # -
+  #   name: "Cube1"
+  #   type: "XPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [1.0, 0.0, 0.0, 1.0]
+  #   draw-points: false
+  #   max-size: 0.5
+  #   position: [0, 0, 2.0]
+  #   damping-stiffness: 0
+  #   num-solver-iters: 1
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   solve-mode: "Sequential"
+
+

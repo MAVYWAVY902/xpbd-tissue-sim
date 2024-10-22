@@ -1,0 +1,49 @@
+name: "firstorder_vs_normal"
+output-folder: "../output/cantilever_beam"
+g-accel: 9.81 # m/s2
+# sim-mode: "AFAP"
+sim-mode: "Visualization"
+time-step: 1e-5
+end-time: 100
+objects:
+  -
+    name: "Beam1"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/beam/10x1x1_subdivided_beam.msh"
+    material:
+      name: "Macklin"
+      density: 1000
+      E: 1e7
+      nu: 0.4
+    color: [1.0, 0.509, 0.0, 1.0]
+    draw-points: false
+    max-size: 0.5
+    position: [0, 0, 1]
+    damping-stiffness: 0
+    num-solver-iters: 5
+    damping-multiplier: 0.2
+    residual-policy: "Never"
+    # solve-mode: "Split-Deviatoric-Simultaneous10"
+    # solve-mode: "First-Order-Simultaneous"
+    solve-mode: "Simultaneous"
+
+  -
+    name: "Beam2"
+    type: "XPBDMeshObject"
+    filename: "../resource/beam/10x1x1_subdivided_beam.msh"
+    material:
+      name: "Macklin"
+      density: 1000
+      E: 1e7
+      nu: 0.4
+    color: [1.0, 0.0, 0.0, 1.0]
+    draw-points: false
+    max-size: 0.5
+    position: [0, 0, 1.1]
+    damping-stiffness: 0
+    num-solver-iters: 1
+    residual-policy: "Never"
+    # solve-mode: "Split-Deviatoric-Simultaneous10"
+    solve-mode: "Simultaneous"
+
+

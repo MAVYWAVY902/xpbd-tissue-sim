@@ -10,6 +10,7 @@
 enum class FirstOrderXPBDSolveMode
 {
     SIMULTANEOUS=0,
+    SIMULTANEOUS_CONSTANT_B,
     SEQUENTIAL,
     SIMULTANEOUS_JACOBI,
     SIMULTANEOUS_CONVERGENT_JACOBI
@@ -36,6 +37,7 @@ class FirstOrderXPBDMeshObjectConfig : public ElasticMeshObjectConfig
     static std::map<std::string, FirstOrderXPBDSolveMode>& SOLVE_MODE_OPTIONS() 
     {
         static std::map<std::string, FirstOrderXPBDSolveMode> solve_mode_options{{"Simultaneous", FirstOrderXPBDSolveMode::SIMULTANEOUS},
+                                                                       {"Simultaneous-Constant-B", FirstOrderXPBDSolveMode::SIMULTANEOUS_CONSTANT_B},
                                                                        {"Sequential", FirstOrderXPBDSolveMode::SEQUENTIAL},
                                                                        {"Simultaneous-Jacobi", FirstOrderXPBDSolveMode::SIMULTANEOUS_JACOBI},
                                                                        {"Simultaneous-Convergent-Jacobi", FirstOrderXPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI}};

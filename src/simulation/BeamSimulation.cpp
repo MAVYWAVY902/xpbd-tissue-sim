@@ -2,6 +2,7 @@
 #include "MeshUtils.hpp"
 
 #include "XPBDMeshObject.hpp"
+#include "FirstOrderXPBDMeshObject.hpp"
 
 #include <regex>
 
@@ -77,6 +78,14 @@ void BeamSimulation::printInfo() const
             // std::cout << "\tConstraint residual: " << elastic_mesh_object->constraintResidual() << std::endl;
             // std::cout << "\tVolume ratio: " << elastic_mesh_object->volumeRatio() << std::endl;
         }
+        if (FirstOrderXPBDMeshObject* elastic_mesh_object = dynamic_cast<FirstOrderXPBDMeshObject*>(_mesh_objects[i].get()))
+        {
+            primary_residual = elastic_mesh_object->primaryResidual();
+            constraint_residual = elastic_mesh_object->constraintResidual();
+            dynamics_residual = elastic_mesh_object->dynamicsResidual();
+            volume_ratio = elastic_mesh_object->volumeRatio();
+        }
+
         _out_file << " " << beam_deflection(0) << " " << beam_deflection(2) << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio;
         
     }

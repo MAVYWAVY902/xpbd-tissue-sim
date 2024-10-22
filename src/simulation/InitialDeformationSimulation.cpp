@@ -3,6 +3,7 @@
 #include "MeshUtils.hpp"
 
 #include "XPBDMeshObject.hpp"
+#include "FirstOrderXPBDMeshObject.hpp"
 
 #include <regex>
 
@@ -27,9 +28,17 @@ InitialDeformationSimulation::InitialDeformationSimulation(const std::string& co
     _out_file << "Initial Deformation Simulation" << std::endl;
 }
 
+std::string InitialDeformationSimulation::deformationType() const
+{
+    if (_deformation_type == DeformationType::VOLUMETRIC_EXPANSION)
+        return "Volumetric Expansion";
+    if (_deformation_type == DeformationType::VOLUMETRIC_COMPRESSION)
+        return "Volumetric Compression";
+}
+
 std::string InitialDeformationSimulation::toString() const
 {
-    return Simulation::toString();
+    return Simulation::toString() + "\n\tDeformation type: " + deformationType() + "\n\tDeformation factor: " + std::to_string(_deformation_factor);
 }
 
 void InitialDeformationSimulation::setup()
@@ -72,40 +81,35 @@ void InitialDeformationSimulation::setup()
         {
             std::regex r("\\s+");
             const std::string& name = std::regex_replace(elastic_mesh_object->name(), r, "");
-            _out_file << " "+name+"DynamicsResidual" << " "+name+"PrimaryResidual" << " "+name+"ConstraintResidual" << " "+name+"VolumeRatio";
+            _out_file << " "+name+"VelocityRMS" << " "+name+"VolumeRatio";
         }
     }
     _out_file << std::endl;
+
+    printInfo();
 }
 
 void InitialDeformationSimulation::printInfo() const
 {
-    double primary_residual = 0;
-    double constraint_residual = 0;
-    double dynamics_residual = 0;
     double volume_ratio = 1;
     _out_file << _time;
     for (int i = 0; i < _mesh_objects.size(); i++) {
         MeshObject* mesh_object = _mesh_objects[i].get();
 
-        MeshObject::VerticesMat current_vertices = mesh_object->vertices();
-        double frob_norm_ss_err = (current_vertices - initial_vertices[i]).norm();
-        double ss_err_rms = std::sqrt(frob_norm_ss_err / current_vertices.rows());
+        MeshObject::VerticesMat velocities = mesh_object->velocities();
+        const double frob_norm = velocities.norm();
+        const double velocity_rms = std::sqrt(frob_norm/velocities.rows());
 
         if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(mesh_object))
         {
-            primary_residual = elastic_mesh_object->primaryResidual();
-            constraint_residual = elastic_mesh_object->constraintResidual();
-            dynamics_residual = elastic_mesh_object->dynamicsResidual();
             volume_ratio = elastic_mesh_object->volumeRatio();
-            // std::cout << "Time: " << _time << std::endl;
-            // std::cout << "\tDynamics residual: " << elastic_mesh_object->dynamicsResidual() << std::endl;
-            // std::cout << "\tPrimary residual: " << elastic_mesh_object->primaryResidual() << std::endl;
-            // std::cout << "\tConstraint residual: " << elastic_mesh_object->constraintResidual() << std::endl;
-            // std::cout << "\tVolume ratio: " << elastic_mesh_object->volumeRatio() << std::endl;
         }
-        dynamics_residual = ss_err_rms;
-        _out_file << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio;
+
+        if (FirstOrderXPBDMeshObject* mo = dynamic_cast<FirstOrderXPBDMeshObject*>(mesh_object))
+        {
+            volume_ratio = mo->volumeRatio();
+        }
+        _out_file << " " << velocity_rms << " " << volume_ratio;
     }
     _out_file << std::endl;
 }

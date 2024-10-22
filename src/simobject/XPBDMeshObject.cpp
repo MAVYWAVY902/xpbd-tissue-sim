@@ -592,28 +592,28 @@ void XPBDMeshObject::_projectConstraintsSequential(const double dt)
             // compute the deviatoric alpha
             const double alpha_d = 1/(_material.mu() * _vols[i]);
 
-            // const double beta_tilde = _damping_stiffness * (dt*dt);
-            // const double gamma_d = alpha_d / (dt*dt) * beta_tilde / dt;
+            const double beta_tilde = _damping_stiffness * (dt*dt);
+            const double gamma_d = alpha_d / (dt*dt) * beta_tilde / dt;
             
-            // const double delC_x_prev_d =  _lC_d_grads.col(0).dot(_vertices.row(elem(0)) - _x_prev.row(elem(0))) +
-            //                             _lC_d_grads.col(1).dot(_vertices.row(elem(1)) - _x_prev.row(elem(1))) +
-            //                             _lC_d_grads.col(2).dot(_vertices.row(elem(2)) - _x_prev.row(elem(2))) +
-            //                             _lC_d_grads.col(3).dot(_vertices.row(elem(3)) - _x_prev.row(elem(3)));
+            const double delC_x_prev_d =  _lC_d_grads.col(0).dot(_vertices.row(elem(0)) - _x_prev.row(elem(0))) +
+                                        _lC_d_grads.col(1).dot(_vertices.row(elem(1)) - _x_prev.row(elem(1))) +
+                                        _lC_d_grads.col(2).dot(_vertices.row(elem(2)) - _x_prev.row(elem(2))) +
+                                        _lC_d_grads.col(3).dot(_vertices.row(elem(3)) - _x_prev.row(elem(3)));
 
-            // const double dlam_d = (-C_d - alpha_d * lambda_ds(i) / (dt*dt) - gamma_d * delC_x_prev_d) /
-            //     ((1 + gamma_d) * (
-            //         (1/m1)*_lC_d_grads.col(0).squaredNorm() + 
-            //         (1/m2)*_lC_d_grads.col(1).squaredNorm() + 
-            //         (1/m3)*_lC_d_grads.col(2).squaredNorm() + 
-            //         (1/m4)*_lC_d_grads.col(3).squaredNorm()
-            //      ) + alpha_d/(dt*dt)); 
-
-            const double dlam_d = (-C_d - alpha_d * lambda_ds(i) / (dt*dt)) / ((
+            const double dlam_d = (-C_d - alpha_d * lambda_ds(i) / (dt*dt) - gamma_d * delC_x_prev_d) /
+                ((1 + gamma_d) * (
                     (inv_m1)*_lC_d_grads.col(0).squaredNorm() + 
                     (inv_m2)*_lC_d_grads.col(1).squaredNorm() + 
                     (inv_m3)*_lC_d_grads.col(2).squaredNorm() + 
                     (inv_m4)*_lC_d_grads.col(3).squaredNorm()
-                 ) + alpha_d/(dt*dt));
+                 ) + alpha_d/(dt*dt)); 
+
+            // const double dlam_d = (-C_d - alpha_d * lambda_ds(i) / (dt*dt)) / ((
+            //         (inv_m1)*_lC_d_grads.col(0).squaredNorm() + 
+            //         (inv_m2)*_lC_d_grads.col(1).squaredNorm() + 
+            //         (inv_m3)*_lC_d_grads.col(2).squaredNorm() + 
+            //         (inv_m4)*_lC_d_grads.col(3).squaredNorm()
+            //      ) + alpha_d/(dt*dt));
 
             _vertices.row(elem(0)) += _lC_d_grads.col(0) * dlam_d * inv_m1;
             _vertices.row(elem(1)) += _lC_d_grads.col(1) * dlam_d * inv_m2;
@@ -628,27 +628,27 @@ void XPBDMeshObject::_projectConstraintsSequential(const double dt)
             // compute the hydrostatic alpha
             const double alpha_h = 1/(_material.lambda() * _vols[i]);
             
-            // const double gamma_h = alpha_h / (dt*dt) * beta_tilde / dt;
+            const double gamma_h = alpha_h / (dt*dt) * beta_tilde / dt;
 
-            // const double delC_x_prev_h =  _lC_h_grads.col(0).dot(_vertices.row(elem(0)) - _x_prev.row(elem(0))) +
-            //                             _lC_h_grads.col(1).dot(_vertices.row(elem(1)) - _x_prev.row(elem(1))) +
-            //                             _lC_h_grads.col(2).dot(_vertices.row(elem(2)) - _x_prev.row(elem(2))) +
-            //                             _lC_h_grads.col(3).dot(_vertices.row(elem(3)) - _x_prev.row(elem(3)));
+            const double delC_x_prev_h =  _lC_h_grads.col(0).dot(_vertices.row(elem(0)) - _x_prev.row(elem(0))) +
+                                        _lC_h_grads.col(1).dot(_vertices.row(elem(1)) - _x_prev.row(elem(1))) +
+                                        _lC_h_grads.col(2).dot(_vertices.row(elem(2)) - _x_prev.row(elem(2))) +
+                                        _lC_h_grads.col(3).dot(_vertices.row(elem(3)) - _x_prev.row(elem(3)));
 
-            // const double dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt) - gamma_h * delC_x_prev_h) / 
-            //     ((1 + gamma_h) * (
-            //         (1/m1)*_lC_h_grads.col(0).squaredNorm() + 
-            //         (1/m2)*_lC_h_grads.col(1).squaredNorm() + 
-            //         (1/m3)*_lC_h_grads.col(2).squaredNorm() + 
-            //         (1/m4)*_lC_h_grads.col(3).squaredNorm()
-            //      ) + alpha_h/(dt*dt));
-            
-            const double dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt)) / ((
+            const double dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt) - gamma_h * delC_x_prev_h) / 
+                ((1 + gamma_h) * (
                     (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
                     (inv_m2)*_lC_h_grads.col(1).squaredNorm() + 
                     (inv_m3)*_lC_h_grads.col(2).squaredNorm() + 
                     (inv_m4)*_lC_h_grads.col(3).squaredNorm()
                  ) + alpha_h/(dt*dt));
+            
+            // const double dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt)) / ((
+            //         (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
+            //         (inv_m2)*_lC_h_grads.col(1).squaredNorm() + 
+            //         (inv_m3)*_lC_h_grads.col(2).squaredNorm() + 
+            //         (inv_m4)*_lC_h_grads.col(3).squaredNorm()
+            //      ) + alpha_h/(dt*dt));
 
             _vertices.row(elem(0)) += _lC_h_grads.col(0) * dlam_h * inv_m1;
             _vertices.row(elem(1)) += _lC_h_grads.col(1) * dlam_h * inv_m2;

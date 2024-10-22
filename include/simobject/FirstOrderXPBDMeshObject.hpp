@@ -29,7 +29,7 @@ class FirstOrderXPBDMeshObject : public ElasticMeshObject
     double primaryResidual() { return _primary_residual_rms; }
     double dynamicsResidual() { return _dynamics_residual_rms; }
     double constraintResidual() { return _constraint_residual_rms; }
-    double volumeRatio() { return _vol_ratio; }
+    double volumeRatio() { return _vol_ratio; };
 
     unsigned numSolverIters() { return _num_iters; }
     std::string solveMode() const;
@@ -57,6 +57,8 @@ class FirstOrderXPBDMeshObject : public ElasticMeshObject
     void _projectConstraintsSequential(const double dt);
 
     void _projectConstraintsSimultaneous(const double dt);
+
+    void _projectConstraintsSimultaneousConstantB(const double dt);
 
     void _projectConstraintsSimultaneousJacobi(const double dt);
     
