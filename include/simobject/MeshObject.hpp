@@ -113,6 +113,12 @@ class MeshObject : public easy3d::Model
      */
     std::vector<unsigned int> facesAsFlatList() const;
 
+    /** Returns the surface edges of the mesh as a flat vector of vertex indices. Used for moving edge information to GPU via Easy3d.
+     * As per specified by LinesDrawable docs, each 2 consecutive vertices represents an edge.
+     * @returns a 1d vector of vertex indicies - 2 consecutive entries corresponds to a edge to be rendered.
+     */
+    std::vector<unsigned int> edgesAsFlatList() const;
+
     /** Sets new vertices for the mesh. Also updates the vertex cache.
      * @param verts : the new matrix of vertices
      */
@@ -228,6 +234,9 @@ class MeshObject : public easy3d::Model
 
     /** Whether or not to draw the points of the mesh */
     bool _draw_points;
+
+    /** Whether or not to draw the edges of the mesh */
+    bool _draw_edges;
 
     /** Store simulation object so we can query properties (such as current sim time) */
     const Simulation* _sim;

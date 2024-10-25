@@ -75,6 +75,10 @@ void Simulation::addObject(std::shared_ptr<MeshObject> mesh_object)
     {
         _viewer->add_drawable(pt_drawable);
     }
+    for (const auto& line_drawable : mesh_object->renderer()->lines_drawables())
+    {
+        _viewer->add_drawable(line_drawable);
+    }
     for (const auto& tri_drawable : mesh_object->renderer()->triangles_drawables())
     {
         _viewer->add_drawable(tri_drawable);

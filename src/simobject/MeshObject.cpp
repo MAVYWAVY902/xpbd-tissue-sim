@@ -39,6 +39,21 @@ void MeshObject::init()
             d->update_vertex_buffer(m->points(), true);
         });
     }
+
+    if (_draw_edges)
+    {
+        easy3d::LinesDrawable* lines_drawable = renderer()->add_lines_drawable("lines");
+        lines_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
+            // downcast to MeshObject for access to facesAsFlatList
+            MeshObject* mo = dynamic_cast<MeshObject*>(m);
+            if (mo)
+            {
+                // update the vertex buffer and element buffer
+                d->update_vertex_buffer(mo->points(), true);
+                d->update_element_buffer(mo->edgesAsFlatList());
+            }
+        });
+    }
 }
 
 MeshObject::MeshObject(const std::string& name)
@@ -53,7 +68,8 @@ MeshObject::MeshObject(const MeshObjectConfig* config)
     Eigen::Vector4d color_eigen_vec = config->color().value_or(Eigen::Vector4d::Constant(1.0));
     _color = easy3d::vec4(color_eigen_vec(0), color_eigen_vec(1), color_eigen_vec(2), color_eigen_vec(3));
 
-    _draw_points = config->drawPoints().value_or(false);
+    _draw_points = config->drawPoints().value();
+    _draw_edges = config->drawEdges().value();
 
     _dt = config->timeStep().value();
 
@@ -129,6 +145,19 @@ std::vector<unsigned int> MeshObject::facesAsFlatList() const
     }
 
     return faces_flat_list;
+}
+
+std::vector<unsigned int> MeshObject::edgesAsFlatList() const
+{
+    // TODO: filter duplicate edges
+    std::vector<unsigned int> edges_flat_list(_faces.rows()*3);
+
+    for (const auto& face : _faces.rowwise())
+    {
+        edges_flat_list.insert(edges_flat_list.end(), {face(0), face(1), face(1), face(2), face(0), face(2)});
+    }
+
+    return edges_flat_list;
 }
 
 void MeshObject::setVertices(const VerticesMat& verts)
