@@ -114,12 +114,21 @@ class FirstOrderXPBDMeshObject : public ElasticMeshObject
      */
     Eigen::VectorXd _m;
 
+    /** Per vertex damping */
+    Eigen::VectorXd _b;
+
     /** Per vertex volume
      * The total volume of all elements attached to a given node.
      * 
      * Computed once for each vertex, upon initialization of the mesh.
      */
     Eigen::VectorXd _v_volume;
+
+    /** Per vertex smallest edge length attached to that vertex */
+    Eigen::VectorXd _v_smallest_edge_length;
+
+    /** Per vertex average edge length attached to that vertex */
+    Eigen::VectorXd _v_average_edge_length;
 
     /** Loop variables
      * Allocate once at the beginning to avoid constant reallocation of resources each time step

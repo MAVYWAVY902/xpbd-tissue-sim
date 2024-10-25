@@ -3,32 +3,32 @@ output-folder: "../output/cantilever_beam"
 g-accel: 9.81 # m/s2
 # sim-mode: "AFAP"
 sim-mode: "Visualization"
-time-step: 1e-6
-end-time: 1
+time-step: 1e-3
+end-time: 10
 objects:
-  -
-    name: "FirstOrderCube1"
-    type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
-    material:
-      name: "Macklin"
-      density: 1000
-      E: 6e4
-      nu: 0.45
-    color: [1.0, 0.509, 0.0, 1.0]
-    draw-points: false
-    max-size: 0.5
-    position: [0, 0, 1]
-    damping-stiffness: 0
-    num-solver-iters: 1
-    damping-multiplier: 0.75
-    residual-policy: "Every-Substep"
-    # solve-mode: "Simultaneous"
-    solve-mode: "Simultaneous-Constant-B"
-    # solve-mode: "Sequential"
+  # -
+  #   name: "FirstOrderCubeConstantB1"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [1.0, 0.509, 0.0, 1.0]
+  #   draw-points: false
+  #   max-size: 0.5
+  #   position: [0, 0, 1]
+  #   damping-stiffness: 0
+  #   num-solver-iters: 1
+  #   damping-multiplier: 0.75
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Simultaneous"
+  #   solve-mode: "Simultaneous-Constant-B"
+  #   # solve-mode: "Sequential"
 
   # -
-  #   name: "FirstOrderCube2"
+  #   name: "FirstOrderCubeConstantB2"
   #   type: "FirstOrderXPBDMeshObject"
   #   filename: "../resource/cube/cube8.msh"
   #   material:
@@ -41,15 +41,37 @@ objects:
   #   max-size: 0.5
   #   position: [0, 1, 1]
   #   damping-stiffness: 0
-  #   num-solver-iters: 10
-  #   damping-multiplier: 2
+  #   num-solver-iters: 1
+  #   damping-multiplier: 3
   #   residual-policy: "Every-Substep"
   #   # solve-mode: "Split-Deviatoric-Simultaneous10"
   #   # solve-mode: "First-Order-Simultaneous"
-  #   solve-mode: "Simultaneous"
+  #   solve-mode: "Simultaneous-Constant-B"
+
+  -
+    name: "FirstOrderCubeVolumeB1"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/tissue/Prostate.msh"
+    material:
+      name: "Macklin"
+      density: 1000
+      E: 6e4
+      nu: 0.45
+    color: [1.0, 0.5, 0.0, 1.0]
+    draw-points: false
+    max-size: 0.5
+    position: [0, 0, 1]
+    damping-stiffness: 0
+    num-solver-iters: 1
+    damping-multiplier: 5200
+    residual-policy: "Every-Substep"
+    # solve-mode: "Split-Deviatoric-Simultaneous10"
+    # solve-mode: "First-Order-Simultaneous"
+    solve-mode: "Simultaneous"
 
   # -
-  #   name: "FirstOrderCube3"
+  #   name: "FirstOrderCubeVolumeB2"
   #   type: "FirstOrderXPBDMeshObject"
   #   filename: "../resource/cube/cube8.msh"
   #   material:
@@ -57,13 +79,13 @@ objects:
   #     density: 1000
   #     E: 6e4
   #     nu: 0.45
-  #   color: [1.0, 0.509, 0.0, 1.0]
+  #   color: [1.0, 0.0, 0.0, 1.0]
   #   draw-points: false
   #   max-size: 0.5
-  #   position: [0, 2, 1]
+  #   position: [0, 1, 1]
   #   damping-stiffness: 0
-  #   num-solver-iters: 10
-  #   damping-multiplier: 8
+  #   num-solver-iters: 1
+  #   damping-multiplier: 15000
   #   residual-policy: "Every-Substep"
   #   # solve-mode: "Split-Deviatoric-Simultaneous10"
   #   # solve-mode: "First-Order-Simultaneous"
@@ -90,23 +112,23 @@ objects:
   #   # solve-mode: "First-Order-Simultaneous"
   #   solve-mode: "Simultaneous"
 
-  # -
-  #   name: "Cube1"
-  #   type: "XPBDMeshObject"
-  #   filename: "../resource/cube/cube8.msh"
-  #   material:
-  #     name: "Macklin"
-  #     density: 1000
-  #     E: 6e4
-  #     nu: 0.45
-  #   color: [1.0, 0.0, 0.0, 1.0]
-  #   draw-points: false
-  #   max-size: 0.5
-  #   position: [0, 0, 2.0]
-  #   damping-stiffness: 0
-  #   num-solver-iters: 1
-  #   residual-policy: "Every-Substep"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
-  #   solve-mode: "Sequential"
+  -
+    name: "Cube1"
+    type: "XPBDMeshObject"
+    filename: "../resource/cube/cube8.msh"
+    material:
+      name: "Macklin"
+      density: 1000
+      E: 6e4
+      nu: 0.45
+    color: [1.0, 0.0, 0.0, 1.0]
+    draw-points: false
+    max-size: 0.5
+    position: [0, 0, 2.0]
+    damping-stiffness: 100
+    num-solver-iters: 1
+    residual-policy: "Every-Substep"
+    # solve-mode: "Split-Deviatoric-Simultaneous10"
+    solve-mode: "Simultaneous"
 
 

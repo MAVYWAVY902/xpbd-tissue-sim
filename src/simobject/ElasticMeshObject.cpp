@@ -233,6 +233,69 @@ double ElasticMeshObject::smallestEdgeLength()
     return min_length;
 }
 
+double ElasticMeshObject::averageEdgeLength()
+{
+    std::set<std::pair<unsigned, unsigned>> edges;
+
+    auto make_edge = [] (unsigned v1, unsigned v2)
+    {
+        if (v1 > v2)
+            return std::pair<unsigned, unsigned>(v2, v1);
+        else 
+            return std::pair<unsigned, unsigned>(v1, v2);
+    };
+
+    double total_length = 0;
+    for (const auto& elem : _elements.rowwise())
+    {
+        const Eigen::Vector3d& v1 = _vertices.row(elem(0));
+        const Eigen::Vector3d& v2 = _vertices.row(elem(1));
+        const Eigen::Vector3d& v3 = _vertices.row(elem(2));
+        const Eigen::Vector3d& v4 = _vertices.row(elem(3));
+
+        std::pair<unsigned, unsigned> e1 = make_edge(elem(0), elem(1));
+        std::pair<unsigned, unsigned> e2 = make_edge(elem(0), elem(2));
+        std::pair<unsigned, unsigned> e3 = make_edge(elem(0), elem(3));
+        std::pair<unsigned, unsigned> e4 = make_edge(elem(1), elem(2));
+        std::pair<unsigned, unsigned> e5 = make_edge(elem(1), elem(3));
+        std::pair<unsigned, unsigned> e6 = make_edge(elem(2), elem(3));
+        
+
+        if (edges.count(e1) == 0)
+        {
+            total_length += (v1-v2).norm();
+            edges.insert(e1);
+        }
+        if (edges.count(e2) == 0)
+        {
+            total_length += (v1-v3).norm();
+            edges.insert(e2);
+        }
+        if (edges.count(e3) == 0)
+        {
+            total_length += (v1-v4).norm();
+            edges.insert(e3);
+        }
+        if (edges.count(e4) == 0)
+        {
+            total_length += (v2-v3).norm();
+            edges.insert(e4);
+        }
+        if (edges.count(e5) == 0)
+        {
+            total_length += (v2-v4).norm();
+            edges.insert(e5);
+        }
+        if (edges.count(e6) == 0)
+        {
+            total_length += (v3-v4).norm();
+            edges.insert(e6);
+        }
+    }
+
+    return total_length/edges.size();
+}
+
 double ElasticMeshObject::smallestVolume()
 {
     double min_vol = std::numeric_limits<double>::max();

@@ -25,6 +25,9 @@ void FirstOrderXPBDMeshObject::_init()
     // masses are per-vertex
     _m = Eigen::VectorXd::Zero(_vertices.rows());
     _v_volume = Eigen::VectorXd::Zero(_vertices.rows());
+    _v_smallest_edge_length = std::numeric_limits<double>::max() * Eigen::VectorXd::Ones(_vertices.rows());
+    _v_average_edge_length = Eigen::VectorXd::Zero(_vertices.rows());
+    _b = Eigen::VectorXd::Zero(_vertices.rows());
 
     // initialize loop variables to zeroes
     _lX = Eigen::Matrix3d::Zero();
@@ -48,11 +51,15 @@ void FirstOrderXPBDMeshObject::_precomputeQuantities()
     
     for (unsigned i = 0; i < _elements.rows(); i++)
     {
+        unsigned v1 = _elements(i,0);
+        unsigned v2 = _elements(i,1);
+        unsigned v3 = _elements(i,2);
+        unsigned v4 = _elements(i,3);
         // compute Q for each element
-        const Eigen::Vector3d& X1 = _vertices.row(_elements(i,0));
-        const Eigen::Vector3d& X2 = _vertices.row(_elements(i,1));
-        const Eigen::Vector3d& X3 = _vertices.row(_elements(i,2));
-        const Eigen::Vector3d& X4 = _vertices.row(_elements(i,3));
+        const Eigen::Vector3d& X1 = _vertices.row(v1);
+        const Eigen::Vector3d& X2 = _vertices.row(v2);
+        const Eigen::Vector3d& X3 = _vertices.row(v3);
+        const Eigen::Vector3d& X4 = _vertices.row(v4);
 
         Eigen::Matrix3d X;
         X.col(0) = (X1 - X4);
@@ -69,16 +76,76 @@ void FirstOrderXPBDMeshObject::_precomputeQuantities()
         // compute mass of element
         double m_element = vol * _material.density();
         // add mass contribution of element to each of its vertices
-        _m(_elements(i,0)) += m_element/4;
-        _m(_elements(i,1)) += m_element/4;
-        _m(_elements(i,2)) += m_element/4;
-        _m(_elements(i,3)) += m_element/4;
+        _m(v1) += m_element/4;
+        _m(v2) += m_element/4;
+        _m(v3) += m_element/4;
+        _m(v4) += m_element/4;
 
         // add up total volume attached to each vertex
-        _v_volume(_elements(i,0)) += vol;
-        _v_volume(_elements(i,1)) += vol;
-        _v_volume(_elements(i,2)) += vol;
-        _v_volume(_elements(i,3)) += vol;
+        _v_volume(v1) += vol;
+        _v_volume(v2) += vol;
+        _v_volume(v3) += vol;
+        _v_volume(v4) += vol;
+
+
+        // update smallest edge length
+        double v1v2 = (X1-X2).norm();
+        double v1v3 = (X1-X3).norm();
+        double v1v4 = (X1-X4).norm();
+        double v2v3 = (X2-X3).norm();
+        double v2v4 = (X2-X4).norm();
+        double v3v4 = (X3-X4).norm();
+
+        if (v1v2 < _v_smallest_edge_length(v1))
+            _v_smallest_edge_length(v1) = v1v2;
+        if (v1v3 < _v_smallest_edge_length(v1))
+            _v_smallest_edge_length(v1) = v1v3;
+        if (v1v4 < _v_smallest_edge_length(v1))
+            _v_smallest_edge_length(v1) = v1v4;
+
+        if (v1v2 < _v_smallest_edge_length(v2))
+            _v_smallest_edge_length(v2) = v1v2;
+        if (v2v3 < _v_smallest_edge_length(v2))
+            _v_smallest_edge_length(v2) = v2v3;
+        if (v2v4 < _v_smallest_edge_length(v2))
+            _v_smallest_edge_length(v2) = v2v4;
+
+        if (v1v3 < _v_smallest_edge_length(v3))
+            _v_smallest_edge_length(v3) = v1v3;
+        if (v2v3 < _v_smallest_edge_length(v3))
+            _v_smallest_edge_length(v3) = v2v3;
+        if (v3v4 < _v_smallest_edge_length(v3))
+            _v_smallest_edge_length(v3) = v3v4;
+
+        if (v1v4 < _v_smallest_edge_length(v4))
+            _v_smallest_edge_length(v4) = v1v4;
+        if (v2v4 < _v_smallest_edge_length(v4))
+            _v_smallest_edge_length(v4) = v2v4;
+        if (v3v4 < _v_smallest_edge_length(v4))
+            _v_smallest_edge_length(v4) = v3v4;
+
+
+    }
+
+    // compute B matrix (store it as a vector since it is diagonal)
+    for (int i = 0; i < _vertices.rows(); i++)
+    {
+        if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_CONSTANT_B)
+        {
+            _b(i) = _damping_multiplier;
+        }
+        else if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_SMALLEST_EDGE_B)
+        {
+            _b(i) = _v_smallest_edge_length(i) * _damping_multiplier;
+        }
+        else if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_AVERAGE_EDGE_B)
+        {
+            assert(0);
+        }
+        else
+        {
+            _b(i) = _v_volume(i) * _damping_multiplier;
+        }
     }
 
     // compute the number of elements that share a given node
@@ -94,6 +161,7 @@ void FirstOrderXPBDMeshObject::_precomputeQuantities()
     std::cout << "\nJacobi scaling: " << _jacobi_scaling << std::endl;
 
     std::cout << "\nSmallest Edge Length: " << smallestEdgeLength() << std::endl;
+    std::cout << "\nAverage Edge Length: " << averageEdgeLength() << std::endl;
 }
 
 std::string FirstOrderXPBDMeshObject::toString() const
@@ -113,7 +181,11 @@ void FirstOrderXPBDMeshObject::update(const double dt, const double g_accel)
     else if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS)
         _projectConstraintsSimultaneous(dt);
     else if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_CONSTANT_B)
-        _projectConstraintsSimultaneousConstantB(dt);
+        _projectConstraintsSimultaneous(dt);
+    else if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_SMALLEST_EDGE_B)
+        _projectConstraintsSimultaneous(dt);
+    else if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_AVERAGE_EDGE_B)
+        _projectConstraintsSimultaneous(dt);
     else if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_JACOBI)
         _projectConstraintsSimultaneousJacobi(dt);
     else if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI)
@@ -140,6 +212,10 @@ std::string FirstOrderXPBDMeshObject::solveMode() const
         return "Simultaneous";
     if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_CONSTANT_B)
         return "Simultaneous-Constant-B";
+    if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_SMALLEST_EDGE_B)
+        return "Simultaneous-Smallest-Edge-B";
+    if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_AVERAGE_EDGE_B)
+        return "Simultaneous-Average-Edge-B";
     if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_JACOBI)
         return "Simultaneous-Jacobi";
     if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI)
@@ -152,7 +228,7 @@ void FirstOrderXPBDMeshObject::_movePositionsIntertially(const double dt, const 
 {
     for (int i = 0; i < _vertices.rows(); i++)
     {
-        _vertices(i,2) += -g_accel*_m[i] * dt / _damping_multiplier;
+        _vertices(i,2) += -g_accel*_m[i] * dt / _b(i);
     }   
 }
 
@@ -176,17 +252,12 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSequential(const double dt)
         for (int i = 0; i < _elements.rows(); i++)
         {
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
-            // extract masses of each vertex in the current element
-            const double b1 = _v_volume[elem(0)] * _damping_multiplier;
-            const double b2 = _v_volume[elem(1)] * _damping_multiplier;
-            const double b3 = _v_volume[elem(2)] * _damping_multiplier;
-            const double b4 = _v_volume[elem(3)] * _damping_multiplier;
 
             // extract masses of each vertex in the current element
-            const double inv_b1 = 1.0/b1;
-            const double inv_b2 = 1.0/b2;
-            const double inv_b3 = 1.0/b3;
-            const double inv_b4 = 1.0/b4;
+            const double inv_b1 = 1.0/_b[elem(0)];
+            const double inv_b2 = 1.0/_b[elem(1)];
+            const double inv_b3 = 1.0/_b[elem(2)];
+            const double inv_b4 = 1.0/_b[elem(3)];
 
             /** DEVIATORIC CONSTRAINT */
 
@@ -272,12 +343,6 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
         {
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
-            // extract masses of each vertex in the current element
-            const double b1 = _v_volume[elem(0)] * _damping_multiplier;
-            const double b2 = _v_volume[elem(1)] * _damping_multiplier;
-            const double b3 = _v_volume[elem(2)] * _damping_multiplier;
-            const double b4 = _v_volume[elem(3)] * _damping_multiplier;
-
             _computeF(i, _lX, _lF);
 
             /** DEVIATORIC CONSTRAINT */
@@ -296,10 +361,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneous(const double dt)
             const double alpha_h_tilde = alpha_h / dt;
 
 
-            const double inv_b1 = 1/b1;
-            const double inv_b2 = 1/b2;
-            const double inv_b3 = 1/b3;
-            const double inv_b4 = 1/b4;
+            const double inv_b1 = 1.0/_b[elem(0)];
+            const double inv_b2 = 1.0/_b[elem(1)];
+            const double inv_b3 = 1.0/_b[elem(2)];
+            const double inv_b4 = 1.0/_b[elem(3)];
 
             // solve the 2x2 system
             const double a11 = inv_b1*_lC_h_grads.col(0).squaredNorm() + 
@@ -379,12 +444,6 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousConstantB(const do
         {
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
-            // extract masses of each vertex in the current element
-            const double b1 = _damping_multiplier;
-            const double b2 = _damping_multiplier;
-            const double b3 = _damping_multiplier;
-            const double b4 = _damping_multiplier;
-
             _computeF(i, _lX, _lF);
 
             /** DEVIATORIC CONSTRAINT */
@@ -403,10 +462,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousConstantB(const do
             const double alpha_h_tilde = alpha_h / dt;
 
 
-            const double inv_b1 = 1/b1;
-            const double inv_b2 = 1/b2;
-            const double inv_b3 = 1/b3;
-            const double inv_b4 = 1/b4;
+            const double inv_b1 = 1.0/_b[elem(0)];
+            const double inv_b2 = 1.0/_b[elem(1)];
+            const double inv_b3 = 1.0/_b[elem(2)];
+            const double inv_b4 = 1.0/_b[elem(3)];
 
             // solve the 2x2 system
             const double a11 = inv_b1*_lC_h_grads.col(0).squaredNorm() + 
@@ -488,12 +547,6 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousJacobi(const doubl
         {
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
-            // extract masses of each vertex in the current element
-            const double b1 = _damping_multiplier * _v_volume[elem(0)] ;
-            const double b2 = _damping_multiplier * _v_volume[elem(1)] ;
-            const double b3 = _damping_multiplier * _v_volume[elem(2)] ;
-            const double b4 = _damping_multiplier * _v_volume[elem(3)] ;
-
             _computeF(i, _lX, _lF);
 
             /** DEVIATORIC CONSTRAINT */
@@ -512,10 +565,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousJacobi(const doubl
             const double alpha_h_tilde = alpha_h / dt;
 
 
-            const double inv_b1 = 1/b1;
-            const double inv_b2 = 1/b2;
-            const double inv_b3 = 1/b3;
-            const double inv_b4 = 1/b4;
+            const double inv_b1 = 1.0/_b[elem(0)];
+            const double inv_b2 = 1.0/_b[elem(1)];
+            const double inv_b3 = 1.0/_b[elem(2)];
+            const double inv_b4 = 1.0/_b[elem(3)];
 
             // solve the 2x2 system
             const double a11 = inv_b1*_lC_h_grads.col(0).squaredNorm() + 
@@ -599,12 +652,6 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousConvergentJacobi(c
         {
             const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
 
-            // extract masses of each vertex in the current element
-            const double b1 = _v_volume[elem(0)] * _damping_multiplier;
-            const double b2 = _v_volume[elem(1)] * _damping_multiplier;
-            const double b3 = _v_volume[elem(2)] * _damping_multiplier;
-            const double b4 = _v_volume[elem(3)] * _damping_multiplier;
-
             _computeF(i, _lX, _lF);
 
             /** DEVIATORIC CONSTRAINT */
@@ -623,10 +670,10 @@ void FirstOrderXPBDMeshObject::_projectConstraintsSimultaneousConvergentJacobi(c
             const double alpha_h_tilde = alpha_h / dt;
 
 
-            const double inv_b1 = 1/b1;
-            const double inv_b2 = 1/b2;
-            const double inv_b3 = 1/b3;
-            const double inv_b4 = 1/b4;
+            const double inv_b1 = 1.0/_b[elem(0)];
+            const double inv_b2 = 1.0/_b[elem(1)];
+            const double inv_b3 = 1.0/_b[elem(2)];
+            const double inv_b4 = 1.0/_b[elem(3)];
 
             // solve the 2x2 system
             const double a11 = inv_b1*_lC_h_grads.col(0).squaredNorm() + 
@@ -728,16 +775,9 @@ void FirstOrderXPBDMeshObject::_calculateResiduals(const double dt, const Vertic
 {
     // calculate constraint violation
     Eigen::Matrix<double, -1, 3> B(_vertices.rows(), 3);
-    if (_solve_mode == FirstOrderXPBDSolveMode::SIMULTANEOUS_CONSTANT_B)
-    {
-        B = _damping_multiplier * Eigen::Matrix<double, -1, 3>::Ones(_vertices.rows(), 3);
-    }
-    else 
-    {
-        B.col(0) = _damping_multiplier * _v_volume;
-        B.col(1) = _damping_multiplier * _v_volume;
-        B.col(2) = _damping_multiplier * _v_volume;
-    }
+    B.col(0) = _b;
+    B.col(1) = _b;
+    B.col(2) = _b;
     
     Eigen::Matrix<double, -1, 3> Bx(_vertices.rows(), 3);
     Bx = B.array() * (_vertices - inertial_positions).array();

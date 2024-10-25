@@ -8,19 +8,19 @@ print-interval: 3e-6
 output-folder: "../output/initial_deformation"
 
 # Initial deformation simulation specific
-deformation-type: "Collapse-To-Plane"
+deformation-type: "Volumetric-Expansion"
 deformation-factor: 2
 
 # acceleration due to gravity
 g-accel: 0 # m/s2
 
 # type of simulation to run
-sim-mode: "Frame-by-frame"
-# sim-mode: "Visualization"
+# sim-mode: "Frame-by-frame"
+sim-mode: "Visualization"
 # sim-mode: "AFAP"
 
 time-step: 3e-4
-end-time: 0.3
+end-time: 10
 objects:
   -
     name: "FirstOrderCube1"
@@ -63,7 +63,32 @@ objects:
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
-    damping-multiplier: 0.75
+    damping-multiplier: 8.5
+    residual-policy: "Every-Substep"
+    # solve-mode: "Sequential"
+    # solve-mode: "Simultaneous-Constant-B"
+    solve-mode: "Simultaneous-Smallest-Edge-B"
+    # solve-mode: "Simultaneous-Jacobi"
+    # solve-mode: "Simultaneous-Convergent-Jacobi"
+
+  -
+    name: "FirstOrderCube3"
+    # type: "XPBDMeshObject"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube16.msh"
+    material:
+      name: "Soft Tissue"
+      density: 1000
+      E: 6e4
+      nu: 0.49
+    color: [1.0, 0.0, 0.0, 1.0]
+    draw-points: false
+    max-size: 0.5 #1
+    position: [0, 0, 12]
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]
+    num-solver-iters: 1
+    damping-multiplier: 0.5 #2
     residual-policy: "Every-Substep"
     # solve-mode: "Sequential"
     solve-mode: "Simultaneous-Constant-B"
@@ -81,12 +106,12 @@ objects:
   #     nu: 0.49
   #   color: [1.0, 0.0, 0.0, 1.0]
   #   draw-points: false
-  #   max-size: 0.01
-  #   position: [0, 0, 10.05]
+  #   max-size: 0.5
+  #   position: [0, 0, 12]
   #   velocity: [0, 0, 0]
   #   rotation: [0, 0, 0]
   #   num-solver-iters: 1
-  #   damping-stiffness: 0
+  #   damping-stiffness: 0.01
   #   residual-policy: "Every-Substep"
   #   solve-mode: "Sequential"
   #   # solve-mode: "Simultaneous"
@@ -102,12 +127,12 @@ objects:
   #     nu: 0.49
   #   color: [0.0, 1.0, 0.0, 1.0]
   #   draw-points: false
-  #   max-size: 0.01
-  #   position: [0, 0, 10.1]
+  #   max-size: 0.5
+  #   position: [0, 0, 13]
   #   velocity: [0, 0, 0]
   #   rotation: [0, 0, 0]
   #   num-solver-iters: 1
-  #   damping-stiffness: 0.0000001
+  #   damping-stiffness: 0
   #   residual-policy: "Every-Substep"
   #   solve-mode: "Sequential"
   #   # solve-mode: "Simultaneous"

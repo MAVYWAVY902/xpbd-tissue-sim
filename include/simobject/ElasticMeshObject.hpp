@@ -117,6 +117,9 @@ class ElasticMeshObject : public MeshObject
     /** Finds the shortest edge in the mesh and returns its length. */
     double smallestEdgeLength();
 
+    /** Finds the average edge length in the mesh. */
+    double averageEdgeLength();
+
     /** Finds the smallest element by volume in the mesh and returns its volume. */
     double smallestVolume();
 
