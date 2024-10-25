@@ -267,7 +267,7 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int ff3 = index(0, wi+1, hi+1);
             int ff4 = index(0, wi, hi+1);
 
-            int a = rand()%2;
+            int a = wi%2 - hi%2;//rand()%2;
             if (a)
             {
                 Eigen::Vector3i front_face1({ff1, ff2, ff3});
@@ -289,7 +289,7 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int bf3 = index(l, wi+1, hi+1);
             int bf4 = index(l, wi, hi+1);
 
-            a = rand()%2;
+            // a = rand()%2;
             if (a)
             {
                 Eigen::Vector3i back_face1({bf1, bf2, bf3});
@@ -320,7 +320,7 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int rf3 = index(li+1, w, hi+1);
             int rf4 = index(li, w, hi+1);
             
-            int a = rand()%2;
+            int a = hi%2 - li%2;//rand()%2;
             if (a)
             {
                 Eigen::Vector3i right_face1({rf1, rf2, rf3});
@@ -341,7 +341,7 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int lf2 = index(li+1, 0, hi);
             int lf3 = index(li+1, 0, hi+1);
             int lf4 = index(li, 0, hi+1);
-            a = rand()%2;
+            // a = rand()%2;
             if (a)
             {
                 Eigen::Vector3i left_face1({lf1, lf2, lf3});
@@ -371,7 +371,7 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int tf2 = index(li, wi+1, h);
             int tf3 = index(li+1, wi+1, h);
             int tf4 = index(li+1, wi, h);
-            int a = rand()%2;
+            int a = li%2-wi%2; //rand()%2;
             if (a)
             {
                 Eigen::Vector3i top_face1({tf1, tf2, tf3});
@@ -392,7 +392,7 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             int bf2 = index(li, wi+1, 0);
             int bf3 = index(li+1, wi+1, 0);
             int bf4 = index(li+1, wi, 0);
-            a = rand()%2;
+            // a = rand()%2;
             if (a)
             {
                 Eigen::Vector3i bottom_face1({bf1, bf2, bf3});
