@@ -16,6 +16,7 @@ TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_fil
     _grasp_size = tissue_grasping_simulation_config->graspSize().value();
     _z_scaling = tissue_grasping_simulation_config->zScaling().value();
     _input_device = tissue_grasping_simulation_config->inputDevice().value();
+    _fixed_faces_filename = tissue_grasping_simulation_config->fixedFacesFilename();
 
     _grasp_tip_rotation = Eigen::Matrix3d::Identity();
 
@@ -36,9 +37,9 @@ void TissueGraspingSimulation::setup()
 
     // _viewer->enableMouseInteraction(false);
     
-    _grasp_tip = std::make_shared<RigidMeshObject>("grasp_tip", "../resource/general/Cursor.stl");
+    _grasp_tip = std::make_shared<RigidMeshObject>("grasp_tip", "../resource/general/Sphere_Cursor.stl");
     _grasp_tip->moveTo(Eigen::Vector3d(0,0,0));
-    _grasp_tip->resize(0.01);
+    _grasp_tip->resize(_grasp_size);
     addObject(_grasp_tip);
 
     _out_file << toString() << std::endl;
@@ -53,24 +54,56 @@ void TissueGraspingSimulation::setup()
     // change camera orientation to 45 degrees looking down at the block of tissue
 
     // _tissue_block->fixVerticesWithMinZ();
-    Eigen::Vector3d min_coords = _tissue_block->bboxMinCoords();
-    Eigen::Vector3d max_coords = _tissue_block->bboxMaxCoords();
-    unsigned v1 = _tissue_block->getClosestSurfaceVertex(min_coords(0), min_coords(1), min_coords(2));
-    unsigned v2 = _tissue_block->getClosestSurfaceVertex(min_coords(0), max_coords(1), min_coords(2));
-    unsigned v3 = _tissue_block->getClosestSurfaceVertex(max_coords(0), max_coords(1), min_coords(2));
-    unsigned v4 = _tissue_block->getClosestSurfaceVertex(max_coords(0), min_coords(1), min_coords(2));
-    unsigned v5 = _tissue_block->getClosestSurfaceVertex(min_coords(0), min_coords(1), max_coords(2));
-    unsigned v6 = _tissue_block->getClosestSurfaceVertex(min_coords(0), max_coords(1), max_coords(2));
-    unsigned v7 = _tissue_block->getClosestSurfaceVertex(max_coords(0), max_coords(1), max_coords(2));
-    unsigned v8 = _tissue_block->getClosestSurfaceVertex(max_coords(0), min_coords(1), max_coords(2));
-    _tissue_block->fixVertex(v1);
-    _tissue_block->fixVertex(v2);
-    _tissue_block->fixVertex(v3);
-    _tissue_block->fixVertex(v4);
-    _tissue_block->fixVertex(v5);
-    _tissue_block->fixVertex(v6);
-    _tissue_block->fixVertex(v7);
-    _tissue_block->fixVertex(v8);
+
+    // Eigen::Vector3d min_coords = _tissue_block->bboxMinCoords();
+    // Eigen::Vector3d max_coords = _tissue_block->bboxMaxCoords();
+    // unsigned v1 = _tissue_block->getClosestSurfaceVertex(min_coords(0), min_coords(1), min_coords(2));
+    // unsigned v2 = _tissue_block->getClosestSurfaceVertex(min_coords(0), max_coords(1), min_coords(2));
+    // unsigned v3 = _tissue_block->getClosestSurfaceVertex(max_coords(0), max_coords(1), min_coords(2));
+    // unsigned v4 = _tissue_block->getClosestSurfaceVertex(max_coords(0), min_coords(1), min_coords(2));
+    // unsigned v5 = _tissue_block->getClosestSurfaceVertex(min_coords(0), min_coords(1), max_coords(2));
+    // unsigned v6 = _tissue_block->getClosestSurfaceVertex(min_coords(0), max_coords(1), max_coords(2));
+    // unsigned v7 = _tissue_block->getClosestSurfaceVertex(max_coords(0), max_coords(1), max_coords(2));
+    // unsigned v8 = _tissue_block->getClosestSurfaceVertex(max_coords(0), min_coords(1), max_coords(2));
+    // _tissue_block->fixVertex(v1);
+    // _tissue_block->fixVertex(v2);
+    // _tissue_block->fixVertex(v3);
+    // _tissue_block->fixVertex(v4);
+    // _tissue_block->fixVertex(v5);
+    // _tissue_block->fixVertex(v6);
+    // _tissue_block->fixVertex(v7);
+    // _tissue_block->fixVertex(v8);
+
+    // _fixOutsideSurface();
+
+    if (_fixed_faces_filename.has_value())
+    {
+        std::set<unsigned> vertices = MeshUtils::verticesFromFixedFacesFile(_fixed_faces_filename.value());
+        for (const auto& v : vertices)
+        {
+            _tissue_block->fixVertex(v);
+        }
+    }
+
+    /** Hack! Hard-coded. Uncomment for tissue pull. */
+    // fix left-most third of bottom face
+    // double smallest_edge_length = _tissue_block->smallestEdgeLength();
+    // const Eigen::Vector3d& min_coords = _tissue_block->bboxMinCoords();
+    // const Eigen::Vector3d& max_coords = _tissue_block->bboxMaxCoords();
+    // int x_steps = static_cast<int>((max_coords(0) - min_coords(0)) / smallest_edge_length) + 1;
+    // int y_steps = static_cast<int>((max_coords(1) - min_coords(1)) / smallest_edge_length) + 1;
+
+    // // top and bottom surfaces (XY plane)
+    // for (int xi = 0; xi < x_steps; xi++)
+    // {
+    //     for (int yi = 0; yi < y_steps/3; yi++)
+    //     {
+    //         double x = xi*smallest_edge_length + min_coords(0);
+    //         double y = yi*smallest_edge_length + min_coords(1);
+    //         unsigned v1 = _tissue_block->getClosestSurfaceVertex(x, y, min_coords(2));
+    //         _tissue_block->fixVertex(v1);
+    //     }
+    // }
     
 
 
@@ -90,7 +123,7 @@ void TissueGraspingSimulation::_updateGraphics()
 
         const Eigen::Vector3d haptic_position = _haptic_device_manager->position()/500;
         
-        
+        const Eigen::Vector3d old_tip_position = _grasp_tip_position;
         _grasp_tip_position = _transformInputPosition(haptic_position);
 
         // std::cout << "Position: " << _grasp_tip_position(0) << ", " << _grasp_tip_position(1) << ", " << _grasp_tip_position(2) << std::endl;
@@ -117,7 +150,8 @@ void TissueGraspingSimulation::_updateGraphics()
 
         for (const auto& vd : _grasped_vertex_drivers)
         {
-            vd->setPosition(_grasp_tip_position);
+            const Eigen::Vector3d new_position = vd->position() + (_grasp_tip_position-old_tip_position);
+            vd->setPosition(new_position);
         }
     }
 
@@ -205,8 +239,20 @@ void TissueGraspingSimulation::notifyKeyPressed(int /* key */, int action, int /
 {
     if (action > 0)
     {
-        _viewer->camera()->setViewDirection(easy3d::vec3(0.0356192, 0.819275, 0.572293));
-        _viewer->camera()->setPosition(easy3d::vec3(0.00371679, -0.163586, 0.261103));
+        /** Prostate */
+        // _viewer->camera()->setViewDirection(easy3d::vec3(0.0356192, 0.819275, 0.572293));
+        // _viewer->camera()->setPosition(easy3d::vec3(0.00371679, -0.163586, 0.261103));
+    
+        /** Trachea */
+        // _viewer->camera()->setPosition(easy3d::vec3(-0.00324725, -0.0680968, 1.00019));
+        easy3d::vec3 view_dir(0.105808, 0.990158, -0.0916088);
+        easy3d::vec3 pos(-0.00324725, -0.0680968, 1.00019);
+        _viewer->camera()->setPosition(pos-0*view_dir);
+        _viewer->camera()->setViewDirection(easy3d::vec3(0.105808, 0.990158, -0.0916088));
+
+        /** Tissue block */
+        // _viewer->camera()->setPosition(easy3d::vec3(0.660399, 0.0116081, 1.64928));
+        // _viewer->camera()->setViewDirection(easy3d::vec3(-0.713113, -0.0129693, -0.70093));
     }
     
 }
@@ -228,11 +274,34 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
         std::set<unsigned> vertices_to_grasp;// = _getAllVerticesInGraspingArea();
         if (_input_device == SimulationInputDevice::MOUSE)
         {
-            vertices_to_grasp.insert(_tissue_block->getClosestSurfaceVertex(_mouse_pos_3d(0), _mouse_pos_3d(1), _mouse_pos_3d(2)));
+            unsigned v = _tissue_block->getClosestSurfaceVertex(_mouse_pos_3d(0), _mouse_pos_3d(1), _mouse_pos_3d(2));
+            if (!_tissue_block->vertexFixed(v))
+                vertices_to_grasp.insert(v);
         }
         if (_input_device == SimulationInputDevice::HAPTIC)
         {
-            vertices_to_grasp.insert(_tissue_block->getClosestSurfaceVertex(_grasp_tip_position(0), _grasp_tip_position(1), _grasp_tip_position(2)));
+            // unsigned v = _tissue_block->getClosestSurfaceVertex(_grasp_tip_position(0), _grasp_tip_position(1), _grasp_tip_position(2));
+            
+            for (int theta = 0; theta < 360; theta+=30)
+            {
+                for (int phi = 0; phi < 360; phi+=30)
+                {
+                    for (double p = 0; p < _grasp_size; p+=_grasp_size/5.0)
+                    {
+                        const double x = _grasp_tip_position(0) + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
+                        const double y = _grasp_tip_position(1) + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
+                        const double z = _grasp_tip_position(2) + p*std::cos(phi*M_PI/180);
+                        unsigned v = _tissue_block->getClosestVertex(x, y, z);
+
+                        // make sure v is inside sphere
+                        if ((_grasp_tip_position - _tissue_block->getVertex(v)).norm() <= _grasp_size)
+                            if (!_tissue_block->vertexFixed(v))
+                                vertices_to_grasp.insert(v);
+                    }
+                }
+            }
+
+            
         }
         
 
@@ -311,4 +380,54 @@ Eigen::Vector3d TissueGraspingSimulation::_transformInputPosition(const Eigen::V
 
     return Eigen::Vector3d(transformed_position_h[0], transformed_position_h[1], transformed_position_h[2]);
 
+}
+
+void TissueGraspingSimulation::_fixOutsideSurface()
+{
+    double smallest_edge_length = _tissue_block->smallestEdgeLength();
+    const Eigen::Vector3d& min_coords = _tissue_block->bboxMinCoords();
+    const Eigen::Vector3d& max_coords = _tissue_block->bboxMaxCoords();
+    int x_steps = static_cast<int>((max_coords(0) - min_coords(0)) / smallest_edge_length) + 1;
+    int y_steps = static_cast<int>((max_coords(1) - min_coords(1)) / smallest_edge_length) + 1;
+    int z_steps = static_cast<int>((max_coords(2) - min_coords(2)) / smallest_edge_length) + 1;
+
+    // top and bottom surfaces (XY plane)
+    for (int xi = 0; xi < x_steps; xi++)
+    {
+        for (int yi = 0; yi < y_steps; yi++)
+        {
+            double x = xi*smallest_edge_length + min_coords(0);
+            double y = yi*smallest_edge_length + min_coords(1);
+            unsigned v1 = _tissue_block->getClosestSurfaceVertex(x, y, min_coords(2));
+            unsigned v2 = _tissue_block->getClosestSurfaceVertex(x, y, max_coords(2));
+            _tissue_block->fixVertex(v1);
+            _tissue_block->fixVertex(v2);
+        }
+    }
+
+    // XZ plane
+    for (int xi = 0; xi < x_steps; xi++)
+    {
+        for (int zi = 0; zi < z_steps; zi++)
+        {
+            double x = xi*smallest_edge_length + min_coords(0);
+            double z = zi*smallest_edge_length + min_coords(2);
+            unsigned v1 = _tissue_block->getClosestSurfaceVertex(x, z, min_coords(1));
+            unsigned v2 = _tissue_block->getClosestSurfaceVertex(x, z, max_coords(1));
+            _tissue_block->fixVertex(v1);
+            _tissue_block->fixVertex(v2);
+        }
+    }
+
+    // YZ plane
+    for (int yi = 0; yi < y_steps; yi++)
+    {
+        for (int zi = 0; zi < z_steps; zi++)
+        {
+            double y = yi*smallest_edge_length + min_coords(1);
+            double z = zi*smallest_edge_length + min_coords(2);
+            _tissue_block->fixVertex(_tissue_block->getClosestSurfaceVertex(y, z, min_coords(0)));
+            _tissue_block->fixVertex(_tissue_block->getClosestSurfaceVertex(y, z, max_coords(0)));
+        }
+    }
 }

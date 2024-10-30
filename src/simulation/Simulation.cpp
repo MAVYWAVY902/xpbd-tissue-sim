@@ -228,6 +228,9 @@ void Simulation::_updateGraphics()
         mesh_object->updateGraphics();
     }
 
+    // std::cout << _viewer->camera()->position() << std::endl;
+    // std::cout << _viewer->camera()->viewDirection() << std::endl;
+
     // update the viewer
     _viewer->update();
 }

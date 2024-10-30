@@ -2,25 +2,24 @@ name: "TissueGrasping"
 
 # Tissue grasping simulation-specific parameters
 z-scaling: 0.001    # scaling factor for converting vertical mouse movement with vertical tissue displacement
-grasp-size: 0.02   # the size of the area to grasp
+grasp-size: 0.007   # the size of the area to grasp
 input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
-fixed-faces-filename: "../resource/tissue/Trachea_processed_refined_fixed_faces.txt"
+fixed-faces-filename: "../resource/tissue/tracheal_tumor_fixed_faces.txt"
 
 g-accel: 0 # m/s2
 sim-mode: "Visualization"
 # sim-mode: "Frame-by-frame"
 # sim-mode: "AFAP"
-time-step: 3.33e-4 # for FO XPBD
+time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
 fps: 30
 end-time: 1000
 objects:
   -
     name: "Cube1"
-    type: "XPBDMeshObject"
-    # type: "FirstOrderXPBDMeshObject"
-    # filename: "../resource/tissue/Trachea_processed_refined.msh"
-    filename: "../resource/tissue/tissue_block1x1x0.1_4subdiv.msh"
+    # type: "XPBDMeshObject"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tissue/tracheal_tumor.msh"
     material:
       name: "Soft Tissue"
       density: 1000
@@ -28,17 +27,19 @@ objects:
       nu: 0.49
     color: [1.0, 0.0, 0.0, 1.0]
     draw-points: false
-    max-size: 0.5
+    draw-edges: true
+    max-size: 0.1
     position: [0, 0, 1]
     velocity: [0, 0, 0]
-    rotation: [0, 0, 0]
+    rotation: [0, 0, 180]
     num-solver-iters: 1
     damping-stiffness: 0
-    damping-multiplier: 400000
+    damping-multiplier: 500 #50000000
     residual-policy: "Never"
     # solve-mode: "First-Order-Simultaneous"
     # solve-mode: "Simultaneous-Jacobi"
-    solve-mode: "Simultaneous"
+    # solve-mode: "Simultaneous"
+    solve-mode: "Simultaneous-Smallest-Edge-B"
 
   - 
     # name: "Cube2"

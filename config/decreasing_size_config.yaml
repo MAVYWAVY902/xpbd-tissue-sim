@@ -3,36 +3,35 @@ g-accel: 0 # m/s2
 # sim-mode: "Frame-by-frame"
 sim-mode: "Visualization"
 # sim-mode: "AFAP"
-time-step: 1e-4
+time-step: 1e-3
 fps: 30
-end-time: 10
+end-time: 6e-2
 objects:
   -
-    name: "Trachea"
+    name: "Cube1"
     # type: "FirstOrderXPBDMeshObject"
     type: "XPBDMeshObject"
     # type: "FastFEMMeshObject"
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/general/stanford_bunny_medpoly.msh"
     # filename: "../resource/general/single.msh"
-    # filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube8.msh"
     # filename: "../resource/cube/cube16.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
-    filename: "../resource/tissue/Trachea_processed_refined.stl"
     material:
       name: "Soft Tissue"
       density: 1000
-      E: 6e4
+      E: 1e6
       nu: 0.4
     color: [1.0, 0.5, 0.0, 1.0]
     draw-points: false
-    draw-edges: false
-    max-size: 0.1
-    position: [0, 0, 1]
+    draw-edges: true
+    max-size: 0.5
+    position: [-0.25, 0, 10]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
-    num-solver-iters: 1
+    num-solver-iters: 10
     damping-stiffness: 0
     collisions: false
     damping-multiplier: 20000

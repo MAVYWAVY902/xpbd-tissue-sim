@@ -3,7 +3,8 @@ output-folder: "../output/cantilever_beam"
 g-accel: 9.81 # m/s2
 # sim-mode: "AFAP"
 sim-mode: "Visualization"
-time-step: 1.166e-4
+# sim-mode: "Frame-by-frame"
+time-step: 1e-3
 print-interval: 3.33e-2
 end-time: 100
 objects:
@@ -63,16 +64,16 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0, 0, 1]
+    position: [0, 0, 2.0]
     damping-stiffness: 0
     num-solver-iters: 1
-    damping-multiplier: 2000
+    damping-multiplier: 40
     residual-policy: "Every-Substep"
     # solve-mode: "Split-Deviatoric-Simultaneous10"
     # solve-mode: "First-Order-Simultaneous"
-    solve-mode: "Simultaneous"
+    # solve-mode: "Simultaneous"
     # solve-mode: "Simultaneous-Constant-B"
-    # solve-mode: "Simultaneous-Smallest-Edge-B"
+    solve-mode: "Simultaneous-Smallest-Edge-B"
 
   # -
   #   name: "FirstOrderCubeVolumeB2"
@@ -149,12 +150,20 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0, 0, 2.0]
+    position: [0, 0, 1.0]
     damping-stiffness: 0.1
     num-solver-iters: 1
     residual-policy: "Every-Substep"
     # solve-mode: "Split-Deviatoric-Simultaneous10"
     # solve-mode: "Simultaneous"
     solve-mode: "Sequential"
+
+  # -
+  #   name: "Ground"
+  #   type: "RigidMeshObject"
+  #   primitive-type: "Plane"
+  #   size: [0.15, 0.3, 0]
+  #   position: [0, 0.1, 0]
+  #   color: [1.0, 1.0, 1.0, 1.0]
 
 

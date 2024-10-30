@@ -97,6 +97,8 @@ class ElasticMeshObject : public MeshObject
 
     void fixVertex(unsigned index);
 
+    bool vertexFixed(unsigned index) const { return _fixed_vertices(index); }
+
     /** Adds a new vertex driver */
     void addVertexDriver(const std::shared_ptr<VertexDriver>& vd);
 

@@ -12,6 +12,8 @@
 #include <assimp/scene.h>           // Output data structure
 #include <assimp/postprocess.h>     // Post processing flags
 
+#include <set>
+
 namespace MeshUtils
 {
 
@@ -30,6 +32,8 @@ void createBeamObjWithOffsetVerts(const std::string& filename, const double l, c
 void createBeamObj(const std::string& filename, const double l, const double w, const double h,  const int num_subdivisions = 1);
 
 void createTissueBlock(const std::string& filename, const double l, const double w, const double h, const int num_low_res_subdivisions, const int high_res_multiplier);
+
+std::set<unsigned> verticesFromFixedFacesFile(const std::string& filename);
 
 }
 

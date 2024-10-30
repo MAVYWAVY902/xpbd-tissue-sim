@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 void MeshUtils::loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<double, -1, 3>& verts, Eigen::Matrix<unsigned, -1, 3>& faces)
 {
@@ -808,4 +809,26 @@ void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Mat
         }
     }
 
+}
+
+std::set<unsigned> MeshUtils::verticesFromFixedFacesFile(const std::string& filename)
+{
+    std::ifstream infile(filename);
+    std::string line;
+
+    std::set<unsigned> vertices;
+    while (std::getline(infile, line))
+    {
+        std::istringstream iss(line);
+        unsigned a, v1, v2, v3, f;
+        if (!(iss >> a >> v1 >> v2 >> v3 >> f)) { break; }
+
+        // add vertex indices to set
+        vertices.insert(v1);
+        vertices.insert(v2);
+        vertices.insert(v3);
+    }
+
+    return vertices;
+    
 }

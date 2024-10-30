@@ -37,12 +37,14 @@ class TissueGraspingSimulation : public OutputSimulation
     void _updateGraphics() override;
     void _toggleTissueGrasping();
     std::set<unsigned> _getAllVerticesInGraspingArea();
+    void _fixOutsideSurface();
 
     Eigen::Vector3d _transformInputPosition(const Eigen::Vector3d& input_position);
 
     double _grasp_size;
     double _z_scaling;
     SimulationInputDevice _input_device;
+    std::optional<std::string> _fixed_faces_filename;
 
     bool _grasping;
     Eigen::Vector2d _mouse_pos_2d;
