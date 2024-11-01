@@ -65,7 +65,6 @@ RUN ln -sfn /usr/lib/libQHGLUTWrapper.so.3.4.0 /usr/lib/libQHGLUTWrapper.so
 RUN chmod -R 777 /opt/OpenHaptics
 RUN export OH_SDK_BASE=/opt/OpenHaptics/Developer/3.4-0
 
-
 # follow driver installation instructions
 WORKDIR /thirdparty/TouchDriver_2023_11_15
 RUN cp usr/lib/libPhantomIOLib42.so /usr/lib/
@@ -74,6 +73,31 @@ RUN cp usr/lib/libPhantomIOLib42.so /usr/lib/
 RUN ln -s /usr/lib/x86_64-linux-gnu/libglut.so /usr/lib/libglut.so.3
 RUN ln -s /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/libncurses.so.5
 RUN ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/libtinfo.so.5
+
+####### Install NVidia stuff
+# for getting libtinfo5 which is needed by CUDA 12.4
+RUN echo "Types: deb" >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo "URIs: http://archive.ubuntu.com/ubuntu/" >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo "Suites: lunar" >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo "Components: universe" >> /etc/apt/sources.list.d/ubuntu.sources
+RUN echo "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg" >> /etc/apt/sources.list.d/ubuntu.sources
+
+# install CUDA 12.4
+WORKDIR /thirdparty
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+RUN mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+RUN wget https://developer.download.nvidia.com/compute/cuda/12.4.0/local_installers/cuda-repo-ubuntu2204-12-4-local_12.4.0-550.54.14-1_amd64.deb
+RUN dpkg -i cuda-repo-ubuntu2204-12-4-local_12.4.0-550.54.14-1_amd64.deb
+RUN cp /var/cuda-repo-ubuntu2204-12-4-local/cuda-*-keyring.gpg /usr/share/keyrings/
+RUN apt-get update
+RUN apt-get -y install cuda-toolkit-12-4
+
+# finish installation by updating path
+RUN export PATH=/usr/local/cuda-12.4/bin${PATH:+:${PATH}}
+RUN export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+
+# clone cuda samples
+RUN git clone https://github.com/NVIDIA/cuda-samples.git
 
 
 WORKDIR /workspace
