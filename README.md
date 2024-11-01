@@ -9,6 +9,11 @@ First, install the Docker engine (instructions for Ubuntu [here](https://docs.do
 
 Then, install the [Docker compose plugin](https://docs.docker.com/compose/install/linux/#install-using-the-repository).
 
+If using a NVIDIA GPU, install the NVIDIA Container Toolkit (instructions for Linux [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)). Be sure to restart the Docker daemon after installing.
+If not using a GPU, comment out the following lines in `docker-compose.yml`: 
+
+https://github.com/smtobin/XPBD_Sandbox/blob/b773619f3a5930c899f1003c76c69ad102699581/docker-compose.yml#L16C5-L22C34. 
+
 Then, run 
 
 ```
