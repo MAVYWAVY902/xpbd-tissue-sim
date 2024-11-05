@@ -2,12 +2,6 @@
 
 namespace Graphics {
 
-MeshGraphicsObject::MeshGraphicsObject(const std::string& name)
-    : GraphicsObject(name)
-{
-
-}
-
 MeshGraphicsObject::MeshGraphicsObject(const std::string& name, std::shared_ptr<MeshObject> mesh_object)
     : GraphicsObject(name), _mesh_object(mesh_object)
 {

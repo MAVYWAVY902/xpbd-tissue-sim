@@ -39,20 +39,24 @@ void Easy3DGraphicsScene::update()
 
 int Easy3DGraphicsScene::run()
 {
+    // run the viewer (will run indefinitely)
     return _viewer->run();
 }
 
 size_t Easy3DGraphicsScene::addMeshObject(std::shared_ptr<MeshObject> obj)
 {
 
+    // make sure object with name doesn't already exist in the scene
     if (getObject(obj->name()))
     {
         std::cout << "GraphicsObject with name " << obj->name() << " already exists in this GraphicsScene!" << std::endl;
         assert(0);
     }
+
+    // create a new MeshGraphicsObject for visualizing this MeshObject
     std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), obj);
     
-    // add the Drawables for the new MeshObject to the Viewer
+    // add the easy3d::Drawables created by the Easy3DMeshGraphicsObject to the easy3d::Viewer
     for (const auto& pt_drawable : e3d_mgo->renderer()->points_drawables())
     {
         _viewer->add_drawable(pt_drawable);
@@ -66,6 +70,7 @@ size_t Easy3DGraphicsScene::addMeshObject(std::shared_ptr<MeshObject> obj)
         _viewer->add_drawable(tri_drawable);
     }
 
+    // store the MeshGraphicsObject and return its position in the vector
     _graphics_objects.push_back(std::move(e3d_mgo));
     return _graphics_objects.size() - 1;
 }

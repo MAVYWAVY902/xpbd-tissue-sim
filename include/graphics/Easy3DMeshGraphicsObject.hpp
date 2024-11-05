@@ -9,23 +9,35 @@
 namespace Graphics
 {
 
+/** Handles visualization for mesh-based simulation objects using Easy3D.
+ * 
+ * - Inherits easy3d::Model so that it handles its own rendering by adding Drawables for points, edges, and faces 
+ * - Implements the update() method which will update the Easy3D buffers to update the renderer
+ *   according to the changes in the mesh
+ * 
+ */
 class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
 {
     public:
+    /** Creates a Easy3DMeshGraphicsObject with a given name and for a given MeshObject
+     * @param name : the name of the new MeshGraphicsObject
+     * @param mesh_object : the simulation MeshObject to get mesh information from
+     */
     explicit Easy3DMeshGraphicsObject(const std::string& name, std::shared_ptr<MeshObject> mesh_object);
 
     virtual ~Easy3DMeshGraphicsObject();
 
+    /** Updates graphics buffers associated with this object */
     virtual void update() override;
 
-    /** Returns the vec3 vertex cache.
+    /** Returns the easy3d::vec3 vertex cache.
      * Does NOT check if vertices are stale.
      * 
      * A required override for the easy3d::Model class.
      */
     std::vector<easy3d::vec3>& points() override { return _vertex_cache; };
 
-    /** Returns the vec3 vertex cache.
+    /** Returns the easy3d::vec3 vertex cache.
      * Does NOT check if vertices are stale.
      * 
      * A required override for the easy3d::Model class.
@@ -45,8 +57,7 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
     std::vector<unsigned int> edgesAsFlatList() const;
 
     protected:
-    /** Updates the vertex cache. Should be called when the _vertices matrix has been changed.
-     * Does NOT reallocate storage for the vertices, it has a fixed amount of space.
+    /** Updates the vertex cache. Called before redrawing to get latest updates to mesh vertices drawn.
      * Each vertex is written over the top of the previous version of itself.
      */
     void _updateVertexCache();
@@ -54,7 +65,7 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
     void _init();
 
     protected:
-    /** Vector of vec3 vertices that is continually updated as _vertices changes.
+    /** Vector of easy3d::vec3 vertices that is updated before every redraw.
      * Used by easy3d to update the vertex buffers (i.e. the positions) of the geometry on the graphics side.
      */
     std::vector<easy3d::vec3> _vertex_cache;
