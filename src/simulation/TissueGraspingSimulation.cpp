@@ -150,7 +150,13 @@ void TissueGraspingSimulation::_updateGraphics()
 
         for (const auto& vd : _grasped_vertex_drivers)
         {
-            const Eigen::Vector3d new_position = vd->position() + (_grasp_tip_position-old_tip_position);
+            Eigen::Vector3d new_position = vd->position() + (_grasp_tip_position-old_tip_position);
+            const double dist_from_grasp_tip = (new_position - _grasp_tip_position).norm();
+            if (dist_from_grasp_tip > _grasp_size*0.25)
+            {
+                const Eigen::Vector3d dir = (_grasp_tip_position - new_position).normalized();
+                new_position += dir*(dist_from_grasp_tip - _grasp_size*0.25);
+            }
             vd->setPosition(new_position);
         }
     }
@@ -253,6 +259,27 @@ void TissueGraspingSimulation::notifyKeyPressed(int /* key */, int action, int /
         /** Tissue block */
         // _viewer->camera()->setPosition(easy3d::vec3(0.660399, 0.0116081, 1.64928));
         // _viewer->camera()->setViewDirection(easy3d::vec3(-0.713113, -0.0129693, -0.70093));
+
+        // save tissue vertices, faces, elements
+        std::ofstream vertices_file("vertices_" + std::to_string(_time) + ".txt");
+        if (vertices_file.is_open())
+        {
+            vertices_file << _tissue_block->vertices() << std::endl;
+        }
+
+        std::ofstream faces_file("faces_" + std::to_string(_time) + ".txt");
+        if (faces_file.is_open())
+        {
+            faces_file << _tissue_block->faces() << std::endl;
+        }
+
+        std::ofstream elements_file("elements_" + std::to_string(_time) + ".txt");
+        if (elements_file.is_open())
+        {
+            elements_file << _tissue_block->faces() << std::endl;
+        }
+
+        
     }
     
 }
