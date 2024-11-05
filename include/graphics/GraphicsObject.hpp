@@ -7,19 +7,33 @@
 namespace Graphics
 {
 
+/** Abstract base class for all graphics objects
+ * 
+ * - Stored in a GraphicsScene for visualization.
+ * - The update() method will update any graphics buffers (i.e. vertex buffers, etc.)
+ *    so that the GraphicsScene has the most up-to-date information before rendering.
+ */
 class GraphicsObject 
 {
     public:
+    /** Creates a GraphicsObject with the given name
+     * @param name : the name of the new GraphicsObject
+     */
     explicit GraphicsObject(const std::string& name)
         : _name(name) {}
 
     virtual ~GraphicsObject() {};
-
+    
+    /** Updates graphics buffers associated with this object */
     virtual void update() = 0;
 
+    /** Returns the name of this GraphicsObject
+     * @returns the name of this GraphicsObject
+     */
     std::string name() const { return _name; }
 
     protected:
+    /** Name of this GraphicsObject */
     std::string _name;
 };
 
