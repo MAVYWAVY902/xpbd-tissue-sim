@@ -10,13 +10,16 @@
 
 class Simulation;
 
+namespace Graphics
+{
+
 /** A class that extends easy3d::Viewer in order to render text in the graphics window.
  * Necessary so that the drawing of text can happen in the Viewer redraw, so that the text actually gets rendered.
  * TextRenderingViewer has support for as much rendered text as needed through specifications of TextSpecs, which
  * contain all information needed to render text on the screen.
  * 
  */
-class TextRenderingViewer : public easy3d::Viewer
+class Easy3DTextRenderingViewer : public easy3d::Viewer
 {
     public:
     /** Font enum
@@ -79,7 +82,7 @@ class TextRenderingViewer : public easy3d::Viewer
     };
 
     /** Constructor - initialize the viewer with a title */
-    explicit TextRenderingViewer(const std::string& title);
+    explicit Easy3DTextRenderingViewer(const std::string& title);
 
     /** Add text to the Viewer to be rendered
      * Simply creates a TextSpec according to the parameters passed in
@@ -165,5 +168,7 @@ class TextRenderingViewer : public easy3d::Viewer
      */
     bool _enable_mouse_interaction;
 };
+
+} // namespace Graphics
 
 #endif // __TEXT_RENDERING_VIEWER_HPP

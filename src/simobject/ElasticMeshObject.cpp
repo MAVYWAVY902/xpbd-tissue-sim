@@ -92,8 +92,6 @@ ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
         _v.rowwise() = config->initialVelocity().value().transpose();
     }
 
-    updateVertexCache();
-
     _x_prev = _vertices;
 
 }

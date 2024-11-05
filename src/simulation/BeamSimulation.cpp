@@ -51,7 +51,9 @@ void BeamSimulation::setup()
     }
     _out_file << std::endl;
     
-    _viewer->camera()->setType(easy3d::Camera::ORTHOGRAPHIC);
+    if (_graphics_scene)
+        _graphics_scene->setCameraOrthographic();
+        
     _last_print_sim_time = _time;
 }
 

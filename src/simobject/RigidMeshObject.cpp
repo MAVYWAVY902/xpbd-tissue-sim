@@ -49,8 +49,6 @@ RigidMeshObject::RigidMeshObject(const RigidMeshObjectConfig* config)
     {
         _v = config->initialVelocity().value();
     }
-
-    updateVertexCache();
 }
 
 RigidMeshObject::RigidMeshObject(const std::string& name, const std::string& filename)

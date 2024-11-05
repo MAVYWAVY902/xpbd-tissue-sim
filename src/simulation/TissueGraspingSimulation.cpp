@@ -129,12 +129,16 @@ void TissueGraspingSimulation::_updateGraphics()
         // std::cout << "Position: " << _grasp_tip_position(0) << ", " << _grasp_tip_position(1) << ", " << _grasp_tip_position(2) << std::endl;
         
         Eigen::Matrix3d camera_rotation;
-        easy3d::vec3 view_dir_easy3d = _viewer->camera()->viewDirection();
-        easy3d::vec3 up_vec_easy3d = _viewer->camera()->upVector();
-        easy3d::vec3 right_vec_easy3d = -_viewer->camera()->rightVector();
-        Eigen::Vector3d view_dir(view_dir_easy3d[0], view_dir_easy3d[1], view_dir_easy3d[2]);
-        Eigen::Vector3d up_vec(up_vec_easy3d[0], up_vec_easy3d[1], up_vec_easy3d[2]);
-        Eigen::Vector3d right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2]);
+        // easy3d::vec3 view_dir_easy3d = _viewer->camera()->viewDirection();
+        // easy3d::vec3 up_vec_easy3d = _viewer->camera()->upVector();
+        // easy3d::vec3 right_vec_easy3d = -_viewer->camera()->rightVector();
+        // Eigen::Vector3d view_dir(view_dir_easy3d[0], view_dir_easy3d[1], view_dir_easy3d[2]);
+        // Eigen::Vector3d up_vec(up_vec_easy3d[0], up_vec_easy3d[1], up_vec_easy3d[2]);
+        // Eigen::Vector3d right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2]);
+        Eigen::Vector3d view_dir = _graphics_scene->cameraViewDirection();
+        Eigen::Vector3d up_vec = _graphics_scene->cameraUpDirection();
+        Eigen::Vector3d right_vec = _graphics_scene->cameraRightDirection(); 
+        
         camera_rotation.row(0) = right_vec;
         camera_rotation.row(1) = up_vec;
         camera_rotation.row(2) = view_dir;
@@ -214,11 +218,11 @@ void TissueGraspingSimulation::notifyMouseMoved(double x, double y)
     }
 
     bool found;
-    easy3d::vec3 mouse_pt = _viewer->point_under_pixel(x, y, found);
-    Eigen::Vector3d new_mouse_pos;
-    new_mouse_pos(0) = mouse_pt.x;
-    new_mouse_pos(1) = mouse_pt.y;
-    new_mouse_pos(2) = mouse_pt.z;
+    // easy3d::vec3 mouse_pt = _viewer->point_under_pixel(x, y, found);
+    Eigen::Vector3d new_mouse_pos(0,0,0);
+    // new_mouse_pos(0) = mouse_pt.x;
+    // new_mouse_pos(1) = mouse_pt.y;
+    // new_mouse_pos(2) = mouse_pt.z;
 
     for (const auto& vd : _grasped_vertex_drivers)
     {
@@ -251,10 +255,18 @@ void TissueGraspingSimulation::notifyKeyPressed(int /* key */, int action, int /
     
         /** Trachea */
         // _viewer->camera()->setPosition(easy3d::vec3(-0.00324725, -0.0680968, 1.00019));
-        easy3d::vec3 view_dir(0.105808, 0.990158, -0.0916088);
-        easy3d::vec3 pos(-0.00324725, -0.0680968, 1.00019);
-        _viewer->camera()->setPosition(pos-0*view_dir);
-        _viewer->camera()->setViewDirection(easy3d::vec3(0.105808, 0.990158, -0.0916088));
+        // easy3d::vec3 view_dir(0.105808, 0.990158, -0.0916088);
+        // easy3d::vec3 pos(-0.00324725, -0.0680968, 1.00019);
+        // _viewer->camera()->setPosition(pos-0*view_dir);
+        // _viewer->camera()->setViewDirection(easy3d::vec3(0.105808, 0.990158, -0.0916088));
+        if (_graphics_scene)
+        {
+            Eigen::Vector3d position(-0.00324725, -0.0680968, 1.00019);
+            Eigen::Vector3d view_dir(0.105808, 0.990158, -0.0916088);
+            _graphics_scene->setCameraPosition(position);
+            _graphics_scene->setCameraViewDirection(view_dir);
+        }
+
 
         /** Tissue block */
         // _viewer->camera()->setPosition(easy3d::vec3(0.660399, 0.0116081, 1.64928));
@@ -388,10 +400,10 @@ Eigen::Vector3d TissueGraspingSimulation::_transformInputPosition(const Eigen::V
     T_OC(2,2) = -1;
     T_OC(2,3) = 0.2; // distance
 
-    easy3d::vec3 view_dir_easy3d = _viewer->camera()->viewDirection();
-    easy3d::vec3 up_vec_easy3d = _viewer->camera()->upVector();
-    easy3d::vec3 right_vec_easy3d = -_viewer->camera()->rightVector();
-    easy3d::vec3 camera_position_easy3d = _viewer->camera()->position();
+    Eigen::Vector3d view_dir_easy3d = _graphics_scene->cameraViewDirection();
+    Eigen::Vector3d up_vec_easy3d = _graphics_scene->cameraUpDirection();
+    Eigen::Vector3d right_vec_easy3d = -_graphics_scene->cameraRightDirection();
+    Eigen::Vector3d camera_position_easy3d = _graphics_scene->cameraPosition();
     Eigen::Vector4d view_dir(view_dir_easy3d[0], view_dir_easy3d[1], view_dir_easy3d[2], 0);
     Eigen::Vector4d up_vec(up_vec_easy3d[0], up_vec_easy3d[1], up_vec_easy3d[2], 0);
     Eigen::Vector4d right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2], 0);

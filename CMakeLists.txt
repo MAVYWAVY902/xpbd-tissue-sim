@@ -47,7 +47,13 @@ set(XPBD_FILES
     "include/simobject/XPBDMeshObject.hpp"
     "include/simobject/FirstOrderXPBDMeshObject.hpp"
     "include/simobject/FastFEMMeshObject.hpp"
-    "include/graphics/TextRenderingViewer.hpp" 
+    "include/graphics/GraphicsScene.hpp"
+    "include/graphics/Easy3DGraphicsScene.hpp"
+    "include/graphics/GraphicsObject.hpp"
+    "include/graphics/MeshGraphicsObject.hpp"
+    "include/graphics/Easy3DMeshGraphicsObject.hpp"
+    "include/graphics/Easy3DGraphicsScene.hpp"
+    "include/graphics/Easy3DTextRenderingViewer.hpp" 
     "include/config/Config.hpp"
     "include/config/MeshObjectConfig.hpp"
     "include/config/ElasticMeshObjectConfig.hpp"
@@ -78,7 +84,11 @@ set(XPBD_FILES
     "src/simobject/XPBDMeshObject.cpp"
     "src/simobject/FirstOrderXPBDMeshObject.cpp"
     "src/simobject/FastFEMMeshObject.cpp"
-    "src/graphics/TextRenderingViewer.cpp" 
+    "src/graphics/GraphicsScene.cpp"
+    "src/graphics/Easy3DGraphicsScene.cpp"
+    "src/graphics/MeshGraphicsObject.cpp"
+    "src/graphics/Easy3DMeshGraphicsObject.cpp"
+    "src/graphics/Easy3DTextRenderingViewer.cpp" 
 )
 
 add_library(XPBD ${XPBD_FILES} ) # create XPBD library
