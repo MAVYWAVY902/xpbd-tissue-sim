@@ -1,5 +1,6 @@
 #include "graphics/Easy3DGraphicsScene.hpp"
 #include "graphics/Easy3DMeshGraphicsObject.hpp"
+#include "config/MeshObjectConfig.hpp"
 
 namespace Graphics
 {
@@ -43,7 +44,7 @@ int Easy3DGraphicsScene::run()
     return _viewer->run();
 }
 
-size_t Easy3DGraphicsScene::addMeshObject(std::shared_ptr<MeshObject> obj)
+size_t Easy3DGraphicsScene::addMeshObject(std::shared_ptr<MeshObject> obj, MeshObjectConfig* obj_config)
 {
 
     // make sure object with name doesn't already exist in the scene
@@ -54,7 +55,7 @@ size_t Easy3DGraphicsScene::addMeshObject(std::shared_ptr<MeshObject> obj)
     }
 
     // create a new MeshGraphicsObject for visualizing this MeshObject
-    std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), obj);
+    std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), obj, obj_config);
     
     // add the easy3d::Drawables created by the Easy3DMeshGraphicsObject to the easy3d::Viewer
     for (const auto& pt_drawable : e3d_mgo->renderer()->points_drawables())

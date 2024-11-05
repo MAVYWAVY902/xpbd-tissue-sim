@@ -109,7 +109,7 @@ void Simulation::setup()
         // add the new object to the graphics scene to be visualized
         if (_graphics_scene)
         {
-            _graphics_scene->addMeshObject(new_obj);
+            _graphics_scene->addMeshObject(new_obj, obj_config.get());
         }
     }
 
@@ -199,18 +199,6 @@ void Simulation::_updateGraphics()
     }
     // update the sim time text
     // _viewer->editText("time", "Sim Time: " + std::to_string(_time) + " s");
-
-    // make sure graphics are up to date for all the objects in the sim
-    // for (auto& mesh_object : _mesh_objects)
-    // {
-    //     mesh_object->updateGraphics();
-    // }
-
-    // std::cout << _viewer->camera()->position() << std::endl;
-    // std::cout << _viewer->camera()->viewDirection() << std::endl;
-
-    // update the viewer
-    // _viewer->update();
 }
 
 void Simulation::notifyKeyPressed(int /* key */, int action, int /* modifiers */)
