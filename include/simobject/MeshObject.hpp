@@ -6,17 +6,13 @@
 #include <Eigen/Dense>
 
 #include "config/MeshObjectConfig.hpp"
-// #include "Simulation.hpp"
 
 class Simulation;
 
 /** A class for representing mesh-based objects in the simulation.
  * Inherited classes will implement the material behavior associated with the meshes.
- * 
- * 
- * Inherits from easy3d::Model so it handles its own rendering.
  */
-class MeshObject //: public easy3d::Model
+class MeshObject
 {
 
     // public typedefs
@@ -38,17 +34,11 @@ class MeshObject //: public easy3d::Model
     
     /** Creates an empty MeshObject with the specified name
      * @param name : the name of the new MeshObject
-     */
+    */
     explicit MeshObject(const std::string& name);
     
     // explicit MeshObject(const std::string& name, const YAML::Node& config);
     explicit MeshObject(const MeshObjectConfig* config);
-
-    /** Creates MeshObject by loading from a file
-     * @param name : the name of the new MeshObject
-     * @param filename : the filename to read elements and vertices from
-     */
-    // explicit MeshObject(const std::string& name, const std::string& filename);
 
     /** Creates MeshObject directly from vertices and elements
      * @param name : the name of the new MeshObject
@@ -88,10 +78,6 @@ class MeshObject //: public easy3d::Model
      * @param g_accel : the acceleration due to gravity
     */
     virtual void update(const double dt, const double g_accel) = 0;
-
-    /** Updates the graphics buffers associated with this mesh
-     */
-    // virtual void updateGraphics();
 
     /** Sets new vertices for the mesh. Also updates the vertex cache.
      * @param verts : the new matrix of vertices

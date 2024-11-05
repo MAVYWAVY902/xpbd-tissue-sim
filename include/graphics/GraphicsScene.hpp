@@ -12,6 +12,7 @@
 #include <Eigen/Dense>
 
 class MeshObject;
+class MeshObjectConfig;
 
 namespace Graphics {
 
@@ -46,9 +47,10 @@ class GraphicsScene
 
     /** Creates a MeshGraphicsObject from a supplied MeshObject and adds it to the GraphicsScene
      * @param obj : the MeshObject to add to the GraphicsScene for visualization
+     * @param obj_config : the MeshObjectConfig that contains visualization parameters (e.g. coloring, draw points, etc.)
      * @returns the index of the provided object in the _graphics_objects array (can be used to fetch it in the future)
      */
-    virtual size_t addMeshObject(std::shared_ptr<MeshObject> obj) = 0;
+    virtual size_t addMeshObject(std::shared_ptr<MeshObject> obj, MeshObjectConfig* obj_config) = 0;
 
     /** Sets the camera mode to Orthographic */
     virtual void setCameraOrthographic() = 0;
