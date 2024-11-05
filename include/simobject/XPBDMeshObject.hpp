@@ -93,6 +93,12 @@ class XPBDMeshObject : public ElasticMeshObject
      * @param dt : the time step
      */
     void _projectConstraintsSimultaneous(const double dt);
+
+    /** Projects the elastic constraints by solving the C_h and C_d for a single tetrahedral element SIMULTANEOUSLY with damping.
+     * This ultimately involves solving a 2x2 system, resulting in a 2x1 dlambda with one term for the dlambda associated with C_h and the other associated with C_d.
+     * @param dt : the time step
+     */
+    void _projectConstraintsSimultaneousDamped(const double dt);
     
     /** Projects the elastic constraints but updates the x-positions after finding all the dlambdas - i.e. keeps x FIXED during the computation of lambdas.
      * @param dt : the time step

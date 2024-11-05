@@ -2,7 +2,7 @@ name: "TissueGrasping"
 
 # Tissue grasping simulation-specific parameters
 z-scaling: 0.001    # scaling factor for converting vertical mouse movement with vertical tissue displacement
-grasp-size: 0.007   # the size of the area to grasp
+grasp-size: 0.004   # the size of the area to grasp
 input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 fixed-faces-filename: "../resource/tissue/tracheal_tumor_fixed_faces.txt"
 
@@ -13,7 +13,7 @@ sim-mode: "Visualization"
 time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
 fps: 30
-end-time: 1000
+end-time: 100
 objects:
   -
     name: "Cube1"
