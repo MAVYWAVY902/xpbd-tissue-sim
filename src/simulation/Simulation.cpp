@@ -3,6 +3,8 @@
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 
+#include "graphics/Easy3DGraphicsScene.hpp"
+
 #include "RigidMeshObject.hpp"
 #include "XPBDMeshObject.hpp"
 #include "FirstOrderXPBDMeshObject.hpp"
@@ -17,9 +19,6 @@ void Simulation::_init()
     // initialize gmsh
     gmsh::initialize();
 
-    // initialize easy3d
-    easy3d::initialize();
-
     // set simulation properties based on YAML file
     _name = _config->name().value();
     _description = _config->description().value();
@@ -30,19 +29,18 @@ void Simulation::_init()
     _viewer_refresh_time = 1/_config->fps().value()*1000;
 
     // set the Simulation mode from the YAML config
-    if (_config->simMode().has_value())
+    _sim_mode = _config->simMode().value();
+
+    // initialize the graphics scene according to the type specified by the user
+    // if "None", don't create a graphics scene
+    if (_config->visualization().value() == Visualization::EASY3D)
     {
-        _sim_mode = _config->simMode().value();
+        _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
+        _graphics_scene->init();
     }
 
     // initialize the collision scene
     _collision_scene = std::make_unique<CollisionScene>(_time_step, 0.05, 20000);
-
-    // now we can create the Viewer
-    _viewer = std::make_unique<TextRenderingViewer>(_name);
-    _viewer->set_usage("");
-    _viewer->registerSimulation(this);
-    _viewer->resize(1000,650);
 }
 
 Simulation::Simulation(const std::string& config_filename)
@@ -69,78 +67,54 @@ void Simulation::addObject(std::shared_ptr<MeshObject> mesh_object)
     // add new object to MeshObjects container
     _mesh_objects.push_back(mesh_object);
     
-
-    // add the Drawables for the new MeshObject to the Viewer
-    for (const auto& pt_drawable : mesh_object->renderer()->points_drawables())
-    {
-        _viewer->add_drawable(pt_drawable);
-    }
-    for (const auto& line_drawable : mesh_object->renderer()->lines_drawables())
-    {
-        _viewer->add_drawable(line_drawable);
-    }
-    for (const auto& tri_drawable : mesh_object->renderer()->triangles_drawables())
-    {
-        _viewer->add_drawable(tri_drawable);
-    }
-    
 }
 
 void Simulation::setup()
 {   
     for (const auto& obj_config : _config->meshObjectConfigs())
     {
+        std::shared_ptr<MeshObject> new_obj;
         // try downcasting
         if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
         {
-            std::shared_ptr<XPBDMeshObject> new_obj = std::make_shared<XPBDMeshObject>(xpbd_config);
-            // if (XPBDMeshObject* xpbdmo = dynamic_cast<XPBDMeshObject*>(mesh_object))
-        // {
-            std::cout << "Smallest edge length for " << new_obj->name() << ": " << new_obj->smallestEdgeLength() << std::endl;
-            std::cout << "Smallest tet volume for " << new_obj->name() << ": " << new_obj->smallestVolume() << std::endl;
-
-        // }
-            addObject(new_obj);
-
-            if (xpbd_config->collisions().value())
-            {
-                _collision_scene->addObject(new_obj);
-            }
+            new_obj = std::make_shared<XPBDMeshObject>(xpbd_config);
         }
         else if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
         {
-            std::shared_ptr<FirstOrderXPBDMeshObject> new_obj = std::make_shared<FirstOrderXPBDMeshObject>(xpbd_config);
-            addObject(new_obj);
-
-            if (xpbd_config->collisions().value())
-            {
-                _collision_scene->addObject(new_obj);
-            }
+            new_obj = std::make_shared<FirstOrderXPBDMeshObject>(xpbd_config);
         }
         else if (FastFEMMeshObjectConfig* fem_config = dynamic_cast<FastFEMMeshObjectConfig*>(obj_config.get()))
         {
-            std::shared_ptr<FastFEMMeshObject> new_obj = std::make_shared<FastFEMMeshObject>(fem_config);
-            addObject(new_obj);
-
-            if (fem_config->collisions().value())
-            {
-                _collision_scene->addObject(new_obj);
-            }
+            new_obj = std::make_shared<FastFEMMeshObject>(fem_config);
         }
         else if (RigidMeshObjectConfig* rigid_config = dynamic_cast<RigidMeshObjectConfig*>(obj_config.get()))
         {
-            std::shared_ptr<RigidMeshObject> new_obj = std::make_shared<RigidMeshObject>(rigid_config);
-            addObject(new_obj);
+            new_obj = std::make_shared<RigidMeshObject>(rigid_config);
+        }
+        else
+        {
+            // downcasting failed for some reason, continue onto the next one
+            std::cout << "Unknown config type!" << std::endl;
+            continue;
+        }
 
-            if (rigid_config->collisions().value())
-            {
-                _collision_scene->addObject(new_obj);
-            }
+        // if we get to here, we have successfully created a new MeshObject of some kind
+        // so add the new object to the simulation
+        addObject(new_obj);
+        // add the new object to the collision scene if collisions are enabled
+        if (obj_config->collisions().value())
+        {
+            _collision_scene->addObject(new_obj);
+        }
+        // add the new object to the graphics scene to be visualized
+        if (_graphics_scene)
+        {
+            _graphics_scene->addMeshObject(new_obj);
         }
     }
 
     // add text that displays the current Sim Time   
-    _viewer->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, easy3d::TextRenderer::ALIGN_LEFT, TextRenderingViewer::Font::MAO, easy3d::vec3(0,0,0), 0.5f, false);
+    // _viewer->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, easy3d::TextRenderer::ALIGN_LEFT, TextRenderingViewer::Font::MAO, easy3d::vec3(0,0,0), 0.5f, false);
 }
 
 void Simulation::update()
@@ -219,20 +193,24 @@ void Simulation::_timeStep()
 
 void Simulation::_updateGraphics()
 {
+    if (_graphics_scene)
+    {
+        _graphics_scene->update();
+    }
     // update the sim time text
-    _viewer->editText("time", "Sim Time: " + std::to_string(_time) + " s");
+    // _viewer->editText("time", "Sim Time: " + std::to_string(_time) + " s");
 
     // make sure graphics are up to date for all the objects in the sim
-    for (auto& mesh_object : _mesh_objects)
-    {
-        mesh_object->updateGraphics();
-    }
+    // for (auto& mesh_object : _mesh_objects)
+    // {
+    //     mesh_object->updateGraphics();
+    // }
 
     // std::cout << _viewer->camera()->position() << std::endl;
     // std::cout << _viewer->camera()->viewDirection() << std::endl;
 
     // update the viewer
-    _viewer->update();
+    // _viewer->update();
 }
 
 void Simulation::notifyKeyPressed(int /* key */, int action, int /* modifiers */)
@@ -278,5 +256,6 @@ int Simulation::run()
 
     // run the Viewer
     // _viewer->fit_screen();
-    return _viewer->run();
+    // return _viewer->run();
+    return _graphics_scene->run();
 }

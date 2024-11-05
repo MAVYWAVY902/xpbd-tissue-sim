@@ -1,12 +1,6 @@
 #ifndef __MESH_OBJECT_HPP
 #define __MESH_OBJECT_HPP
 
-#include <easy3d/renderer/drawable_lines.h>
-#include <easy3d/renderer/drawable_points.h>
-#include <easy3d/renderer/drawable_triangles.h>
-#include <easy3d/core/types.h>
-#include <easy3d/core/model.h>
-
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Dense>
@@ -22,7 +16,7 @@ class Simulation;
  * 
  * Inherits from easy3d::Model so it handles its own rendering.
  */
-class MeshObject : public easy3d::Model
+class MeshObject //: public easy3d::Model
 {
 
     // public typedefs
@@ -66,23 +60,15 @@ class MeshObject : public easy3d::Model
     virtual std::string toString() const;
     virtual std::string type() const { return "MeshObject"; }
 
-    /** Returns the vec3 vertex cache.
-     * Does NOT check if vertices are stale.
-     * 
-     * A required override for the Model class.
-     */
-    std::vector<easy3d::vec3>& points() override;
-
-    /** Returns the vec3 vertex cache.
-     * Does NOT check if vertices are stale.
-     * 
-     * A required override for the Model class.
-     */
-    const std::vector<easy3d::vec3>& points() const override;
+    std::string name() const { return _name; }
 
     VerticesMat vertices() const { return _vertices; }
 
+    int numVertices() const { return _vertices.rows(); }
+
     FacesMat faces() const { return _faces; }
+
+    int numFaces() const { return _faces.rows(); }
 
     virtual VerticesMat velocities() const = 0;
 
@@ -105,19 +91,7 @@ class MeshObject : public easy3d::Model
 
     /** Updates the graphics buffers associated with this mesh
      */
-    virtual void updateGraphics();
-
-    /** Returns the faces of the mesh as a flat vector of vertex indices. Used for moving face information to GPU via Easy3d.
-     * As per specified by TrianglesDrawable docs, each 3 consecutive vertices represents a face.
-     * @returns a 1d vecor of vertex indices - 3 consecutive entries corresponds to a face to be rendered.
-     */
-    std::vector<unsigned int> facesAsFlatList() const;
-
-    /** Returns the surface edges of the mesh as a flat vector of vertex indices. Used for moving edge information to GPU via Easy3d.
-     * As per specified by LinesDrawable docs, each 2 consecutive vertices represents an edge.
-     * @returns a 1d vector of vertex indicies - 2 consecutive entries corresponds to a edge to be rendered.
-     */
-    std::vector<unsigned int> edgesAsFlatList() const;
+    // virtual void updateGraphics();
 
     /** Sets new vertices for the mesh. Also updates the vertex cache.
      * @param verts : the new matrix of vertices
@@ -196,13 +170,6 @@ class MeshObject : public easy3d::Model
      */
     void rotate(const Eigen::Matrix3d& rot_mat);
 
-    protected:
-    /** Updates the vertex cache. Should be called when the _vertices matrix has been changed.
-     * Does NOT reallocate storage for the vertices, it has a fixed amount of space.
-     * Each vertex is written over the top of the previous version of itself.
-     */
-    void updateVertexCache();
-
     private:
     /** Shared initialization code across constructors.
      * Should be called AFTER vertices and faces are set.
@@ -224,19 +191,14 @@ class MeshObject : public easy3d::Model
      */
     std::vector<bool> _vertex_on_surface;
 
-    /** Vector of vec3 vertices that is continually updated as _vertices changes.
-     * Used by easy3d to update the vertex buffers (i.e. the positions) of the geometry on the graphics side.
-     */
-    std::vector<easy3d::vec3> _vertex_cache;
-
     /** Constant color to be used by the mesh. */
-    easy3d::vec4 _color;
+    // easy3d::vec4 _color;
 
     /** Whether or not to draw the points of the mesh */
-    bool _draw_points;
+    // bool _draw_points;
 
     /** Whether or not to draw the edges of the mesh */
-    bool _draw_edges;
+    // bool _draw_edges;
 
     /** Store simulation object so we can query properties (such as current sim time) */
     const Simulation* _sim;

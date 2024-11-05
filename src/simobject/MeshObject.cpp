@@ -5,72 +5,18 @@
 
 void MeshObject::init()
 {
-    // first ensure that the vertex cache has enough space for each vertex
-    _vertex_cache.resize(_vertices.rows());
-    // then update the vertex cache to populate it initially
-    updateVertexCache();
-
-    // create a new Renderer for this Model so that the Drawables (below) get updated
-    set_renderer(new easy3d::Renderer(this, false));
-
-    // create a TrianglesDrawable for the faces of the tetrahedral mesh
-    easy3d::TrianglesDrawable* tri_drawable = renderer()->add_triangles_drawable("faces");
-    // specify the update function for the faces
-    tri_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
-        // downcast to MeshObject for access to facesAsFlatList
-        MeshObject* mo = dynamic_cast<MeshObject*>(m);
-        if (mo)
-        {
-            // update the vertex buffer and element buffer
-            d->update_vertex_buffer(mo->points(), true);
-            d->update_element_buffer(mo->facesAsFlatList());
-        }
-        
-    });
-    tri_drawable->set_uniform_coloring(_color);
-
-    if (_draw_points)
-    {
-        // create a PointsDrawable for the points of the tetrahedral mesh
-        easy3d::PointsDrawable* points_drawable = renderer()->add_points_drawable("vertices");
-        // specify the update function for the points
-        points_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
-            // update the vertex buffer with the vertices of the mesh
-            d->update_vertex_buffer(m->points(), true);
-        });
-    }
-
-    if (_draw_edges)
-    {
-        easy3d::LinesDrawable* lines_drawable = renderer()->add_lines_drawable("lines");
-        lines_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
-            // downcast to MeshObject for access to facesAsFlatList
-            MeshObject* mo = dynamic_cast<MeshObject*>(m);
-            if (mo)
-            {
-                // update the vertex buffer and element buffer
-                d->update_vertex_buffer(mo->points(), true);
-                d->update_element_buffer(mo->edgesAsFlatList());
-            }
-        });
-    }
+    
 }
 
 MeshObject::MeshObject(const std::string& name)
-    : easy3d::Model(name), _color(1.0f, 1.0f, 1.0f, 1.0f)
+    : _name(name)
 {
     init();
 }
 
 MeshObject::MeshObject(const MeshObjectConfig* config)
-    : easy3d::Model(config->name().value_or(""))
 {
-    Eigen::Vector4d color_eigen_vec = config->color().value_or(Eigen::Vector4d::Constant(1.0));
-    _color = easy3d::vec4(color_eigen_vec(0), color_eigen_vec(1), color_eigen_vec(2), color_eigen_vec(3));
-
-    _draw_points = config->drawPoints().value();
-    _draw_edges = config->drawEdges().value();
-
+    _name = config->name().value_or("");
     _dt = config->timeStep().value();
 
     init();
@@ -78,7 +24,7 @@ MeshObject::MeshObject(const MeshObjectConfig* config)
 }
 
 MeshObject::MeshObject(const std::string& name, const VerticesMat& verts, const FacesMat& faces)
-    : easy3d::Model(name), _vertices(verts), _faces(faces), _vertex_cache(verts.rows()), _color(1.0f, 1.0f, 1.0f, 1.0f)
+    : _vertices(verts), _faces(faces)
 {
     init();
 }
@@ -86,35 +32,6 @@ MeshObject::MeshObject(const std::string& name, const VerticesMat& verts, const 
 std::string MeshObject::toString() const
 {
     return type() + " '" + name() + "':\n\tNum Vertices: " + std::to_string(_vertices.rows()) + "\n\tNum faces: " + std::to_string(_faces.rows());  
-}
-
-void MeshObject::updateGraphics()
-{
-    // update the vertex cache, which is what the renderer uses to update the vertex positions
-    updateVertexCache();
-    // then call update on the renderer, which will invoke the Drawable update functions
-    renderer()->update();
-}
-
-void MeshObject::updateVertexCache()
-{
-    // make sure the vertex cache is big enough for all the vertices
-    assert(_vertex_cache.size() == _vertices.rows());
-    // loop through and update each vertex in the cache
-    for (size_t i = 0; i < _vertices.rows(); i++)
-    {
-        _vertex_cache.at(i) = (easy3d::vec3(_vertices(i,0), _vertices(i,1), _vertices(i,2)));
-    }
-}
-
-const std::vector<easy3d::vec3>& MeshObject::points() const
-{
-    return _vertex_cache;
-}
-
-std::vector<easy3d::vec3>& MeshObject::points()
-{
-    return _vertex_cache;
 }
 
 Eigen::Vector3d MeshObject::bboxMinCoords() const
@@ -134,40 +51,37 @@ Eigen::Vector3d MeshObject::bboxCenterCoords() const
     return mins + (maxs - mins)/2;
 }
 
-std::vector<unsigned int> MeshObject::facesAsFlatList() const
-{
-    // each face (triangle) has 3 vertices
-    std::vector<unsigned int> faces_flat_list(_faces.rows()*3);
+// std::vector<unsigned int> MeshObject::facesAsFlatList() const
+// {
+//     // each face (triangle) has 3 vertices
+//     std::vector<unsigned int> faces_flat_list(_faces.rows()*3);
 
-    for (const auto& face : _faces.rowwise())
-    {
-        faces_flat_list.insert(faces_flat_list.end(), {face(0), face(1), face(2)});
-    }
+//     for (const auto& face : _faces.rowwise())
+//     {
+//         faces_flat_list.insert(faces_flat_list.end(), {face(0), face(1), face(2)});
+//     }
 
-    return faces_flat_list;
-}
+//     return faces_flat_list;
+// }
 
-std::vector<unsigned int> MeshObject::edgesAsFlatList() const
-{
-    // TODO: filter duplicate edges
-    std::vector<unsigned int> edges_flat_list(_faces.rows()*3);
+// std::vector<unsigned int> MeshObject::edgesAsFlatList() const
+// {
+//     // TODO: filter duplicate edges
+//     std::vector<unsigned int> edges_flat_list(_faces.rows()*3);
 
-    for (const auto& face : _faces.rowwise())
-    {
-        edges_flat_list.insert(edges_flat_list.end(), {face(0), face(1), face(1), face(2), face(0), face(2)});
-    }
+//     for (const auto& face : _faces.rowwise())
+//     {
+//         edges_flat_list.insert(edges_flat_list.end(), {face(0), face(1), face(1), face(2), face(0), face(2)});
+//     }
 
-    return edges_flat_list;
-}
+//     return edges_flat_list;
+// }
 
 void MeshObject::setVertices(const VerticesMat& verts)
 {
     _vertices = verts;
-    // ensure that the vertex cache has the right size before updating it
-    _vertex_cache.resize(_vertices.rows());
     // ensure that surface vertices vector has the right size
     _vertex_on_surface.resize(_vertices.rows());
-    updateVertexCache();
 }
 
 Eigen::Vector3d MeshObject::getVertex(const unsigned index) const

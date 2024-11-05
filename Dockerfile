@@ -1,5 +1,9 @@
 FROM ubuntu:noble AS build
-# install necessary packages
+
+#########################
+# Package install
+#########################
+
 RUN apt-get update && apt-get install -y \
     g++ \
     git \
@@ -13,34 +17,58 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libusb-1.0-0-dev
 
+
 # create directory for third party software
 WORKDIR /thirdparty
 
-# install yaml-cpp
+
+
+########################
+# YAML-cpp
+########################
 RUN git clone https://github.com/jbeder/yaml-cpp.git
 WORKDIR yaml-cpp/build
 RUN cmake ..
 RUN make -j 8
 RUN make install
 
-#install Eigen
+
+#########################
+# Eigen install
+#########################
 WORKDIR /thirdparty
 RUN git clone https://gitlab.com/libeigen/eigen.git
 
-# install Easy3D
+
+
+###########################
+# Easy3D install
+###########################
 RUN git clone https://github.com/LiangliangNan/Easy3D.git
 WORKDIR Easy3D/build
 RUN cmake ..
 RUN make -j 8
 RUN make install
 
-# install gmsh from source as a dynamic library for access to C++ API
+
+
+########################
+# GMSH install
+########################
 WORKDIR /thirdparty
 RUN git clone https://gitlab.onelab.info/gmsh/gmsh.git
 WORKDIR gmsh/build
+# install from source as a dynamic library for access to C++ API
 RUN cmake -DENABLE_BUILD_DYNAMIC=1 ..
 RUN make -j 8
 RUN make install
+
+
+
+
+################################## 
+# Geomagic Touch device setup
+##################################
 
 # install OpenHaptics drivers
 WORKDIR /thirdparty
@@ -64,7 +92,6 @@ RUN ln -sfn /usr/lib/libQHGLUTWrapper.so.3.4.0 /usr/lib/libQHGLUTWrapper.so.3.4
 RUN ln -sfn /usr/lib/libQHGLUTWrapper.so.3.4.0 /usr/lib/libQHGLUTWrapper.so                                                                                                                                                                                                                                               
 RUN chmod -R 777 /opt/OpenHaptics
 RUN export OH_SDK_BASE=/opt/OpenHaptics/Developer/3.4-0
-
 
 # follow driver installation instructions
 WORKDIR /thirdparty/TouchDriver_2023_11_15

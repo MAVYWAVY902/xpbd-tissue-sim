@@ -14,18 +14,16 @@
 
 #include <assimp/Importer.hpp>
 
-#include "TextRenderingViewer.hpp"
 #include "MeshObject.hpp"
 
 #include "config/SimulationConfig.hpp"
 #include "collision/CollisionScene.hpp"
+#include "graphics/GraphicsScene.hpp"
 
 #include <yaml-cpp/yaml.h>
 
 #include <thread>
 #include <optional>
-
-class TextRenderingViewer;
 
 /** A class for managing the simulation being performed.
  * Owns the MeshObjects, keeps track fo the sim time, etc.
@@ -115,16 +113,18 @@ class Simulation
         /** Time to wait inbetween viewer updates (in ms). This is 1/fps */
         int _viewer_refresh_time;
 
-        /** the Viewer which renders graphics
-         * unique_ptr used here for lazy initialization, since easy3d::Viewer must be instantiated 
-         * AFTER the easy3d::initialize() call.
-         */
-        std::unique_ptr<TextRenderingViewer> _viewer;
+        // /** the Viewer which renders graphics
+        //  * unique_ptr used here for lazy initialization, since easy3d::Viewer must be instantiated 
+        //  * AFTER the easy3d::initialize() call.
+        //  */
+        // std::unique_ptr<TextRenderingViewer> _viewer;
 
         /** storage of all MeshObjects in the simulation */
         std::vector<std::shared_ptr<MeshObject>> _mesh_objects;
 
         std::unique_ptr<CollisionScene> _collision_scene;
+
+        std::unique_ptr<Graphics::GraphicsScene> _graphics_scene;
 };
 
 #endif

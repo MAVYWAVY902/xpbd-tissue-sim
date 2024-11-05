@@ -20,6 +20,12 @@ enum class SimulationMode
     FRAME_BY_FRAME
 };
 
+enum class Visualization
+{
+    NONE=0,
+    EASY3D
+};
+
 class SimulationConfig : public Config
 {
     /** Static predefined default for simulation time step */
@@ -28,6 +34,7 @@ class SimulationConfig : public Config
     static std::optional<double>& DEFAULT_END_TIME() { static std::optional<double> end_time(10); return end_time; }
     /** Static predefined default for simulation mode */
     static std::optional<SimulationMode>& DEFAULT_SIM_MODE() { static std::optional<SimulationMode> sim_mode(SimulationMode::VISUALIZATION); return sim_mode; }
+    static std::optional<Visualization>& DEFAULT_VISUALIZATION() { static std::optional<Visualization> visualization(Visualization::EASY3D); return visualization; }
     /** Static predefined default for acceleration due to gravity */
     static std::optional<double>& DEFAULT_G_ACCEL() { static std::optional<double> g_accel(9.81); return g_accel; }
     /** Static predefined default for simulation description */
@@ -44,6 +51,14 @@ class SimulationConfig : public Config
         return sim_mode_options;
     }
 
+    /** Static predifined options for the visualization type. */
+    static std::map<std::string, Visualization> VISUALIZATION_OPTIONS()
+    {
+        static std::map<std::string, Visualization> visualization{{"None", Visualization::NONE},
+                                                                  {"Easy3D", Visualization::EASY3D}};
+        return visualization;
+    }
+
     public:
     /** Creates a Config from a YAML node, which consists of parameters needed for Simulation.
      * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
@@ -55,6 +70,7 @@ class SimulationConfig : public Config
         _extractParameter("time-step", node, _time_step, DEFAULT_TIME_STEP());
         _extractParameter("end-time", node, _end_time, DEFAULT_END_TIME());
         _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS(), DEFAULT_SIM_MODE());
+        _extractParameterWithOptions("visualization", node, _visualization, VISUALIZATION_OPTIONS(), DEFAULT_VISUALIZATION());
         _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
         _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
         _extractParameter("fps", node, _fps, DEFAULT_FPS());
@@ -108,6 +124,7 @@ class SimulationConfig : public Config
     std::optional<double> timeStep() const { return _time_step.value; }
     std::optional<double> endTime() const { return _end_time.value; }
     std::optional<SimulationMode> simMode() const { return _sim_mode.value; }
+    std::optional<Visualization> visualization() const { return _visualization.value; }
     std::optional<double> gAccel() const { return _g_accel.value; }
     std::optional<std::string> description() const { return _description.value; }
     std::optional<double> fps() const { return _fps.value; }
@@ -120,6 +137,7 @@ class SimulationConfig : public Config
     ConfigParameter<double> _time_step;
     ConfigParameter<double> _end_time;
     ConfigParameter<SimulationMode> _sim_mode; 
+    ConfigParameter<Visualization> _visualization;
     ConfigParameter<double> _g_accel;
     ConfigParameter<std::string> _description;
     ConfigParameter<double> _fps;
