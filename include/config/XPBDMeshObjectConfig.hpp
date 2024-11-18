@@ -34,7 +34,8 @@ enum class XPBDSolveMode
     SIMULTANEOUS_JACOBI,
     SIMULTANEOUS_CONVERGENT_JACOBI,
     SIMULTANEOUS_CONVERGENT_JACOBI_LINE_SEARCH,
-    SIMULTANEOUS_DAMPED
+    SIMULTANEOUS_DAMPED,
+    SEQUENTIAL_DAMPED_SEPARATE
 };
 
 enum class XPBDResidualPolicy
@@ -86,7 +87,8 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
                                                                        {"Simultaneous-Jacobi", XPBDSolveMode::SIMULTANEOUS_JACOBI},
                                                                        {"Simultaneous-Convergent-Jacobi", XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI},
                                                                        {"Simultaneous-Convergent-Jacobi-Line-Search", XPBDSolveMode::SIMULTANEOUS_CONVERGENT_JACOBI_LINE_SEARCH},
-                                                                       {"Simultaneous-Damped", XPBDSolveMode::SIMULTANEOUS_DAMPED}};
+                                                                       {"Simultaneous-Damped", XPBDSolveMode::SIMULTANEOUS_DAMPED},
+                                                                       {"Sequential-Damped-Separate", XPBDSolveMode::SEQUENTIAL_DAMPED_SEPARATE}};
         return solve_mode_options;
     }
 

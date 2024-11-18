@@ -99,6 +99,8 @@ class XPBDMeshObject : public ElasticMeshObject
      * @param dt : the time step
      */
     void _projectConstraintsSimultaneousDamped(const double dt);
+
+    void _projectConstraintsSequentialDampedSeparate(const double dt);
     
     /** Projects the elastic constraints but updates the x-positions after finding all the dlambdas - i.e. keeps x FIXED during the computation of lambdas.
      * @param dt : the time step

@@ -97,6 +97,7 @@ void Simulation::setup()
             // if (XPBDMeshObject* xpbdmo = dynamic_cast<XPBDMeshObject*>(mesh_object))
         // {
             std::cout << "Smallest edge length for " << new_obj->name() << ": " << new_obj->smallestEdgeLength() << std::endl;
+            std::cout << "Average edge length for " << new_obj->name() << ": " << new_obj->averageEdgeLength() << std::endl;
             std::cout << "Smallest tet volume for " << new_obj->name() << ": " << new_obj->smallestVolume() << std::endl;
 
         // }
@@ -110,6 +111,11 @@ void Simulation::setup()
         else if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
         {
             std::shared_ptr<FirstOrderXPBDMeshObject> new_obj = std::make_shared<FirstOrderXPBDMeshObject>(xpbd_config);
+
+            std::cout << "Smallest edge length for " << new_obj->name() << ": " << new_obj->smallestEdgeLength() << std::endl;
+            std::cout << "Average edge length for " << new_obj->name() << ": " << new_obj->averageEdgeLength() << std::endl;
+            std::cout << "Smallest tet volume for " << new_obj->name() << ": " << new_obj->smallestVolume() << std::endl;
+            
             addObject(new_obj);
 
             if (xpbd_config->collisions().value())

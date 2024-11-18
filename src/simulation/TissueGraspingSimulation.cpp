@@ -10,6 +10,8 @@ TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_fil
     // initialize quantities using config object
     _init();
 
+    _last_mesh_write_time = 10000;
+    _write_mesh = false;
 
     // extract the stretch velocity and time from the config object
     TissueGraspingSimulationConfig* tissue_grasping_simulation_config = dynamic_cast<TissueGraspingSimulationConfig*>(_config.get());
@@ -31,6 +33,8 @@ TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_fil
 
 void TissueGraspingSimulation::setup()
 {
+    _write_mesh = true;
+    _last_mesh_write_time = 0;
     // MeshUtils::createBeamObj("../resource/tissue/tissue_block1x1x0.1_1subdiv.obj", 1, 1, 0.1, 1);
 
     Simulation::setup();
@@ -164,6 +168,32 @@ void TissueGraspingSimulation::_updateGraphics()
     OutputSimulation::_updateGraphics();
 }
 
+void TissueGraspingSimulation::_timeStep()
+{
+    if (_time - _last_mesh_write_time >= 3.33e-2 && _write_mesh)
+    {
+        // std::ofstream obj_file("../output/mesh_output/mesh_" + std::to_string(_time) + ".obj");
+        // if (obj_file.is_open())
+        // {
+        //     MeshObject::VerticesMat verts = _tissue_block->vertices();
+        //     for (const auto& v : verts.rowwise())
+        //     {
+        //         obj_file << "v " << v << std::endl;
+        //     }
+            
+        //     MeshObject::FacesMat faces = _tissue_block->faces();
+        //     for (const auto& f : faces.rowwise())
+        //     {
+        //         obj_file << "f " << f(0)+1 << " " << f(1)+1 << " " << f(2)+1 << std::endl;
+        //     }
+        // }
+
+        _last_mesh_write_time = _time;
+    }
+
+    OutputSimulation::_timeStep();
+}
+
 void TissueGraspingSimulation::printInfo() const
 {
     // std::cout << "Button1: " << _haptic_device_manager->button1Pressed() << "\tButton 2: " << _haptic_device_manager->button2Pressed() << std::endl;
@@ -261,23 +291,39 @@ void TissueGraspingSimulation::notifyKeyPressed(int /* key */, int action, int /
         // _viewer->camera()->setViewDirection(easy3d::vec3(-0.713113, -0.0129693, -0.70093));
 
         // save tissue vertices, faces, elements
-        std::ofstream vertices_file("vertices_" + std::to_string(_time) + ".txt");
-        if (vertices_file.is_open())
-        {
-            vertices_file << _tissue_block->vertices() << std::endl;
-        }
+        // std::ofstream vertices_file("vertices_" + std::to_string(_time) + ".txt");
+        // if (vertices_file.is_open())
+        // {
+        //     vertices_file << _tissue_block->vertices() << std::endl;
+        // }
 
-        std::ofstream faces_file("faces_" + std::to_string(_time) + ".txt");
-        if (faces_file.is_open())
-        {
-            faces_file << _tissue_block->faces() << std::endl;
-        }
+        // std::ofstream faces_file("faces_" + std::to_string(_time) + ".txt");
+        // if (faces_file.is_open())
+        // {
+        //     faces_file << _tissue_block->faces() << std::endl;
+        // }
 
-        std::ofstream elements_file("elements_" + std::to_string(_time) + ".txt");
-        if (elements_file.is_open())
-        {
-            elements_file << _tissue_block->faces() << std::endl;
-        }
+        // std::ofstream elements_file("elements_" + std::to_string(_time) + ".txt");
+        // if (elements_file.is_open())
+        // {
+        //     elements_file << _tissue_block->faces() << std::endl;
+        // }
+
+        // std::ofstream obj_file("mesh_" + std::to_string(_time) + ".obj");
+        // if (obj_file.is_open())
+        // {
+        //     MeshObject::VerticesMat verts = _tissue_block->vertices();
+        //     for (const auto& v : verts.rowwise())
+        //     {
+        //         obj_file << "v " << v << std::endl;
+        //     }
+            
+        //     MeshObject::FacesMat faces = _tissue_block->faces();
+        //     for (const auto& f : faces.rowwise())
+        //     {
+        //         obj_file << "f " << f(0)+1 << " " << f(1)+1 << " " << f(2)+1 << std::endl;
+        //     }
+        // }
 
         
     }
@@ -286,6 +332,11 @@ void TissueGraspingSimulation::notifyKeyPressed(int /* key */, int action, int /
 
 void TissueGraspingSimulation::_toggleTissueGrasping()
 {
+    if (!_write_mesh)
+    {
+        _write_mesh = true;
+        _last_mesh_write_time = ((static_cast<int>(_time*10000 + 333 - 1) / 333) * 333) / 10000.0;
+    }
     if (_grasping)
     {
         for (const auto& vd : _grasped_vertex_drivers)

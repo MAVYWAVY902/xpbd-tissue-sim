@@ -1,11 +1,11 @@
 name: "blah"
 g-accel: 0 # m/s2
-sim-mode: "Frame-by-frame"
-# sim-mode: "Visualization"
+# sim-mode: "Frame-by-frame"
+sim-mode: "Visualization"
 # sim-mode: "AFAP"
 time-step: 1e-3
 fps: 30
-end-time: 6e-2
+end-time: 0.3
 objects:
   -
     name: "Cube1"
@@ -22,12 +22,12 @@ objects:
     material:
       name: "Soft Tissue"
       density: 1000
-      E: 1e8
+      E: 1e6
       nu: 0.4
     color: [1.0, 0.5, 0.0, 1.0]
     draw-points: false
     draw-edges: true
-    max-size: 0.5
+    max-size: 0.0315
     position: [-0.25, 0, 10]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]

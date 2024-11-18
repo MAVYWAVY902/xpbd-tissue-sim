@@ -467,6 +467,8 @@ void XPBDMeshObject::update(const double dt, const double g_accel)
         _projectConstraintsSimultaneousConvergentJacobiLineSearch(dt);
     else if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_DAMPED)
         _projectConstraintsSimultaneousDamped(dt);
+    else if (_solve_mode == XPBDSolveMode::SEQUENTIAL_DAMPED_SEPARATE)
+        _projectConstraintsSequentialDampedSeparate(dt);
 
     // auto t3 = std::chrono::steady_clock::now();
     _projectCollisionConstraints(dt);
@@ -533,6 +535,8 @@ std::string XPBDMeshObject::solveMode() const
         return "Simultaneous-Jacobi-Line-Search";
     if (_solve_mode == XPBDSolveMode::SIMULTANEOUS_DAMPED)
         return "Simultaneous-Damped";
+    if (_solve_mode == XPBDSolveMode::SEQUENTIAL_DAMPED_SEPARATE)
+        return "Sequential-Damped-Separate";
     
     return "";
 }
@@ -681,6 +685,165 @@ void XPBDMeshObject::_projectConstraintsSequential(const double dt)
     if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
     {
         _calculateResiduals(dt, inertial_positions, lambda_hs, lambda_ds);
+    }
+    
+}
+
+void XPBDMeshObject::_projectConstraintsSequentialDampedSeparate(const double dt)
+{
+    Eigen::VectorXd lambda_e_hs = Eigen::VectorXd::Zero(_elements.rows());
+    Eigen::VectorXd lambda_d_hs = Eigen::VectorXd::Zero(_elements.rows());
+    // accumulated deviatoric Lagrange multipliers
+    Eigen::VectorXd lambda_e_ds = Eigen::VectorXd::Zero(_elements.rows());
+    Eigen::VectorXd lambda_d_ds = Eigen::VectorXd::Zero(_elements.rows());
+
+    // dlams
+    Eigen::VectorXd dlam_hs = Eigen::VectorXd::Zero(_elements.rows());
+    Eigen::VectorXd dlam_ds = Eigen::VectorXd::Zero(_elements.rows());
+
+    // store positions before constraints are projected
+    // this is x-tilde, seen in XPBD eqn 8 - used for computing primary residual
+    VerticesMat inertial_positions = _vertices;
+
+
+    for (unsigned gi = 0; gi < _num_iters; gi++)
+    {
+        for (int i = 0; i < _elements.rows(); i++)
+        {
+            const Eigen::Matrix<unsigned, 1, 4>& elem = _elements.row(i);
+            // extract masses of each vertex in the current element
+            const double inv_m1 = 1.0/_m[elem(0)];
+            const double inv_m2 = 1.0/_m[elem(1)];
+            const double inv_m3 = 1.0/_m[elem(2)];
+            const double inv_m4 = 1.0/_m[elem(3)];
+
+            /** DEVIATORIC CONSTRAINT */
+
+            _computeF(i, _lX, _lF);
+            const double C_d = _computeDeviatoricConstraint(_lF, _Q[i], _lC_d_grads);
+
+            // compute the deviatoric alpha
+            const double alpha_d_tilde = 1/(_material.mu() * _vols[i]) / (dt*dt);
+            const double beta_d_tilde = _damping_stiffness / alpha_d_tilde; //_damping_stiffness * (dt*dt);
+
+            // const double beta_tilde = _damping_stiffness * (dt*dt);
+            // const double gamma_d = alpha_d / (dt*dt) * beta_tilde / dt;
+            
+            const double delC_x_prev_d =  _lC_d_grads.col(0).dot(_vertices.row(elem(0)) - _x_prev.row(elem(0))) +
+                                        _lC_d_grads.col(1).dot(_vertices.row(elem(1)) - _x_prev.row(elem(1))) +
+                                        _lC_d_grads.col(2).dot(_vertices.row(elem(2)) - _x_prev.row(elem(2))) +
+                                        _lC_d_grads.col(3).dot(_vertices.row(elem(3)) - _x_prev.row(elem(3)));
+
+            const double delC_Minv_delC_d = 
+                    (inv_m1)*_lC_d_grads.col(0).squaredNorm() + 
+                    (inv_m2)*_lC_d_grads.col(1).squaredNorm() + 
+                    (inv_m3)*_lC_d_grads.col(2).squaredNorm() + 
+                    (inv_m4)*_lC_d_grads.col(3).squaredNorm();
+
+            const double a11_d = delC_Minv_delC_d + alpha_d_tilde;
+            const double a12_d = delC_Minv_delC_d;
+            const double a21_d = beta_d_tilde/dt * delC_Minv_delC_d;
+            const double a22_d = beta_d_tilde/dt * (delC_Minv_delC_d + 1);
+
+            const double k1_d = -C_d - alpha_d_tilde * lambda_e_ds(i);
+            const double k2_d = -beta_d_tilde/dt * delC_x_prev_d - lambda_d_ds(i);
+
+            const double detA_d = a11_d*a22_d - a21_d*a12_d;
+
+            const double dlam_e_d = (k1_d*a22_d - k2_d*a12_d) / detA_d;
+            const double dlam_d_d = (a11_d*k2_d - a21_d*k1_d) / detA_d;
+
+            // const double dlam_d = (-C_d - alpha_d * lambda_ds(i) / (dt*dt)) / ((
+            //         (inv_m1)*_lC_d_grads.col(0).squaredNorm() + 
+            //         (inv_m2)*_lC_d_grads.col(1).squaredNorm() + 
+            //         (inv_m3)*_lC_d_grads.col(2).squaredNorm() + 
+            //         (inv_m4)*_lC_d_grads.col(3).squaredNorm()
+            //      ) + alpha_d/(dt*dt));
+
+            _vertices.row(elem(0)) += _lC_d_grads.col(0) * (dlam_e_d + dlam_d_d) * inv_m1;
+            _vertices.row(elem(1)) += _lC_d_grads.col(1) * (dlam_e_d + dlam_d_d) * inv_m2;
+            _vertices.row(elem(2)) += _lC_d_grads.col(2) * (dlam_e_d + dlam_d_d) * inv_m3;
+            _vertices.row(elem(3)) += _lC_d_grads.col(3) * (dlam_e_d + dlam_d_d) * inv_m4;
+
+
+            /** HYDROSTATIC CONSTRAINT */
+
+            _computeF(i, _lX, _lF);
+            const double C_h = _computeHydrostaticConstraint(_lF, _Q[i], _lF_cross, _lC_h_grads);
+            // compute the hydrostatic alpha
+            const double alpha_h_tilde = 1/(_material.lambda() * _vols[i])/(dt*dt);
+            const double beta_h_tilde = _damping_stiffness / alpha_h_tilde; //_damping_stiffness * (dt*dt);
+
+            // const double gamma_h = alpha_h / (dt*dt) * beta_tilde / dt;
+
+            const double delC_x_prev_h =  _lC_h_grads.col(0).dot(_vertices.row(elem(0)) - _x_prev.row(elem(0))) +
+                                        _lC_h_grads.col(1).dot(_vertices.row(elem(1)) - _x_prev.row(elem(1))) +
+                                        _lC_h_grads.col(2).dot(_vertices.row(elem(2)) - _x_prev.row(elem(2))) +
+                                        _lC_h_grads.col(3).dot(_vertices.row(elem(3)) - _x_prev.row(elem(3)));
+
+            const double delC_Minv_delC_h = 
+                    (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
+                    (inv_m2)*_lC_h_grads.col(1).squaredNorm() + 
+                    (inv_m3)*_lC_h_grads.col(2).squaredNorm() + 
+                    (inv_m4)*_lC_h_grads.col(3).squaredNorm();
+
+            const double a11_h = delC_Minv_delC_h + alpha_h_tilde;
+            const double a12_h = delC_Minv_delC_h;
+            const double a21_h = beta_h_tilde/dt * delC_Minv_delC_h;
+            const double a22_h = beta_h_tilde/dt * (delC_Minv_delC_h + 1);
+
+            const double k1_h = -C_h - alpha_h_tilde * lambda_e_hs(i);
+            const double k2_h = -beta_h_tilde/dt * delC_x_prev_h - lambda_d_hs(i);
+
+            const double detA_h = a11_h*a22_h - a21_h*a12_h;
+
+            const double dlam_e_h = (k1_h*a22_h - k2_h*a12_h) / detA_h;
+            const double dlam_d_h = (a11_h*k2_h - a21_h*k1_h) / detA_h;
+
+            // const double dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt) - gamma_h * delC_x_prev_h) / 
+            //     ((1 + gamma_h) * (
+            //         (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
+            //         (inv_m2)*_lC_h_grads.col(1).squaredNorm() + 
+            //         (inv_m3)*_lC_h_grads.col(2).squaredNorm() + 
+            //         (inv_m4)*_lC_h_grads.col(3).squaredNorm()
+            //      ) + alpha_h/(dt*dt));
+            
+            // const double dlam_h = (-C_h - alpha_h * lambda_hs(i) / (dt*dt)) / ((
+            //         (inv_m1)*_lC_h_grads.col(0).squaredNorm() + 
+            //         (inv_m2)*_lC_h_grads.col(1).squaredNorm() + 
+            //         (inv_m3)*_lC_h_grads.col(2).squaredNorm() + 
+            //         (inv_m4)*_lC_h_grads.col(3).squaredNorm()
+            //      ) + alpha_h/(dt*dt));
+
+            _vertices.row(elem(0)) += _lC_h_grads.col(0) * (dlam_e_h + dlam_d_h) * inv_m1;
+            _vertices.row(elem(1)) += _lC_h_grads.col(1) * (dlam_e_h + dlam_d_h) * inv_m2;
+            _vertices.row(elem(2)) += _lC_h_grads.col(2) * (dlam_e_h + dlam_d_h) * inv_m3;
+            _vertices.row(elem(3)) += _lC_h_grads.col(3) * (dlam_e_h + dlam_d_h) * inv_m4;
+
+            // update Lagrange multipliers
+            lambda_e_hs(i) += dlam_e_h;
+            lambda_d_hs(i) += dlam_d_h;
+            lambda_e_ds(i) += dlam_e_d;
+            lambda_d_ds(i) += dlam_d_d;
+        }
+
+        // if the residual policy is to calculate every iteration, do that
+        if (_residual_policy == XPBDResidualPolicy::EVERY_ITERATION)
+        {
+            if (const OutputSimulation* output_sim = dynamic_cast<const OutputSimulation*>(_sim))
+            {
+                _calculateResiduals(dt, inertial_positions, lambda_e_hs, lambda_e_ds);
+                // if we are calculating the residuals every Gauss Seidel iteration, it's likely we want to create
+                // a residual vs. iteration number plot, so write info to file
+                output_sim->printInfo();
+            }
+        }
+    }
+
+    // if the residual policy is to calculate every substep, do that
+    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    {
+        _calculateResiduals(dt, inertial_positions, lambda_e_hs, lambda_e_ds);
     }
     
 }
@@ -1058,8 +1221,8 @@ void XPBDMeshObject::_projectConstraintsSimultaneousDamped(const double dt)
             const double inv_m4 = 1/m4;
 
             // solve the 2x2 system
-            const double gamma_h = alpha_h/(dt*dt) * _damping_stiffness*(dt*dt) / dt;
-            const double gamma_d = alpha_d/(dt*dt) * _damping_stiffness*(dt*dt) / dt;
+            const double gamma_h = _damping_stiffness / dt;//alpha_h/(dt*dt) * _damping_stiffness*(dt*dt) / dt;
+            const double gamma_d = _damping_stiffness / dt;//alpha_d/(dt*dt) * _damping_stiffness*(dt*dt) / dt;
 
             const double a11 = (1+gamma_h) * (
                                inv_m1*_lC_h_grads.col(0).squaredNorm() + 
