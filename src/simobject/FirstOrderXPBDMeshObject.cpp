@@ -16,6 +16,8 @@ void FirstOrderXPBDMeshObject::_calculatePerVertexDamping()
     {
         _B(i) = _v_volume(i) * _damping_multiplier;
     }
+
+    _inv_B = 1.0/_B.array();
 }
 
 void FirstOrderXPBDMeshObject::setup()

@@ -4,8 +4,7 @@
 #include <vector>
 #include <Eigen/Dense>
 
-class XPBDMeshObject;
-class FirstOrderXPBDMeshObject;
+#include "simobject/XPBDMeshObject.hpp"
 
 namespace Solver
 {
@@ -17,12 +16,40 @@ struct PositionReference
 {
     XPBDMeshObject* obj;        // pointer to the MeshObject
     unsigned index;             // vertex index
+    
+    /** Helper function to get the vertex position. */
+    inline Eigen::Vector3d position() const
+    {
+        return obj->getVertex(index);
+    }
 
-    Eigen::Vector3d position() const;
-    Eigen::Vector3d previousPosition() const;
-    Eigen::Vector3d velocity() const;
-    double mass() const;
-    unsigned attachedElements() const;
+    inline Eigen::Vector3d previousPosition() const
+    {
+        return obj->vertexPreviousPosition(index);
+    }
+
+    /** Helper function to get the vertex velocity. */
+    inline Eigen::Vector3d velocity() const
+    {
+        return obj->vertexVelocity(index);
+    }
+
+    /** Helper function to get the vertex mass. */
+    inline double mass() const
+    {
+        return obj->vertexMass(index);
+    }
+
+    inline double invMass() const
+    {
+        return obj->vertexInvMass(index);
+    }
+
+    /** Helper function to get number of attached elements to the vertex. */
+    inline unsigned attachedElements() const
+    {
+        return obj->vertexAttachedElements(index);
+    }
 };
 
 
@@ -35,30 +62,47 @@ class Constraint
     typedef std::pair<double, Eigen::VectorXd> ValueAndGradient;
     typedef std::pair<PositionReference, Eigen::Vector3d> PositionUpdate;
 
-    explicit Constraint(const double dt);
+    Constraint(const double dt)
+        : _dt(dt), _alpha(0), _lambda(0)
+    {
 
-    /** Initializes this constraint before the solver loop. */
-    virtual void initialize();
+    }
 
-    /** Projects this constraint.
-     * @returns a vector of position updates resulting from the projection
-     */
-    virtual std::vector<PositionUpdate> project();
+    inline virtual void initialize()
+    {
+        _lambda = 0;
+    }
 
     /** Evaluates the current value of this constraint.
      * i.e. returns C(x)
      */
-    virtual double evaluate() const = 0;
+    inline virtual double evaluate() const = 0;
 
     /** Returns the gradient of this constraint in vector form.
      * i.e. returns delC(x)
      */
-    virtual Eigen::VectorXd gradient() const = 0;
+    inline virtual Eigen::VectorXd gradient() const = 0;
 
     /** Returns the value and gradient of this constraint.
      * i.e. returns C(x) and delC(x) together.
      */
-    virtual ValueAndGradient evaluateWithGradient() const = 0;
+    inline virtual ValueAndGradient evaluateWithGradient() const = 0;
+
+    inline virtual std::vector<PositionUpdate> project()
+    {
+        const ValueAndGradient val_and_grad = evaluateWithGradient();
+        const double dlam = _RHS(val_and_grad) / _LHS(val_and_grad);
+
+        std::vector<PositionUpdate> position_updates(_positions.size());
+        for (unsigned i = 0; i < _positions.size(); i++)
+        {
+            position_updates.at(i) = std::move(_getPositionUpdate(i, dlam, val_and_grad.second));
+        }
+
+        _lambda += dlam;
+
+        return position_updates;
+    }
 
     /** Returns the value of the Lagrange multiplier associated with this constraint. */
     double lambda() const { return _lambda; }
@@ -70,7 +114,7 @@ class Constraint
     virtual double alphaTilde() const { return _alpha / (_dt*_dt); }
 
     /** Returns the inverse mass for the position at the specified index. */
-    virtual double positionInvMass(const unsigned position_index) const { return 1.0/_positions[position_index].mass(); }
+    virtual double positionInvMass(const unsigned position_index) const { return _positions[position_index].invMass(); }
 
     const std::vector<PositionReference> positions() const { return _positions; }
 
@@ -87,18 +131,36 @@ class Constraint
     virtual bool usesDamping() const { return false; }
 
     protected:
-    /** Computes the LHS (denominator) of the lambda udpate. */
-    virtual double _LHS(const ValueAndGradient& val_and_grad) const;
+    inline virtual double _LHS(const ValueAndGradient& val_and_grad) const
+    {
+        const double alpha_tilde = alphaTilde();
+        const Eigen::VectorXd& grads = val_and_grad.second;
+        double lhs = alpha_tilde;
+        for (unsigned i = 0; i < _positions.size(); i++)
+        {
+            const double inv_m = positionInvMass(i);
+            lhs += inv_m * grads(Eigen::seq(3*i, 3*i+2)).squaredNorm();
+        }
 
-    /** Computes the RHS (numerator) of the lambda update. */
-    virtual double _RHS(const ValueAndGradient& val_and_grad) const;
+        return lhs;
+    }
 
-    /** Computes the position update given the change in lambda and constraint gradient.
-     * @param position_index : the index in the _positions vector of the node to compute the update for.
-     * @param dlam : the change in Lagrange multiplier
-     * @param grad : the constraint gradient
-      */
-    virtual PositionUpdate _getPositionUpdate(const unsigned position_index, const double dlam, const Eigen::VectorXd& grad) const;
+    inline virtual double _RHS(const ValueAndGradient& val_and_grad) const
+    {
+        const double alpha_tilde = alphaTilde();
+        const double C = val_and_grad.first;
+        double rhs = -C - alpha_tilde * _lambda;
+
+        return rhs;
+    }
+
+    inline virtual PositionUpdate _getPositionUpdate(const unsigned position_index, const double dlam, const Eigen::VectorXd& grads) const
+    {
+        PositionUpdate position_update;
+        position_update.first = _positions[position_index];
+        position_update.second = positionInvMass(position_index) * dlam * grads(Eigen::seq(3*position_index, 3*position_index+2));
+        return position_update;
+    }
 
     protected:
     double _dt;         // the size of the time step used during constraint projection

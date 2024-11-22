@@ -24,6 +24,11 @@ XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
     
 }
 
+XPBDMeshObject::~XPBDMeshObject()
+{
+
+}
+
 void XPBDMeshObject::setup()
 {
     _createConstraints(_constraint_type, _constraints_with_residual, _constraints_with_damping);
@@ -32,7 +37,6 @@ void XPBDMeshObject::setup()
 
 void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping)
 {
-    std::cout << "XPBDMeshObject::_createConstraints" << std::endl;
     // create a constraint for each element
     for (unsigned i = 0; i < numElements(); i++)
     {
@@ -58,8 +62,9 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
                 dev_constraint = std::make_unique<Solver::WithDamping>(std::move(dev_constraint), _damping_gamma);
             }
             
-            _constraints.push_back(std::move(hyd_constraint));
             _constraints.push_back(std::move(dev_constraint));
+            _constraints.push_back(std::move(hyd_constraint));
+            
         }
         else if (constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED)
         {

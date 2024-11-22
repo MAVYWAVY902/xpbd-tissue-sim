@@ -16,6 +16,8 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
 
     double vertexDamping(const unsigned index) { return _B(index); }
 
+    double vertexInvDamping(const unsigned index) { return _inv_B(index); }
+
     protected:
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the forces applied to them
@@ -31,6 +33,8 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
     double _damping_multiplier;
 
     Eigen::VectorXd _B;
+
+    Eigen::VectorXd _inv_B;
 
 };
 

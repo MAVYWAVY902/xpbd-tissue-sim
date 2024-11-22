@@ -1,13 +1,11 @@
 #ifndef __SOLVER_HPP
 #define __SOLVER_HPP
 
-// #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/MeshObject.hpp"
+#include "simobject/XPBDMeshObject.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 
 #include <memory>
-
-class XPBDMeshObject;
 
 namespace Solver
 {

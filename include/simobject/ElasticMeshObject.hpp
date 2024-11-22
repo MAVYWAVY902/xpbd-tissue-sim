@@ -103,6 +103,8 @@ class ElasticMeshObject : public MeshObject
 
     double vertexMass(unsigned index) const { return _m(index); }
 
+    double vertexInvMass(unsigned index) const { return _inv_m(index); }
+
     unsigned vertexAttachedElements(unsigned index) const { return _v_attached_elements(index); }
 
     Eigen::Vector3d vertexVelocity(unsigned index) const { return _v.row(index); }
@@ -184,6 +186,9 @@ class ElasticMeshObject : public MeshObject
 
     /** Per vertex mass */
     Eigen::VectorXd _m;
+
+    /** Per vertex inverse mass */
+    Eigen::VectorXd _inv_m;
 
     /** Number of elements attached to each vertex.
      * i.e. ith entry = The number of elements that share vertex i

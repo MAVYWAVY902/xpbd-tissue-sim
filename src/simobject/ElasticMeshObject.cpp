@@ -142,6 +142,8 @@ ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
         _v_attached_elements(_elements(i,3))++;
     }
 
+    _inv_m = 1.0/_m.array();
+
 }
 
 ElasticMeshObject::ElasticMeshObject(const std::string& name, const std::string& filename, const ElasticMaterial& material = ElasticMaterial::RUBBER())
