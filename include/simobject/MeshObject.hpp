@@ -47,6 +47,8 @@ class MeshObject
     */
     explicit MeshObject(const std::string& name, const VerticesMat& verts, const FacesMat& faces);
 
+    virtual ~MeshObject() = default;
+
     virtual std::string toString() const;
     virtual std::string type() const { return "MeshObject"; }
 
@@ -77,12 +79,14 @@ class MeshObject
      * @param dt : the time delta since the last update
      * @param g_accel : the acceleration due to gravity
     */
-    virtual void update(const double dt, const double g_accel) = 0;
+    virtual void update() = 0;
 
     /** Sets new vertices for the mesh. Also updates the vertex cache.
      * @param verts : the new matrix of vertices
      */
     virtual void setVertices(const VerticesMat& verts);
+
+    void setVertex(const unsigned index, const Eigen::Vector3d& new_pos);
 
     /** Returns the vertex at the row index specified by the user.
      * @param index : the row in the _vertices matrix
@@ -176,15 +180,6 @@ class MeshObject
      * 0: not on the surface of the mesh
      */
     std::vector<bool> _vertex_on_surface;
-
-    /** Constant color to be used by the mesh. */
-    // easy3d::vec4 _color;
-
-    /** Whether or not to draw the points of the mesh */
-    // bool _draw_points;
-
-    /** Whether or not to draw the edges of the mesh */
-    // bool _draw_edges;
 
     /** Store simulation object so we can query properties (such as current sim time) */
     const Simulation* _sim;

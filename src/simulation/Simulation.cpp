@@ -75,13 +75,14 @@ void Simulation::setup()
     {
         std::shared_ptr<MeshObject> new_obj;
         // try downcasting
-        if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
-        {
-            new_obj = std::make_shared<XPBDMeshObject>(xpbd_config);
-        }
-        else if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
+        
+        if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
         {
             new_obj = std::make_shared<FirstOrderXPBDMeshObject>(xpbd_config);
+        }
+        else if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
+        {
+            new_obj = std::make_shared<XPBDMeshObject>(xpbd_config);
         }
         else if (FastFEMMeshObjectConfig* fem_config = dynamic_cast<FastFEMMeshObjectConfig*>(obj_config.get()))
         {
@@ -164,7 +165,7 @@ void Simulation::_timeStep()
     // update each MeshObject
     for (auto& mo : _mesh_objects)
     {
-        mo->update(_time_step, _g_accel);
+        mo->update();
     }
 
     // run collision detection
@@ -179,7 +180,7 @@ void Simulation::_timeStep()
         {
             if (XPBDMeshObject* xpbd_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[c.obj1_ind].get()))
             {
-               xpbd_mesh_object->addSelfCollision(c.vertex_ind, c.face_ind);
+            //    xpbd_mesh_object->addSelfCollision(c.vertex_ind, c.face_ind);
             }
             
         }

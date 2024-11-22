@@ -1,4 +1,5 @@
 #include "FastFEMMeshObject.hpp"
+#include "simulation/Simulation.hpp"
 
 FastFEMMeshObject::FastFEMMeshObject(const FastFEMMeshObjectConfig* config)
     : ElasticMeshObject(config)
@@ -136,23 +137,23 @@ std::string FastFEMMeshObject::toString() const
     return ElasticMeshObject::toString();
 }
 
-void FastFEMMeshObject::update(const double dt, const double g_accel)
+void FastFEMMeshObject::update()
 {
-    _movePositionsInertially(g_accel);
+    _movePositionsInertially();
     _solveOptimizationProblem();
     _solveVolumeConstraints();
     _solveCollisionConstraints();
     _updateVelocities();
 }
 
-void FastFEMMeshObject::_movePositionsInertially(const double g_accel)
+void FastFEMMeshObject::_movePositionsInertially()
 {
     // move vertices according to their velocity
     _vertices += _dt*_v;
     // external forces (right now just gravity, which acts in -z direction)
     for (int i = 0; i < _vertices.rows(); i++)
     {
-        _vertices(i,2) += -g_accel * _dt * _dt;
+        _vertices(i,2) += -_sim->gAccel() * _dt * _dt;
     }
 }
 

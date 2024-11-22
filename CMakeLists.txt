@@ -22,6 +22,7 @@ include_directories("./include/graphics")
 include_directories("./include/simobject")
 include_directories("./include/simulation")
 include_directories("./include/utils")
+include_directories("./include/solver")
 include_directories("/thirdparty/eigen")
 
 add_library(MeshUtils include/utils/MeshUtils.hpp src/utils/MeshUtils.cpp) # create MeshUtils library
@@ -68,16 +69,23 @@ set(XPBD_FILES
     "include/config/TissueGraspingSimulationConfig.hpp"
     "include/config/InitialDeformationSimulationConfig.hpp"
     "include/config/StaticLoadingSimulationConfig.hpp"
+    "include/solver/Constraint.hpp"
+    "include/solver/ConstraintDecorator.hpp"
+    "include/solver/ElementConstraint.hpp"
+    "include/solver/HydrostaticConstraint.hpp"
+    "include/solver/DeviatoricConstraint.hpp"
+    "include/solver/XPBDSolver.hpp"
+    "include/solver/XPBDGaussSeidelSolver.hpp"
     "src/collision/CollisionScene.cpp"
     "src/haptics/HapticDeviceManager.cpp"
     "src/simulation/Simulation.cpp"
     "src/simulation/OutputSimulation.cpp" 
-    "src/simulation/BeamSimulation.cpp"
+    # "src/simulation/BeamSimulation.cpp"
     "src/simulation/ResidualSimulation.cpp"
-    "src/simulation/TissueGraspingSimulation.cpp"
-    "src/simulation/BeamStretchSimulation.cpp"
-    "src/simulation/InitialDeformationSimulation.cpp"
-    "src/simulation/StaticLoadingSimulation.cpp"
+    # "src/simulation/TissueGraspingSimulation.cpp"
+    # "src/simulation/BeamStretchSimulation.cpp"
+    # "src/simulation/InitialDeformationSimulation.cpp"
+    # "src/simulation/StaticLoadingSimulation.cpp"
     "src/simobject/MeshObject.cpp" 
     "src/simobject/RigidMeshObject.cpp"
     "src/simobject/ElasticMeshObject.cpp"
@@ -88,7 +96,14 @@ set(XPBD_FILES
     "src/graphics/Easy3DGraphicsScene.cpp"
     "src/graphics/MeshGraphicsObject.cpp"
     "src/graphics/Easy3DMeshGraphicsObject.cpp"
-    "src/graphics/Easy3DTextRenderingViewer.cpp" 
+    "src/graphics/Easy3DTextRenderingViewer.cpp"
+    "src/solver/Constraint.cpp"
+    "src/solver/ConstraintDecorator.cpp"
+    "src/solver/ElementConstraint.cpp"
+    "src/solver/HydrostaticConstraint.cpp"
+    "src/solver/DeviatoricConstraint.cpp"
+    "src/solver/XPBDSolver.cpp"
+    "src/solver/XPBDGaussSeidelSolver.cpp" 
 )
 
 add_library(XPBD ${XPBD_FILES} ) # create XPBD library
@@ -96,20 +111,20 @@ target_link_libraries(XPBD easy3d::core easy3d::util easy3d::renderer easy3d::vi
 add_executable(Test src/exec/main.cpp)                    # create an executable target
 target_link_libraries(Test XPBD easy3d::viewer gmsh)       # link to necessary Easy3D modules (add more if needed, e.g., algo)
 
-add_executable(BeamTest src/exec/beam_test_main.cpp)
-target_link_libraries(BeamTest XPBD easy3d::viewer gmsh)
+# add_executable(BeamTest src/exec/beam_test_main.cpp)
+# target_link_libraries(BeamTest XPBD easy3d::viewer gmsh)
 
-add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
-target_link_libraries(TissueGraspingTest XPBD easy3d::viewer gmsh)
+# add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
+# target_link_libraries(TissueGraspingTest XPBD easy3d::viewer gmsh)
 
-add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
-target_link_libraries(BeamStretchTest XPBD easy3d::viewer gmsh)
+# add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
+# target_link_libraries(BeamStretchTest XPBD easy3d::viewer gmsh)
 
-add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
-target_link_libraries(InitialDeformationTest XPBD easy3d::viewer gmsh)
+# add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
+# target_link_libraries(InitialDeformationTest XPBD easy3d::viewer gmsh)
 
-add_executable(StaticLoadingTest src/exec/static_loading_test_main.cpp)
-target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
+# add_executable(StaticLoadingTest src/exec/static_loading_test_main.cpp)
+# target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
 
 add_executable(HapticTest src/exec/haptic_main.cpp)
 target_link_libraries(HapticTest XPBD easy3d::viewer gmsh)

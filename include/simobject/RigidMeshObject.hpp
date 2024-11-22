@@ -44,7 +44,7 @@ class RigidMeshObject : public MeshObject
     /** Updates the object for a given time step.
      * @param dt : the time step
      */
-    virtual void update(const double dt, const double g_accel) override;
+    virtual void update() override;
 
     /** Creates a primitive geometry based on the specified primitive type.
      * No other parameters are taken - use successive resize() and moveTo() calls to manipulate the geometry.

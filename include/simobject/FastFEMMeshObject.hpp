@@ -16,7 +16,7 @@ class FastFEMMeshObject : public ElasticMeshObject
     virtual std::string toString() const override;
     virtual std::string type() const override { return "FastFEMMeshObject"; }
 
-    void update(const double dt, const double g_accel) override;
+    void update() override;
 
     private:
     
@@ -26,7 +26,7 @@ class FastFEMMeshObject : public ElasticMeshObject
 
     protected:
 
-    void _movePositionsInertially(const double g_accel);
+    void _movePositionsInertially();
     void _solveOptimizationProblem();
     void _solveVolumeConstraints();
     void _solveCollisionConstraints();
