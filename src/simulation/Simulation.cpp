@@ -99,6 +99,9 @@ void Simulation::setup()
             continue;
         }
 
+        // set up the new object
+        new_obj->setup();
+
         // if we get to here, we have successfully created a new MeshObject of some kind
         // so add the new object to the simulation
         addObject(new_obj);

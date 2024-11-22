@@ -1,4 +1,7 @@
 #include "solver/ElementConstraint.hpp"
+#include "simobject/XPBDMeshObject.hpp"
+
+#include <iostream>
 
 namespace Solver
 {

@@ -137,6 +137,11 @@ std::string FastFEMMeshObject::toString() const
     return ElasticMeshObject::toString();
 }
 
+void FastFEMMeshObject::setup()
+{
+    
+}
+
 void FastFEMMeshObject::update()
 {
     _movePositionsInertially();

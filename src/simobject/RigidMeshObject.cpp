@@ -118,6 +118,11 @@ void RigidMeshObject::createPlaneGeometry()
     setFaces(faces);
 }
 
+void RigidMeshObject::setup()
+{
+    
+}
+
 void RigidMeshObject::update()
 {
     // do nothing for now
