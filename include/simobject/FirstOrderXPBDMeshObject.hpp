@@ -12,11 +12,11 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
     virtual std::string toString() const override;
     virtual std::string type() const override { return "FirstOrderXPBDMeshObject"; }
 
+    virtual void setup() override;
+
     double vertexDamping(const unsigned index) { return _B(index); }
 
     protected:
-    virtual void _createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping);
-
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the forces applied to them
      */
@@ -24,6 +24,8 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
 
     private:
     virtual void _calculatePerVertexDamping();
+
+    void _convertConstraintsToFirstOrder();
 
     protected:
     double _damping_multiplier;

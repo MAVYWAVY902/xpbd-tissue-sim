@@ -75,6 +75,9 @@ class MeshObject
     /** Returns the coordinates of the center from the bounding box of the mesh. */
     Eigen::Vector3d bboxCenterCoords() const;
 
+    /** Performs any setup for the MeshObject (i.e. constraint creation, etc.) */
+    virtual void setup() = 0;
+
     /** Updates the mesh based on a time step 
      * @param dt : the time delta since the last update
      * @param g_accel : the acceleration due to gravity

@@ -41,6 +41,8 @@ class RigidMeshObject : public MeshObject
 
     virtual VerticesMat velocities() const override { return VerticesMat::Zero(_vertices.rows(), 3); }
 
+    virtual void setup() override;
+
     /** Updates the object for a given time step.
      * @param dt : the time step
      */

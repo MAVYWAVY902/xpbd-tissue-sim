@@ -15,7 +15,6 @@ XPBDSolver::XPBDSolver(XPBDMeshObject const* obj, unsigned num_iter, XPBDResidua
 void XPBDSolver::solve()
 {
     _inertial_positions = _obj->vertices();
-
     for (unsigned i = 0; i < _num_iter; i++)
     {
         if (_constraints_using_primary_residual)

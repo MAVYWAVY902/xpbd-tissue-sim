@@ -8,32 +8,31 @@
 XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
     : ElasticMeshObject(config)
 {
+    std::cout << "XPBDMeshObject constructor!" << std::endl;
 
     _solver_type = config->solverType().value();
     _damping_gamma = config->dampingGamma().value();
 
-    XPBDConstraintType constraint_type = config->constraintType().value();
-    bool with_residual = config->withResidual().value();
-    bool with_damping = config->withDamping().value();
-    _createConstraints(constraint_type, with_residual, with_damping);
 
-    unsigned num_iters = config->numSolverIters().value();
-    XPBDResidualPolicy residual_policy = config->residualPolicy().value();
-
-    if (_solver_type == XPBDSolverType::GAUSS_SEIDEL)
-    {
-        _solver = std::make_unique<Solver::XPBDGaussSeidelSolver>(this, num_iters, residual_policy);
-    }
-    else if (_solver_type == XPBDSolverType::JACOBI)
-    {
-        std::cout << "\nJacobi solver not implemented yet!" << std::endl;
-        assert(0);
-    }
+    _constraints_with_residual = config->withResidual().value();
+    _constraints_with_damping = config->withDamping().value();
+    _constraint_type = config->constraintType().value();
     
+
+    _num_solver_iters = config->numSolverIters().value();
+    _residual_policy = config->residualPolicy().value();
+    
+}
+
+void XPBDMeshObject::setup()
+{
+    _createConstraints(_constraint_type, _constraints_with_residual, _constraints_with_damping);
+    _createSolver(_solver_type, _num_solver_iters, _residual_policy);
 }
 
 void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping)
 {
+    std::cout << "XPBDMeshObject::_createConstraints" << std::endl;
     // create a constraint for each element
     for (unsigned i = 0; i < numElements(); i++)
     {
@@ -68,7 +67,19 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
             assert(0);
         }
     }
+}
 
+void XPBDMeshObject::_createSolver(XPBDSolverType solver_type, unsigned num_solver_iters, XPBDResidualPolicy residual_policy)
+{
+    if (solver_type == XPBDSolverType::GAUSS_SEIDEL)
+    {
+        _solver = std::make_unique<Solver::XPBDGaussSeidelSolver>(this, num_solver_iters, residual_policy);
+    }
+    else if (solver_type == XPBDSolverType::JACOBI)
+    {
+        std::cout << "\nJacobi solver not implemented yet!" << std::endl;
+        assert(0);
+    }
 }
 
 std::string XPBDMeshObject::toString() const

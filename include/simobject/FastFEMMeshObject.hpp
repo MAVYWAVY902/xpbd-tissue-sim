@@ -16,6 +16,7 @@ class FastFEMMeshObject : public ElasticMeshObject
     virtual std::string toString() const override;
     virtual std::string type() const override { return "FastFEMMeshObject"; }
 
+    void setup() override;
     void update() override;
 
     private:

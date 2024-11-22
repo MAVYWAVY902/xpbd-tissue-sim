@@ -27,12 +27,11 @@ class XPBDMeshObject : public ElasticMeshObject
     unsigned numConstraints() const { return _constraints.size(); }
     const std::vector<std::unique_ptr<Solver::Constraint>>& constraints() const { return _constraints; }
 
+    virtual void setup() override;
+
     virtual void update() override;
 
     protected:
-    virtual void _createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping);
-    // virtual std::unique_ptr<Solver::Constraint> _createConstraintForElement();
-
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the forces applied to them
      */
@@ -48,14 +47,23 @@ class XPBDMeshObject : public ElasticMeshObject
     /** Helper method to initialize upon instantiation */
     void _init();
 
+    void _createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping);
+
+    void _createSolver(XPBDSolverType solver_type, unsigned num_solver_iters, XPBDResidualPolicy residual_policy);
+
     /** Precomputes static quantities */
     // void _precomputeQuantities();
 
     protected:
     XPBDSolverType _solver_type;
-    // XPBDConstraintType _constraint_type;
+    XPBDResidualPolicy _residual_policy;
+    unsigned _num_solver_iters;
 
     double _damping_gamma;
+    
+    XPBDConstraintType _constraint_type;
+    bool _constraints_with_residual;
+    bool _constraints_with_damping;
 
     std::unique_ptr<Solver::XPBDSolver> _solver;
     std::vector<std::unique_ptr<Solver::Constraint>> _constraints;
