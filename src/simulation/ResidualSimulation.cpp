@@ -3,6 +3,7 @@
 #include <regex>
 
 #include "XPBDMeshObject.hpp"
+#include "solver/XPBDSolver.hpp"
 
 
 ResidualSimulation::ResidualSimulation(const std::string& config_filename)

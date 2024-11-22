@@ -3,8 +3,15 @@
 
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "simobject/ElasticMeshObject.hpp"
-#include "solver/XPBDSolver.hpp"
-#include "solver/Constraint.hpp"
+// #include "solver/XPBDSolver.hpp"
+// #include "solver/Constraint.hpp"
+
+// TODO: fix circular dependency and remove the need for this forward declaration
+namespace Solver
+{
+    class Constraint;
+    class XPBDSolver;
+}
 
 /** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
  *  "A Constraint-based Formulation of Stable Neo-Hookean Materials" by Macklin and Muller (2021).
@@ -18,6 +25,8 @@ class XPBDMeshObject : public ElasticMeshObject
      * @param config : the YAML node dictionary describing the parameters for the new XPBDMeshObject
      */
     explicit XPBDMeshObject(const XPBDMeshObjectConfig* config);
+
+    virtual ~XPBDMeshObject();
 
     virtual std::string toString() const override;
     virtual std::string type() const override { return "XPBDMeshObject"; }

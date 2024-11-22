@@ -40,8 +40,8 @@ objects:
 
   -
     name: "Cube2"
-    type: "FirstOrderXPBDMeshObject"
-    # type: "XPBDMeshObject"
+    # type: "FirstOrderXPBDMeshObject"
+    type: "XPBDMeshObject"
     # type: "FastFEMMeshObject"
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/general/stanford_bunny_medpoly.msh"
@@ -65,7 +65,7 @@ objects:
     num-solver-iters: 1
     # damping-stiffness: 0
     collisions: false
-    damping-multiplier: 1000000
+    damping-multiplier: 400000
     solve-mode: "Simultaneous"
     residual-policy: "Never"
   
