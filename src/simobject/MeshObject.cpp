@@ -84,6 +84,11 @@ void MeshObject::setVertices(const VerticesMat& verts)
     _vertex_on_surface.resize(_vertices.rows());
 }
 
+void MeshObject::setVertex(const unsigned index, const Eigen::Vector3d& new_pos)
+{
+    _vertices.row(index) = new_pos;
+}
+
 Eigen::Vector3d MeshObject::getVertex(const unsigned index) const
 {
     assert(index < _vertices.rows());

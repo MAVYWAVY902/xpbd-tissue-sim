@@ -118,7 +118,7 @@ void RigidMeshObject::createPlaneGeometry()
     setFaces(faces);
 }
 
-void RigidMeshObject::update(const double dt, const double g_accel)
+void RigidMeshObject::update()
 {
     // do nothing for now
 }

@@ -81,6 +81,8 @@ class ElasticMeshObject : public MeshObject
     virtual std::string toString() const override;
     virtual std::string type() const override { return "ElasticMeshObject"; }
 
+    const double numElements() { return _elements.rows(); }
+
     const ElasticMaterial& material() { return _material; }
 
     VerticesMat velocities() const override { return _v; }
@@ -98,6 +100,14 @@ class ElasticMeshObject : public MeshObject
     void fixVertex(unsigned index);
 
     bool vertexFixed(unsigned index) const { return _fixed_vertices(index); }
+
+    double vertexMass(unsigned index) const { return _m(index); }
+
+    unsigned vertexAttachedElements(unsigned index) const { return _v_attached_elements(index); }
+
+    Eigen::Vector3d vertexVelocity(unsigned index) const { return _v.row(index); }
+
+    Eigen::Vector3d vertexPreviousPosition(unsigned index) const { return _x_prev.row(index); }
 
     /** Adds a new vertex driver */
     void addVertexDriver(const std::shared_ptr<VertexDriver>& vd);
@@ -171,6 +181,19 @@ class ElasticMeshObject : public MeshObject
      * Velocity is updated to be (x - x_prev) / dt
      */
     VerticesMat _v;
+
+    /** Per vertex mass */
+    Eigen::VectorXd _m;
+
+    /** Number of elements attached to each vertex.
+     * i.e. ith entry = The number of elements that share vertex i
+     */
+    Eigen::VectorXd _v_attached_elements;
+
+    /** Volume associated with each vertex.
+     * i.e. 1/4 the total volume of all elements attached to that vertex
+    */
+   Eigen::VectorXd _v_volume;
     
     /** Specifies the material properties */
     ElasticMaterial _material;

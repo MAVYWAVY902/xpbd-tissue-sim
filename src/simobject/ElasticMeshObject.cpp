@@ -94,6 +94,54 @@ ElasticMeshObject::ElasticMeshObject(const ElasticMeshObjectConfig* config)
 
     _x_prev = _vertices;
 
+    // calculate volumes for each element and
+    // calculate masses for each vertex
+    _m = Eigen::VectorXd::Zero(numVertices());
+    _v_volume = Eigen::VectorXd::Zero(numVertices());
+    for (int i = 0; i < numElements(); i++)
+    {
+        // compute Q for each element
+        const Eigen::Vector3d& X1 = getVertex(_elements(i,0));
+        const Eigen::Vector3d& X2 = _vertices.row(_elements(i,1));
+        const Eigen::Vector3d& X3 = _vertices.row(_elements(i,2));
+        const Eigen::Vector3d& X4 = _vertices.row(_elements(i,3));
+
+        Eigen::Matrix3d X;
+        X.col(0) = (X1 - X4);
+        X.col(1) = (X2 - X4);
+        X.col(2) = (X3 - X4);
+
+        // add it to overall vector of Q's
+        // _Q.at(i) = X.inverse();
+
+        // compute volume from X
+        double vol = std::abs(X.determinant()/6);
+        // _vols(i) = vol;
+
+        // compute mass of element
+        double m_element = vol * _material.density();
+        // add mass contribution of element to each of its vertices
+        _m(_elements(i,0)) += m_element/4;
+        _m(_elements(i,1)) += m_element/4;
+        _m(_elements(i,2)) += m_element/4;
+        _m(_elements(i,3)) += m_element/4;
+
+        // add volume contribution of element to each of its vertices
+        _v_volume(_elements(i,0)) += vol/4;
+        _v_volume(_elements(i,1)) += vol/4;
+        _v_volume(_elements(i,2)) += vol/4;
+        _v_volume(_elements(i,3)) += vol/4;
+    }
+
+    _v_attached_elements = Eigen::VectorXd::Zero(_vertices.rows());
+    for (int i = 0; i < _elements.rows(); i++)
+    {
+        _v_attached_elements(_elements(i,0))++;
+        _v_attached_elements(_elements(i,1))++;
+        _v_attached_elements(_elements(i,2))++;
+        _v_attached_elements(_elements(i,3))++;
+    }
+
 }
 
 ElasticMeshObject::ElasticMeshObject(const std::string& name, const std::string& filename, const ElasticMaterial& material = ElasticMaterial::RUBBER())

@@ -53,6 +53,8 @@ class Simulation
         void addObject(std::shared_ptr<MeshObject> mesh_obj);
 
         double time() const { return _time; }
+        
+        double gAccel() const { return _g_accel; }
 
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
