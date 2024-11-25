@@ -33,6 +33,7 @@ void XPBDMeshObject::setup()
 {
     _createConstraints(_constraint_type, _constraints_with_residual, _constraints_with_damping);
     _createSolver(_solver_type, _num_solver_iters, _residual_policy);
+    std::cout << "done with setup!" << std::endl;
 }
 
 void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping)

@@ -23,6 +23,7 @@ struct PositionReference
         return obj->getVertex(index);
     }
 
+    /** Helper function to get the vertex's previous position. */
     inline Eigen::Vector3d previousPosition() const
     {
         return obj->vertexPreviousPosition(index);
@@ -40,6 +41,7 @@ struct PositionReference
         return obj->vertexMass(index);
     }
 
+    /** Helper function to get the vertex's inverse mass. */
     inline double invMass() const
     {
         return obj->vertexInvMass(index);
@@ -51,8 +53,6 @@ struct PositionReference
         return obj->vertexAttachedElements(index);
     }
 };
-
-
 
 class Constraint
 {
@@ -70,7 +70,7 @@ class Constraint
 
     inline virtual void initialize()
     {
-        _lambda = 0;
+        setLambda(0);
     }
 
     /** Evaluates the current value of this constraint.
@@ -99,13 +99,15 @@ class Constraint
             position_updates.at(i) = std::move(_getPositionUpdate(i, dlam, val_and_grad.second));
         }
 
-        _lambda += dlam;
+        setLambda(lambda() + dlam);
 
         return position_updates;
     }
 
     /** Returns the value of the Lagrange multiplier associated with this constraint. */
     double lambda() const { return _lambda; }
+
+    virtual void setLambda(const double new_lambda) { _lambda = new_lambda; }
     
     /** Returns the compliance for this constraint. */
     double alpha() const { return _alpha; }

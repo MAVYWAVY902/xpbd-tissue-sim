@@ -4,6 +4,7 @@
 #include "solver/Constraint.hpp"
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include <memory>
+#include <iomanip>
 
 namespace Solver
 {
@@ -16,6 +17,8 @@ class ConstraintDecorator : public Constraint
         _component(std::move(component))
     {
     }
+
+    virtual void setLambda(const double new_lambda) override { _component->setLambda(new_lambda); _lambda = new_lambda; }
 
     /** Evaluates the current value of this constraint.
      * i.e. returns C(x)
@@ -76,7 +79,8 @@ class WithDamping : public ConstraintDecorator
             delC_x_prev += grad(Eigen::seq(3*i, 3*i+2)).dot(_positions[i].position() - _positions[i].previousPosition());
         }
 
-        return _componentRHS(val_and_grad) - _damping_gamma * delC_x_prev;
+        double rhs = _componentRHS(val_and_grad) - _damping_gamma * delC_x_prev;
+        return rhs;
     }
 
     private:
@@ -111,7 +115,8 @@ class WithPrimaryResidual : public ConstraintDecorator
             delC_g += inv_m*(grad(Eigen::seq(3*i, 3*i+2)).dot(_scaledResidual(i)));
         }
 
-        return _componentRHS(val_and_grad) + delC_g;
+        const double rhs = _componentRHS(val_and_grad) + delC_g;
+        return rhs;
     }
 
     inline virtual PositionUpdate _getPositionUpdate(const unsigned position_index, const double dlam, const Eigen::VectorXd& grad) const
@@ -127,6 +132,7 @@ class WithPrimaryResidual : public ConstraintDecorator
         assert(_res_ptr);
         unsigned v_ind = _positions[position_index].index;
         const Eigen::Vector3d& g = (*_res_ptr)(Eigen::seq(3*v_ind,3*v_ind+2));
+
         // TODO: replace number of attached elements with number of "attached" constraints for more generality
         return g / (2*_positions[position_index].attachedElements());
     }
