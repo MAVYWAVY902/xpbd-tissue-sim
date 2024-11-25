@@ -10,15 +10,12 @@ class ElementConstraint : public Constraint
 {
     public:
     ElementConstraint(const double dt, XPBDMeshObject* obj, unsigned v1, unsigned v2, unsigned v3, unsigned v4)
-        : Constraint(dt)
+        : Constraint(dt, std::vector<PositionReference>({
+            PositionReference(obj, v1),
+            PositionReference(obj, v2),
+            PositionReference(obj, v3),
+            PositionReference(obj, v4)}))
     {
-        PositionReference pref1, pref2, pref3, pref4;
-        pref1.obj = obj; pref1.index = v1;
-        pref2.obj = obj; pref2.index = v2;
-        pref3.obj = obj; pref3.index = v3;
-        pref4.obj = obj; pref4.index = v4;
-        _positions.insert(_positions.end(), {pref1, pref2, pref3, pref4});
-
         // if this constructor is used, we assumes that this constraint is created when this object is in the rest configuration
         // so we can calculate Q and volume
         // calculate Q

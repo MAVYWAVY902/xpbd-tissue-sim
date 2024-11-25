@@ -17,6 +17,14 @@ struct PositionReference
     XPBDMeshObject* obj;        // pointer to the MeshObject
     unsigned index;             // vertex index
     
+    PositionReference()
+        : obj(0), index(0)
+    {}
+
+    PositionReference(XPBDMeshObject* obj_, unsigned index_)
+        : obj(obj_), index(index_)
+    {}
+
     /** Helper function to get the vertex position. */
     inline Eigen::Vector3d position() const
     {
@@ -52,6 +60,11 @@ struct PositionReference
     {
         return obj->vertexAttachedElements(index);
     }
+
+    friend bool operator==(const PositionReference& lhs, const PositionReference& rhs)
+    {
+        return lhs.obj == rhs.obj && lhs.index == rhs.index;
+    }
 };
 
 class Constraint
@@ -60,17 +73,17 @@ class Constraint
     public:
 
     typedef std::pair<double, Eigen::VectorXd> ValueAndGradient;
-    typedef std::pair<PositionReference, Eigen::Vector3d> PositionUpdate;
+    // typedef std::pair<Eigen::VectorXd, Eigen::MatrixXd> ValueAndGradient;
 
-    Constraint(const double dt)
-        : _dt(dt), _alpha(0), _lambda(0)
+    Constraint(const double dt, std::vector<PositionReference> positions)
+        : _alpha(0), _positions(positions)
     {
-
-    }
-
-    inline virtual void initialize()
-    {
-        setLambda(0);
+        _gradient_vector_position.resize(_positions.size());
+        for (unsigned i = 0; i < _positions.size(); i++)
+        {
+            _gradient_vector_position[i] = 3*i;
+            _gradient_vector_size = _positions.size() * 3;
+        }
     }
 
     /** Evaluates the current value of this constraint.
@@ -87,87 +100,20 @@ class Constraint
      * i.e. returns C(x) and delC(x) together.
      */
     inline virtual ValueAndGradient evaluateWithGradient() const = 0;
-
-    inline virtual std::vector<PositionUpdate> project()
-    {
-        const ValueAndGradient val_and_grad = evaluateWithGradient();
-        const double dlam = _RHS(val_and_grad) / _LHS(val_and_grad);
-
-        std::vector<PositionUpdate> position_updates(_positions.size());
-        for (unsigned i = 0; i < _positions.size(); i++)
-        {
-            position_updates.at(i) = std::move(_getPositionUpdate(i, dlam, val_and_grad.second));
-        }
-
-        setLambda(lambda() + dlam);
-
-        return position_updates;
-    }
-
-    /** Returns the value of the Lagrange multiplier associated with this constraint. */
-    double lambda() const { return _lambda; }
-
-    virtual void setLambda(const double new_lambda) { _lambda = new_lambda; }
     
     /** Returns the compliance for this constraint. */
     double alpha() const { return _alpha; }
 
-    /** Returns the alpha tilde for this constraint. */
-    virtual double alphaTilde() const { return _alpha / (_dt*_dt); }
+    const std::vector<PositionReference>& positions() const { return _positions; }
 
-    /** Returns the inverse mass for the position at the specified index. */
-    virtual double positionInvMass(const unsigned position_index) const { return _positions[position_index].invMass(); }
+    void setGradientVectorSize(const unsigned size) { _gradient_vector_size = size; }
 
-    const std::vector<PositionReference> positions() const { return _positions; }
-
-    /** Whether or not this constraint needs the primary residual to do its constraint projection.
-     * By default, this is false, but can be overridden by derived classes to be true if a constraint needs the primary residual.
-     * 
-     * The Solver class will query each constraint to see if it needs to compute the primary residual is needs to be calculated before each GS iteration.
-     */
-    virtual bool usesPrimaryResidual() const { return false; }
-
-    /** Whether or not this constraint uses damping in its constraint projection.
-     * By default, this is false, but can be overridden by derived classes to be true if the constraint uses damping.
-     */
-    virtual bool usesDamping() const { return false; }
+    void setGradientVectorPosition(const unsigned position_index, const unsigned gradient_index) { _gradient_vector_position[position_index] = gradient_index; }
 
     protected:
-    inline virtual double _LHS(const ValueAndGradient& val_and_grad) const
-    {
-        const double alpha_tilde = alphaTilde();
-        const Eigen::VectorXd& grads = val_and_grad.second;
-        double lhs = alpha_tilde;
-        for (unsigned i = 0; i < _positions.size(); i++)
-        {
-            const double inv_m = positionInvMass(i);
-            lhs += inv_m * grads(Eigen::seq(3*i, 3*i+2)).squaredNorm();
-        }
-
-        return lhs;
-    }
-
-    inline virtual double _RHS(const ValueAndGradient& val_and_grad) const
-    {
-        const double alpha_tilde = alphaTilde();
-        const double C = val_and_grad.first;
-        double rhs = -C - alpha_tilde * _lambda;
-
-        return rhs;
-    }
-
-    inline virtual PositionUpdate _getPositionUpdate(const unsigned position_index, const double dlam, const Eigen::VectorXd& grads) const
-    {
-        PositionUpdate position_update;
-        position_update.first = _positions[position_index];
-        position_update.second = positionInvMass(position_index) * dlam * grads(Eigen::seq(3*position_index, 3*position_index+2));
-        return position_update;
-    }
-
-    protected:
-    double _dt;         // the size of the time step used during constraint projection
-    double _lambda;     // Lagrange multiplier for this constraint
     double _alpha;      // Compliance for this constraint
+    unsigned _gradient_vector_size; // size of the returned gradient vector
+    std::vector<unsigned> _gradient_vector_position; // maps position indices to positions in gradient vector
     std::vector<PositionReference> _positions;  // the positions associated with this constraint
 };  
 

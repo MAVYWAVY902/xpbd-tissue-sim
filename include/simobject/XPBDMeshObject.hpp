@@ -10,6 +10,7 @@
 namespace Solver
 {
     class Constraint;
+    class ConstraintProjector;
     class XPBDSolver;
 }
 
@@ -35,6 +36,9 @@ class XPBDMeshObject : public ElasticMeshObject
 
     unsigned numConstraints() const { return _constraints.size(); }
     const std::vector<std::unique_ptr<Solver::Constraint>>& constraints() const { return _constraints; }
+
+    unsigned numConstraintProjectors() const { return _constraint_projectors.size(); }
+    const std::vector<std::unique_ptr<Solver::ConstraintProjector>>& constraintProjectors() const { return _constraint_projectors; }
 
     virtual void setup() override;
 
@@ -76,6 +80,7 @@ class XPBDMeshObject : public ElasticMeshObject
 
     std::unique_ptr<Solver::XPBDSolver> _solver;
     std::vector<std::unique_ptr<Solver::Constraint>> _constraints;
+    std::vector<std::unique_ptr<Solver::ConstraintProjector>> _constraint_projectors;
     
 
 };

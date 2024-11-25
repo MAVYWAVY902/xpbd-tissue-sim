@@ -39,6 +39,8 @@ class XPBDSolver
 
     bool _constraints_using_primary_residual;
 
+    unsigned _num_constraints;
+
     std::unique_ptr<Eigen::VectorXd> _primary_residual;
     std::unique_ptr<Eigen::VectorXd> _constraint_residual;
     

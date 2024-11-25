@@ -57,13 +57,13 @@ class DeviatoricConstraint : public ElementConstraint
     {
         Eigen::Matrix3d prod = 1/C * F * _Q.transpose();
 
-        Eigen::VectorXd grads(12);
-        grads(Eigen::seq(0,2)) = prod.col(0);
-        grads(Eigen::seq(3,5)) = prod.col(1);
-        grads(Eigen::seq(6,8)) = prod.col(2);
-        grads(Eigen::seq(9,11)) = -prod.col(0) - prod.col(1) - prod.col(2);
+        Eigen::VectorXd grad = Eigen::VectorXd::Zero(_gradient_vector_size);
+        grad(Eigen::seq(_gradient_vector_position[0],_gradient_vector_position[0]+2)) = prod.col(0);
+        grad(Eigen::seq(_gradient_vector_position[1],_gradient_vector_position[1]+2)) = prod.col(1);
+        grad(Eigen::seq(_gradient_vector_position[2],_gradient_vector_position[2]+2)) = prod.col(2);
+        grad(Eigen::seq(_gradient_vector_position[3],_gradient_vector_position[3]+2)) = -prod.col(0) - prod.col(1) - prod.col(2);
 
-        return grads;
+        return grad;
     }
 
 };
