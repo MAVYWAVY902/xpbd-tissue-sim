@@ -5,7 +5,7 @@ sim-mode: "Visualization"
 # sim-mode: "AFAP"
 time-step: 1e-3
 fps: 30
-end-time: 10
+end-time: 1
 objects:
   # -
   #   name: "Trachea"
@@ -15,7 +15,7 @@ objects:
   #   # filename: "../resource/general/stanford_bunny_lowpoly.msh"
   #   # filename: "../resource/general/stanford_bunny_medpoly.msh"
   #   # filename: "../resource/general/single.msh"
-  #   filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/cube/cube8.msh"
   #   # filename: "../resource/cube/cube16.msh"
   #   # filename: "../resource/tissue/Prostate.msh"
   #   # filename: "../resource/tissue/Trachea_processed.stl"
@@ -62,12 +62,12 @@ objects:
     position: [0, 0, 0.5]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
-    num-solver-iters: 2
+    num-solver-iters: 1
     damping-gamma: 1000
     collisions: false
     damping-multiplier: 400000
     solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean"
+    constraint-type: "Stable-Neohookean-Combined"
     with-residual: false
     with-damping: false
     residual-policy: "Every-Substep"

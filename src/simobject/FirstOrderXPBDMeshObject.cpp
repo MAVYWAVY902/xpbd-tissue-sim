@@ -38,8 +38,8 @@ void FirstOrderXPBDMeshObject::_convertConstraintsToFirstOrder()
     for (unsigned i = 0; i < _constraints.size(); i++)
     {
         // convert all constraints to first order constraints
-        std::unique_ptr<Solver::Constraint> first_order_constraint = std::make_unique<Solver::FirstOrder>(std::move(_constraints.at(i)));
-        _constraints.at(i) = std::move(first_order_constraint);
+        // std::unique_ptr<Solver::Constraint> first_order_constraint = std::make_unique<Solver::FirstOrder>(std::move(_constraints.at(i)));
+        // _constraints.at(i) = std::move(first_order_constraint);
     }
 }
 

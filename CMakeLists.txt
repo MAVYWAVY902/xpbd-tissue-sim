@@ -70,6 +70,7 @@ set(XPBD_FILES
     "include/config/InitialDeformationSimulationConfig.hpp"
     "include/config/StaticLoadingSimulationConfig.hpp"
     "include/solver/Constraint.hpp"
+    "include/solver/ConstraintProjector.hpp"
     "include/solver/ConstraintDecorator.hpp"
     "include/solver/ElementConstraint.hpp"
     "include/solver/HydrostaticConstraint.hpp"

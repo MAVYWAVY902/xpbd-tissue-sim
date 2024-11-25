@@ -53,24 +53,57 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
 
             if (with_residual)
             {
-                hyd_constraint = std::make_unique<Solver::WithPrimaryResidual>(std::move(hyd_constraint));
-                dev_constraint = std::make_unique<Solver::WithPrimaryResidual>(std::move(dev_constraint));
+                assert(0);
+                // hyd_constraint = std::make_unique<Solver::WithPrimaryResidual>(std::move(hyd_constraint));
+                // dev_constraint = std::make_unique<Solver::WithPrimaryResidual>(std::move(dev_constraint));
             }
 
             if (with_damping)
             {
-                hyd_constraint = std::make_unique<Solver::WithDamping>(std::move(hyd_constraint), _damping_gamma);
-                dev_constraint = std::make_unique<Solver::WithDamping>(std::move(dev_constraint), _damping_gamma);
+                assert(0);
+                // hyd_constraint = std::make_unique<Solver::WithDamping>(std::move(hyd_constraint), _damping_gamma);
+                // dev_constraint = std::make_unique<Solver::WithDamping>(std::move(dev_constraint), _damping_gamma);
             }
             
+            std::vector<Solver::Constraint*> hyd_vec; hyd_vec.push_back(hyd_constraint.get());
+            std::unique_ptr<Solver::ConstraintProjector> hyd_projector = std::make_unique<Solver::ConstraintProjector>(hyd_vec, _dt);
+            std::vector<Solver::Constraint*> dev_vec; dev_vec.push_back(dev_constraint.get());
+            std::unique_ptr<Solver::ConstraintProjector> dev_projector = std::make_unique<Solver::ConstraintProjector>(dev_vec, _dt);
+
             _constraints.push_back(std::move(dev_constraint));
             _constraints.push_back(std::move(hyd_constraint));
+
+            _constraint_projectors.push_back(std::move(dev_projector));
+            _constraint_projectors.push_back(std::move(hyd_projector));
             
         }
         else if (constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED)
         {
-            std::cout << "\nCombined Neohookean constraints not implemented yet!" << std::endl;
-            assert(0);
+            std::unique_ptr<Solver::Constraint> hyd_constraint, dev_constraint;
+            hyd_constraint = std::make_unique<Solver::HydrostaticConstraint>(_dt, this, v0, v1, v2, v3);
+            dev_constraint = std::make_unique<Solver::DeviatoricConstraint>(_dt, this, v0, v1, v2, v3);
+
+            if (with_residual)
+            {
+                assert(0);
+                // hyd_constraint = std::make_unique<Solver::WithPrimaryResidual>(std::move(hyd_constraint));
+                // dev_constraint = std::make_unique<Solver::WithPrimaryResidual>(std::move(dev_constraint));
+            }
+
+            if (with_damping)
+            {
+                assert(0);
+                // hyd_constraint = std::make_unique<Solver::WithDamping>(std::move(hyd_constraint), _damping_gamma);
+                // dev_constraint = std::make_unique<Solver::WithDamping>(std::move(dev_constraint), _damping_gamma);
+            }
+            
+            std::vector<Solver::Constraint*> vec; vec.push_back(hyd_constraint.get()); vec.push_back(dev_constraint.get());
+            std::unique_ptr<Solver::ConstraintProjector> projector = std::make_unique<Solver::ConstraintProjector>(vec, _dt);
+
+            _constraints.push_back(std::move(dev_constraint));
+            _constraints.push_back(std::move(hyd_constraint));
+
+            _constraint_projectors.push_back(std::move(projector));
         }
     }
 }

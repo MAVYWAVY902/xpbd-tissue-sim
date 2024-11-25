@@ -1,5 +1,6 @@
 #include "solver/XPBDGaussSeidelSolver.hpp"
 #include "solver/Constraint.hpp"
+#include "solver/ConstraintProjector.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 
 namespace Solver
@@ -11,12 +12,12 @@ XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(XPBDMeshObject const* obj, unsigned
 
 void XPBDGaussSeidelSolver::_solveConstraints()
 {
-    const std::vector<std::unique_ptr<Constraint>>& constraints = _obj->constraints();
+    const std::vector<std::unique_ptr<ConstraintProjector>>& projectors = _obj->constraintProjectors();
     // loop through constraints
-    for (const auto& constraint : constraints)
+    for (const auto& proj : projectors)
     {
         // get the position updates for this constraint
-        std::vector<Constraint::PositionUpdate> position_updates = constraint->project();
+        std::vector<ConstraintProjector::PositionUpdate> position_updates = proj->project();
         for (const auto& position_update : position_updates)
         {
             // apply each position update
