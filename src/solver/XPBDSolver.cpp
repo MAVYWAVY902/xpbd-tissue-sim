@@ -1,5 +1,6 @@
 #include "solver/XPBDSolver.hpp"
 #include "solver/Constraint.hpp"
+#include "solver/ConstraintDecorator.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 
 namespace Solver
@@ -10,23 +11,34 @@ XPBDSolver::XPBDSolver(XPBDMeshObject const* obj, unsigned num_iter, XPBDResidua
 {
     _primary_residual = std::make_unique<Eigen::VectorXd>(Eigen::VectorXd::Zero(3*_obj->numVertices()));
     _constraint_residual = std::make_unique<Eigen::VectorXd>(Eigen::VectorXd::Zero(_obj->numConstraints()));
+
+    for (const auto& constraint : _obj->constraints())
+    {
+        if (constraint->usesPrimaryResidual())
+        {
+            _constraints_using_primary_residual = true;
+            if (WithPrimaryResidual* wpr = dynamic_cast<WithPrimaryResidual*>(constraint.get()))
+            {
+                wpr->setPrimaryResidual(_primary_residual.get());
+            }
+        }
+    }
 }
 
 void XPBDSolver::solve()
 {
     _inertial_positions = _obj->vertices();
+    for (const auto& c : _obj->constraints())
+    {
+        c->initialize();
+    }
+
     for (unsigned i = 0; i < _num_iter; i++)
     {
         if (_constraints_using_primary_residual)
         {
             *_primary_residual = _calculatePrimaryResidual();
         }
-
-        for (const auto& c : _obj->constraints())
-        {
-            c->initialize();
-        }
-
         _solveConstraints();
     }
 
@@ -62,6 +74,8 @@ Eigen::VectorXd XPBDSolver::_calculatePrimaryResidual() const
         }
     }
 
+    // std::cout << "pres:\n" << primary_residual << std::endl;
+
     return primary_residual;
 }
 
@@ -71,8 +85,10 @@ Eigen::VectorXd XPBDSolver::_calculateConstraintResidual() const
     const std::vector<std::unique_ptr<Constraint>>& constraints = _obj->constraints();
     for (unsigned i = 0; i < _obj->numConstraints(); i++)
     {
-        constraint_residual(i) = constraints[i]->evaluate() - constraints[i]->alphaTilde() * constraints[i]->lambda();
+        constraint_residual(i) = constraints[i]->evaluate() + constraints[i]->alphaTilde() * constraints[i]->lambda();
     }
+
+    // std::cout << "cres:\n" << constraint_residual << std::endl;
 
     return constraint_residual;
     
