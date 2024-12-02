@@ -109,7 +109,7 @@ Eigen::VectorXd XPBDSolver::_calculatePrimaryResidual() const
     {
         const std::vector<PositionReference>& positions = proj->positions();
         const std::vector<Constraint*>& constraints = proj->constraints();
-        const Eigen::VectorXd& lambda = proj->lambda();
+        const std::vector<double>& lambda = proj->lambda();
         // const Eigen::VectorXd grad = constraint->gradient();
         for (unsigned ci = 0; ci < constraints.size(); ci++)
         {
@@ -120,7 +120,7 @@ Eigen::VectorXd XPBDSolver::_calculatePrimaryResidual() const
                     continue;
                 
                 const unsigned v_ind = positions[pi].index;
-                primary_residual(Eigen::seq(3*v_ind, 3*v_ind+2)) -= grad(Eigen::seq(3*pi, 3*pi+2)) * lambda(ci);
+                primary_residual(Eigen::seq(3*v_ind, 3*v_ind+2)) -= grad(Eigen::seq(3*pi, 3*pi+2)) * lambda[ci];
             }
         }
         
@@ -139,14 +139,14 @@ Eigen::VectorXd XPBDSolver::_calculateConstraintResidual() const
     unsigned constraint_index = 0;
     for (unsigned i = 0; i < _constraint_projectors.size(); i++)
     {
-        const Eigen::VectorXd& lambda = _constraint_projectors[i]->lambda();
+        const std::vector<double>& lambda = _constraint_projectors[i]->lambda();
         // const Eigen::MatrixXd& alphaTilde = _constraint_projectors[i]->alphaTilde();
         double* alpha_tilde = _data.data();
         _constraint_projectors[i]->alphaTilde(alpha_tilde);
         const std::vector<Constraint*>& constraints = _constraint_projectors[i]->constraints();
         for (unsigned j = 0; j < constraints.size(); j++)
         {
-            constraint_residual(constraint_index) = constraints[j]->evaluate() + alpha_tilde[j] * lambda(j);
+            constraint_residual(constraint_index) = constraints[j]->evaluate() + alpha_tilde[j] * lambda[j];
             constraint_index++;
         }
         

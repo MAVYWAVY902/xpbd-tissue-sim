@@ -22,6 +22,9 @@ class ConstraintProjector
     explicit ConstraintProjector(std::vector<Constraint*> constraints, const double dt)
         : _constraints(std::move(constraints)), _dt(dt)
     {
+        // resize Lagrange multipliers vector
+        _lambda.resize(numConstraints());
+
         // we need to assemble a list of mesh positions that are affected by the constraints projected by this ConstraintProjector, so we can compute position updates (Delta x) for each one.
         // if there is only one constraint projected, this is easy - this is simply just the positions affected by that single constraint.
         // however, with multiple constraints, this gets a little trickier - we need the set of all positions affected, and there may be some overlap between constraints
@@ -70,7 +73,10 @@ class ConstraintProjector
      */
     inline virtual void initialize()
     {
-        setLambda(Eigen::VectorXd::Zero(numConstraints()));
+        for (unsigned i = 0; i < numConstraints(); i++)
+        {
+            setLambda(i, 0);
+        }
     }
 
     /** Projects the constraints and computes the position updates resulting from the projection.
@@ -149,7 +155,11 @@ class ConstraintProjector
         }
 
         // update the lambdas with the recently calculate dlam vector
-        setLambda(_lambda + Eigen::Map<Eigen::VectorXd>(dlam_ptr, numConstraints()));
+        for (unsigned i = 0; i < numConstraints(); i++)
+        {
+            setLambda(i, _lambda[i]+dlam_ptr[i]);
+        }
+        
 
         // calculate position updates based on computed quantities
         for (unsigned i = 0; i < numPositions(); i++)
@@ -200,7 +210,7 @@ class ConstraintProjector
     inline const std::vector<PositionReference>& positions() const { return _positions; }
 
     /** Returns the vector of the Lagrange multipliers associated with the constraints projected by this ConstraintProjector. */
-    inline Eigen::VectorXd lambda() const { return _lambda; }
+    inline const std::vector<double>& lambda() const { return _lambda; }
 
     /** Computes the alpha tilde matrix.
      * @param alpha_tilde_ptr (OUTPUT) - the pointer to the (currently empty) alpha tilde "matrix". The diagonal matrix is represented as a vector that is numConstraints x 1.
@@ -224,7 +234,7 @@ class ConstraintProjector
         }
     }
 
-    virtual void setLambda(const Eigen::VectorXd& new_lambda) { _lambda = new_lambda; }
+    virtual void setLambda(const unsigned index, const double val) { _lambda[index] = val; }
 
     /** Whether or not this constraint needs the primary residual to do its constraint projection.
      * By default, this is false, but can be overridden by derived classes to be true if a constraint needs the primary residual.
@@ -372,7 +382,7 @@ class ConstraintProjector
 
     protected:
     double _dt;         // the size of the time step used during constraint projection
-    Eigen::VectorXd _lambda;     // Lagrange multiplier for this constraint
+    std::vector<double> _lambda;            // Lagrange multipliers for this constraint
     std::vector<Constraint*> _constraints;  // constraint(s) to be projected simultaneously
     std::vector<PositionReference> _positions; // position(s) associated with the constraints
 
