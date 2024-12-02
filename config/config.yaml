@@ -68,7 +68,7 @@ objects:
     collisions: false
     damping-multiplier: 400000
     solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean"
+    constraint-type: "Stable-Neohookean-Combined"
     with-residual: false
     with-damping: false
     residual-policy: "Never"

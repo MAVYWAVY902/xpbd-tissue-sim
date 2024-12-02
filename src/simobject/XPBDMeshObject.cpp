@@ -4,6 +4,7 @@
 #include "solver/HydrostaticConstraint.hpp"
 #include "solver/DeviatoricConstraint.hpp"
 #include "solver/ConstraintProjectorDecorator.hpp"
+#include "solver/CombinedNeohookeanConstraintProjector.hpp"
 
 XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
     : ElasticMeshObject(config)
@@ -101,8 +102,8 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
                 // dev_constraint = std::make_unique<Solver::WithDamping>(std::move(dev_constraint), _damping_gamma);
             }
             
-            std::vector<Solver::Constraint*> vec; vec.push_back(hyd_constraint.get()); vec.push_back(dev_constraint.get());
-            std::unique_ptr<Solver::ConstraintProjector> projector = std::make_unique<Solver::ConstraintProjector>(vec, _dt);
+            std::vector<Solver::Constraint*> vec; vec.push_back(dev_constraint.get()); vec.push_back(hyd_constraint.get());
+            std::unique_ptr<Solver::CombinedNeohookeanConstraintProjector> projector = std::make_unique<Solver::CombinedNeohookeanConstraintProjector>(vec, _dt);
 
             _constraints.push_back(std::move(dev_constraint));
             _constraints.push_back(std::move(hyd_constraint));
