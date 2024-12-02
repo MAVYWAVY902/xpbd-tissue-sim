@@ -71,7 +71,7 @@ set(XPBD_FILES
     "include/config/StaticLoadingSimulationConfig.hpp"
     "include/solver/Constraint.hpp"
     "include/solver/ConstraintProjector.hpp"
-    "include/solver/ConstraintDecorator.hpp"
+    "include/solver/ConstraintProjectorDecorator.hpp"
     "include/solver/ElementConstraint.hpp"
     "include/solver/HydrostaticConstraint.hpp"
     "include/solver/DeviatoricConstraint.hpp"

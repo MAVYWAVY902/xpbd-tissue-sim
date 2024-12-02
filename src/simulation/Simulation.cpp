@@ -249,5 +249,12 @@ int Simulation::run()
     // run the Viewer
     // _viewer->fit_screen();
     // return _viewer->run();
-    return _graphics_scene->run();
+    if (_graphics_scene)
+        return _graphics_scene->run();
+    else
+    {
+        update_thread.join();
+        return 0;
+    }
+    
 }

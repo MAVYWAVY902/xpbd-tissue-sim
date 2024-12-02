@@ -12,7 +12,8 @@ class XPBDGaussSeidelSolver : public XPBDSolver
     explicit XPBDGaussSeidelSolver(XPBDMeshObject const* obj, unsigned num_iter, XPBDResidualPolicy residual_policy);
 
     protected:
-    virtual void _solveConstraints() override;
+
+    virtual void _solveConstraints(double* data) override;
 };
 
 } // namespace Solver

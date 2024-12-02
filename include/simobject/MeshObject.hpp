@@ -17,7 +17,7 @@ class MeshObject
 
     // public typedefs
     public:
-    typedef Eigen::Matrix<double, -1, 3> VerticesMat;   // matrix type for vertices
+    typedef Eigen::Matrix<double, -1, 3, Eigen::RowMajor> VerticesMat;   // matrix type for vertices
     typedef Eigen::Matrix<unsigned, -1, 3> FacesMat;    // matrix type for faces
 
     /** Enum that defines which point of reference to take the "position" of a mesh 
@@ -91,11 +91,20 @@ class MeshObject
 
     void setVertex(const unsigned index, const Eigen::Vector3d& new_pos);
 
+    void displaceVertex(const unsigned index, const double dx, const double dy, const double dz)
+    {
+        _vertices(index,0) += dx;
+        _vertices(index,1) += dy;
+        _vertices(index,2) += dz;
+    }
+
     /** Returns the vertex at the row index specified by the user.
      * @param index : the row in the _vertices matrix
      * @returns the vertex as an Eigen::Vector3d
      */
     Eigen::Vector3d getVertex(const unsigned index) const;
+
+    double* getVertexPointer(const unsigned index) const;
 
     /** Finds the closest vertex to the specified (x,y,z) points, and returns the row index in the _vertices matrix.
      * For now, just does an O(n) search through the vertices.
