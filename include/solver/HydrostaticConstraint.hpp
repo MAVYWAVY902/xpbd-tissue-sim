@@ -10,72 +10,121 @@ namespace Solver
  */
 class HydrostaticConstraint : public virtual ElementConstraint
 {
+    friend class CombinedNeohookeanConstraintProjector;
+    
     public:
+    /** Creates the hydrostatic constraint from a MeshObject and the 4 vertices that make up the tetrahedral element. */
     HydrostaticConstraint(XPBDMeshObject* obj, unsigned v1, unsigned v2, unsigned v3, unsigned v4)
         : ElementConstraint(obj, v1, v2, v3, v4)
     {
-        _alpha = 1/(obj->material().lambda() * _volume);
-        _gamma = obj->material().mu() / obj->material().lambda();
+        _alpha = 1/(obj->material().lambda() * _volume);            // set alpha after the ElementConstraint constructor because we need the element volume
+        _gamma = obj->material().mu() / obj->material().lambda();  
     }
 
-    inline double evaluate() const
+    /** Evaluates the current value of this constraint.
+     * i.e. returns C(x)
+     */
+    inline double evaluate() const override
     {
         return _evaluate(_computeF());
     }
 
-    inline Eigen::VectorXd gradient() const
+    /** Returns the gradient of this constraint in vector form.
+     * i.e. returns delC(x)
+     */
+    inline Eigen::VectorXd gradient() const override
     {
         return _gradient(_computeF());
         
     }
 
-    inline Constraint::ValueAndGradient evaluateWithGradient() const
+    /** Returns the value and gradient of this constraint.
+     * i.e. returns C(x) and delC(x) together.
+     * 
+     * This may be desirable when there would be duplicate work involved to evaluate constraint and its gradient separately.
+     */
+    inline Constraint::ValueAndGradient evaluateWithGradient() const override
     {
         const Eigen::Matrix3d F = _computeF();
         return ValueAndGradient(_evaluate(F), _gradient(F));
     }
 
-    inline void evaluate(double* C, double* additional_memory) const
+
+    /** Evaluates the current value of this constraint with pre-allocated memory.
+     * i.e. returns C(x)
+     * 
+     * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
+     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint calculation, if necessary
+     */
+    inline void evaluate(double* C, double* additional_memory) const override
     {
+        // deformation gradient, F and deformed state matrix, X will be calculated using the pre-allocated scratch memory
         double* F = additional_memory;
-        double* X = F + 9;
+        double* X = F + 9;              // deformation gradient is 3x3, so X starts 9 after F
+
         _computeF(F, X);
         _evaluate(C, F);
     }
 
-    inline void gradient(double* grad, double* additional_memory) const
+    /** Computes the gradient of this constraint in vector form with pre-allocated memory.
+     * i.e. returns delC(x)
+     * 
+     * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
+     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint gradient calculation, if necessary
+     */
+    inline void gradient(double* grad, double* additional_memory) const override
     {
+        // deformation gradient, F and deformed state matrix, X will be calculated using the pre-allocated scratch memory
         double* F = additional_memory;
-        double* X = F + 9;
+        double* X = F + 9;              // deformation gradient is 3x3, so X starts 9 after F
         _computeF(F, X);
-        _gradient(grad, F, additional_memory + 18);
+        _gradient(grad, F, X + 9);     // additional memory needed for the gradient calculation (after F and X) is provided after X
     }
 
-    void evaluateWithGradient(double* C, double* grad, double* additional_memory) const
+
+    /** Computes the value and gradient of this constraint with pre-allocated memory.
+     * i.e. returns C(x) and delC(x) together.
+     * 
+     * This may be desirable when there would be duplicate work involved to evaluate constraint and its gradient separately.
+     * 
+     * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
+     * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
+     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values, if necessary
+     */
+    void evaluateWithGradient(double* C, double* grad, double* additional_memory) const override
     {
+        // deformation gradient, F and deformed state matrix, X will be calculated using the pre-allocated scratch memory
         double* F = additional_memory;
-        double* X = F+9;
+        double* X = F+9;                // deformation gradient is 3x3, so X starts 9 after F
         _computeF(F, X);
         _evaluate(C, F);
-        _gradient(grad, F, additional_memory + 18);
+        _gradient(grad, F, X + 9);      // additional memory needed for the gradient calculation (after F and X) is provided after X
     }
 
+    /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
     inline unsigned memoryNeeded() const override
     {
         // 9 for F
         // 9 for X
-        // 9 for F_cross
+        // 9 for F_cross (part of the gradient calculation)
         return 27 * sizeof(double);
     }
 
     private:
+
+    /** Helper method to evaluate the constraint given the deformation gradient, F.
+     * Avoids the need to recompute F if we already have it.
+     */
     inline double _evaluate(const Eigen::Matrix3d& F) const
     {
         assert(0);
 
         return F.determinant() - (1 + _gamma);
     }
-
+    
+    /** Helper method to evaluate the constraint gradient given the deformation gradient, F.
+     * Avoids the need to recompute F if we already have it.
+     */
     inline Eigen::VectorXd _gradient(const Eigen::Matrix3d& F) const
     {
 
@@ -98,36 +147,59 @@ class HydrostaticConstraint : public virtual ElementConstraint
         return grad;
     }
 
+    /** Helper method to evaluate the constraint given the deformation gradient, F, using pre-allocated memory.
+     * Avoids the need to recompute F if we already have it.
+     */
     inline void _evaluate(double* C, double* F) const
     {
-        // C(x) = det(F) - (1 + gamma)
+        // compute C(x) = det(F) - (1 + gamma)
         *C = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2] - (1+_gamma);
     }
 
+    /** Helper method to evaluate the constraint gradient given the deformation gradient, F, useing pre-allocated memory.
+     * Avoids the need to recompute F if we already have it.
+     * 
+     * Requires at least 9 * sizeof(double) bytes of additional memory for intermediate quantities.
+     */
     inline void _gradient(double* grad, double* F, double* additional_memory) const
     {   
+        // F_cross = [f2 x f3, f3 x f1, f1 x f2] where f_i are the columns of F
+        // F_cross and F are both column-major
+        // see supplementary material of Macklin paper for more details
         double* F_cross = additional_memory;
-        _cross3(F+3, F+6, F_cross);
-        _cross3(F+6, F, F_cross+3);
-        _cross3(F, F+3, F_cross+6);
+        _cross3(F+3, F+6, F_cross);             // 2nd column of F crossed with 3rd column
+        _cross3(F+6, F, F_cross+3);             // 3rd column of F crossed with 1st column
+        _cross3(F, F+3, F_cross+6);             // 1st column of F crossed with 2nd column
 
+        // for A = F_cross * Q^T,
+        // 1st column of A is delC wrt 1st position
+        // 2nd column of A is delC wrt 2nd position
+        // 3rd column of A is delC wrt 3rd position
+        // delC wrt 4th position is (-1st column - 2nd column - 3rd column)
+        // see supplementary material of Macklin paper for more details
+
+        // calculation of delC wrt 1st position
         grad[_gradient_vector_index[0]] = (F_cross[0]*_Q(0,0) + F_cross[3]*_Q(0,1) + F_cross[6]*_Q(0,2));
         grad[_gradient_vector_index[1]] = (F_cross[1]*_Q(0,0) + F_cross[4]*_Q(0,1) + F_cross[7]*_Q(0,2));
         grad[_gradient_vector_index[2]] = (F_cross[2]*_Q(0,0) + F_cross[5]*_Q(0,1) + F_cross[8]*_Q(0,2));
 
+        // calculation of delC wrt 2nd postion
         grad[_gradient_vector_index[3]] = (F_cross[0]*_Q(1,0) + F_cross[3]*_Q(1,1) + F_cross[6]*_Q(1,2));
         grad[_gradient_vector_index[4]] = (F_cross[1]*_Q(1,0) + F_cross[4]*_Q(1,1) + F_cross[7]*_Q(1,2));
         grad[_gradient_vector_index[5]] = (F_cross[2]*_Q(1,0) + F_cross[5]*_Q(1,1) + F_cross[8]*_Q(1,2));
 
+        // calculation of delC wrt 3rd position
         grad[_gradient_vector_index[6]] = (F_cross[0]*_Q(2,0) + F_cross[3]*_Q(2,1) + F_cross[6]*_Q(2,2));
         grad[_gradient_vector_index[7]] = (F_cross[1]*_Q(2,0) + F_cross[4]*_Q(2,1) + F_cross[7]*_Q(2,2));
         grad[_gradient_vector_index[8]] = (F_cross[2]*_Q(2,0) + F_cross[5]*_Q(2,1) + F_cross[8]*_Q(2,2));
 
+        // calculation of delC wrt 4th position
         grad[_gradient_vector_index[9]]  = -grad[_gradient_vector_index[0]] - grad[_gradient_vector_index[3]] - grad[_gradient_vector_index[6]];
         grad[_gradient_vector_index[10]] = -grad[_gradient_vector_index[1]] - grad[_gradient_vector_index[4]] - grad[_gradient_vector_index[7]];
         grad[_gradient_vector_index[11]] = -grad[_gradient_vector_index[2]] - grad[_gradient_vector_index[5]] - grad[_gradient_vector_index[8]];
     }
 
+    /** Helper method for cross product between two 3-vectors v1 and v2, store the result in v3 */
     inline void _cross3(double* v1, double* v2, double* v3) const
     {
         v3[0] = v1[1]*v2[2] - v1[2]*v2[1];
@@ -136,7 +208,7 @@ class HydrostaticConstraint : public virtual ElementConstraint
     }
 
     protected:
-    double _gamma;
+    double _gamma;  // the ratio mu/lambda - part of C(x)
 };
 
 } // namespace Solver
