@@ -9,61 +9,33 @@ namespace Solver
 XPBDSolver::XPBDSolver(XPBDMeshObject const* obj, unsigned num_iter, XPBDResidualPolicy residual_policy)
     : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)
 {
+    // TODO: fix primary and constraint residuals
     _primary_residual = std::make_unique<Eigen::VectorXd>(Eigen::VectorXd::Zero(3*_obj->numVertices()));
-
-    // _num_constraints = 0;
-    // for (const auto& proj : _obj->constraintProjectors())
-    // {
-    //     _num_constraints += proj->numConstraints();
-    // }
-    // _constraint_residual = std::make_unique<Eigen::VectorXd>(Eigen::VectorXd::Zero(_num_constraints));
     _constraint_residual = std::make_unique<Eigen::VectorXd>(Eigen::VectorXd::Zero(1));
-
-    // for (const auto& constraint : _obj->constraints())
-    // {
-    //     if (constraint->usesPrimaryResidual())
-    //     {
-    //         _constraints_using_primary_residual = true;
-    //         if (WithPrimaryResidual* wpr = dynamic_cast<WithPrimaryResidual*>(constraint.get()))
-    //         {
-    //             wpr->setPrimaryResidual(_primary_residual.get());
-    //         }
-    //     }
-    // }
-    // unsigned maxNumDoubles = 0;
-    // unsigned maxNumCoordinates = 0;
-    // for (const auto& proj : _obj->constraintProjectors())
-    // {
-    //     if (proj->numDoublesNeeded() > maxNumDoubles)
-    //     {
-    //         maxNumDoubles = proj->numDoublesNeeded();
-    //     }
-
-    //     if (proj->numCoordinates() > maxNumCoordinates)
-    //     {
-    //         maxNumCoordinates = proj->numCoordinates();
-    //     }
-    // }
-
-    // _data.resize(maxNumDoubles);
-    // _coordinate_updates.resize(maxNumCoordinates);
 }
 
 void XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> projector)
 {
+    // amount of pre-allocated memory required to perform the constraint(s) projection
     unsigned required_array_size = projector->memoryNeeded() / sizeof(double);
+    // make sure that the data buffer of the _data vector is large enough to accomodate the new projector
     if (required_array_size > _data.size())
     {
         _data.resize(required_array_size);
     }
 
+    // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
     if (projector->numCoordinates() > _coordinate_updates.size())
     {
         _coordinate_updates.resize(projector->numCoordinates());
     }
 
+    // increase the total number of constraints (needed for the constraint residual size)
     _num_constraints += projector->numConstraints();
-    // _constraint_residual = std::make_unique<Eigen::VectorXd>(Eigen::VectorXd::Zero(_num_constraints));
+
+    // check if primary residual is needed for constraint projection
+    if (projector->usesPrimaryResidual())
+        _constraints_using_primary_residual = true;
     
     _constraint_projectors.push_back(std::move(projector));
 }
@@ -79,13 +51,17 @@ void XPBDSolver::solve()
 
     for (unsigned i = 0; i < _num_iter; i++)
     {
+        // if any of the constraint projections require the primary residual, we need to calculate it
         if (_constraints_using_primary_residual)
         {
             *_primary_residual = _calculatePrimaryResidual();
         }
+
+        // iterate through the constraints and solve them
         _solveConstraints(_data.data());
     }
 
+    // calculate the residual after this step if required by the residual policy
     if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
     {
         std::cout << "computing residuals..." << std::endl;
@@ -96,7 +72,6 @@ void XPBDSolver::solve()
 
 Eigen::VectorXd XPBDSolver::_calculatePrimaryResidual() const
 {
-    std::cout << "calculating primary residual..." << std::endl;
     Eigen::VectorXd primary_residual(3*_obj->numVertices());
     // add Mx
     for (unsigned i = 0; i < _obj->numVertices(); i++)
@@ -110,7 +85,6 @@ Eigen::VectorXd XPBDSolver::_calculatePrimaryResidual() const
         const std::vector<PositionReference>& positions = proj->positions();
         const std::vector<Constraint*>& constraints = proj->constraints();
         const std::vector<double>& lambda = proj->lambda();
-        // const Eigen::VectorXd grad = constraint->gradient();
         for (unsigned ci = 0; ci < constraints.size(); ci++)
         {
             const Eigen::VectorXd& grad = constraints[ci]->gradient();
@@ -126,8 +100,6 @@ Eigen::VectorXd XPBDSolver::_calculatePrimaryResidual() const
         
     }
 
-    // std::cout << "pres:\n" << primary_residual << std::endl;
-
     return primary_residual;
 }
 
@@ -135,12 +107,10 @@ Eigen::VectorXd XPBDSolver::_calculateConstraintResidual() const
 {
     std::cout << "calculating constraint residual..." << std::endl;
     Eigen::VectorXd constraint_residual(_num_constraints);
-    // const std::vector<std::unique_ptr<ConstraintProjector>>& projectors = _obj->constraintProjectors();
     unsigned constraint_index = 0;
     for (unsigned i = 0; i < _constraint_projectors.size(); i++)
     {
         const std::vector<double>& lambda = _constraint_projectors[i]->lambda();
-        // const Eigen::MatrixXd& alphaTilde = _constraint_projectors[i]->alphaTilde();
         double* alpha_tilde = _data.data();
         _constraint_projectors[i]->alphaTilde(alpha_tilde);
         const std::vector<Constraint*>& constraints = _constraint_projectors[i]->constraints();
