@@ -10,20 +10,23 @@ XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(XPBDMeshObject const* obj, unsigned
     : XPBDSolver(obj, num_iter, residual_policy)
 {}
 
-void XPBDGaussSeidelSolver::_solveConstraints()
+void XPBDGaussSeidelSolver::_solveConstraints(double* data)
 {
-    const std::vector<std::unique_ptr<ConstraintProjector>>& projectors = _obj->constraintProjectors();
+    // const std::vector<std::unique_ptr<ConstraintProjector>>& projectors = _obj->constraintProjectors();
     // loop through constraints
-    for (const auto& proj : projectors)
+    //for (const auto& proj : projectors)
+    for (const auto& proj : _constraint_projectors)
     {
         // get the position updates for this constraint
-        std::vector<ConstraintProjector::PositionUpdate> position_updates = proj->project();
-        for (const auto& position_update : position_updates)
+        proj->project(data, _coordinate_updates.data());
+        const std::vector<PositionReference>& positions = proj->positions();
+        for (unsigned i = 0; i < proj->numPositions(); i++)
         {
-            // apply each position update
-            const Eigen::Vector3d& dx = position_update.second;
-            const PositionReference& p_ref = position_update.first;
-            p_ref.obj->setVertex(p_ref.index, p_ref.position() + dx);
+            const PositionReference& p_ref = positions[i];
+            // p_ref.obj->displaceVertex(p_ref.index, _coordinate_updates[3*i], _coordinate_updates[3*i+1], _coordinate_updates[3*i+2]);
+            p_ref.position_ptr[0] += _coordinate_updates[3*i];
+            p_ref.position_ptr[1] += _coordinate_updates[3*i+1];
+            p_ref.position_ptr[2] += _coordinate_updates[3*i+2];
         }
     }
 }

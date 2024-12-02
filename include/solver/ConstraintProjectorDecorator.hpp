@@ -1,5 +1,5 @@
-#ifndef __CONSTRAINT_DECORATOR_HPP
-#define __CONSTRAINT_DECORATOR_HPP
+#ifndef __CONSTRAINT_PROJECTOR_DECORATOR_HPP
+#define __CONSTRAINT_PROJECTOR_DECORATOR_HPP
 
 #include "solver/ConstraintProjector.hpp"
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
@@ -9,41 +9,35 @@
 namespace Solver
 {
 
-class ConstraintDecorator : public ConstraintProjector
-{
-    public:
-    explicit ConstraintDecorator(std::unique_ptr<ConstraintProjector> component)
-        : ConstraintProjector(*component), 
-        _component(std::move(component))
-    {
-    }
+// class ConstraintProjectorDecorator : public ConstraintProjector
+// {
+//     public:
+//     explicit ConstraintProjectorDecorator(std::unique_ptr<ConstraintProjector> component)
+//         : ConstraintProjector(*component), 
+//         _component(std::move(component))
+//     {
+//     }
 
-    virtual void setLambda(const Eigen::VectorXd& new_lambda) override { _component->setLambda(new_lambda); _lambda = new_lambda; }
+//     virtual void setLambda(const Eigen::VectorXd& new_lambda) override { _component->setLambda(new_lambda); _lambda = new_lambda; }
 
-    /** Evaluates the current value of this constraint.
-     * i.e. returns C(x)
-     */
-    // virtual double evaluate() const override { return _component->evaluate(); }
+//     protected:
+//     void _componentLHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr) const
+//     {
+//         return _component->_LHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr);
+//     }
 
-    /** Returns the gradient of this constraint in vector form.
-     * i.e. returns delC(x)
-     */
-    // virtual Eigen::VectorXd gradient() const override { return _component->gradient(); }
+//     void _componentRHS(const double* C_ptr, const double* alpha_tilde_ptr, double* rhs_ptr) const
+//     {
+//         return _component->_RHS(C_ptr, alpha_tilde_ptr, rhs_ptr);
+//     }
 
-    /** Returns the value and gradient of this constraint.
-     * i.e. returns C(x) and delC(x) together.
-     */
-    // virtual ValueAndGradient evaluateWithGradient() const override { return _component->evaluateWithGradient(); }
+//     void _componentGetPositionUpdate(const unsigned position_index, const double* delC_ptr, const double inv_m, const double* dlam_ptr, double* pos_update_ptr) const
+//     {
+//         return _component->_getPositionUpdate(position_index, delC_ptr, inv_m, dlam_ptr, pos_update_ptr);
+//     }
 
-    protected:
-    Eigen::MatrixXd _componentLHS(const VectorValueAndGradient& vg) const { return _component->_LHS(vg); }
-    Eigen::VectorXd _componentRHS(const VectorValueAndGradient& vg) const { return _component->_RHS(vg); }
-    PositionUpdate _componentGetPositionUpdate(const unsigned position_index, const Eigen::VectorXd& dlam, const Eigen::MatrixXd& grads) const
-    {
-        return _component->_getPositionUpdate(position_index, dlam, grads);
-    }
-    std::unique_ptr<ConstraintProjector> _component;
-};
+//     std::unique_ptr<ConstraintProjector> _component;
+// };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,11 +1,12 @@
 name: "blah"
+visualization: "Easy3D"
 g-accel: 9.81 # m/s2
 # sim-mode: "Frame-by-frame"
-sim-mode: "Visualization"
-# sim-mode: "AFAP"
+# sim-mode: "Visualization"
+sim-mode: "AFAP"
 time-step: 1e-3
 fps: 30
-end-time: 1
+end-time: 10
 objects:
   # -
   #   name: "Trachea"
@@ -67,10 +68,10 @@ objects:
     collisions: false
     damping-multiplier: 400000
     solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean-Combined"
+    constraint-type: "Stable-Neohookean"
     with-residual: false
     with-damping: false
-    residual-policy: "Every-Substep"
+    residual-policy: "Never"
   
   -
     # name: "Cube3"

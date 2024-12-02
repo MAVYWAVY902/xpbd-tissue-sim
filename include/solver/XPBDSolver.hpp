@@ -25,11 +25,15 @@ class XPBDSolver
 
     unsigned numIterations() const { return _num_iter; }
 
+    void addConstraintProjector(std::unique_ptr<ConstraintProjector> projector); 
+
 
     protected:
-    virtual void _solveConstraints() = 0;
+    virtual void _solveConstraints(double* data) = 0;
     Eigen::VectorXd _calculatePrimaryResidual() const;
     Eigen::VectorXd _calculateConstraintResidual() const;
+
+    std::vector<std::unique_ptr<ConstraintProjector>> _constraint_projectors;
 
     XPBDMeshObject const* _obj;
     unsigned _num_iter;
@@ -43,6 +47,9 @@ class XPBDSolver
 
     std::unique_ptr<Eigen::VectorXd> _primary_residual;
     std::unique_ptr<Eigen::VectorXd> _constraint_residual;
+
+    mutable std::vector<double> _data;
+    std::vector<double> _coordinate_updates;
     
 };
 

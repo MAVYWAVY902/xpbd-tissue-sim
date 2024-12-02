@@ -4,7 +4,7 @@
 #include <fstream>
 #include <sstream>
 
-void MeshUtils::loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<double, -1, 3>& verts, Eigen::Matrix<unsigned, -1, 3>& faces)
+void MeshUtils::loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& faces)
 {
     Assimp::Importer importer;
 
@@ -704,7 +704,7 @@ void MeshUtils::convertSTLtoMSH(const std::string& filename)
     
 }
 
-void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems)
+void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems)
 {
     std::cout << "MeshUtils::loadMeshDataFromGmshFile - loading mesh data from " << filename << " as a MeshObject..." << std::endl;
 

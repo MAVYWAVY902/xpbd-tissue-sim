@@ -95,6 +95,13 @@ Eigen::Vector3d MeshObject::getVertex(const unsigned index) const
     return _vertices.row(index);
 }
 
+double* MeshObject::getVertexPointer(const unsigned index) const
+{
+    assert(index < _vertices.rows());
+    double* p = const_cast<double*>(_vertices.row(index).data());
+    return p;
+}
+
 unsigned MeshObject::getClosestVertex(const double x, const double y, const double z) const
 {
     auto sq_dist_to_vertex = [x, y, z] (const Eigen::Vector3d& vertex)

@@ -17,7 +17,7 @@
 namespace MeshUtils
 {
 
-void loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<double, -1, 3>& verts, Eigen::Matrix<unsigned, -1, 3>& faces);
+void loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& faces);
 
 void convertToSTL(const std::string& filename);
 
@@ -25,7 +25,7 @@ void convertToSTL(const std::string& filename);
 void convertSTLtoMSH(const std::string& filename);
 
 
-void loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems); 
+void loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems); 
 
 void createBeamObjWithOffsetVerts(const std::string& filename, const double l, const double w, const double h);
 
