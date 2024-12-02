@@ -12,12 +12,9 @@ XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(XPBDMeshObject const* obj, unsigned
 
 void XPBDGaussSeidelSolver::_solveConstraints(double* data)
 {
-    // const std::vector<std::unique_ptr<ConstraintProjector>>& projectors = _obj->constraintProjectors();
-    // loop through constraints
-    //for (const auto& proj : projectors)
     for (const auto& proj : _constraint_projectors)
     {
-        // get the position updates for this constraint
+        // get the position updates for this constraint - they are put in the _coordinate_updates data block
         proj->project(data, _coordinate_updates.data());
         const std::vector<PositionReference>& positions = proj->positions();
         for (unsigned i = 0; i < proj->numPositions(); i++)
