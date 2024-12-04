@@ -3,55 +3,17 @@
 namespace Graphics
 {
 
-Easy3DTextRenderingViewer::Easy3DTextRenderingViewer(const std::string& title) : easy3d::Viewer(title)
-        , _text_renderer(nullptr)
+Easy3DTextRenderingViewer::Easy3DTextRenderingViewer(const std::string& title) 
+    : easy3d::Viewer(title),
+      Graphics::Viewer(title),
+      _text_renderer(nullptr)
 {
 
 }
 
-void Easy3DTextRenderingViewer::addText(const std::string& name,
-                                  const std::string& text,
-                                  const float& x,
-                                  const float& y,
-                                  const float& font_size,
-                                  const easy3d::TextRenderer::Align& alignment,
-                                  const Font& font,
-                                  const easy3d::vec3& color,
-                                  const float& line_spacing,
-                                  const bool& upper_left)
+void Easy3DTextRenderingViewer::update()
 {
-    // try to add the TextSpec to the map, and ensure that it was successful
-    auto [it,b] = _text_map.try_emplace(name, TextSpec(name, text, x, y, font_size, alignment, font, color, line_spacing, upper_left));
-    assert(b);
-}
-
-void Easy3DTextRenderingViewer::removeText(const std::string& name)
-{
-    // erase the TextSpec with the specified name from the map
-    _text_map.erase(name);
-}
-
-void Easy3DTextRenderingViewer::editText(const std::string& name, const std::string& new_text)
-{
-    // make sure a TextSpec with the name exists
-    assert(_text_map.find(name) != _text_map.end());
-    // edit the text of the TextSpec
-    _text_map.at(name).text = new_text;
-}
-
-void Easy3DTextRenderingViewer::editText( const std::string& name,
-                                    const std::string& new_text,
-                                    const float& new_x,
-                                    const float& new_y,
-                                    const float& new_font_size)
-{
-    // make sure a TextSpec with the name exists
-    assert(_text_map.find(name) != _text_map.end());
-    // edit the properties of the TextSpec
-    _text_map.at(name).text = new_text;
-    _text_map.at(name).x = new_x;
-    _text_map.at(name).y = new_y;
-    _text_map.at(name).font_size = new_font_size;
+    easy3d::Viewer::update();
 }
 
 void Easy3DTextRenderingViewer::drawText() const
@@ -64,9 +26,9 @@ void Easy3DTextRenderingViewer::drawText() const
                              t_spec.x * dpi_scaling(),
                              t_spec.y * dpi_scaling(),
                              t_spec.font_size,
-                             t_spec.alignment,
-                             t_spec.font,
-                             t_spec.color,
+                             _getEasy3dAlignment(t_spec.alignment),
+                             _getEasy3dFontIndex(t_spec.font),
+                             _getEasy3dColor(t_spec.color),
                              t_spec.line_spacing,
                              t_spec.upper_left);
     }
@@ -74,8 +36,8 @@ void Easy3DTextRenderingViewer::drawText() const
 
 void Easy3DTextRenderingViewer::draw() const
 {
-    // call original Viewer draw call
-    Viewer::draw();
+    // call original easy3d Viewer draw call
+    easy3d::Viewer::draw();
 
     // and then draw the text
     drawText();
@@ -83,26 +45,18 @@ void Easy3DTextRenderingViewer::draw() const
 
 bool Easy3DTextRenderingViewer::callback_event_keyboard(int key, int action, int modifiers)
 {
-    if (_simulation)
-    {
-        // notify the simulation that a key was pressed
-        _simulation->notifyKeyPressed(key, action, modifiers);
-    }
+    _processKeyboardEvent(key, action, modifiers);
 
-    return Viewer::callback_event_keyboard(key, action, modifiers);
+    return easy3d::Viewer::callback_event_keyboard(key, action, modifiers);
 }
 
 bool Easy3DTextRenderingViewer::callback_event_mouse_button(int button, int action, int modifiers)
 {
-    if (_simulation)
-    {
-        // notify the simulation that a mouse button was pressed
-        _simulation->notifyMouseButtonPressed(button, action, modifiers);
-    }
+    _processMouseButtonEvent(action, button, modifiers);
 
     // if mouse interaction is enabled, pass on the event to easy3d::Viewer
     if (_enable_mouse_interaction)
-        return Viewer::callback_event_mouse_button(button, action, modifiers);
+        return easy3d::Viewer::callback_event_mouse_button(button, action, modifiers);
     else
         return true;
     
@@ -110,22 +64,18 @@ bool Easy3DTextRenderingViewer::callback_event_mouse_button(int button, int acti
 
 bool Easy3DTextRenderingViewer::callback_event_cursor_pos(double x, double y)
 {
-    if (_simulation)
-    {
-        // notify the simulation that the mouse was moved
-        _simulation->notifyMouseMoved(x, y);
-    }
+    _processCursorMoveEvent(x, y);
 
     // if mouse interaction is enabled, pass onthe event to easy3d::Viewer
     if (_enable_mouse_interaction)
-        return Viewer::callback_event_cursor_pos(x, y);
+        return easy3d::Viewer::callback_event_cursor_pos(x, y);
     else
         return true;
 }
 
 void Easy3DTextRenderingViewer::init()
 {
-    Viewer::init();
+    easy3d::Viewer::init();
 
     // create the TextRenderer
     _text_renderer = std::make_unique<easy3d::TextRenderer>(dpi_scaling());
@@ -137,6 +87,53 @@ void Easy3DTextRenderingViewer::init()
     _text_renderer->add_font(easy3d::resource::directory() + "/fonts/en_Roboto-Bold.ttf");
     _text_renderer->add_font(easy3d::resource::directory() + "/fonts/en_Roboto-Regular.ttf");
     _text_renderer->add_font(easy3d::resource::directory() + "/fonts/en_Vera.ttf");
+}
+
+easy3d::TextRenderer::Align Easy3DTextRenderingViewer::_getEasy3dAlignment(const TextAlignment& alignment) const
+{
+    switch(alignment)
+    {
+        case TextAlignment::LEFT:
+            return easy3d::TextRenderer::Align::ALIGN_LEFT;
+        case TextAlignment::RIGHT:
+            return easy3d::TextRenderer::Align::ALIGN_RIGHT;
+        case TextAlignment::CENTER:
+            return easy3d::TextRenderer::Align::ALIGN_CENTER;
+        default:
+            std::cout << "Easy3D does not have requested text alignment!" << std::endl;
+            return easy3d::TextRenderer::Align::ALIGN_LEFT;
+    }
+}
+
+int Easy3DTextRenderingViewer::_getEasy3dFontIndex(const Font& font) const
+{
+    // hard code these for now, depends on order that they are added to the Easy3D text renderer
+    switch(font)
+    {
+        case Font::MAO:
+            return 0;
+        case Font::COUSINE:
+            return 1;
+        case Font::EARTH:
+            return 2;
+        case Font::GUNIT:
+            return 3;
+        case Font::ROBOTO_BOLD:
+            return 4;
+        case Font::ROBOTO_REGULAR:
+            return 5;
+        case Font::VERA:
+            return 6;
+        default:
+            std::cout << "Easy3D does not have requested font!" << std::endl;
+            return Font::MAO;
+    }
+
+}
+
+easy3d::vec3 Easy3DTextRenderingViewer::_getEasy3dColor(const std::array<float,3>& color) const
+{
+    return easy3d::vec3(color[0], color[1], color[2]);
 }
 
 

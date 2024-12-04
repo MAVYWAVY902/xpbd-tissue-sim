@@ -63,11 +63,8 @@ class Easy3DGraphicsScene : public GraphicsScene
 
 
     protected:
-    /** the easy3d::Viewer which renders graphics
-     * unique_ptr used here for lazy initialization, since easy3d::Viewer must be instantiated 
-     * AFTER the easy3d::initialize() call.
-     */
-    std::unique_ptr<Easy3DTextRenderingViewer> _viewer;
+    /** the easy3d::Viewer which renders graphics, non-owning downcasted pointer for convenience in calling easy3d::Viewer specific methods */
+    Easy3DTextRenderingViewer* _easy3d_viewer;
 
 
 };
