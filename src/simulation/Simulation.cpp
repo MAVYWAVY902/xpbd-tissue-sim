@@ -118,7 +118,10 @@ void Simulation::setup()
     }
 
     // add text that displays the current Sim Time   
-    // _viewer->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, easy3d::TextRenderer::ALIGN_LEFT, TextRenderingViewer::Font::MAO, easy3d::vec3(0,0,0), 0.5f, false);
+    if (_graphics_scene)
+    {
+        _graphics_scene->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
+    }
 }
 
 void Simulation::update()
@@ -202,7 +205,10 @@ void Simulation::_updateGraphics()
         _graphics_scene->update();
     }
     // update the sim time text
-    // _viewer->editText("time", "Sim Time: " + std::to_string(_time) + " s");
+    if (_graphics_scene)
+    {
+        _graphics_scene->viewer()->editText("time", "Sim Time: " + std::to_string(_time) + " s");
+    }
 }
 
 void Simulation::notifyKeyPressed(int /* key */, int action, int /* modifiers */)

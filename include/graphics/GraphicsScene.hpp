@@ -7,7 +7,8 @@
 #include <memory>
 #include <cassert>
 
-#include <graphics/GraphicsObject.hpp>
+#include "graphics/Viewer.hpp"
+#include "graphics/GraphicsObject.hpp"
 
 #include <Eigen/Dense>
 
@@ -44,6 +45,8 @@ class GraphicsScene
 
     /** Returns the name of the GraphicsScene */
     std::string name() const { return _name; }
+
+    Viewer* viewer() { return _viewer.get(); }
 
     /** Creates a MeshGraphicsObject from a supplied MeshObject and adds it to the GraphicsScene
      * @param obj : the MeshObject to add to the GraphicsScene for visualization
@@ -91,6 +94,9 @@ class GraphicsScene
     std::string _name;
 
     std::vector<std::unique_ptr<GraphicsObject>> _graphics_objects; 
+
+    /** the Viewer which renders graphics in a window */
+    std::unique_ptr<Graphics::Viewer> _viewer;
 
 };
 
