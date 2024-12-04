@@ -22,25 +22,15 @@ void FirstOrderXPBDMeshObject::_calculatePerVertexDamping()
 
 void FirstOrderXPBDMeshObject::setup()
 {
-    XPBDMeshObject::setup();
     _calculatePerVertexDamping();
-    _convertConstraintsToFirstOrder();
+    _createSolver(_solver_type, _num_solver_iters, _residual_policy);
+    _createConstraints(_constraint_type, _constraints_with_residual, _constraints_with_damping, true);
 }
 
 std::string FirstOrderXPBDMeshObject::toString() const
 {
     // TODO: better toString
     return XPBDMeshObject::toString();
-}
-
-void FirstOrderXPBDMeshObject::_convertConstraintsToFirstOrder()
-{
-    for (unsigned i = 0; i < _constraints.size(); i++)
-    {
-        // convert all constraints to first order constraints
-        // std::unique_ptr<Solver::Constraint> first_order_constraint = std::make_unique<Solver::FirstOrder>(std::move(_constraints.at(i)));
-        // _constraints.at(i) = std::move(first_order_constraint);
-    }
 }
 
 void FirstOrderXPBDMeshObject::_movePositionsInertially()

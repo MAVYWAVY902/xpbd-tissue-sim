@@ -120,7 +120,7 @@ class ConstraintProjector
 
         // evaluate LHS and RHS
         _LHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr);
-        _RHS(C_ptr, alpha_tilde_ptr, rhs_ptr);
+        _RHS(C_ptr, delC_ptr, alpha_tilde_ptr, rhs_ptr);
 
         // std::cout << "rhs: " << _RHS_ptr()[0] << "\tlhs: " << _LHS_ptr()[0] << std::endl;
         // std::cout << "delC: " << _delC()[0] << ", " << _delC()[1] << ", " << _delC()[2] << ", " << _delC()[3] << ", " << _delC()[4] << ", " <<
@@ -162,6 +162,32 @@ class ConstraintProjector
         {
            _getPositionUpdate(i, delC_ptr, M_inv_ptr[i], dlam_ptr, coordinate_updates_ptr+3*i);
         }
+    }
+
+    /** Evaluates the constraint equation (Equation (9) in the XPBD paper).
+     * This is the same as "h" and the constraint residual.
+     * Uses a pre-allocated data block to perform calculations to avoid incurring data allocation costs for intermediate values.
+     * The pre-allocated data block has the same structure as in the project() method.
+     * 
+     * @param data_ptr - a pointer to a block of pre-allocated data, assumed to be at least as large as the size given by memoryNeeded().
+     * @param result (OUTPUT) - a pointer to the first element of the result vector that will store the constraint residual vector. Expects it to be numConstraints x 1.
+     */
+    inline virtual void constraintEquation(double* data_ptr, double* result)
+    {
+        // point the data member variable to point to the pre-allocated data block
+        _data = data_ptr;
+
+        double* C_ptr = _C_ptr();
+        double* delC_ptr = _delC_ptr();
+        double* alpha_tilde_ptr = _alpha_tilde_ptr();
+        double* C_mem_ptr = _C_mem_ptr();
+
+        // evaluate constraints and their gradients
+        _evaluateConstraintsAndGradients(C_ptr, delC_ptr, C_mem_ptr);
+
+        alphaTilde(alpha_tilde_ptr);
+
+        _RHS(C_ptr, delC_ptr, alpha_tilde_ptr, result);
     }
 
     /** The number of constraints projected simultaneously by this ConstraintProjector. */
@@ -226,7 +252,7 @@ class ConstraintProjector
     {
         for (unsigned i = 0; i < numPositions(); i++)
         {
-            inv_M_ptr[i] = positionInvMass(i);
+            inv_M_ptr[i] = _positions[i].inv_mass;
         }
     }
 
@@ -243,9 +269,6 @@ class ConstraintProjector
      * By default, this is false, but can be overridden by derived classes to be true if the constraint uses damping.
      */
     virtual bool usesDamping() const { return false; }
-
-    /** Returns the inverse mass for the position at the specified index. */
-    virtual double positionInvMass(const unsigned position_index) const { return _positions[position_index].inv_mass; }
 
     protected:
 
@@ -268,7 +291,7 @@ class ConstraintProjector
      * @param delC_ptr - the pointer to the delC matrix. Expects it to be row-major and numConstraints x numCoordinates.
      * @param M_inv_ptr - the pointer to the M^-1 "matrix". Expects it to be a vector that is numPositions x 1.
      * @param alpha_tilde_ptr - the pointer to the alpha_tilde "matrix". Expects it to be a vector and numConstraints x 1.
-     * @param lhs_ptr (OUTPUT) - the pointer to the (currently empty) LHS matrix. Expects it to be numConstraints x numConstraints.
+     * @param lhs_ptr (OUTPUT) - the pointer to the (currently empty) LHS matrix. Expects it to be column-major and numConstraints x numConstraints.
      */
     inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr)
     {
@@ -312,10 +335,11 @@ class ConstraintProjector
 
     /** Computes the RHS vector (i.e. -C - alpha_tilde * lambda). Expects that C and alpha_tilde have all been computed already.
      * @param C_ptr - the pointer to the C vector. Expects it to be numConstraints x 1.
+     * @param delC_ptr - the pointer to the delC matrix. Expects it to be row-major and numConstraints x numCoordinates.
      * @param alpha_tilde_ptr - the pointer to the alpha_tilde "matrix". Expects it to be a vector and numConstraints x 1.
      * @param rhs_ptr (OUTPUT) - the pointer to the (currently empty) RHS vector. Expects it to be numConstraints x 1.
      */
-    inline virtual void _RHS(const double* C_ptr, const double* alpha_tilde_ptr, double* rhs_ptr)
+    inline virtual void _RHS(const double* C_ptr, const double* delC_ptr, const double* alpha_tilde_ptr, double* rhs_ptr)
     {
         for (unsigned ci = 0; ci < numConstraints(); ci++)
         {
