@@ -9,20 +9,19 @@
 XPBDMeshObject::XPBDMeshObject(const XPBDMeshObjectConfig* config)
     : ElasticMeshObject(config)
 {
-    std::cout << "XPBDMeshObject constructor!" << std::endl;
+    /* extract values from the Config object */
 
+    // solver options
     _solver_type = config->solverType().value();
-    _damping_gamma = config->dampingGamma().value();
-
-
-    _constraints_with_residual = config->withResidual().value();
-    _constraints_with_damping = config->withDamping().value();
-    _constraint_type = config->constraintType().value();
-    
-
     _num_solver_iters = config->numSolverIters().value();
     _residual_policy = config->residualPolicy().value();
     
+    // constraint specifications
+    _constraints_with_residual = config->withResidual().value();
+    _constraints_with_damping = config->withDamping().value();
+    _constraint_type = config->constraintType().value();
+
+    _damping_gamma = config->dampingGamma().value();
 }
 
 XPBDMeshObject::~XPBDMeshObject()
@@ -32,19 +31,19 @@ XPBDMeshObject::~XPBDMeshObject()
 
 void XPBDMeshObject::setup()
 {
-    _createSolver(_solver_type, _num_solver_iters, _residual_policy);
-    _createConstraints(_constraint_type, _constraints_with_residual, _constraints_with_damping, false);
+    _createSolver(_solver_type, _num_solver_iters, _residual_policy);       // create the Solver object first and then add ConstraintProjectors to it
+    _createConstraints(_constraint_type, _constraints_with_residual, _constraints_with_damping, false);     // create constraints and add ConstraintProjectors to the solver object
 }
 
 unsigned XPBDMeshObject::numConstraintsForPosition(const unsigned index) const
 {
     if (_constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN)
     {
-        return 2*_v_attached_elements[index];
+        return 2*_v_attached_elements[index];   // if sequential constraints are used, there are 2 constraints per element ==> # of constraint updates = 2 * # of elements attached to that vertex
     }
     else if (_constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED)
     {
-        return _v_attached_elements[index];
+        return _v_attached_elements[index];     // if combined constraints are used, there are 2 constraints per element but they are solved together ==> # of constraint updates = # of elements attached to that vertex
     }
 }
 
@@ -96,17 +95,17 @@ std::unique_ptr<Solver::ConstraintProjector> XPBDMeshObject::_decorateConstraint
 {
     if (with_residual)
     {
-        projector = std::make_unique<Solver::WithPrimaryResidual>(std::move(projector));
+        projector = std::make_unique<Solver::WithDistributedPrimaryResidual>(std::move(projector));     // wrap the ConstraintProjector with the WithDistributedPRimaryResidual decorator
     }
 
     if (with_damping)
     {
-        projector = std::make_unique<Solver::WithDamping>(std::move(projector), _damping_gamma);
+        projector = std::make_unique<Solver::WithDamping>(std::move(projector), _damping_gamma);        // wrap the ConstraintProjector with the WithDamping decorator
     }
 
     if (first_order)
     {
-        projector = std::make_unique<Solver::FirstOrder>(std::move(projector));
+        projector = std::make_unique<Solver::FirstOrder>(std::move(projector));                         // wrap the ConstraintProjector with the FirstOrder decorator
     }
 
     return projector;
