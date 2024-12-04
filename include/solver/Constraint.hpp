@@ -19,12 +19,13 @@ struct PositionReference
     XPBDMeshObject* obj;        // pointer to the MeshObject the position belongs to
     unsigned index;             // the index of this position in the array of vertices
     double* position_ptr;       // a direct pointer to the position - points to a data block owned by obj's vertices matrix
-    double* velocity_ptr;       // a direct pointer to the velocity
-    double inv_mass;            // store the inverse mass for quick lookup (not sure if this is really necessary)
+    double* prev_position_ptr;  // a direct pointer to the previous position - points to a data block owned by obj's previous positions matrix
+    double inv_mass;            // store the inverse mass for quick lookup
+    double num_constraints;     // number of constraints affect this position - stored here for quick lookup
 
     /** Default constructor */
     PositionReference()
-        : obj(0), index(0), position_ptr(0), velocity_ptr(0), inv_mass(0)
+        : obj(0), index(0), position_ptr(0), prev_position_ptr(0), inv_mass(0), num_constraints(0)
     {}
 
     /** Constructor that initializes quantities from just an object pointer and index. */
@@ -32,8 +33,10 @@ struct PositionReference
         : obj(obj_), index(index_)
     {
         position_ptr = obj->getVertexPointer(index);
-        velocity_ptr = 0; // TODO
+        prev_position_ptr = obj->getVertexPreviousPositionPointer(index);
         inv_mass = obj->vertexInvMass(index);
+        // NOTE: this requires knowing how many constraints a position will be a part of a priori - maybe is not the case all the time
+        num_constraints = obj->numConstraintsForPosition(index);
     }
 
     /** Two PositionReferences are equal if they point to the same position in memory. */

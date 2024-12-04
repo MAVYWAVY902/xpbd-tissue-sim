@@ -97,6 +97,8 @@ class ElasticMeshObject : public MeshObject
      */
     void fixVerticesWithMinZ();
 
+    double* getVertexPreviousPositionPointer(const unsigned index) const;
+
     void fixVertex(unsigned index);
 
     bool vertexFixed(unsigned index) const { return _fixed_vertices(index); }

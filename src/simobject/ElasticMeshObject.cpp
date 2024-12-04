@@ -180,6 +180,14 @@ void ElasticMeshObject::setVertices(const VerticesMat& verts)
     _fixed_vertices = Eigen::Vector<bool, -1>::Zero(_vertices.rows());
 }
 
+double* ElasticMeshObject::getVertexPreviousPositionPointer(const unsigned index) const
+{
+    assert(index < _x_prev.rows());
+    double* p = const_cast<double*>(_x_prev.row(index).data());
+    return p;
+}
+
+
 void ElasticMeshObject::fixVertex(unsigned vertex)
 {
     _fixed_vertices(vertex) = true;

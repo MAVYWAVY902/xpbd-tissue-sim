@@ -44,6 +44,8 @@ class XPBDMeshObject : public ElasticMeshObject
 
     virtual void update() override;
 
+    virtual unsigned numConstraintsForPosition(const unsigned index) const;
+
     protected:
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the forces applied to them
@@ -56,13 +58,17 @@ class XPBDMeshObject : public ElasticMeshObject
      */
     void _updateVelocities();
 
+    void _createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping, bool first_order);
+
+    std::unique_ptr<Solver::ConstraintProjector> _decorateConstraintProjector(std::unique_ptr<Solver::ConstraintProjector> projector, bool with_residual, bool with_damping, bool first_order);
+
+    void _createSolver(XPBDSolverType solver_type, unsigned num_solver_iters, XPBDResidualPolicy residual_policy);
+
     private:
     /** Helper method to initialize upon instantiation */
     void _init();
 
-    void _createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping);
-
-    void _createSolver(XPBDSolverType solver_type, unsigned num_solver_iters, XPBDResidualPolicy residual_policy);
+    
 
     /** Precomputes static quantities */
     // void _precomputeQuantities();

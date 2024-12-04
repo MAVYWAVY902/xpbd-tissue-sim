@@ -6,7 +6,7 @@ g-accel: 9.81 # m/s2
 sim-mode: "AFAP"
 time-step: 1e-3
 fps: 30
-end-time: 10
+end-time: 1
 objects:
   # -
   #   name: "Trachea"
@@ -60,18 +60,18 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0, 0, 0.5]
+    position: [0, 0, 0.25]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
-    damping-gamma: 1000
+    damping-gamma: 2000
     collisions: false
     damping-multiplier: 400000
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     with-residual: false
     with-damping: false
-    residual-policy: "Never"
+    residual-policy: "Every-Substep"
   
   -
     # name: "Cube3"

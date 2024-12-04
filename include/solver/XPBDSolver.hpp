@@ -36,12 +36,12 @@ class XPBDSolver
     /** Returns the current primary residual (Equation (8) from XPBD paper).
      * Does NOT recalculate if stale.
      */
-    Eigen::VectorXd primaryResidual() const { return *_primary_residual; };
+    const Eigen::VectorXd primaryResidual() const { return Eigen::Map<const Eigen::VectorXd>(_primary_residual.data(), _primary_residual.size()); };
 
     /** Returns the current constraint residual (Equation (9) from XPBD paper).
      * Does NOT recalculate if stale.
      */
-    Eigen::VectorXd constraintResidual() const { return *_constraint_residual; };
+    const Eigen::VectorXd constraintResidual() const { return Eigen::Map<const Eigen::VectorXd>(_constraint_residual.data(), _constraint_residual.size()); };
 
     /** Returns the number of solver iterations. */
     unsigned numIterations() const { return _num_iter; }
@@ -62,10 +62,10 @@ class XPBDSolver
     virtual void _solveConstraints(double* data) = 0;
     
     /** Calculates the primary residual (Equation (8) from XPBD paper). */
-    Eigen::VectorXd _calculatePrimaryResidual() const;
+    void _calculatePrimaryResidual();
 
     /** Calculates the constraint residual (Equation (9) from XPBD paper). */
-    Eigen::VectorXd _calculateConstraintResidual() const;
+    void _calculateConstraintResidual();
 
 
     protected:
@@ -81,8 +81,8 @@ class XPBDSolver
 
     unsigned _num_constraints;                                  // total number of constraints projected (note this may be different from number of ConstraintProjectors if some constraints are solved simultaneously)
 
-    std::unique_ptr<Eigen::VectorXd> _primary_residual;         // pointer to primary residual vector - TODO: does not need to be a pointer
-    std::unique_ptr<Eigen::VectorXd> _constraint_residual;      // pointer to constraint residual vector - TODO: maybe needs to be a pointer?
+    std::vector<double> _primary_residual;                      // primary residual vector
+    std::vector<double> _constraint_residual;                   // constraint residual vector - use std::vector instead of Eigen::VectorXd to minimize dynamic reallocations as number of constraints change
 
     mutable std::vector<double> _data;                          // the vector class is used to pre-allocate data for the solver loop
     std::vector<double> _coordinate_updates;                    // stores updates to the coordinates determined by the constraint projections - also pre-allocated. Needs to be have a size >= the max number of positions affected by a single constraint projection.

@@ -27,8 +27,6 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
     private:
     virtual void _calculatePerVertexDamping();
 
-    void _convertConstraintsToFirstOrder();
-
     protected:
     double _damping_multiplier;
 
