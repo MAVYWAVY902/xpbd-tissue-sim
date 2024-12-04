@@ -1,9 +1,10 @@
-#include "ResidualSimulation.hpp"
-#include "MeshUtils.hpp"
-#include <regex>
+#include "simulation/ResidualSimulation.hpp"
+#include "utils/MeshUtils.hpp"
 
-#include "XPBDMeshObject.hpp"
+#include "simobject/XPBDMeshObject.hpp"
 #include "solver/XPBDSolver.hpp"
+
+#include <regex>
 
 
 ResidualSimulation::ResidualSimulation(const std::string& config_filename)

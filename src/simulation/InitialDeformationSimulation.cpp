@@ -108,12 +108,7 @@ void InitialDeformationSimulation::printInfo() const
 
         if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(mesh_object))
         {
-            volume_ratio = elastic_mesh_object->volumeRatio();
-        }
-
-        if (FirstOrderXPBDMeshObject* mo = dynamic_cast<FirstOrderXPBDMeshObject*>(mesh_object))
-        {
-            volume_ratio = mo->volumeRatio();
+            // volume_ratio = elastic_mesh_object->volumeRatio();
         }
         _out_file << " " << velocity_rms << " " << volume_ratio;
     }

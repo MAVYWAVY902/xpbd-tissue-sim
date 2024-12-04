@@ -4,6 +4,7 @@
 
 #include "XPBDMeshObject.hpp"
 #include "FirstOrderXPBDMeshObject.hpp"
+#include "solver/XPBDSolver.hpp"
 
 #include <regex>
 
@@ -125,22 +126,14 @@ void BeamStretchSimulation::printInfo() const
     double velocity_rms = 0;
     _out_file << _time;
     for (auto& mesh_object : _mesh_objects) {
-        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(mesh_object.get()))
+        if (XPBDMeshObject* xpbd = dynamic_cast<XPBDMeshObject*>(mesh_object.get()))
         {
-            primary_residual = elastic_mesh_object->primaryResidual();
-            constraint_residual = elastic_mesh_object->constraintResidual();
-            dynamics_residual = elastic_mesh_object->dynamicsResidual();
-            volume_ratio = elastic_mesh_object->volumeRatio();
-            MeshObject::VerticesMat velocities = mesh_object->velocities();
-            const double frob_norm = velocities.norm();
-            velocity_rms = std::sqrt(frob_norm/velocities.rows());
-        }
-        if (FirstOrderXPBDMeshObject* elastic_mesh_object = dynamic_cast<FirstOrderXPBDMeshObject*>(mesh_object.get()))
-        {
-            primary_residual = elastic_mesh_object->primaryResidual();
-            constraint_residual = elastic_mesh_object->constraintResidual();
-            dynamics_residual = elastic_mesh_object->dynamicsResidual();
-            volume_ratio = elastic_mesh_object->volumeRatio();
+            Eigen::VectorXd pres_vec = xpbd->solver()->primaryResidual();
+            primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
+            Eigen::VectorXd cres_vec = xpbd->solver()->constraintResidual();
+            constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
+            // dynamics_residual = elastic_mesh_object->dynamicsResidual();
+            // volume_ratio = elastic_mesh_object->volumeRatio();
             MeshObject::VerticesMat velocities = mesh_object->velocities();
             const double frob_norm = velocities.norm();
             velocity_rms = std::sqrt(frob_norm/velocities.rows());

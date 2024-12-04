@@ -1,8 +1,9 @@
-#include "BeamSimulation.hpp"
-#include "MeshUtils.hpp"
+#include "simulation/BeamSimulation.hpp"
+#include "utils/MeshUtils.hpp"
 
-#include "XPBDMeshObject.hpp"
-#include "FirstOrderXPBDMeshObject.hpp"
+#include "simobject/XPBDMeshObject.hpp"
+#include "simobject/FirstOrderXPBDMeshObject.hpp"
+#include "solver/XPBDSolver.hpp"
 
 #include <regex>
 
@@ -68,24 +69,12 @@ void BeamSimulation::printInfo() const
         double primary_residual = 0;
         double constraint_residual = 0;
         double volume_ratio = 1;
-        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[i].get()))
+        if (XPBDMeshObject* xpbd = dynamic_cast<XPBDMeshObject*>(_mesh_objects[i].get()))
         {
-            primary_residual = elastic_mesh_object->primaryResidual();
-            constraint_residual = elastic_mesh_object->constraintResidual();
-            dynamics_residual = elastic_mesh_object->dynamicsResidual();
-            volume_ratio = elastic_mesh_object->volumeRatio();
-            // std::cout << "Time: " << _time << std::endl;
-            // std::cout << "\tDynamics residual: " << elastic_mesh_object->dynamicsResidual() << std::endl;
-            // std::cout << "\tPrimary residual: " << elastic_mesh_object->primaryResidual() << std::endl;
-            // std::cout << "\tConstraint residual: " << elastic_mesh_object->constraintResidual() << std::endl;
-            // std::cout << "\tVolume ratio: " << elastic_mesh_object->volumeRatio() << std::endl;
-        }
-        if (FirstOrderXPBDMeshObject* elastic_mesh_object = dynamic_cast<FirstOrderXPBDMeshObject*>(_mesh_objects[i].get()))
-        {
-            primary_residual = elastic_mesh_object->primaryResidual();
-            constraint_residual = elastic_mesh_object->constraintResidual();
-            dynamics_residual = elastic_mesh_object->dynamicsResidual();
-            volume_ratio = elastic_mesh_object->volumeRatio();
+            Eigen::VectorXd pres_vec = xpbd->solver()->primaryResidual();
+            primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
+            Eigen::VectorXd cres_vec = xpbd->solver()->constraintResidual();
+            constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
         }
 
         _out_file << " " << beam_deflection(0) << " " << beam_deflection(2) << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio;

@@ -23,6 +23,7 @@ void XPBDGaussSeidelSolver::_solveConstraints(double* data)
         for (unsigned i = 0; i < proj->numPositions(); i++)
         {
             const PositionReference& p_ref = positions[i];
+
             p_ref.position_ptr[0] += _coordinate_updates[3*i];
             p_ref.position_ptr[1] += _coordinate_updates[3*i+1];
             p_ref.position_ptr[2] += _coordinate_updates[3*i+2];

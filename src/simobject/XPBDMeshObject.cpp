@@ -155,6 +155,11 @@ void XPBDMeshObject::_projectConstraints()
     // TODO: replace with real collision detection
     for (unsigned i = 0; i < numVertices(); i++)
     {
+        if (vertexFixed(i))
+        {
+            _vertices.row(i) = _x_prev.row(i);
+        }
+        
         if (_vertices(i,2) <= 0)
         {
             _vertices(i,2) = 0;
