@@ -256,6 +256,10 @@ class ConstraintProjector
         }
     }
 
+    /** Sets the Lagrange multiplier for the constraint at the specified index. This is usually done to initialize the multipliers or to apply the lambda update.
+     * @param index - the constraint index
+     * @param val - the new Lagrange multiplier
+     */
     virtual void setLambda(const unsigned index, const double val) { _lambda[index] = val; }
 
     /** Whether or not this constraint needs the primary residual to do its constraint projection.

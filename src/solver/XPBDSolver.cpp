@@ -37,7 +37,7 @@ void XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> pro
     if (projector->usesPrimaryResidual())
     {
         _constraints_using_primary_residual = true;
-        if (WithPrimaryResidual* wpr = dynamic_cast<WithPrimaryResidual*>(projector.get()))
+        if (WithDistributedPrimaryResidual* wpr = dynamic_cast<WithDistributedPrimaryResidual*>(projector.get()))
         {
             wpr->setPrimaryResidual(_primary_residual.data());
         }
@@ -50,7 +50,8 @@ void XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> pro
 void XPBDSolver::solve()
 {
     _inertial_positions = _obj->vertices();
-    //for (const auto& c : _obj->constraintProjectors())
+
+    // initialize all the constraints
     for (const auto& c : _constraint_projectors)
     {
         c->initialize();
@@ -113,11 +114,15 @@ void XPBDSolver::_calculatePrimaryResidual()
 
 void XPBDSolver::_calculateConstraintResidual()
 {
+    // make sure the constraint residual is large enough (in case the number of constraints has changed)
+    // (this will only reallocate memory if the new number of constraints > capacity of vector)
     _constraint_residual.resize(_num_constraints);
+
+    // fill out the constraint residual using the projector constraintEquation() method
     unsigned constraint_index = 0;
     for (const auto& proj : _constraint_projectors)
     {
-        proj->constraintEquation(_data.data(), _constraint_residual.data() + constraint_index);
+        proj->constraintEquation(_data.data(), _constraint_residual.data() + constraint_index);     // the result vector starts at the current constraint index
         constraint_index += proj->numConstraints();
     }
     
