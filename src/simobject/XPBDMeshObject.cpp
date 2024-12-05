@@ -61,7 +61,7 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
             std::unique_ptr<Solver::Constraint> hyd_constraint, dev_constraint;
             hyd_constraint = std::make_unique<Solver::HydrostaticConstraint>(this, v0, v1, v2, v3);
             dev_constraint = std::make_unique<Solver::DeviatoricConstraint>(this, v0, v1, v2, v3);
-            
+
             std::vector<Solver::Constraint*> hyd_vec; hyd_vec.push_back(hyd_constraint.get());
             std::unique_ptr<Solver::ConstraintProjector> hyd_projector = std::make_unique<Solver::ConstraintProjector>(hyd_vec, _dt);
             std::vector<Solver::Constraint*> dev_vec; dev_vec.push_back(dev_constraint.get());
@@ -86,18 +86,13 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
             _constraints.push_back(std::move(dev_constraint));
             _constraints.push_back(std::move(hyd_constraint));
             
-            _solver->addConstraintProjector(_decorateConstraintProjector(std::move(projector), with_residual, with_damping, first_order));
+            _solver->addConstraintProjector( _decorateConstraintProjector(std::move(projector), with_residual, with_damping, first_order));
         }
     }
 }
 
 std::unique_ptr<Solver::ConstraintProjector> XPBDMeshObject::_decorateConstraintProjector(std::unique_ptr<Solver::ConstraintProjector> projector, bool with_residual, bool with_damping, bool first_order)
 {
-    if (with_residual)
-    {
-        projector = std::make_unique<Solver::WithDistributedPrimaryResidual>(std::move(projector));     // wrap the ConstraintProjector with the WithDistributedPRimaryResidual decorator
-    }
-
     if (with_damping)
     {
         projector = std::make_unique<Solver::WithDamping>(std::move(projector), _damping_gamma);        // wrap the ConstraintProjector with the WithDamping decorator
@@ -106,6 +101,15 @@ std::unique_ptr<Solver::ConstraintProjector> XPBDMeshObject::_decorateConstraint
     if (first_order)
     {
         projector = std::make_unique<Solver::FirstOrder>(std::move(projector));                         // wrap the ConstraintProjector with the FirstOrder decorator
+    }
+
+    // IMPORTANT: the WithDistributedPrimaryResidual should be applied last so that XPBDSolver can downcast and use the setPrimaryResidual() method.
+    // if, for example, the WithDisributedPrimaryResidual is wrapped with a FirstOrder decorator, a downcast to WithDistributedPrimaryResidual will fail,
+    //  and there won't be any way to point the WithDistributedPrimaryResidual decorator to the primary residual vector of the XPBDSolver, resulting in a segfault.
+    // this is probably indicative of bad design and needs some rethinking, but it's okay for now
+    if (with_residual)
+    {
+        projector = std::make_unique<Solver::WithDistributedPrimaryResidual>(std::move(projector));     // wrap the ConstraintProjector with the WithDistributedPRimaryResidual decorator
     }
 
     return projector;

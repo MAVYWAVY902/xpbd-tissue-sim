@@ -22,7 +22,7 @@ class CombinedNeohookeanConstraintProjector : public ConstraintProjector
 
         // the first constraint should be a DeviatoricConstraint and the second should be a HydrostaticConstraint
         // the order of the constraints matters for simplicity (and speed) of implementation
-        if ((_dev_constraint = dynamic_cast<DeviatoricConstraint*>(_constraints[0])) && (_hyd_constraint = dynamic_cast<HydrostaticConstraint*>(_constraints[1])))
+        if ((_dev_constraint = dynamic_cast<DeviatoricConstraint*>(_state->_constraints[0])) && (_hyd_constraint = dynamic_cast<HydrostaticConstraint*>(_state->_constraints[1])))
         {
             // all good
         }

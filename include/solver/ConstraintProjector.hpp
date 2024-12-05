@@ -17,26 +17,48 @@ class ConstraintProjector
 {
     friend class ConstraintProjectorDecorator;
 
+    protected:
+
+    /** Struct that contains all state information of this ConstraintProjector.
+     * Because we use the decorator pattern for dynamically extending the functionality of the ConstraintProjector (i.e. adding damping or the primary residual),
+     *  the ConstraintProjector class must be stateless, or at least be able to share a common state.
+     * By separating the state into its own struct as below and keeping it as a shared_ptr, the ConstraintProjectorDecorators that wrap around this class can also 
+     *  point to the exact same state.
+     * Without this, member data will be duplicated for both the ConstraintProjector and its decorator(s) (e.g., we would have multiple different copies of the lambda vector that we would have to update simultaneously).
+     */
+    struct ConstraintProjectorState
+    {
+        double _dt;         // the size of the time step used during constraint projection
+        std::vector<double> _lambda;            // Lagrange multipliers for this constraint
+        std::vector<Constraint*> _constraints;  // constraint(s) to be projected simultaneously
+        std::vector<PositionReference> _positions; // position(s) associated with the constraints
+    };
+
     public:
 
     explicit ConstraintProjector(std::vector<Constraint*> constraints, const double dt)
-        : _constraints(std::move(constraints)), _dt(dt)
+        : _state(std::make_shared<ConstraintProjectorState>()) 
+        
     {
+        // initialize the state
+        _state->_constraints = std::move(constraints);
+        _state->_dt = dt;
+
         // resize Lagrange multipliers vector
-        _lambda.resize(numConstraints());
+        _state->_lambda.resize(numConstraints());
 
         // we need to assemble a list of mesh positions that are affected by the constraints projected by this ConstraintProjector, so we can compute position updates (Delta x) for each one.
         // if there is only one constraint projected, this is easy - this is simply just the positions affected by that single constraint.
         // however, with multiple constraints, this gets a little trickier - we need the set of all positions affected, and there may be some overlap between constraints
 
-        for (const auto& c : _constraints)
+        for (const auto& c : _state->_constraints)
         {
             for (const auto& pref : c->positions())
             {
                 // check if position is not accounted for yet, and if not, add it to the member positions vector
-                if (std::find(_positions.begin(), _positions.end(), pref) == _positions.end())
+                if (std::find(_state->_positions.begin(), _state->_positions.end(), pref) == _state->_positions.end())
                 {
-                    _positions.push_back(pref);
+                    _state->_positions.push_back(pref);
                 }
             }
         }
@@ -50,7 +72,7 @@ class ConstraintProjector
         //  - map the constraint's position indices to this ConstraintProjector's position indices
 
         // update gradient vector sizes for each constraint
-        for (const auto& c : _constraints)
+        for (const auto& c : _state->_constraints)
         {
             c->setGradientVectorSize(numCoordinates());              // set the size of the gradient vector to be the number of coordinates
 
@@ -58,7 +80,7 @@ class ConstraintProjector
             {
                 const PositionReference& pref_i = c->positions()[i];
                 // get index of constraint's position in the combined _positions vector of this ConstraintProjector
-                unsigned p_index = std::distance(_positions.begin(), std::find(_positions.begin(), _positions.end(), pref_i));
+                unsigned p_index = std::distance(_state->_positions.begin(), std::find(_state->_positions.begin(), _state->_positions.end(), pref_i));
 
                 // map the ith coordinate in the constraint to the correct index in the constraint gradient vector
                 c->setGradientVectorIndex(3*i, 3*p_index);
@@ -93,10 +115,12 @@ class ConstraintProjector
      * 
      * Helper functions exist to get the memory address of various quantities within the pre-allocated data block.
      * 
+     * Also note that this method is intentionally not virtual - it should be the same for every ConstraintProjector. Instead, we override the protected helper functions inside of project().
+     * 
      * @param data_ptr - a pointer to a block of pre-allocated data, assumed to be at least as large as that given by memoryNeeded(). Used to store results from computations, but not necessarily to be used as an output parameter.
      * @param coordinate_updates_ptr (OUTPUT) - a pointer to an array of "coordinate updates" with structure [Delta x1, Delta y1, Delta z1, Delta x2, Delta y2, Delta z2, etc.). Assumed to be at least numCoordintes() x 1. 
      */
-    inline virtual void project(double* data_ptr, double* coordinate_updates_ptr)
+    inline void project(double* data_ptr, double* coordinate_updates_ptr)
     {
         // point the data member variable to point to the pre-allocated data block
         _data = data_ptr;
@@ -121,10 +145,6 @@ class ConstraintProjector
         // evaluate LHS and RHS
         _LHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr);
         _RHS(C_ptr, delC_ptr, alpha_tilde_ptr, rhs_ptr);
-
-        // std::cout << "rhs: " << _RHS_ptr()[0] << "\tlhs: " << _LHS_ptr()[0] << std::endl;
-        // std::cout << "delC: " << _delC()[0] << ", " << _delC()[1] << ", " << _delC()[2] << ", " << _delC()[3] << ", " << _delC()[4] << ", " <<
-        //  _delC()[5] << ", " << _delC()[6] << ", " << _delC()[7] << ", " << _delC()[8] << ", " << _delC()[9] << ", " << _delC()[10] << ", " << _delC()[11] << std::endl;
 
         // solve the system for dlam
         if (numConstraints() == 1)
@@ -153,7 +173,7 @@ class ConstraintProjector
         // update the lambdas with the recently calculate dlam vector
         for (unsigned i = 0; i < numConstraints(); i++)
         {
-            setLambda(i, _lambda[i]+dlam_ptr[i]);
+            setLambda(i, _state->_lambda[i]+dlam_ptr[i]);
         }
         
 
@@ -169,10 +189,12 @@ class ConstraintProjector
      * Uses a pre-allocated data block to perform calculations to avoid incurring data allocation costs for intermediate values.
      * The pre-allocated data block has the same structure as in the project() method.
      * 
+     * Note that this method is intentionally not virtual - it should be the same for every ConstraintProjector.
+     * 
      * @param data_ptr - a pointer to a block of pre-allocated data, assumed to be at least as large as the size given by memoryNeeded().
      * @param result (OUTPUT) - a pointer to the first element of the result vector that will store the constraint residual vector. Expects it to be numConstraints x 1.
      */
-    inline virtual void constraintEquation(double* data_ptr, double* result)
+    inline void constraintEquation(double* data_ptr, double* result)
     {
         // point the data member variable to point to the pre-allocated data block
         _data = data_ptr;
@@ -191,10 +213,10 @@ class ConstraintProjector
     }
 
     /** The number of constraints projected simultaneously by this ConstraintProjector. */
-    inline unsigned numConstraints() const { return _constraints.size(); }
+    inline unsigned numConstraints() const { return _state->_constraints.size(); }
 
     /** The number of positions (vertices) affected by the constraints. */
-    inline unsigned numPositions() const { return _positions.size(); }
+    inline unsigned numPositions() const { return _state->_positions.size(); }
 
     /** The number of coordinates (i.e. x1,y1,z1, x2,y2,z2, etc.) affected by the constraints = 3 times the number of positions. */
     inline unsigned numCoordinates() const { return numPositions() * 3; }
@@ -213,7 +235,7 @@ class ConstraintProjector
 
         // find max amount of additional memory needed by constraints for doing calculations
         unsigned max_constraint_mem = 0;
-        for (const auto& c : _constraints)
+        for (const auto& c : _state->_constraints)
         {
             if (c->memoryNeeded() > max_constraint_mem)
             {
@@ -226,13 +248,13 @@ class ConstraintProjector
     }
 
     /** Returns the vector of constraints that are projected by this ConstraintProjector. */
-    inline const std::vector<Constraint*>& constraints() const { return _constraints; }
+    inline const std::vector<Constraint*>& constraints() const { return _state->_constraints; }
 
     /** Returns the vector of positions that are affected by the constraints projected by this ConstraintProjector. */
-    inline const std::vector<PositionReference>& positions() const { return _positions; }
+    inline const std::vector<PositionReference>& positions() const { return _state->_positions; }
 
     /** Returns the vector of the Lagrange multipliers associated with the constraints projected by this ConstraintProjector. */
-    inline const std::vector<double>& lambda() const { return _lambda; }
+    inline const std::vector<double>& lambda() const { return _state->_lambda; }
 
     /** Computes the alpha tilde matrix.
      * @param alpha_tilde_ptr (OUTPUT) - the pointer to the (currently empty) alpha tilde "matrix". The diagonal matrix is represented as a vector that is numConstraints x 1.
@@ -241,7 +263,7 @@ class ConstraintProjector
     {
         for (unsigned i = 0; i < numConstraints(); i++)
         {
-            alpha_tilde_ptr[i] = _constraints[i]->alpha() / (_dt * _dt);
+            alpha_tilde_ptr[i] = _state->_constraints[i]->alpha() / (_state->_dt * _state->_dt);
         }
     }
 
@@ -252,7 +274,7 @@ class ConstraintProjector
     {
         for (unsigned i = 0; i < numPositions(); i++)
         {
-            inv_M_ptr[i] = _positions[i].inv_mass;
+            inv_M_ptr[i] = _state->_positions[i].inv_mass;
         }
     }
 
@@ -260,7 +282,7 @@ class ConstraintProjector
      * @param index - the constraint index
      * @param val - the new Lagrange multiplier
      */
-    virtual void setLambda(const unsigned index, const double val) { _lambda[index] = val; }
+    virtual void setLambda(const unsigned index, const double val) { _state->_lambda[index] = val; }
 
     /** Whether or not this constraint needs the primary residual to do its constraint projection.
      * By default, this is false, but can be overridden by derived classes to be true if a constraint needs the primary residual.
@@ -283,11 +305,11 @@ class ConstraintProjector
     */
     inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr, double* C_mem_ptr)
     {
-        for (unsigned ci = 0; ci < _constraints.size(); ci++)
+        for (unsigned ci = 0; ci < numConstraints(); ci++)
         {
             // C(x) is a vector: C_ptr+ci points to the index ci in the C(x) vector
             // delC(x) is a matrix: delC_ptr + ci*numCoordinates() points to the row corresponding to the ci'th constraint
-            _constraints[ci]->evaluateWithGradient(C_ptr+ci, delC_ptr+ci*numCoordinates(), C_mem_ptr);
+            _state->_constraints[ci]->evaluateWithGradient(C_ptr+ci, delC_ptr+ci*numCoordinates(), C_mem_ptr);
         }
     }
 
@@ -348,7 +370,7 @@ class ConstraintProjector
         for (unsigned ci = 0; ci < numConstraints(); ci++)
         {
             // RHS vector is simply -C - alpha_tilde * lambda
-            rhs_ptr[ci] = -C_ptr[ci] - alpha_tilde_ptr[ci] * _lambda[ci];
+            rhs_ptr[ci] = -C_ptr[ci] - alpha_tilde_ptr[ci] * _state->_lambda[ci];
         }
     }
 
@@ -420,10 +442,15 @@ class ConstraintProjector
     inline double* _C_mem_ptr() const { return _dlam_ptr() + numConstraints(); }
 
     protected:
-    double _dt;         // the size of the time step used during constraint projection
-    std::vector<double> _lambda;            // Lagrange multipliers for this constraint
-    std::vector<Constraint*> _constraints;  // constraint(s) to be projected simultaneously
-    std::vector<PositionReference> _positions; // position(s) associated with the constraints
+
+    /** Contains all necessary state information for this ConstraintProjector.
+     * We use a shared_ptr here so that there can be just one ConstraintProjectorState that is shared between this ConstraintProjector and any decorators that wrap around it.
+     * Then, for example when the Lagrange multiplier vector is updated in the decorator, that change will also be reflected for methods in the base ConstraintProjector class.
+     * 
+     * Note that this may slightly decrease performance as it requires more pointer dereferences in the critical path compared to just having the state be a class variable. 
+     *  However, this doesn't seem to have a major impact on performance (maybe because state is used often enough that it never leaves the cache.)
+     */
+    std::shared_ptr<ConstraintProjectorState> _state;    
 
     /* a generic data pointer with space to perform computations efficiently
         - trying to avoid dynamically allocating data inside the loop

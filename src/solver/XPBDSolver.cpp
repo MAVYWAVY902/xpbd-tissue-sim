@@ -79,11 +79,22 @@ void XPBDSolver::solve()
 
 void XPBDSolver::_calculatePrimaryResidual() 
 {
+    const FirstOrderXPBDMeshObject* fo_obj = dynamic_cast<const FirstOrderXPBDMeshObject*>(_obj);
     // add Mx
     for (unsigned i = 0; i < _obj->numVertices(); i++)
     {
         Eigen::Map<Eigen::Vector3d> Mx(_primary_residual.data() + 3*i);
-        Mx = _obj->vertexMass(i) * (_obj->getVertex(i) - _inertial_positions.row(i).transpose());
+
+        // I don't like this - is there some way to not have to explicitly check for FirstOrder?
+        if (fo_obj)
+        {
+            Mx = fo_obj->vertexDamping(i) * (_obj->getVertex(i) - _inertial_positions.row(i).transpose());
+        }
+        else
+        {
+            Mx = _obj->vertexMass(i) * (_obj->getVertex(i) - _inertial_positions.row(i).transpose());
+        }
+        
     }
 
     // subtract delC*lambda
