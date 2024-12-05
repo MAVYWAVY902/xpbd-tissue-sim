@@ -14,9 +14,9 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
 
     virtual void setup() override;
 
-    double vertexDamping(const unsigned index) { return _B(index); }
+    double vertexDamping(const unsigned index) const { return _B(index); }
 
-    double vertexInvDamping(const unsigned index) { return _inv_B(index); }
+    double vertexInvDamping(const unsigned index) const { return _inv_B(index); }
 
     protected:
     /** Moves the vertices in the absence of constraints.

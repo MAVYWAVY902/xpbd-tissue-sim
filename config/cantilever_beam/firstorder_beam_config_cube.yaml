@@ -3,7 +3,8 @@ output-folder: "../output/cantilever_beam"
 g-accel: 9.81 # m/s2
 sim-mode: "AFAP"
 # sim-mode: "Visualization"
-time-step: 5e-4
+time-step: 1.16e-4
+# time-step: 1.16e-4
 print-interval: 1e-2
 end-time: 1000
 objects:
@@ -52,7 +53,9 @@ objects:
   -
     name: "1stOrder1"
     type: "FirstOrderXPBDMeshObject"
+    # filename: "../resource/cube/cube8.msh"
     filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/general/single.msh"
     # filename: "../resource/tissue/Prostate.msh"
     material:
       name: "Macklin"
@@ -64,9 +67,11 @@ objects:
     draw-edges: true
     max-size: 0.5
     position: [0, 0, 1]
+    rotation: [0, 0, 0]
     damping-stiffness: 0
-    num-solver-iters: 10
-    damping-multiplier: 25000
+    num-solver-iters: 1
+    damping-multiplier: 8000
+    # residual-policy: "Every-Substep"
     residual-policy: "Every-Substep"
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
@@ -89,12 +94,35 @@ objects:
     max-size: 0.5
     position: [0, 1, 1]
     damping-stiffness: 0
-    num-solver-iters: 10
-    damping-multiplier: 25000
+    num-solver-iters: 1
+    damping-multiplier: 24000
     residual-policy: "Every-Substep"
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
-    with-residual: true
+    with-residual: false
+    with-damping: false
+
+  -
+    name: "1stOrder3"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8.msh"
+    material:
+      name: "Macklin"
+      density: 1000
+      E: 6e4
+      nu: 0.45
+    color: [1.0, 0.509, 0.0, 1.0]
+    draw-points: false
+    draw-edges: true
+    max-size: 0.5
+    position: [0, 2, 1]
+    damping-stiffness: 0
+    num-solver-iters: 1
+    damping-multiplier: 60000
+    residual-policy: "Every-Substep"
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    with-residual: false
     with-damping: false
 
   # -
@@ -114,7 +142,7 @@ objects:
   #   damping-stiffness: 0
   #   num-solver-iters: 1
   #   residual-policy: "Never"
-  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
-  #   solve-mode: "Simultaneous"
+  #   solver-type: "Gauss-Seidel"
+  #   constraint-type: "Stable-Neohookean-Combined"
 
 

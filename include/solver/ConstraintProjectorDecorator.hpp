@@ -30,15 +30,26 @@ class ConstraintProjectorDecorator : public ConstraintProjector
     {
     }
 
-    /** Sets the Lagrange multiplier for the constraint at the specified index.
-     * This will not only set the Lagrange multiplier for this ConstraintProjector but also the component's, because
-     * there are (at least) two versions of the lambda array that need to be updated together, since the component's methods will use the lambdas of the component while the
-     * decorator's methods will use the lambdas of the decorator.
-     * 
-     * @param index - the constraint index
-     * @param val - the new Lagrange multiplier
-     */
-    virtual void setLambda(const unsigned index, const double val) override { _component->setLambda(index, val); _lambda[index] = val; }
+    inline virtual void initialize() override { _component->initialize(); }
+
+    inline virtual void alphaTilde(double* alpha_tilde_ptr) const override { _component->alphaTilde(alpha_tilde_ptr); }
+
+    inline virtual bool usesPrimaryResidual() const override { return _component->usesPrimaryResidual(); }
+
+    inline virtual bool usesDamping() const override { return _component->usesDamping(); }
+
+    protected:
+    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr, double* C_mem_ptr) override { _component->_evaluateConstraintsAndGradients(C_ptr, delC_ptr, C_mem_ptr); }
+
+    inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr) override { _component->_LHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr); }
+
+    inline virtual void _RHS(const double* C_ptr, const double* delC_ptr, const double* alpha_tilde_ptr, double* rhs_ptr) override { _component->_RHS(C_ptr, delC_ptr, alpha_tilde_ptr, rhs_ptr); }
+
+    inline virtual void _getPositionUpdate(const unsigned position_index, const double* delC_ptr, const double inv_m, const double* dlam_ptr, double* pos_update_ptr) const override
+    {
+        _component->_getPositionUpdate(position_index, delC_ptr, inv_m, dlam_ptr, pos_update_ptr);
+    }
+
 
     protected:
     /** Give access to the component's _LHS() method. Normally this is a protected helper method but ConstraintProjectorDecorator is a friend of ConstraintProjector. */
@@ -124,8 +135,8 @@ class WithDamping : public ConstraintProjectorDecorator
             const double* delC_i = delC_ptr + numCoordinates()*ci;      // pointer to constraint gradient of the ci'th constraint
             for (unsigned pi = 0; pi < numPositions(); pi++)
             {
-                const double* pos = _positions[pi].position_ptr;            // current position
-                const double* prev_pos = _positions[pi].prev_position_ptr;  // previous position
+                const double* pos = _state->_positions[pi].position_ptr;            // current position
+                const double* prev_pos = _state->_positions[pi].prev_position_ptr;  // previous position
                 delC_x_prev += delC_i[3*pi]*(pos[0] - prev_pos[0]) + delC_i[3*pi+1]*(pos[1] - prev_pos[1]) + delC_i[3*pi+2]*(pos[2] - prev_pos[2]);      // delC_i * (x_i - x_prev_i)
             }
 
@@ -175,9 +186,9 @@ class WithDistributedPrimaryResidual : public ConstraintProjectorDecorator
             const double* delC_i = delC_ptr + numCoordinates()*ci;        // pointer to the delC vector of the ith constraint (1 x numCoordinates)
             for (unsigned pi = 0; pi < numPositions(); pi++)
             {
-                const double inv_m = _positions[pi].inv_mass;               // inverse mass of pi'th position
-                const unsigned index = _positions[pi].index;                // vertex index of pi'th position - used to index the primary residual vector
-                const double g_scaling = static_cast<double>(_positions[pi].num_constraints);   // divisor for the primary residual for the pi'th position
+                const double inv_m = _state->_positions[pi].inv_mass;               // inverse mass of pi'th position
+                const unsigned index = _state->_positions[pi].index;                // vertex index of pi'th position - used to index the primary residual vector
+                const double g_scaling = static_cast<double>(_state->_positions[pi].num_constraints);   // divisor for the primary residual for the pi'th position
                 rhs_ptr[ci] += inv_m * (delC_ptr[3*pi]*_res_ptr[3*index]/g_scaling + delC_ptr[3*pi+1]*_res_ptr[3*index+1]/g_scaling + delC_ptr[3*pi+2]*_res_ptr[3*index+2]/g_scaling);
             }
         }
@@ -192,8 +203,8 @@ class WithDistributedPrimaryResidual : public ConstraintProjectorDecorator
         _componentGetPositionUpdate(position_index, delC_ptr, inv_m, dlam_ptr, pos_update_ptr);
 
 
-        const unsigned index = _positions[position_index].index;    // vertex index of this position - used to index the primary residual vector
-        const double g_scaling = static_cast<double>(_positions[position_index].num_constraints);   // divisor for the primary residual for this position
+        const unsigned index = _state->_positions[position_index].index;    // vertex index of this position - used to index the primary residual vector
+        const double g_scaling = static_cast<double>(_state->_positions[position_index].num_constraints);   // divisor for the primary residual for this position
 
         // subtract M^-1 * scaled_g
         pos_update_ptr[0] -= inv_m * _res_ptr[3*index]/g_scaling;
@@ -228,14 +239,14 @@ class FirstOrder : public ConstraintProjectorDecorator
         for (unsigned i = 0; i < numPositions(); i++)
         {
             // try casting to FirstOrderXPBDMeshObject
-            if (FirstOrderXPBDMeshObject* fo_obj = dynamic_cast<FirstOrderXPBDMeshObject*>(_positions[i].obj))
+            if (FirstOrderXPBDMeshObject* fo_obj = dynamic_cast<FirstOrderXPBDMeshObject*>(_state->_positions[i].obj))
             {
-                _positions[i].inv_mass = fo_obj->vertexInvDamping(_positions[i].index);     // instead of inverse mass, use inverse damping - still use the same "inv_mass" variable
+                _state->_positions[i].inv_mass = fo_obj->vertexInvDamping(_state->_positions[i].index);     // instead of inverse mass, use inverse damping - still use the same "inv_mass" variable
             }
             else
             {
                 // if cast was unsuccessful, throw an error
-                std::cout << _positions[i].obj->name() << " of type " << _positions[i].obj->type() << " is not a FirstOrderXPBDMeshObject!" << std::endl;
+                std::cout << _state->_positions[i].obj->name() << " of type " << _state->_positions[i].obj->type() << " is not a FirstOrderXPBDMeshObject!" << std::endl;
                 assert(0);
             }
         }
@@ -246,7 +257,7 @@ class FirstOrder : public ConstraintProjectorDecorator
     {
         for (unsigned i = 0; i < numConstraints(); i++)
         {
-            alpha_tilde_ptr[i] = _constraints[i]->alpha() / _dt;
+            alpha_tilde_ptr[i] = _state->_constraints[i]->alpha() / _state->_dt;
         }
     }
 };
