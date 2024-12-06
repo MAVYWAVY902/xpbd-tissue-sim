@@ -1,7 +1,7 @@
 #ifndef __COLLISION_SCENE_HPP
 #define __COLLISION_SCENE_HPP
 
-#include "MeshObject.hpp"
+#include "simobject/MeshObject.hpp"
 
 /** Represents a collision between a vertex and a face */
 struct Collision

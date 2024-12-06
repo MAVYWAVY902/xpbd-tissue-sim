@@ -1,4 +1,4 @@
-#include "CollisionScene.hpp"
+#include "collision/CollisionScene.hpp"
 
 CollisionScene::CollisionScene(const double dt, const double cell_size, const unsigned num_buckets)
     : _dt(dt), _cell_size(cell_size), _num_buckets(num_buckets)

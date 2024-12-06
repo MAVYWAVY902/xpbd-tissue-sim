@@ -1,7 +1,7 @@
 #ifndef __BEAM_STRETCH_SIMULATION_HPP
 #define __BEAM_STRETCH_SIMULATION_HPP
 
-#include "OutputSimulation.hpp"
+#include "simulation/OutputSimulation.hpp"
 #include <Eigen/Dense>
 
 class BeamStretchSimulation : public OutputSimulation

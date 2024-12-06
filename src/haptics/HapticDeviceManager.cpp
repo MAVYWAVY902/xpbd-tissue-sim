@@ -1,4 +1,4 @@
-#include "HapticDeviceManager.hpp"
+#include "haptics/HapticDeviceManager.hpp"
 
 HapticDeviceManager::HapticDeviceManager()
 {

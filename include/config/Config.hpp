@@ -9,7 +9,7 @@
 #include <iostream>
 #include <type_traits>
 
-#include "colors.hpp"
+#include "common/colors.hpp"
 
 /** Simple templated struct that stores a parameter from a YAML config.
  * The name field is the name of the YAML parameter.

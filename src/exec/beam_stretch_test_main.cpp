@@ -1,4 +1,4 @@
-#include "BeamStretchSimulation.hpp"
+#include "simulation/BeamStretchSimulation.hpp"
 
 
 int main(int argc, char **argv) 

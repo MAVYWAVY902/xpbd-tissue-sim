@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.13)
 set(CMAKE_CUDA_ARCHITECTURES "native")
 set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
 project(MyProject LANGUAGES CXX CUDA)
@@ -9,119 +9,68 @@ set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build")
 
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
-find_package(assimp REQUIRED)
-
-# add_subdirectory("/thirdparty/bvh" build)
+find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 
 include_directories("./include")
-include_directories("./include/common")
-include_directories("./include/collision")
-include_directories("./include/haptics")
-include_directories("./include/config")
-include_directories("./include/graphics")
-include_directories("./include/simobject")
-include_directories("./include/simulation")
-include_directories("./include/utils")
-include_directories("./include/solver")
 include_directories("/thirdparty/eigen")
 
 add_library(MeshUtils include/utils/MeshUtils.hpp src/utils/MeshUtils.cpp) # create MeshUtils library
-set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with CGAL
+set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX) # make sure the linker knows it's C++
+target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
 
-set(XPBD_FILES
-    "include/common/colors.hpp"
-    "include/collision/CollisionScene.hpp"
-    "include/haptics/HapticDeviceManager.hpp"
-    "include/simulation/Simulation.hpp" 
-    "include/simulation/OutputSimulation.hpp"
-    "include/simulation/BeamSimulation.hpp"
-    "include/simulation/ResidualSimulation.hpp"
-    "include/simulation/TissueGraspingSimulation.hpp"
-    "include/simulation/BeamStretchSimulation.hpp"
-    "include/simulation/InitialDeformationSimulation.hpp"
-    "include/simulation/StaticLoadingSimulation.hpp"
-    "include/simobject/ElasticMaterial.hpp"
-    "include/simobject/MeshObject.hpp" 
-    "include/simobject/RigidMeshObject.hpp"
-    "include/simobject/ElasticMeshObject.hpp"
-    "include/simobject/XPBDMeshObject.hpp"
-    "include/simobject/FirstOrderXPBDMeshObject.hpp"
-    "include/simobject/FastFEMMeshObject.hpp"
-    "include/graphics/Viewer.hpp"
-    "include/graphics/GraphicsScene.hpp"
-    "include/graphics/Easy3DGraphicsScene.hpp"
-    "include/graphics/GraphicsObject.hpp"
-    "include/graphics/MeshGraphicsObject.hpp"
-    "include/graphics/Easy3DMeshGraphicsObject.hpp"
-    "include/graphics/Easy3DGraphicsScene.hpp"
-    "include/graphics/Easy3DTextRenderingViewer.hpp" 
-    "include/config/Config.hpp"
-    "include/config/MeshObjectConfig.hpp"
-    "include/config/ElasticMeshObjectConfig.hpp"
-    "include/config/XPBDMeshObjectConfig.hpp"
-    "include/config/FirstOrderXPBDMeshObjectConfig.hpp"
-    "include/config/FastFEMMeshObjectConfig.hpp"
-    "include/config/ElasticMaterialConfig.hpp"
-    "include/config/RigidMeshObjectConfig.hpp"
-    "include/config/SimulationConfig.hpp"
-    "include/config/OutputSimulationConfig.hpp"
-    "include/config/BeamStretchSimulationConfig.hpp"
-    "include/config/TissueGraspingSimulationConfig.hpp"
-    "include/config/InitialDeformationSimulationConfig.hpp"
-    "include/config/StaticLoadingSimulationConfig.hpp"
-    "include/solver/Constraint.hpp"
-    "include/solver/ConstraintProjector.hpp"
-    "include/solver/CombinedNeohookeanConstraintProjector.hpp"
-    "include/solver/ConstraintProjectorDecorator.hpp"
-    "include/solver/ElementConstraint.hpp"
-    "include/solver/HydrostaticConstraint.hpp"
-    "include/solver/DeviatoricConstraint.hpp"
-    "include/solver/XPBDSolver.hpp"
-    "include/solver/XPBDGaussSeidelSolver.hpp"
-    "src/collision/CollisionScene.cpp"
-    "src/haptics/HapticDeviceManager.cpp"
-    "src/simulation/Simulation.cpp"
-    "src/simulation/OutputSimulation.cpp" 
-    "src/simulation/BeamSimulation.cpp"
-    "src/simulation/ResidualSimulation.cpp"
-    "src/simulation/TissueGraspingSimulation.cpp"
-    "src/simulation/BeamStretchSimulation.cpp"
-    "src/simulation/InitialDeformationSimulation.cpp"
-    "src/simobject/MeshObject.cpp" 
-    "src/simobject/RigidMeshObject.cpp"
-    "src/simobject/ElasticMeshObject.cpp"
-    "src/simobject/XPBDMeshObject.cpp"
-    "src/simobject/FirstOrderXPBDMeshObject.cpp"
-    "src/simobject/FastFEMMeshObject.cpp"
-    "src/graphics/Viewer.cpp"
-    "src/graphics/GraphicsScene.cpp"
-    "src/graphics/Easy3DGraphicsScene.cpp"
-    "src/graphics/MeshGraphicsObject.cpp"
-    "src/graphics/Easy3DMeshGraphicsObject.cpp"
-    "src/graphics/Easy3DTextRenderingViewer.cpp"
-    # "src/solver/Constraint.cpp"
-    # "src/solver/ConstraintDecorator.cpp"
-    # "src/solver/ElementConstraint.cpp"
-    # "src/solver/HydrostaticConstraint.cpp"
-    # "src/solver/DeviatoricConstraint.cpp"
-    "src/solver/XPBDSolver.cpp"
-    "src/solver/XPBDGaussSeidelSolver.cpp" 
-)
+# Collision library
+add_library(Collision)
+add_subdirectory("src/collision")
 
-add_library(XPBD ${XPBD_FILES} ) # create XPBD library
-target_link_libraries(XPBD easy3d::core easy3d::util easy3d::renderer easy3d::viewer MeshUtils yaml-cpp HD HDU)
-add_executable(Test src/exec/main.cpp)                    # create an executable target
-target_link_libraries(Test XPBD easy3d::viewer gmsh)       # link to necessary Easy3D modules (add more if needed, e.g., algo)
+# Graphics library
+add_library(Graphics)
+add_subdirectory("src/graphics")
+
+# Haptics library
+add_library(Haptics)
+add_subdirectory("src/haptics")
+
+
+# Solver library
+add_library(Solver)
+add_subdirectory("src/solver")
+
+# SimObject library
+add_library(SimObject)
+add_subdirectory("src/simobject")
+
+# link in necessary libraries
+target_link_libraries(Graphics easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
+target_link_libraries(Haptics HD HDU)   # link OpenHaptics API libraries for Haptics library
+target_link_libraries(SimObject MeshUtils Solver)   # link MeshUtils and Solver libraries
+target_link_libraries(Solver SimObject)         # link SimObject library
+
+### Simulation libraries - each has its own executable
+add_library(ResidualSimulation)
+add_library(BeamSimulation)
+add_library(BeamStretchSimulation)
+add_library(TissueGraspingSimulation)
+add_library(InitialDeformationSimulation)
+add_subdirectory("src/simulation")
+
+target_link_libraries(ResidualSimulation Collision Graphics SimObject yaml-cpp)
+target_link_libraries(BeamSimulation ResidualSimulation)
+target_link_libraries(BeamStretchSimulation ResidualSimulation)
+target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
+target_link_libraries(InitialDeformationSimulation ResidualSimulation)
+
+### Create executables
+add_executable(Test src/exec/main.cpp)
+target_link_libraries(Test ResidualSimulation)
 
 add_executable(BeamTest src/exec/beam_test_main.cpp)
-target_link_libraries(BeamTest XPBD easy3d::viewer gmsh)
+target_link_libraries(BeamTest BeamSimulation)
 
 add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
-target_link_libraries(TissueGraspingTest XPBD easy3d::viewer gmsh)
+target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
 
 add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
-target_link_libraries(BeamStretchTest XPBD easy3d::viewer gmsh)
+target_link_libraries(BeamStretchTest BeamStretchSimulation)
 
 # add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
 # target_link_libraries(InitialDeformationTest XPBD easy3d::viewer gmsh)

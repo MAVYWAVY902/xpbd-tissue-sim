@@ -1,4 +1,4 @@
-#include "BeamSimulation.hpp"
+#include "simulation/BeamSimulation.hpp"
 
 
 int main(int argc, char **argv) 

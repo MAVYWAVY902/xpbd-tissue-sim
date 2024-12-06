@@ -1,4 +1,4 @@
-#include "FastFEMMeshObject.hpp"
+#include "simobject/FastFEMMeshObject.hpp"
 #include "simulation/Simulation.hpp"
 
 FastFEMMeshObject::FastFEMMeshObject(const FastFEMMeshObjectConfig* config)

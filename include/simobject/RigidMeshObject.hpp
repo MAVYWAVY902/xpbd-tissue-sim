@@ -1,7 +1,7 @@
 #ifndef __RIGID_MESH_OBJECT_HPP
 #define __RIGID_MESH_OBJECT_HPP
 
-#include "MeshObject.hpp"
+#include "simobject/MeshObject.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
 
 /** A class for representing rigid body meshes.

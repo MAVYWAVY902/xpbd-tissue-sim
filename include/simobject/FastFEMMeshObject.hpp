@@ -1,8 +1,8 @@
 #ifndef __FAST_FEM_MESH_OBJECT_HPP
 #define __FAST_FEM_MESH_OBJECT_HPP
 
-#include "ElasticMeshObject.hpp"
-#include "FastFEMMeshObjectConfig.hpp"
+#include "simobject/ElasticMeshObject.hpp"
+#include "config/FastFEMMeshObjectConfig.hpp"
 
 #include <Eigen/Sparse>
 

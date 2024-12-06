@@ -1,7 +1,7 @@
 #ifndef __RESIDUAL_SIMULATION_HPP
 #define __RESIDUAL_SIMULATION_HPP
 
-#include "OutputSimulation.hpp"
+#include "simulation/OutputSimulation.hpp"
 #include <Eigen/Dense>
 
 class ResidualSimulation : public OutputSimulation

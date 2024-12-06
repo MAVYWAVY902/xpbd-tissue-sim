@@ -1,9 +1,9 @@
-#include "InitialDeformationSimulation.hpp"
+#include "simulation/InitialDeformationSimulation.hpp"
 
-#include "MeshUtils.hpp"
+#include "utils/MeshUtils.hpp"
 
-#include "XPBDMeshObject.hpp"
-#include "FirstOrderXPBDMeshObject.hpp"
+#include "simobject/XPBDMeshObject.hpp"
+#include "simobject/FirstOrderXPBDMeshObject.hpp"
 
 #include <regex>
 
