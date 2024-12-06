@@ -1,8 +1,8 @@
 #ifndef __INITIAL_DEFORMATION_SIMULATION_HPP
 #define __INITIAL_DEFORMATION_SIMULATION_HPP
 
-#include "OutputSimulation.hpp"
-#include "InitialDeformationSimulationConfig.hpp"
+#include "simulation/OutputSimulation.hpp"
+#include "config/InitialDeformationSimulationConfig.hpp"
 #include <Eigen/Dense>
 
 class InitialDeformationSimulation : public OutputSimulation

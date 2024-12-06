@@ -1,9 +1,9 @@
-#include "BeamStretchSimulation.hpp"
-#include "MeshUtils.hpp"
-#include "BeamStretchSimulationConfig.hpp"
+#include "simulation/BeamStretchSimulation.hpp"
+#include "utils/MeshUtils.hpp"
+#include "config/BeamStretchSimulationConfig.hpp"
 
-#include "XPBDMeshObject.hpp"
-#include "FirstOrderXPBDMeshObject.hpp"
+#include "simobject/XPBDMeshObject.hpp"
+#include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "solver/XPBDSolver.hpp"
 
 #include <regex>

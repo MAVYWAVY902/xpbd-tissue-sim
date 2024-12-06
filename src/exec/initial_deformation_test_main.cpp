@@ -1,4 +1,4 @@
-#include "InitialDeformationSimulation.hpp"
+#include "simulation/InitialDeformationSimulation.hpp"
 
 
 int main(int argc, char **argv) 

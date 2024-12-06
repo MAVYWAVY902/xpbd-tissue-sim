@@ -1,11 +1,11 @@
 #ifndef __TISSUE_GRASPING_SIMULATION_HPP
 #define __TISSUE_GRASPING_SIMULATION_HPP
 
-#include "OutputSimulation.hpp"
-#include "HapticDeviceManager.hpp"
-#include "TissueGraspingSimulationConfig.hpp"
-#include "XPBDMeshObject.hpp"
-#include "RigidMeshObject.hpp"
+#include "simulation/OutputSimulation.hpp"
+#include "haptics/HapticDeviceManager.hpp"
+#include "config/TissueGraspingSimulationConfig.hpp"
+#include "simobject/XPBDMeshObject.hpp"
+#include "simobject/RigidMeshObject.hpp"
 #include <Eigen/Dense>
 
 class TissueGraspingSimulation : public OutputSimulation

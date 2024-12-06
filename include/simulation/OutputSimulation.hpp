@@ -4,6 +4,8 @@
 #include "Simulation.hpp"
 #include <Eigen/Dense>
 
+#include <fstream>
+
 class OutputSimulation : public Simulation
 {
     public:

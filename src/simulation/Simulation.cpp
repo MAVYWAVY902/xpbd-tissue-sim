@@ -1,16 +1,16 @@
-#include "Simulation.hpp"
+#include "simulation/Simulation.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 
 #include "graphics/Easy3DGraphicsScene.hpp"
 
-#include "RigidMeshObject.hpp"
-#include "XPBDMeshObject.hpp"
-#include "FirstOrderXPBDMeshObject.hpp"
-#include "FastFEMMeshObject.hpp"
+#include "simobject/RigidMeshObject.hpp"
+#include "simobject/XPBDMeshObject.hpp"
+#include "simobject/FirstOrderXPBDMeshObject.hpp"
+#include "simobject/FastFEMMeshObject.hpp"
 
-#include "MeshUtils.hpp"
+#include "utils/MeshUtils.hpp"
 
 #include <gmsh.h>
 

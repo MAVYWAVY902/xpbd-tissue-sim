@@ -1,5 +1,5 @@
-#include "ElasticMeshObject.hpp"
-#include "MeshUtils.hpp"
+#include "simobject/ElasticMeshObject.hpp"
+#include "utils/MeshUtils.hpp"
 #include <filesystem>
 
 ElasticMeshObject::ElasticMeshObject(const std::string& name)

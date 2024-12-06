@@ -1,7 +1,5 @@
-#include "MeshObject.hpp"
-#include "Simulation.hpp"
-
-#include <easy3d/renderer/renderer.h> 
+#include "simobject/MeshObject.hpp"
+#include "simulation/Simulation.hpp"
 
 void MeshObject::init()
 {

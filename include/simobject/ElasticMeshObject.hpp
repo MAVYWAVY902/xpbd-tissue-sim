@@ -1,8 +1,8 @@
 #ifndef __ELASTIC_MESH_OBJECT_HPP
 #define __ELASTIC_MESH_OBJECT_HPP
 
-#include "MeshObject.hpp"
-#include "ElasticMaterial.hpp"
+#include "simobject/MeshObject.hpp"
+#include "simobject/ElasticMaterial.hpp"
 #include "config/ElasticMeshObjectConfig.hpp"
 
 /** A class for driving a vertex */

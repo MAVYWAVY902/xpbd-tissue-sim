@@ -1,5 +1,5 @@
-#include "RigidMeshObject.hpp"
-#include "MeshUtils.hpp"
+#include "simobject/RigidMeshObject.hpp"
+#include "utils/MeshUtils.hpp"
 
 RigidMeshObject::RigidMeshObject(const std::string& name)
     : MeshObject(name)

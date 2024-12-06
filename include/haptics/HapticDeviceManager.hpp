@@ -5,7 +5,7 @@
 #include <HDU/hduError.h>
 #include <HDU/hduVector.h>
 
-#include "colors.hpp"
+#include "common/colors.hpp"
 #include <iostream>
 #include <cassert>
 

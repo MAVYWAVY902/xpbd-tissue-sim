@@ -1,5 +1,5 @@
-#include "TissueGraspingSimulation.hpp"
-#include "MeshUtils.hpp"
+#include "simulation/TissueGraspingSimulation.hpp"
+#include "utils/MeshUtils.hpp"
 
 #include "solver/XPBDSolver.hpp"
 
