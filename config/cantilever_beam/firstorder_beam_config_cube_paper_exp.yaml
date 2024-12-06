@@ -5,58 +5,39 @@ sim-mode: "AFAP"
 # sim-mode: "Visualization"
 # sim-mode: "Frame-by-frame"
 time-step: 1.16e-4
-print-interval: 3.33e-3
-end-time: 3.33
+print-interval: 1e-3
+end-time: 5
 objects:
 
-  -
-    name: "FirstOrderCubeVolumeB1"
-    type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
-    # filename: "../resource/tissue/Prostate.msh"
-    material:
-      name: "Macklin"
-      density: 1000
-      E: 6e4
-      nu: 0.45
-    color: [1.0, 0.5, 0.0, 1.0]
-    draw-points: false
-    draw-edges: true
-    max-size: 0.5
-    position: [0, 0, 1.0]
-    damping-stiffness: 0
-    num-solver-iters: 1
-    damping-multiplier: 15
-    residual-policy: "Every-Substep"
-    # solve-mode: "Split-Deviatoric-Simultaneous10"
-    # solve-mode: "First-Order-Simultaneous"
-    # solve-mode: "Simultaneous"
-    # solve-mode: "Simultaneous-Constant-B"
-    solve-mode: "Simultaneous-Smallest-Edge-B"
-
   # -
-  #   name: "FirstOrderCubeVolumeB2"
+  #   name: "1stOrder_b=2000"
   #   type: "FirstOrderXPBDMeshObject"
   #   filename: "../resource/cube/cube8.msh"
+  #   # filename: "../resource/cube/cube8_halfrefined2.msh"
   #   material:
   #     name: "Macklin"
   #     density: 1000
   #     E: 6e4
   #     nu: 0.45
-  #   color: [1.0, 0.0, 0.0, 1.0]
+  #   color: [1.0, 0.5, 0.0, 1.0]
   #   draw-points: false
+  #   draw-edges: true
   #   max-size: 0.5
-  #   position: [0, 1, 1]
+  #   position: [0, 0, 1.0]
+  #   rotation: [0, 0, 0]
   #   damping-stiffness: 0
   #   num-solver-iters: 1
-  #   damping-multiplier: 15000
+  #   # damping-multiplier: 40
+  #   damping-multiplier: 2000
   #   residual-policy: "Every-Substep"
   #   # solve-mode: "Split-Deviatoric-Simultaneous10"
   #   # solve-mode: "First-Order-Simultaneous"
   #   solve-mode: "Simultaneous"
+  #   # solve-mode: "Simultaneous-Constant-B"
+  #   # solve-mode: "Simultaneous-Smallest-Edge-B"
 
   # -
-  #   name: "FirstOrderCube3"
+  #   name: "1stOrder_b=6400"
   #   type: "FirstOrderXPBDMeshObject"
   #   filename: "../resource/cube/cube8.msh"
   #   material:
@@ -66,58 +47,63 @@ objects:
   #     nu: 0.45
   #   color: [1.0, 0.509, 0.0, 1.0]
   #   draw-points: false
+  #   draw-edges: true
   #   max-size: 0.5
-  #   position: [0, 2, 1]
+  #   position: [0, 0, 1.7]
   #   damping-stiffness: 0
-  #   num-solver-iters: 10
-  #   damping-multiplier: 32
+  #   num-solver-iters: 1
+  #   damping-multiplier: 6400
   #   residual-policy: "Every-Substep"
   #   # solve-mode: "Split-Deviatoric-Simultaneous10"
   #   # solve-mode: "First-Order-Simultaneous"
+  #   # solve-mode: "Simultaneous-Smallest-Edge-B"
   #   solve-mode: "Simultaneous"
 
-  -
-    name: "Cube1_B=1"
-    type: "XPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
-    material:
-      name: "Macklin"
-      density: 1000
-      E: 6e4
-      nu: 0.45
-    color: [0.2, 0.7, 0.05, 1.0]
-    draw-points: false
-    draw-edges: true
-    max-size: 0.5
-    position: [0, 0, 2.4]
-    damping-stiffness: 0.5
-    num-solver-iters: 1
-    residual-policy: "Every-Substep"
-    # solve-mode: "Split-Deviatoric-Simultaneous10"
-    solve-mode: "Simultaneous-Damped"
+  # -
+  #   name: "1stOrder_b=10000"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [1.0, 0.509, 0.0, 1.0]
+  #   draw-points: false
+  #   draw-edges: true
+  #   max-size: 0.5
+  #   position: [0, 0, 2.4]
+  #   damping-stiffness: 0
+  #   num-solver-iters: 1
+  #   damping-multiplier: 10000
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   # solve-mode: "First-Order-Simultaneous"
+  #   # solve-mode: "Simultaneous-Smallest-Edge-B"
+  #   solve-mode: "Simultaneous"
+
+  # -
+  #   name: "Cube1_B=0.5"
+  #   type: "XPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [0.2, 0.7, 0.05, 1.0]
+  #   draw-points: false
+  #   draw-edges: true
+  #   max-size: 0.5
+  #   position: [0, 0, 2.4]
+  #   damping-stiffness: 0.5
+  #   num-solver-iters: 1
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   solve-mode: "Simultaneous-Damped"
 
   -
-    name: "Cube1_B=10"
-    type: "XPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
-    material:
-      name: "Macklin"
-      density: 1000
-      E: 6e4
-      nu: 0.45
-    color: [0.2, 0.7, 0.05, 1.0]
-    draw-points: false
-    draw-edges: true
-    max-size: 0.5
-    position: [0, 0, 1.7]
-    damping-stiffness: 2
-    num-solver-iters: 1
-    residual-policy: "Every-Substep"
-    # solve-mode: "Split-Deviatoric-Simultaneous10"
-    solve-mode: "Simultaneous-Damped"
-
-  -
-    name: "Cube1_NoDamping"
+    name: "Cube1_gamma=1"
     type: "XPBDMeshObject"
     filename: "../resource/cube/cube8.msh"
     material:
@@ -130,11 +116,72 @@ objects:
     draw-edges: true
     max-size: 0.5
     position: [0, 0, 3.1]
-    damping-stiffness: 0
-    num-solver-iters: 1
+    damping-stiffness: 5
+    num-solver-iters: 5
     residual-policy: "Every-Substep"
     # solve-mode: "Split-Deviatoric-Simultaneous10"
-    solve-mode: "Simultaneous-Damped"
+    # solve-mode: "Simultaneous-Damped"
+    solve-mode: "Sequential-Damped-Separate"
+
+  # -
+  #   name: "Cube1_gamma=0.5"
+  #   type: "XPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [0.2, 0.7, 0.05, 1.0]
+  #   draw-points: false
+  #   draw-edges: true
+  #   max-size: 0.5
+  #   position: [0, 0, 1.7]
+  #   damping-stiffness: 0.5
+  #   num-solver-iters: 1
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   solve-mode: "Simultaneous-Damped"
+
+  # -
+  #   name: "Cube1_gamma=0.25"
+  #   type: "XPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [0.2, 0.7, 0.05, 1.0]
+  #   draw-points: false
+  #   draw-edges: true
+  #   max-size: 0.5
+  #   position: [0, 0, 2.4]
+  #   damping-stiffness: 0.25
+  #   num-solver-iters: 1
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   solve-mode: "Simultaneous-Damped"
+
+  # -
+  #   name: "Cube1_NoDamping"
+  #   type: "XPBDMeshObject"
+  #   filename: "../resource/cube/cube8.msh"
+  #   material:
+  #     name: "Macklin"
+  #     density: 1000
+  #     E: 6e4
+  #     nu: 0.45
+  #   color: [0.2, 0.7, 0.05, 1.0]
+  #   draw-points: false
+  #   draw-edges: true
+  #   max-size: 0.5
+  #   position: [0, 0, 3.1]
+  #   damping-stiffness: 0
+  #   num-solver-iters: 1
+  #   residual-policy: "Every-Substep"
+  #   # solve-mode: "Split-Deviatoric-Simultaneous10"
+  #   solve-mode: "Simultaneous-Damped"
 
   # -
   #   name: "Cube1_Damping10Iter"

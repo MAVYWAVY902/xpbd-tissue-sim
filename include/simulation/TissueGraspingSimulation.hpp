@@ -33,7 +33,7 @@ class TissueGraspingSimulation : public OutputSimulation
 
     protected:
 
-    // void _timeStep() override;
+    void _timeStep() override;
     void _updateGraphics() override;
     void _toggleTissueGrasping();
     std::set<unsigned> _getAllVerticesInGraspingArea();
@@ -45,6 +45,9 @@ class TissueGraspingSimulation : public OutputSimulation
     double _z_scaling;
     SimulationInputDevice _input_device;
     std::optional<std::string> _fixed_faces_filename;
+
+    double _last_mesh_write_time;
+    bool _write_mesh;
 
     bool _grasping;
     Eigen::Vector2d _mouse_pos_2d;
