@@ -42,7 +42,7 @@ void Simulation::_init()
 
     // initialize the collision scene
     // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
-    _collision_scene = std::make_unique<CollisionScene>(1.0/30.0, 0.05, 10007);
+    _collision_scene = std::make_unique<CollisionScene>(1.0/100.0, 0.05, 10007);
     _last_collision_detection_time = 0;
 }
 
@@ -186,28 +186,28 @@ void Simulation::update()
 
 void Simulation::_timeStep()
 {
-    if (_time - _last_collision_detection_time > 1.0/30.0)
+    if (_time - _last_collision_detection_time > 1.0/100.0)
     {
         // run collision detection
         // std::cout << "RUNNING COLLISION DETECTION...time = " << time() << std::endl;
         for (auto& mo : _mesh_objects)
         {
             if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(mo.get()))
-                xpbd_obj->removeOldCollisionConstraints(33);
+                xpbd_obj->removeOldCollisionConstraints(11);
         }
         auto t1 = std::chrono::steady_clock::now();
         _collision_scene->collideObjects(_time);
         std::vector<Collision> potential_collisions = _collision_scene->potentialCollisions();
-        for (const auto& c : potential_collisions)
-        {
-            XPBDMeshObject* xpbd_obj1 = dynamic_cast<XPBDMeshObject*>(c.obj1);
-            XPBDMeshObject* xpbd_obj2 = dynamic_cast<XPBDMeshObject*>(c.obj2); 
-            if (xpbd_obj1 && xpbd_obj2)
-            {
-                xpbd_obj1->addCollisionConstraint(xpbd_obj1, c.vertex_ind, xpbd_obj2, c.face_ind);
-                // xpbd_obj2->addCollisionConstraint(xpbd_obj1, c.vertex_ind, xpbd_obj2, c.face_ind);
-            }
-        }
+        // for (const auto& c : potential_collisions)
+        // {
+        //     XPBDMeshObject* xpbd_obj1 = dynamic_cast<XPBDMeshObject*>(c.obj1);
+        //     XPBDMeshObject* xpbd_obj2 = dynamic_cast<XPBDMeshObject*>(c.obj2); 
+        //     if (xpbd_obj1 && xpbd_obj2)
+        //     {
+        //         xpbd_obj1->addCollisionConstraint(xpbd_obj1, c.vertex_ind, xpbd_obj2, c.face_ind);
+        //         // xpbd_obj2->addCollisionConstraint(xpbd_obj1, c.vertex_ind, xpbd_obj2, c.face_ind);
+        //     }
+        // }
         auto t2 = std::chrono::steady_clock::now();
         std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 

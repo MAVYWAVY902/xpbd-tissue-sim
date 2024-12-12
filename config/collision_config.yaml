@@ -1,10 +1,10 @@
 name: "blah"
 visualization: "Easy3D"
 g-accel: 9.81 # m/s2
-sim-mode: "Frame-by-frame"
-# sim-mode: "Visualization"
+# sim-mode: "Frame-by-frame"
+sim-mode: "Visualization"
 # sim-mode: "AFAP"
-time-step: 1e-3
+time-step: 1e-5
 fps: 30
 end-time: 10
 objects:
@@ -12,10 +12,10 @@ objects:
   -
     name: "Tet1"
     type: "XPBDMeshObject"
-    filename: "../resource/general/stanford_bunny_lowpoly.msh"
+    # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/general/stanford_bunny_medpoly.msh"
     # filename: "../resource/general/single.msh"
-    # filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube8.msh"
     material:
       name: "Soft Tissue"
       density: 1000

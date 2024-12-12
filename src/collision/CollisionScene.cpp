@@ -2,6 +2,10 @@
 
 #include "rootparitycollisiontest.h"
 
+#include "simobject/XPBDMeshObject.hpp"
+
+#include <chrono>
+
 CollisionScene::CollisionScene(const double dt, const double cell_size, const unsigned num_buckets)
     : _dt(dt), _cell_size(cell_size), _num_buckets(num_buckets)
 {
@@ -22,74 +26,45 @@ void CollisionScene::collideObjects(const double sim_time)
     _potential_collisions.clear();
 
     int num_tests = 0;
-    for (int oi = 0; oi < _objects.size(); oi++)
-    {
-        // add vertices for this object to their corresponding buckets
-        const MeshObject::VerticesMat& obj_vertices = _objects[oi]->vertices();
-        const MeshObject::VerticesMat& obj_velocities = _objects[oi]->velocities();
-        for (int vi = 0; vi < obj_vertices.rows(); vi++)
-        {
-            // only consider surface vertices
-            if (!_objects[oi]->vertexOnSurface(vi))
-                continue;
-
-            // current cell
-            int cur_i = std::floor(obj_vertices(vi,0)/_cell_size);
-            int cur_j = std::floor(obj_vertices(vi,1)/_cell_size);
-            int cur_k = std::floor(obj_vertices(vi,2)/_cell_size);
-
-            // "next" cell - predict where vertex will be after one time step
-            int next_i = std::floor( (obj_vertices(vi,0)+obj_velocities(vi,0)*_dt)/_cell_size );
-            int next_j = std::floor( (obj_vertices(vi,1)+obj_velocities(vi,1)*_dt)/_cell_size );
-            int next_k = std::floor( (obj_vertices(vi,2)+obj_velocities(vi,2)*_dt)/_cell_size );
-
-            // add this vertex to "box" of cells between the current cell and the next cell
-            for (int i = std::min(cur_i,next_i); i <= std::max(cur_i,next_i); i++)
-            {
-                for (int j = std::min(cur_j,next_j); j <= std::max(cur_j,next_j); j++)
-                {
-                    for (int k = std::min(cur_k,next_k); k <= std::max(cur_k,next_k); k++)
-                    {
-                        // find the bucket index for this cell
-                        int bucket_index = _hash(i, j, k);
-
-                        // clear the bucket if it's stale
-                        if (_buckets[bucket_index].time != sim_time)
-                        {
-                            _buckets[bucket_index].vertices.clear();
-                            _buckets[bucket_index].time = sim_time;
-                        }
-                        // add it the appropriate bucket
-                        _buckets[bucket_index].vertices.push_back(std::make_pair(oi, vi));
-                    }
-                }
-            }
-        }
-    }
+    auto t1 = std::chrono::steady_clock::now();
+    _addVerticesToBuckets(sim_time);
+    auto t2 = std::chrono::steady_clock::now();
+    std::cout << "Adding vertices to buckets took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
     for (int oi = 0; oi < _objects.size(); oi++)
     {
         // check collisions with faces
         const MeshObject::VerticesMat& obj_vertices = _objects[oi]->vertices();
+        const MeshObject::VerticesMat& obj_velocities = _objects[oi]->velocities();
         const MeshObject::FacesMat& obj_faces = _objects[oi]->faces();
         for (int fi = 0; fi < obj_faces.rows(); fi++)
         {
+            const int v0 = obj_faces(fi,0);
+            const int v1 = obj_faces(fi,1);
+            const int v2 = obj_faces(fi,2);
+            const Eigen::Vector3d& cur_pos0 = obj_vertices.row(v0);
+            const Eigen::Vector3d& cur_pos1 = obj_vertices.row(v1);
+            const Eigen::Vector3d& cur_pos2 = obj_vertices.row(v2);
+            const Eigen::Vector3d next_pos0 = cur_pos0 + obj_velocities.row(v0).transpose()*_dt;
+            const Eigen::Vector3d next_pos1 = cur_pos1 + obj_velocities.row(v1).transpose()*_dt;
+            const Eigen::Vector3d next_pos2 = cur_pos2 + obj_velocities.row(v2).transpose()*_dt;
+
             // find cells that this face is a part of
-            int i1 = std::floor(obj_vertices(obj_faces(fi,0),0)/_cell_size);
-            int i2 = std::floor(obj_vertices(obj_faces(fi,1),0)/_cell_size);
-            int i3 = std::floor(obj_vertices(obj_faces(fi,2),0)/_cell_size);
+            int i1 = std::floor(next_pos0[0]/_cell_size);
+            int i2 = std::floor(next_pos1[0]/_cell_size);
+            int i3 = std::floor(next_pos2[0]/_cell_size);
             int min_i = std::min(std::min(i1, i2), i3);
             int max_i = std::max(std::max(i1, i2), i3);
 
-            int j1 = std::floor(obj_vertices(obj_faces(fi,0),1)/_cell_size);
-            int j2 = std::floor(obj_vertices(obj_faces(fi,1),1)/_cell_size);
-            int j3 = std::floor(obj_vertices(obj_faces(fi,2),1)/_cell_size);
+            int j1 = std::floor(next_pos0[1]/_cell_size);
+            int j2 = std::floor(next_pos1[1]/_cell_size);
+            int j3 = std::floor(next_pos2[1]/_cell_size);
             int min_j = std::min(std::min(j1, j2), j3);
             int max_j = std::max(std::max(j1, j2), j3);
 
-            int k1 = std::floor(obj_vertices(obj_faces(fi,0),2)/_cell_size);
-            int k2 = std::floor(obj_vertices(obj_faces(fi,1),2)/_cell_size);
-            int k3 = std::floor(obj_vertices(obj_faces(fi,2),2)/_cell_size);
+            int k1 = std::floor(next_pos0[2]/_cell_size);
+            int k2 = std::floor(next_pos1[2]/_cell_size);
+            int k3 = std::floor(next_pos2[2]/_cell_size);
             int min_k = std::min(std::min(k1, k2), k3);
             int max_k = std::max(std::max(k1, k2), k3);
             
@@ -103,76 +78,65 @@ void CollisionScene::collideObjects(const double sim_time)
                         // find the bucket index for this cell
                         int bucket_index = _hash(i, j, k);
                         
+                        // std::cout << "Num vertices in bucket: " << _buckets[bucket_index].vertices.size() << std::endl;
+
+                        if (_buckets[bucket_index].time != sim_time)
+                        {
+                            continue;
+                        }
                         // do collision detection for any other vertices (not part of the triangle)
                         for (int vi = 0; vi < _buckets[bucket_index].vertices.size(); vi++)
                         {
+                            
+
                             int obj_ind = _buckets[bucket_index].vertices[vi].first;
                             int vert_ind = _buckets[bucket_index].vertices[vi].second;
-                            if (obj_ind == oi)
-                            {
-                                continue;
-                            }
+
+                            const Eigen::Vector<unsigned, 3>& face = obj_faces.row(fi);
                             // skip vertices that are part of this triangle
-                            if (obj_ind == oi && (vert_ind == obj_faces(fi,0) || vert_ind == obj_faces(fi,1) || vert_ind == obj_faces(fi,2)) )
+                            if (obj_ind == oi && (vert_ind == face[0] || vert_ind == face[1] || vert_ind == face[2]) )
                             {
                                 continue;
                             }
 
-                            // std::cout << "Running collision test: Vertex obj: " << obj_ind << ", vertex ind: " << vert_ind << ", Face obj: " << oi << ", face ind: " << fi << std::endl;
-
-                            // do collision detection
-                            // const Eigen::Vector3d ray_origin = _objects[obj_ind]->vertices().row(vert_ind);
-                            // const Eigen::Vector3d ray_vector = _objects[obj_ind]->velocities().row(vert_ind) * _dt * 2; // multiply by 2 as a factor of safety
-                            // bool predictive_collision = _rayTriangleIntersection(ray_origin, ray_vector, obj_vertices.row(obj_faces(fi,0)), obj_vertices.row(obj_faces(fi,1)), obj_vertices.row(obj_faces(fi,2)));
-
-                            const Eigen::Vector3d& v0 = _objects[obj_ind]->velocities().row(vert_ind);
-                            const Eigen::Vector3d& v1 = _objects[oi]->velocities().row(obj_faces(fi,0));
-                            const Eigen::Vector3d& v2 = _objects[oi]->velocities().row(obj_faces(fi,1));
-                            const Eigen::Vector3d& v3 = _objects[oi]->velocities().row(obj_faces(fi,2));
-
-                            const Eigen::Vector3d& p0 = _objects[obj_ind]->vertices().row(vert_ind);
-                            const Eigen::Vector3d& p1 = _objects[oi]->vertices().row(obj_faces(fi,0));
-                            const Eigen::Vector3d& p2 = _objects[oi]->vertices().row(obj_faces(fi,1));
-                            const Eigen::Vector3d& p3 = _objects[oi]->vertices().row(obj_faces(fi,2));
+                            const Eigen::Vector3d& q_vel = _objects[obj_ind]->velocities().row(vert_ind);
+                            const Eigen::Vector3d& cur_q = _objects[obj_ind]->vertices().row(vert_ind);
+                            const Eigen::Vector3d next_q = cur_q + q_vel*_dt;
                             bool collision = false;
                             // real CCD
-                            num_tests++;
-                            Vec3d x0(_objects[obj_ind]->getVertexPointer(vert_ind));
-                            Vec3d x0_new = x0; x0_new[0] += v0[0]*_dt; x0_new[1] += v0[1]*_dt; x0_new[2] += v0[2]*_dt;
-
-                            Vec3d x1(_objects[oi]->getVertexPointer(obj_faces(fi,0)));
-                            Vec3d x1_new = x1; x1_new[0] += v1[0]*_dt; x1_new[1] += v1[1]*_dt; x1_new[2] += v1[2]*_dt;
-
-                            Vec3d x2(_objects[oi]->getVertexPointer(obj_faces(fi,1)));
-                            Vec3d x2_new = x2; x2_new[0] += v2[0]*_dt; x2_new[1] += v2[1]*_dt; x2_new[2] += v2[2]*_dt;
-
-                            Vec3d x3(_objects[oi]->getVertexPointer(obj_faces(fi,2)));
-                            Vec3d x3_new = x3; x3_new[0] += v3[0]*_dt; x3_new[1] += v3[1]*_dt; x3_new[2] += v3[2]*_dt;
-
-                            rootparity::RootParityCollisionTest test(x0, x1, x2, x3, x0_new, x1_new, x2_new, x3_new, false);
-                            collision = test.run_test();
                             
+                            Vec3d q(cur_q.data());
+                            Vec3d q_new(next_q.data());
+
+                            Vec3d p0(cur_pos0.data());
+                            Vec3d p0_new(next_pos0.data());
+
+                            Vec3d p1(cur_pos1.data());
+                            Vec3d p1_new(next_pos1.data());
+
+                            Vec3d p2(cur_pos2.data());
+                            Vec3d p2_new(cur_pos2.data());
+
+                            rootparity::RootParityCollisionTest test(q, p0, p1, p2, q_new, p0_new, p1_new, p2_new, false);
+                            collision = test.run_test();
+
+                            num_tests+=collision;
 
                             if (collision)
                             {
-                                // std::cout << "POTENTIAL COLLISION! Obj1 " << obj_ind << " Vert: " << vert_ind << " Obj2 " << oi << " Face: " << fi << std::endl;
-                                // std::cout << "\tRay origin: " << ray_origin(0) << ", " << ray_origin(1) << ", " << ray_origin(2) << std::endl;
-                                // std::cout << "\tRay vector: " << ray_vector(0) << ", " << ray_vector(1) << ", " << ray_vector(2) << std::endl;
-                                // std::cout << "\tA: " << obj_vertices.row(obj_faces(fi,0))(0) << ", " << obj_vertices.row(obj_faces(fi,0))(1) << ", " << obj_vertices.row(obj_faces(fi,0))(2) << std::endl;
-                                // std::cout << "\tB: " << obj_vertices.row(obj_faces(fi,1))(0) << ", " << obj_vertices.row(obj_faces(fi,1))(1) << ", " << obj_vertices.row(obj_faces(fi,1))(2) << std::endl;
-                                // std::cout << "\tC: " << obj_vertices.row(obj_faces(fi,2))(0) << ", " << obj_vertices.row(obj_faces(fi,2))(1) << ", " << obj_vertices.row(obj_faces(fi,2))(2) << std::endl;
+                                const Eigen::Vector3d n = (cur_pos1 - cur_pos0).cross(cur_pos2 - cur_pos0);
+                                const double d = (cur_q - cur_pos0).dot(n);
+                                
 
-                                const Eigen::Vector3d n = (p2 - p1).cross(p3 - p1);
-                                const double d = (p0 - p1).dot(n);
-                                if (d < 0)
-                                    continue;
+                                XPBDMeshObject* xpbd_obj1 = dynamic_cast<XPBDMeshObject*>(_objects[obj_ind].get());
+                                XPBDMeshObject* xpbd_obj2 = dynamic_cast<XPBDMeshObject*>(_objects[oi].get());
+                                if (xpbd_obj1 && xpbd_obj2)
+                                {
+                                    if (d >= 0)
+                                        xpbd_obj1->addCollisionConstraint(xpbd_obj1, vert_ind, xpbd_obj2, v0, v1, v2);
 
-                                Collision collision;
-                                collision.obj1 = _objects[obj_ind].get();
-                                collision.vertex_ind = vert_ind;
-                                collision.obj2 = _objects[oi].get();
-                                collision.face_ind = fi;
-                                _potential_collisions.push_back(collision);
+                                }
+                                
                             }
 
                             
@@ -183,7 +147,77 @@ void CollisionScene::collideObjects(const double sim_time)
             }
         }
     }
+    
+    auto t3 = std::chrono::steady_clock::now();
+    std::cout << "Adding faces to buckets took " << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << " us" << std::endl;
     std::cout << "Num collision tests: " << num_tests << std::endl;
+}
+
+inline void CollisionScene::_addVerticesToBuckets(const double sim_time)
+{
+    for (int oi = 0; oi < _objects.size(); oi++)
+    {
+        // add vertices for this object to their corresponding buckets
+        const MeshObject::VerticesMat& obj_vertices = _objects[oi]->vertices();
+        const MeshObject::VerticesMat& obj_velocities = _objects[oi]->velocities();
+        // for (int vi = 0; vi < obj_vertices.rows(); vi++)
+        // {
+        //     // only consider surface vertices
+        //     if (!_objects[oi]->vertexOnSurface(vi))
+        //         continue;
+
+        //     // current cell
+        //     int cur_i = std::floor(obj_vertices(vi,0)/_cell_size);
+        //     int cur_j = std::floor(obj_vertices(vi,1)/_cell_size);
+        //     int cur_k = std::floor(obj_vertices(vi,2)/_cell_size);
+
+        //     // "next" cell - predict where vertex will be after one time step
+        //     int next_i = std::floor( (obj_vertices(vi,0)+obj_velocities(vi,0)*_dt)/_cell_size );
+        //     int next_j = std::floor( (obj_vertices(vi,1)+obj_velocities(vi,1)*_dt)/_cell_size );
+        //     int next_k = std::floor( (obj_vertices(vi,2)+obj_velocities(vi,2)*_dt)/_cell_size );
+
+        //     // add this vertex to "box" of cells between the current cell and the next cell
+        //     for (int i = std::min(cur_i,next_i); i <= std::max(cur_i,next_i); i++)
+        //     {
+        //         for (int j = std::min(cur_j,next_j); j <= std::max(cur_j,next_j); j++)
+        //         {
+        //             for (int k = std::min(cur_k,next_k); k <= std::max(cur_k,next_k); k++)
+        //             {
+        //                 // find the bucket index for this cell
+        //                 int bucket_index = _hash(i, j, k);
+
+        //                 // clear the bucket if it's stale
+        //                 if (_buckets[bucket_index].time != sim_time)
+        //                 {
+        //                     _buckets[bucket_index].vertices.clear();
+        //                     _buckets[bucket_index].time = sim_time;
+        //                 }
+        //                 // add it the appropriate bucket
+        //                 _buckets[bucket_index].vertices.push_back(std::make_pair(oi, vi));
+        //             }
+        //         }
+        //     }
+        // }
+
+        for (int vi = 0; vi < obj_vertices.rows(); vi++)
+        {
+            const Eigen::Vector3d next_pos = obj_vertices.row(vi) + obj_velocities.row(vi)*_dt;
+            int i = std::floor(next_pos[0]/_cell_size);
+            int j = std::floor(next_pos[1]/_cell_size);
+            int k = std::floor(next_pos[2]/_cell_size);
+
+            int bucket_index = _hash(i, j, k);
+
+            // clear the bucket if it's stale
+            if (_buckets[bucket_index].time != sim_time)
+            {
+                _buckets[bucket_index].vertices.clear();
+                _buckets[bucket_index].time = sim_time;
+            }
+            // add it the appropriate bucket
+            _buckets[bucket_index].vertices.push_back(std::make_pair(oi, vi));
+        }
+    }
 }
 
 // implements Moller-Trumbore intersection algorithm: https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm

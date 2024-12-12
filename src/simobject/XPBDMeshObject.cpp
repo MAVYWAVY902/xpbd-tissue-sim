@@ -48,11 +48,11 @@ unsigned XPBDMeshObject::numConstraintsForPosition(const unsigned index) const
     }
 }
 
-void XPBDMeshObject::addCollisionConstraint(XPBDMeshObject* vertex_obj, unsigned vertex_ind, XPBDMeshObject* face_obj, unsigned face_ind)
+void XPBDMeshObject::addCollisionConstraint(XPBDMeshObject* vertex_obj, unsigned vertex_ind, XPBDMeshObject* face_obj, unsigned face_vertex1, unsigned face_vertex2, unsigned face_vertex3)
 {
     std::unique_ptr<Solver::CollisionConstraint> collision_constraint = std::make_unique<Solver::CollisionConstraint>(vertex_obj, vertex_ind,
-                                                                                                                    face_obj, face_obj->faces()(face_ind,0),
-                                                                                                                    face_obj->faces()(face_ind,1), face_obj->faces()(face_ind,2));
+                                                                                                                    face_obj, face_vertex1,
+                                                                                                                    face_vertex2, face_vertex3);
     std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
     std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _dt);
 

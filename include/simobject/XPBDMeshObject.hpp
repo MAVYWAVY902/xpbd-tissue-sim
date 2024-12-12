@@ -56,7 +56,7 @@ class XPBDMeshObject : public ElasticMeshObject
      */
     unsigned numConstraintsForPosition(const unsigned index) const;
 
-    void addCollisionConstraint(XPBDMeshObject* vertex_obj, unsigned vertex_ind, XPBDMeshObject* face_obj, unsigned face_ind);
+    void addCollisionConstraint(XPBDMeshObject* vertex_obj, unsigned vertex_ind, XPBDMeshObject* face_obj, unsigned face_vertex1, unsigned face_vertex2, unsigned face_vertex3);
 
     void clearCollisionConstraints();
 
