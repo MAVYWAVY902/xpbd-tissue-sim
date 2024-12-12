@@ -104,11 +104,7 @@ class Simulation
         /** Time to wait inbetween viewer updates (in ms). This is 1/fps */
         int _viewer_refresh_time;
 
-        // /** the Viewer which renders graphics
-        //  * unique_ptr used here for lazy initialization, since easy3d::Viewer must be instantiated 
-        //  * AFTER the easy3d::initialize() call.
-        //  */
-        // std::unique_ptr<TextRenderingViewer> _viewer;
+        double _last_collision_detection_time;
 
         /** storage of all MeshObjects in the simulation */
         std::vector<std::shared_ptr<MeshObject>> _mesh_objects;

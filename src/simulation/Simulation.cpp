@@ -37,10 +37,13 @@ void Simulation::_init()
     {
         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
         _graphics_scene->init();
+        _graphics_scene->viewer()->registerSimulation(this);
     }
 
     // initialize the collision scene
-    _collision_scene = std::make_unique<CollisionScene>(_time_step, 0.05, 20000);
+    // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
+    _collision_scene = std::make_unique<CollisionScene>(1.0/30.0, 0.05, 10007);
+    _last_collision_detection_time = 0;
 }
 
 Simulation::Simulation(const std::string& config_filename)
@@ -122,6 +125,19 @@ void Simulation::setup()
     {
         _graphics_scene->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
     }
+
+    // update the cell size of the Collision scene now that we have added all the objects
+    unsigned total_num_edges = 0;
+    double total_edge_length = 0;
+    for (const auto& obj : _mesh_objects)
+    {
+        auto [num_edges, avg_edge_length] = obj->averageSurfaceEdgeLength();
+        total_num_edges += num_edges;
+        total_edge_length += avg_edge_length * num_edges;
+    }
+    _collision_scene->setCellSize(total_edge_length/total_num_edges);
+
+    std::cout << "Average edge length: " << total_edge_length / total_num_edges << std::endl;
 }
 
 void Simulation::update()
@@ -132,6 +148,8 @@ void Simulation::update()
     auto wall_time_start = std::chrono::steady_clock::now();
     // the wall time of the last viewer redraw
     auto last_redraw = std::chrono::steady_clock::now();
+
+    double last_collision_detection_time = _time;
 
     // loop until end time is reached
     while(_time < _end_time)
@@ -168,32 +186,39 @@ void Simulation::update()
 
 void Simulation::_timeStep()
 {
+    if (_time - _last_collision_detection_time > 1.0/30.0)
+    {
+        // run collision detection
+        // std::cout << "RUNNING COLLISION DETECTION...time = " << time() << std::endl;
+        for (auto& mo : _mesh_objects)
+        {
+            if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(mo.get()))
+                xpbd_obj->removeOldCollisionConstraints(33);
+        }
+        auto t1 = std::chrono::steady_clock::now();
+        _collision_scene->collideObjects(_time);
+        std::vector<Collision> potential_collisions = _collision_scene->potentialCollisions();
+        for (const auto& c : potential_collisions)
+        {
+            XPBDMeshObject* xpbd_obj1 = dynamic_cast<XPBDMeshObject*>(c.obj1);
+            XPBDMeshObject* xpbd_obj2 = dynamic_cast<XPBDMeshObject*>(c.obj2); 
+            if (xpbd_obj1 && xpbd_obj2)
+            {
+                xpbd_obj1->addCollisionConstraint(xpbd_obj1, c.vertex_ind, xpbd_obj2, c.face_ind);
+                // xpbd_obj2->addCollisionConstraint(xpbd_obj1, c.vertex_ind, xpbd_obj2, c.face_ind);
+            }
+        }
+        auto t2 = std::chrono::steady_clock::now();
+        std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+
+        _last_collision_detection_time = _time;
+    }
+
     // update each MeshObject
     for (auto& mo : _mesh_objects)
     {
         mo->update();
     }
-
-    // run collision detection
-    auto t1 = std::chrono::steady_clock::now();
-    _collision_scene->collideObjects();
-    std::vector<Collision> potential_collisions = _collision_scene->potentialCollisions();
-    // for now, just do self-collisions
-    // TODO: REFACTOR THIS WHOLE THING
-    for (const auto& c : potential_collisions)
-    {
-        if (c.obj1_ind == c.obj2_ind)
-        {
-            if (XPBDMeshObject* xpbd_mesh_object = dynamic_cast<XPBDMeshObject*>(_mesh_objects[c.obj1_ind].get()))
-            {
-            //    xpbd_mesh_object->addSelfCollision(c.vertex_ind, c.face_ind);
-            }
-            
-        }
-    }
-    auto t2 = std::chrono::steady_clock::now();
-    // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
-
     // increment the time by the time step
     _time += _time_step;
 }

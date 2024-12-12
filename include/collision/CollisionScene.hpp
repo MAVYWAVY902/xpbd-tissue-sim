@@ -6,18 +6,19 @@
 /** Represents a collision between a vertex and a face */
 struct Collision
 {
-    unsigned obj1_ind;
+    MeshObject* obj1;
     unsigned vertex_ind;
-    unsigned obj2_ind;
+    MeshObject* obj2;
     unsigned face_ind;
 };
 
 /** Represents a collision bucket */
 struct CollisionBucket
 {
+    double time;
     // first index is object index, second index is vertex/face vertex
     std::vector<std::pair<unsigned, unsigned>> vertices;
-    std::vector<std::pair<unsigned, unsigned>> faces;
+    // std::vector<std::pair<unsigned, unsigned>> faces;
 };
 
 class CollisionScene
@@ -25,9 +26,11 @@ class CollisionScene
     public:
     explicit CollisionScene(const double dt, const double cell_size, const unsigned num_buckets);
 
+    void setCellSize(const double cell_size) { _cell_size = cell_size; }
+
     void addObject(std::shared_ptr<MeshObject> new_obj);
 
-    void collideObjects();
+    void collideObjects(const double sim_time);
 
     std::vector<Collision> potentialCollisions() const { return _potential_collisions; };
 
@@ -36,6 +39,8 @@ class CollisionScene
     inline int _hash(int i, int j, int k) const;
 
     inline bool _rayTriangleIntersection(const Eigen::Vector3d& ray_origin, const Eigen::Vector3d& ray_vector, const Eigen::Vector3d& A, const Eigen::Vector3d& B, const Eigen::Vector3d& C) const;
+
+    inline double _distanceToFace(const Eigen::Vector3d& p, const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c);
 
     /** Time step */
     double _dt;

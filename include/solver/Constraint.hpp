@@ -144,6 +144,12 @@ class Constraint
     /** Returns the compliance for this constraint. */
     double alpha() const { return _alpha; }
 
+    /** Returns true if this constraints is an inequality, false otherwise.
+     * Usually, this constraints are equalities, i.e. C(x) = 0, so by default it returns false.
+     * Sometimes, such as for collision constraints, we might want C(x) >= 0.
+     */
+    virtual bool isInequality() const { return false; }
+
     /** Returns the positions involved in this constraint. */
     const std::vector<PositionReference>& positions() const { return _positions; }
 

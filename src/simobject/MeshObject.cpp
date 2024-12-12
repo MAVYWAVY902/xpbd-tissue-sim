@@ -49,31 +49,32 @@ Eigen::Vector3d MeshObject::bboxCenterCoords() const
     return mins + (maxs - mins)/2;
 }
 
-// std::vector<unsigned int> MeshObject::facesAsFlatList() const
-// {
-//     // each face (triangle) has 3 vertices
-//     std::vector<unsigned int> faces_flat_list(_faces.rows()*3);
+std::pair<unsigned,double> MeshObject::averageSurfaceEdgeLength() const
+{
+    std::set<std::pair<unsigned, unsigned>> surface_edges;
 
-//     for (const auto& face : _faces.rowwise())
-//     {
-//         faces_flat_list.insert(faces_flat_list.end(), {face(0), face(1), face(2)});
-//     }
+    // add all the unique edges to the set
+    for (const auto& face : _faces.rowwise())
+    {
+        if (face[0] > face[1])  surface_edges.insert(std::pair<unsigned,unsigned>(face[1], face[0]));
+        else                    surface_edges.insert(std::pair<unsigned,unsigned>(face[0], face[1]));
 
-//     return faces_flat_list;
-// }
+        if (face[0] > face[2])  surface_edges.insert(std::pair<unsigned,unsigned>(face[2], face[0]));
+        else                    surface_edges.insert(std::pair<unsigned,unsigned>(face[0], face[2]));
 
-// std::vector<unsigned int> MeshObject::edgesAsFlatList() const
-// {
-//     // TODO: filter duplicate edges
-//     std::vector<unsigned int> edges_flat_list(_faces.rows()*3);
+        if (face[1] > face[2])  surface_edges.insert(std::pair<unsigned,unsigned>(face[2], face[1]));
+        else                    surface_edges.insert(std::pair<unsigned,unsigned>(face[1], face[2]));
+    }
 
-//     for (const auto& face : _faces.rowwise())
-//     {
-//         edges_flat_list.insert(edges_flat_list.end(), {face(0), face(1), face(1), face(2), face(0), face(2)});
-//     }
+    // go through set of edges and add up total edge length
+    double total_edge_length = 0;
+    for (const auto& edge : surface_edges)
+    {
+        total_edge_length += (getVertex(edge.first) - getVertex(edge.second)).norm();
+    }
 
-//     return edges_flat_list;
-// }
+    return std::pair<unsigned,double>(surface_edges.size(), total_edge_length / surface_edges.size());
+}
 
 void MeshObject::setVertices(const VerticesMat& verts)
 {

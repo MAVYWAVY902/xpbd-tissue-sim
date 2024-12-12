@@ -17,6 +17,9 @@ void XPBDGaussSeidelSolver::_solveConstraints(double* data)
     auto t1 = std::chrono::high_resolution_clock::now();
     for (const auto& proj : _constraint_projectors)
     {
+        if (!proj)
+            continue;
+            
         // get the position updates for this constraint - they are put in the _coordinate_updates data block
         proj->project(data, _coordinate_updates.data());
         const std::vector<PositionReference>& positions = proj->positions();

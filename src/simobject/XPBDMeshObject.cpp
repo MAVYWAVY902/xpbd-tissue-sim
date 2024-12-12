@@ -1,6 +1,7 @@
 #include "simobject/XPBDMeshObject.hpp"
 #include "simulation/Simulation.hpp"
 #include "solver/XPBDGaussSeidelSolver.hpp"
+#include "solver/CollisionConstraint.hpp"
 #include "solver/HydrostaticConstraint.hpp"
 #include "solver/DeviatoricConstraint.hpp"
 #include "solver/ConstraintProjectorDecorator.hpp"
@@ -47,6 +48,45 @@ unsigned XPBDMeshObject::numConstraintsForPosition(const unsigned index) const
     }
 }
 
+void XPBDMeshObject::addCollisionConstraint(XPBDMeshObject* vertex_obj, unsigned vertex_ind, XPBDMeshObject* face_obj, unsigned face_ind)
+{
+    std::unique_ptr<Solver::CollisionConstraint> collision_constraint = std::make_unique<Solver::CollisionConstraint>(vertex_obj, vertex_ind,
+                                                                                                                    face_obj, face_obj->faces()(face_ind,0),
+                                                                                                                    face_obj->faces()(face_ind,1), face_obj->faces()(face_ind,2));
+    std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
+    std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _dt);
+
+    unsigned index = _solver->addConstraintProjector(std::move(collision_projector));
+    XPBDCollisionConstraint xpbd_collision_constraint;
+    xpbd_collision_constraint.constraint = std::move(collision_constraint);
+    xpbd_collision_constraint.projector_index = index;
+    xpbd_collision_constraint.num_steps_unused = 0;
+
+    _collision_constraints.push_back(std::move(xpbd_collision_constraint));
+}
+
+void XPBDMeshObject::clearCollisionConstraints()
+{
+    for (const auto& c : _collision_constraints)
+    {
+        _solver->removeConstraintProjector(c.projector_index);
+    }
+    _collision_constraints.clear();
+}
+
+void XPBDMeshObject::removeOldCollisionConstraints(const unsigned threshold)
+{
+    for (int i = _collision_constraints.size() - 1; i >= 0; i--)
+    {
+        if (_collision_constraints[i].num_steps_unused >= threshold)
+        {
+            // std::cout << "OLD COLLISION CONSTRAINT REMOVED!" << std::endl;
+            _solver->removeConstraintProjector(_collision_constraints[i].projector_index);
+            _collision_constraints.erase(_collision_constraints.begin() + i);
+        }
+    }
+}
+
 void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping, bool first_order)
 {
     // create constraint(s) for each element
@@ -67,8 +107,8 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
             std::vector<Solver::Constraint*> dev_vec; dev_vec.push_back(dev_constraint.get());
             std::unique_ptr<Solver::ConstraintProjector> dev_projector = std::make_unique<Solver::ConstraintProjector>(dev_vec, _dt);
 
-            _constraints.push_back(std::move(dev_constraint));
-            _constraints.push_back(std::move(hyd_constraint));
+            _elastic_constraints.push_back(std::move(dev_constraint));
+            _elastic_constraints.push_back(std::move(hyd_constraint));
 
             _solver->addConstraintProjector(_decorateConstraintProjector(std::move(dev_projector), with_residual, with_damping, first_order));
             _solver->addConstraintProjector(_decorateConstraintProjector(std::move(hyd_projector), with_residual, with_damping, first_order));
@@ -83,8 +123,8 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
             std::vector<Solver::Constraint*> vec; vec.push_back(dev_constraint.get()); vec.push_back(hyd_constraint.get());
             std::unique_ptr<Solver::CombinedNeohookeanConstraintProjector> projector = std::make_unique<Solver::CombinedNeohookeanConstraintProjector>(vec, _dt);
 
-            _constraints.push_back(std::move(dev_constraint));
-            _constraints.push_back(std::move(hyd_constraint));
+            _elastic_constraints.push_back(std::move(dev_constraint));
+            _elastic_constraints.push_back(std::move(hyd_constraint));
             
             _solver->addConstraintProjector( _decorateConstraintProjector(std::move(projector), with_residual, with_damping, first_order));
         }
@@ -155,6 +195,19 @@ void XPBDMeshObject::_movePositionsInertially()
 void XPBDMeshObject::_projectConstraints()
 {
     _solver->solve();
+
+    // update collision constraints unused
+    for (auto& c : _collision_constraints)
+    {
+        if (_solver->constraintProjectors()[c.projector_index]->lambda()[0] != 0)
+        {
+            c.num_steps_unused = 0;
+        }
+        else
+        {
+            c.num_steps_unused++;
+        }
+    }
 
     // TODO: replace with real collision detection
     for (unsigned i = 0; i < numVertices(); i++)

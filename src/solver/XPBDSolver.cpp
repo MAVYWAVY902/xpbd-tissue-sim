@@ -14,7 +14,7 @@ XPBDSolver::XPBDSolver(XPBDMeshObject const* obj, unsigned num_iter, XPBDResidua
     _primary_residual.resize(3*_obj->numVertices());
 }
 
-void XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> projector)
+unsigned XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> projector)
 {
     // amount of pre-allocated memory required to perform the constraint(s) projection
     unsigned required_array_size = projector->memoryNeeded() / sizeof(double);
@@ -43,8 +43,24 @@ void XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> pro
         }
     }
         
-    
-    _constraint_projectors.push_back(std::move(projector));
+    if (_empty_indices.empty())
+    {
+        _constraint_projectors.push_back(std::move(projector));
+        return _constraint_projectors.size() - 1;
+    }
+    else
+    {
+        const unsigned empty_index = _empty_indices.back();
+        _constraint_projectors.at(empty_index) = std::move(projector);
+        _empty_indices.pop_back();
+        return empty_index;
+    }
+}
+
+void XPBDSolver::removeConstraintProjector(const unsigned index)
+{
+    _num_constraints -= _constraint_projectors.at(index)->numConstraints();
+    _constraint_projectors.at(index) = nullptr;
 }
 
 void XPBDSolver::solve()
@@ -54,7 +70,8 @@ void XPBDSolver::solve()
     // initialize all the constraints
     for (const auto& c : _constraint_projectors)
     {
-        c->initialize();
+        if (c)
+            c->initialize();
     }
 
     for (unsigned i = 0; i < _num_iter; i++)
@@ -100,6 +117,9 @@ void XPBDSolver::_calculatePrimaryResidual()
     // subtract delC*lambda
     for (const auto& proj : _constraint_projectors)
     {
+        if (!proj)
+            continue;
+
         const std::vector<PositionReference>& positions = proj->positions();
         const std::vector<Constraint*>& constraints = proj->constraints();
         const std::vector<double>& lambda = proj->lambda();
@@ -133,6 +153,9 @@ void XPBDSolver::_calculateConstraintResidual()
     unsigned constraint_index = 0;
     for (const auto& proj : _constraint_projectors)
     {
+        if (!proj)
+            continue;
+
         proj->constraintEquation(_data.data(), _constraint_residual.data() + constraint_index);     // the result vector starts at the current constraint index
         constraint_index += proj->numConstraints();
     }
