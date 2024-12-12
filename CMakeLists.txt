@@ -12,7 +12,8 @@ find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # req
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 
 include_directories("./include")
-include_directories("/thirdparty/eigen")
+include_directories("/thirdparty/eigen")    # include Eigen header files
+include_directories("/workspace/exact-ccd") # include CCD header files
 
 add_library(MeshUtils include/utils/MeshUtils.hpp src/utils/MeshUtils.cpp) # create MeshUtils library
 set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX) # make sure the linker knows it's C++
@@ -40,6 +41,7 @@ add_library(SimObject)
 add_subdirectory("src/simobject")
 
 # link in necessary libraries
+target_link_libraries(Collision "/workspace/exact-ccd/libexact-ccd.a")
 target_link_libraries(Graphics easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
 target_link_libraries(Haptics HD HDU)   # link OpenHaptics API libraries for Haptics library
 target_link_libraries(SimObject MeshUtils Solver)   # link MeshUtils and Solver libraries

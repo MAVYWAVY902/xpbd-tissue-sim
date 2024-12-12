@@ -10,9 +10,17 @@
 namespace Solver
 {
     class Constraint;
+    class CollisionConstraint;
     class ConstraintProjector;
     class XPBDSolver;
 }
+
+struct XPBDCollisionConstraint
+{
+    std::unique_ptr<Solver::CollisionConstraint> constraint;
+    unsigned projector_index;
+    unsigned num_steps_unused;
+};
 
 /** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
  *  "A Constraint-based Formulation of Stable Neo-Hookean Materials" by Macklin and Muller (2021).
@@ -34,8 +42,8 @@ class XPBDMeshObject : public ElasticMeshObject
 
     Solver::XPBDSolver const* solver() const { return _solver.get(); }
 
-    unsigned numConstraints() const { return _constraints.size(); }
-    const std::vector<std::unique_ptr<Solver::Constraint>>& constraints() const { return _constraints; }
+    unsigned numConstraints() const { return _elastic_constraints.size() + _collision_constraints.size(); }
+    const std::vector<std::unique_ptr<Solver::Constraint>>& elasticConstraints() const { return _elastic_constraints; }
 
     /** Performs any one-time setup that needs to be done outside the constructor. */
     virtual void setup() override;
@@ -47,6 +55,12 @@ class XPBDMeshObject : public ElasticMeshObject
      * This is the factor by which to scale the residual in the distributed primary residual update methods.
      */
     unsigned numConstraintsForPosition(const unsigned index) const;
+
+    void addCollisionConstraint(XPBDMeshObject* vertex_obj, unsigned vertex_ind, XPBDMeshObject* face_obj, unsigned face_ind);
+
+    void clearCollisionConstraints();
+
+    void removeOldCollisionConstraints(const unsigned threshold);
 
     protected:
     /** Moves the vertices in the absence of constraints.
@@ -104,9 +118,10 @@ class XPBDMeshObject : public ElasticMeshObject
     bool _constraints_with_damping;         // whether or not the constraints should include damping in their update - set by the Config object
 
     std::unique_ptr<Solver::XPBDSolver> _solver;       // the XPBDSolver that will project the constraints
-    std::vector<std::unique_ptr<Solver::Constraint>> _constraints;  // the array of constraints applied to the elements of the mesh
-    
-
+    std::vector<std::unique_ptr<Solver::Constraint>> _elastic_constraints;  // the array of constraints applied to the elements of the mesh
+    // std::vector<std::unique_ptr<Solver::CollisionConstraint>> _collision_constraints;
+    // std::vector<unsigned> _collision_constraint_projector_indices;
+    std::vector<XPBDCollisionConstraint> _collision_constraints;
 };
 
 #endif // __XPBD_MESH_OBJECT_HPP

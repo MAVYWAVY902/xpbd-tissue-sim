@@ -84,6 +84,8 @@ class MeshObject
     */
     virtual void update() = 0;
 
+    std::pair<unsigned,double> averageSurfaceEdgeLength() const;
+
     /** Sets new vertices for the mesh. Also updates the vertex cache.
      * @param verts : the new matrix of vertices
      */

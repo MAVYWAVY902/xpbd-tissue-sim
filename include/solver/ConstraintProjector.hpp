@@ -138,6 +138,20 @@ class ConstraintProjector
         // evaluate constraints and their gradients
         _evaluateConstraintsAndGradients(C_ptr, delC_ptr, C_mem_ptr);
 
+        if (C_ptr[0] > 0 && _state->_constraints[0]->isInequality())
+        {
+            // std::cout << "Inequality not violated!" << " C: " << C_ptr[0] << std::endl;
+            for (unsigned i = 0; i < numCoordinates(); i++)
+            {
+                coordinate_updates_ptr[i] = 0;
+            }
+            return;
+        }
+        else if (_state->_constraints[0]->isInequality())
+        {
+            // std::cout << "INEQUALITY VIOLATED!" << " C: " << C_ptr[0] <<  std::endl;
+        }
+
         // populate M^-1 and alpha_tilde
         MInv(M_inv_ptr);
         alphaTilde(alpha_tilde_ptr);

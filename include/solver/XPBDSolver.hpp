@@ -46,13 +46,19 @@ class XPBDSolver
     /** Returns the number of solver iterations. */
     unsigned numIterations() const { return _num_iter; }
 
+    const std::vector<std::unique_ptr<ConstraintProjector>>& constraintProjectors() const { return _constraint_projectors; }
+
     /** Adds a constraint projector to this Solver. During solve(), the ConstraintProjector::project() method is called on each ConstraintProjector.
      * This object takes ownership of the ConstraintProjector passed in.
      *
-     * Each time a ConstraintProjector, the size of the data buffer 
+     * Each time a ConstraintProjector, the size of the data buffer is checked to make sure that it is large enough to accomodate the new constraint.
+     * 
+     * Returns the index of the constraint projector in the member list, which can be used to remove it later. We do this frequently with collision constraints and attachment constraints.
      */
-    void addConstraintProjector(std::unique_ptr<ConstraintProjector> projector); 
+    unsigned addConstraintProjector(std::unique_ptr<ConstraintProjector> projector); 
 
+
+    void removeConstraintProjector(const unsigned index);
 
     protected:
     /** Helper function that will perform 1 iteration of the solver. 
@@ -70,6 +76,7 @@ class XPBDSolver
 
     protected:
     std::vector<std::unique_ptr<ConstraintProjector>> _constraint_projectors;       // constraint projectors that will be used to project constraints to get position updates
+    std::vector<unsigned> _empty_indices;                       // indices in the _constraint_projectors vector that are empty (the ConstraintProjector they used to have got removed)
 
     XPBDMeshObject const* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
     unsigned _num_iter;                                         // number of solver iterations per solve() call
