@@ -18,7 +18,7 @@ struct CollisionBucket
     double time;
     // first index is object index, second index is vertex/face vertex
     std::vector<std::pair<unsigned, unsigned>> vertices;
-    // std::vector<std::pair<unsigned, unsigned>> faces;
+    std::vector<std::pair<unsigned, unsigned>> faces;
 };
 
 class CollisionScene
@@ -41,6 +41,10 @@ class CollisionScene
     inline bool _rayTriangleIntersection(const Eigen::Vector3d& ray_origin, const Eigen::Vector3d& ray_vector, const Eigen::Vector3d& A, const Eigen::Vector3d& B, const Eigen::Vector3d& C) const;
 
     inline double _distanceToFace(const Eigen::Vector3d& p, const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c);
+
+    private:
+
+    inline void _addVerticesToBuckets(const double sim_time);
 
     /** Time step */
     double _dt;
