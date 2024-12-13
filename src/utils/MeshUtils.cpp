@@ -293,15 +293,15 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             // a = rand()%2;
             if (a)
             {
-                Eigen::Vector3i back_face1({bf1, bf2, bf3});
-                Eigen::Vector3i back_face2({bf1, bf3, bf4});
+                Eigen::Vector3i back_face1({bf1, bf3, bf2});
+                Eigen::Vector3i back_face2({bf1, bf4, bf3});
                 faces.row(face_ind+2) = back_face1;
                 faces.row(face_ind+3) = back_face2;
             }
             else
             {
-                Eigen::Vector3i back_face1({bf1, bf2, bf4});
-                Eigen::Vector3i back_face2({bf2, bf3, bf4});
+                Eigen::Vector3i back_face1({bf1, bf4, bf2});
+                Eigen::Vector3i back_face2({bf2, bf4, bf3});
                 faces.row(face_ind+2) = back_face1;
                 faces.row(face_ind+3) = back_face2;
             }
@@ -345,15 +345,15 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             // a = rand()%2;
             if (a)
             {
-                Eigen::Vector3i left_face1({lf1, lf2, lf3});
-                Eigen::Vector3i left_face2({lf1, lf3, lf4});
+                Eigen::Vector3i left_face1({lf1, lf3, lf2});
+                Eigen::Vector3i left_face2({lf1, lf4, lf3});
                 faces.row(face_ind+2) = left_face1;
                 faces.row(face_ind+3) = left_face2;
             }
             else
             {
-                Eigen::Vector3i left_face1({lf1, lf2, lf4});
-                Eigen::Vector3i left_face2({lf2, lf3, lf4});
+                Eigen::Vector3i left_face1({lf1, lf4, lf2});
+                Eigen::Vector3i left_face2({lf2, lf4, lf3});
                 faces.row(face_ind+2) = left_face1;
                 faces.row(face_ind+3) = left_face2;
             }
@@ -396,15 +396,15 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             // a = rand()%2;
             if (a)
             {
-                Eigen::Vector3i bottom_face1({bf1, bf2, bf3});
-                Eigen::Vector3i bottom_face2({bf1, bf3, bf4});
+                Eigen::Vector3i bottom_face1({bf1, bf3, bf2});
+                Eigen::Vector3i bottom_face2({bf1, bf4, bf3});
                 faces.row(face_ind+2) = bottom_face1;
                 faces.row(face_ind+3) = bottom_face2;
             }
             else
             {
-                Eigen::Vector3i bottom_face1({bf1, bf2, bf4});
-                Eigen::Vector3i bottom_face2({bf2, bf3, bf4});
+                Eigen::Vector3i bottom_face1({bf1, bf4, bf2});
+                Eigen::Vector3i bottom_face2({bf2, bf4, bf3});
                 faces.row(face_ind+2) = bottom_face1;
                 faces.row(face_ind+3) = bottom_face2;
             }
