@@ -5,7 +5,8 @@ project(MyProject LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
-list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build") # needed in order to find Easy3D
+
+list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build")
 
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
@@ -85,6 +86,7 @@ target_link_libraries(BeamTest BeamSimulation)
 
 # add_executable(StaticLoadingTest src/exec/static_loading_test_main.cpp)
 # target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
+
 
 add_executable(HapticTest src/exec/haptic_main.cpp)
 target_link_libraries(HapticTest XPBD easy3d::viewer gmsh)
