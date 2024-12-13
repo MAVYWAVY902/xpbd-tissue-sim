@@ -4,7 +4,7 @@ g-accel: 9.81 # m/s2
 # sim-mode: "Frame-by-frame"
 sim-mode: "Visualization"
 # sim-mode: "AFAP"
-time-step: 1e-5
+time-step: 1e-4
 fps: 30
 end-time: 10
 objects:
@@ -41,10 +41,10 @@ objects:
   -
     name: "Tet2"
     type: "XPBDMeshObject"
-    filename: "../resource/general/stanford_bunny_lowpoly.msh"
+    # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/general/stanford_bunny_medpoly.msh"
     # filename: "../resource/general/single.msh"
-    # filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube8.msh"
     # filename: "../resource/cube/cube16.msh"
     material:
       name: "Soft Tissue"
