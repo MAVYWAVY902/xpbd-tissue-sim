@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
-project(MyProject)
+set(CMAKE_CUDA_ARCHITECTURES "native")
+set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
+project(MyProject LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
+
 
 list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build")
 
@@ -100,3 +103,5 @@ target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
 
 add_executable(HapticTest src/exec/haptic_main.cpp)
 target_link_libraries(HapticTest XPBD easy3d::viewer gmsh)
+
+add_executable(CudaTest src/exec/cuda_test.cu)
