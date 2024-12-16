@@ -125,7 +125,7 @@ class CollisionConstraint : public Constraint
 
         const bool point_not_over_triangle = !_pointOverTriangle(q, p1, p2, p3);
         // C = (q - p1)^T * a / |a| 
-        *C = inv_magA * ( (q[0] - p1[0]) * a[0] + (q[1] - p1[1]) * a[1] + (q[2] - p1[2]) * a[2] );// + point_not_over_triangle*1000;
+        *C = inv_magA * ( (q[0] - p1[0]) * a[0] + (q[1] - p1[1]) * a[1] + (q[2] - p1[2]) * a[2] ) + 1e-4;// + point_not_over_triangle*1000;
 
         // std::cout << "q: " << q[0] << ", " << q[1] << ", " << q[2] << std::endl;
         // std::cout << "p1: " << p1[0] << ", " << p1[1] << ", " << p1[2] << std::endl;

@@ -12,6 +12,12 @@ struct Collision
     unsigned face_ind;
 };
 
+struct CollisionObject
+{
+    MeshObject* obj_ptr;
+    MeshObject::VerticesMat prev_vertices;
+};
+
 /** Represents a collision bucket */
 struct CollisionBucket
 {
@@ -33,6 +39,8 @@ class CollisionScene
     void collideObjects(const double sim_time);
 
     std::vector<Collision> potentialCollisions() const { return _potential_collisions; };
+
+    void updatePrevPositions();
 
     protected:
 
@@ -56,7 +64,8 @@ class CollisionScene
     unsigned _num_buckets;
 
     /** Stores the mesh objects in the scene. */
-    std::vector<std::shared_ptr<MeshObject>> _objects;
+    // std::vector<std::shared_ptr<MeshObject>> _objects;
+    std::vector<CollisionObject> _objects;
 
     /** Collision buckets */
     std::vector<CollisionBucket> _buckets;

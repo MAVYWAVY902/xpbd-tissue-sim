@@ -42,6 +42,7 @@ class SimulationConfig : public Config
     /** Static predefined default for simulation FPS */
     static std::optional<double>& DEFAULT_FPS() { static std::optional<double> fps(30.0); return fps; }
 
+    static std::optional<double>& DEFAULT_COLLISION_RATE() { static std::optional<double> collision_rate(100); return collision_rate; }
     /** Static predifined options for the simulation mode. Maps strings to the Simulation mode enum. */
     static std::map<std::string, SimulationMode> SIM_MODE_OPTIONS()
     {
@@ -74,6 +75,7 @@ class SimulationConfig : public Config
         _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
         _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
         _extractParameter("fps", node, _fps, DEFAULT_FPS());
+        _extractParameter("collision-rate", node, _collision_rate, DEFAULT_COLLISION_RATE());
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -128,6 +130,7 @@ class SimulationConfig : public Config
     std::optional<double> gAccel() const { return _g_accel.value; }
     std::optional<std::string> description() const { return _description.value; }
     std::optional<double> fps() const { return _fps.value; }
+    std::optional<double> collisionRate() const { return _collision_rate.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const std::vector<std::unique_ptr<MeshObjectConfig> >& meshObjectConfigs() const { return _mesh_object_configs; }
@@ -141,6 +144,7 @@ class SimulationConfig : public Config
     ConfigParameter<double> _g_accel;
     ConfigParameter<std::string> _description;
     ConfigParameter<double> _fps;
+    ConfigParameter<double> _collision_rate;
 
     /** List of MeshObject configs for each object in the Simulation */
     std::vector<std::unique_ptr<MeshObjectConfig>> _mesh_object_configs;
