@@ -12,6 +12,7 @@ class Simulation;
 
 class Object
 {
+    public:
     Object(const std::string& name)
         : _name(name)
     {
@@ -39,7 +40,7 @@ class Object
     virtual void update() = 0;
     
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
-    virtual AABB AABB() const = 0;
+    virtual Geometry::AABB boundingBox() const = 0;
 
     protected:
     /** Name of the object */

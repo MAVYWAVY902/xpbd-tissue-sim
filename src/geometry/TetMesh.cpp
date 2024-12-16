@@ -1,5 +1,7 @@
 #include "geometry/TetMesh.hpp"
 
+#include <set>
+
 namespace Geometry
 {
 
@@ -9,11 +11,11 @@ TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const Eleme
 
 double TetMesh::volume(const int index) const
 {
-    const Eigen::Vector4i& element = getElement(index);
-    const Eigen::Vector3d& v1 = getVertex(element[0]);
-    const Eigen::Vector3d& v2 = getVertex(element[1]);
-    const Eigen::Vector3d& v3 = getVertex(element[2]);
-    const Eigen::Vector3d& v4 = getVertex(element[3]);
+    const Eigen::Vector4i& elem = element(index);
+    const Eigen::Vector3d& v1 = vertex(elem[0]);
+    const Eigen::Vector3d& v2 = vertex(elem[1]);
+    const Eigen::Vector3d& v3 = vertex(elem[2]);
+    const Eigen::Vector3d& v4 = vertex(elem[3]);
 
     Eigen::Matrix3d X;
     X.col(0) = (v1 - v4);
@@ -38,10 +40,10 @@ std::pair<int, double> TetMesh::averageTetEdgeLength() const
     double total_length = 0;
     for (const auto& elem : _elements.colwise())
     {
-        const Eigen::Vector3d& v1 = getVertex(elem(0));
-        const Eigen::Vector3d& v2 = getVertex(elem(1));
-        const Eigen::Vector3d& v3 = getVertex(elem(2));
-        const Eigen::Vector3d& v4 = getVertex(elem(3));
+        const Eigen::Vector3d& v1 = vertex(elem(0));
+        const Eigen::Vector3d& v2 = vertex(elem(1));
+        const Eigen::Vector3d& v3 = vertex(elem(2));
+        const Eigen::Vector3d& v4 = vertex(elem(3));
 
         std::pair<int, int> e1 = make_edge(elem(0), elem(1));
         std::pair<int, int> e2 = make_edge(elem(0), elem(2));

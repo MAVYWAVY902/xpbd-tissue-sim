@@ -8,6 +8,7 @@ namespace Simulation
 
 class RigidObject : public Object
 {
+    public:
     RigidObject(const std::string& name);
 
     RigidObject(const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation);
@@ -30,7 +31,7 @@ class RigidObject : public Object
     virtual void update() override;
     
     /** Getters and setters */
-    virtual void setLinearVelocity(const Eigen::Vector3d& lin_velocity) { _v = velocity; }
+    virtual void setLinearVelocity(const Eigen::Vector3d& lin_velocity) { _v = lin_velocity; }
     Eigen::Vector3d linearVelocity() const { return _v; }
 
     virtual void setAngularVelocity(const Eigen::Vector3d& ang_velocity) { _w = ang_velocity; }
@@ -47,22 +48,23 @@ class RigidObject : public Object
 
 
     protected:
-    /** Moment of inertia matrix. */
-    Eigen::Matrix3d _I;
-    /** Total mass of rigid body. */
-    double _m;
-
     /** Position of rigid body */
     Eigen::Vector3d _p;
     /** Orientation of rigid body, expressed as a quaternion. */
     Eigen::Vector4d _q;
+
+    /** Total mass of rigid body. */
+    double _m;
+    /** Moment of inertia matrix. */
+    Eigen::Matrix3d _I;
+    
 
     /** Translational velocity of rigid body. */
     Eigen::Vector3d _v;
     /** Rotational velocity of rigid body. */
     Eigen::Vector3d _w;
 
-}
+};
 
 } // namespace Simulation
 
