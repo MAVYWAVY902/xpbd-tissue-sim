@@ -1,5 +1,7 @@
 #include "geometry/Mesh.hpp"
 
+#include <set>
+
 namespace Geometry
 {
 
@@ -15,11 +17,11 @@ double* Mesh::vertexPointer(const int index) const
     return p;
 }
 
-AABB Mesh::AABB() const
+AABB Mesh::boundingBox() const
 {
     Eigen::Vector3d min = _vertices.rowwise().minCoeff();
     Eigen::Vector3d max = _vertices.rowwise().maxCoeff();
-    return Geometry::AABB(min, max);
+    return AABB(min, max);
 }
 
 std::pair<int,double> Mesh::averageFaceEdgeLength() const
@@ -46,7 +48,7 @@ std::pair<int,double> Mesh::averageFaceEdgeLength() const
     double total_edge_length = 0;
     for (const auto& edge : edges)
     {
-        total_edge_length += (getVertex(edge.first) - getVertex(edge.second)).norm();
+        total_edge_length += (vertex(edge.first) - vertex(edge.second)).norm();
     }
 
     // return the number of unqiue edges as well as the average edge length in the mesh
@@ -56,11 +58,11 @@ std::pair<int,double> Mesh::averageFaceEdgeLength() const
 int Mesh::getClosestVertex(const Eigen::Vector3d& p) const
 {
     unsigned closest_index = 0;
-    double closest_dist = (p - getVertex(0)).squaredNorm();
+    double closest_dist = (p - vertex(0)).squaredNorm();
     // I'm sure there is a better way to do this with std
     for (int i = 0; i < _vertices.cols(); i++)
     {
-        double dist = (p - getVertex(i)).squaredNorm();
+        double dist = (p - vertex(i)).squaredNorm();
         if (dist < closest_dist)
         {
             closest_index = i;
@@ -117,7 +119,7 @@ std::vector<int> Mesh::getVerticesWithZ(const double z) const
 void Mesh::resize(const double size_of_max_dim)
 {
     // compute the AABB
-    const AABB aabb = AABB();
+    const AABB aabb = boundingBox();
     // find the scaling factor such that when the mesh is scaled the largest dimension has the specified size
     double scaling_factor = size_of_max_dim / (aabb.max - aabb.min).maxCoeff();
 
@@ -130,7 +132,7 @@ void Mesh::resize(const double size_of_max_dim)
 void Mesh::resize(const Eigen::Vector3d& new_size)
 {
     // compute the AABB
-    const AABB aabb = AABB();
+    const AABB aabb = boundingBox();
     const Eigen::Vector3d size = aabb.size();
     // compute the scaling factors for each dimension
     // compute the scaling factors for each dimension
@@ -155,7 +157,7 @@ void Mesh::moveTo(const Eigen::Vector3d& position)
 {
 
     // calculate the required position offset based on the current center of the AABB
-    const AABB aabb = AABB();
+    const AABB aabb = boundingBox();
     Eigen::Vector3d offset = position - aabb.center();
 
     // apply the position offset
@@ -186,7 +188,7 @@ void Mesh::rotate(const Eigen::Vector3d& xyz_angles)
 
 void Mesh::rotate(const Eigen::Matrix3d& rot_mat)
 {
-    const AABB aabb = AABB();
+    const AABB aabb = boundingBox();
     move(-aabb.center());
     _vertices = rot_mat * _vertices;
     move(aabb.center());

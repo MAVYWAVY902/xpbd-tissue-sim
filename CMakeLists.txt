@@ -24,6 +24,10 @@ add_subdirectory("src/collision")
 add_library(Graphics)
 add_subdirectory("src/graphics")
 
+# Geometry library
+add_library(Geometry)
+add_subdirectory("src/geometry")
+
 # Haptics library
 add_library(Haptics)
 add_subdirectory("src/haptics")
@@ -41,7 +45,7 @@ add_subdirectory("src/simobject")
 target_link_libraries(Collision "/workspace/exact-ccd/libexact-ccd.a")
 target_link_libraries(Graphics easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
 target_link_libraries(Haptics HD HDU)   # link OpenHaptics API libraries for Haptics library
-target_link_libraries(SimObject MeshUtils Solver)   # link MeshUtils and Solver libraries
+target_link_libraries(SimObject MeshUtils Solver Geometry)   # link MeshUtils and Solver libraries
 target_link_libraries(Solver SimObject)         # link SimObject library
 
 ### Simulation libraries - each has its own executable

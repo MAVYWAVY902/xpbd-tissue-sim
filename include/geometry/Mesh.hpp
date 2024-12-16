@@ -34,7 +34,7 @@ class Mesh
     const Eigen::Vector3i& face(const int index) const { return _faces.col(index); }
 
     /** Returns the axis-aligned bounding-box (AABB) for the mesh. */
-    AABB AABB() const; 
+    AABB boundingBox() const; 
 
     /** Returns the number of edges along with the average edge length in the faces of the mesh. */
     std::pair<int,double> averageFaceEdgeLength() const;
