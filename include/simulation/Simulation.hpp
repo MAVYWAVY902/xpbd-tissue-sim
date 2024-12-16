@@ -103,6 +103,8 @@ class Simulation
         double _g_accel;
         /** Time to wait inbetween viewer updates (in ms). This is 1/fps */
         int _viewer_refresh_time;
+        /** Time to wait inbetween collision checks (in seconds). This is 1/collision_rate */
+        double _time_between_collision_checks;
 
         double _last_collision_detection_time;
 
