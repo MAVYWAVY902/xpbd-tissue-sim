@@ -2,12 +2,14 @@
 #include "config/RigidMeshObjectConfig.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
+#include "config/RigidPrimitiveConfigs.hpp"
 
 #include "graphics/Easy3DGraphicsScene.hpp"
 
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
+#include "simobject/RigidPrimitives.hpp"
 
 #include "utils/MeshUtils.hpp"
 
@@ -94,11 +96,23 @@ void Simulation::setup()
         {
             new_obj = std::make_unique<RigidMeshObject>(this, rigid_config);
         }
+        else if (RigidSphereConfig* rigid_config = dynamic_cast<RigidSphereConfig*>(obj_config.get()))
+        {
+            new_obj = std::make_unique<RigidSphere>(this, rigid_config);
+        }
+        else if (RigidBoxConfig* rigid_config = dynamic_cast<RigidBoxConfig*>(obj_config.get()))
+        {
+            new_obj = std::make_unique<RigidBox>(this, rigid_config);
+        }
+        else if (RigidCylinderConfig* rigid_config = dynamic_cast<RigidCylinderConfig*>(obj_config.get()))
+        {
+            new_obj = std::make_unique<RigidCylinder>(this, rigid_config);
+        }
         else
         {
-            // downcasting failed for some reason, continue onto the next one
-            std::cout << "Unknown config type!" << std::endl;
-            continue;
+            // downcasting failed for some reason, halt
+            std::cerr << "Unknown config type!" << std::endl;
+            assert(0);
         }
 
         // set up the new object

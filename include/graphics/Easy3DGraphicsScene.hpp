@@ -5,7 +5,6 @@
 #include "graphics/Easy3DTextRenderingViewer.hpp"
 
 #include "simobject/Object.hpp"
-#include "simobject/MeshObject.hpp"
 #include "config/MeshObjectConfig.hpp"
 #include "config/ObjectConfig.hpp"
 

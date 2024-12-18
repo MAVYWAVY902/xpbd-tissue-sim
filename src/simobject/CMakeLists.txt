@@ -8,6 +8,7 @@ target_sources(SimObject
     PRIVATE
         ${SIMOBJECT_INCLUDE_DIR}/Object.hpp
         ${SIMOBJECT_INCLUDE_DIR}/RigidObject.hpp
+        ${SIMOBJECT_INCLUDE_DIR}/RigidPrimitives.hpp
         # ${SIMOBJECT_INCLUDE_DIR}/MeshObject.hpp
         # ${SIMOBJECT_INCLUDE_DIR}/ElasticMeshObject.hpp
         ${SIMOBJECT_INCLUDE_DIR}/XPBDMeshObject.hpp
@@ -16,6 +17,7 @@ target_sources(SimObject
         # ${SIMOBJECT_INCLUDE_DIR}/FastFEMMeshObject.hpp
         ${SIMOBJECT_INCLUDE_DIR}/ElasticMaterial.hpp
         ${SIMOBJECT_SRC_DIR}/RigidObject.cpp
+        ${SIMOBJECT_SRC_DIR}/RigidPrimitives.cpp
         # ${SIMOBJECT_SRC_DIR}/MeshObject.cpp
         # ${SIMOBJECT_SRC_DIR}/ElasticMeshObject.cpp
         ${SIMOBJECT_SRC_DIR}/XPBDMeshObject.cpp

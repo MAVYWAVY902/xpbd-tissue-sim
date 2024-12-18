@@ -1,4 +1,5 @@
 #include "simobject/RigidObject.hpp"
+#include "utils/GeometryUtils.hpp"
 
 namespace Sim
 {
@@ -7,7 +8,8 @@ RigidObject::RigidObject(const Simulation* sim, const RigidObjectConfig* config)
     : Object(sim, config)
 {
     _p = config->initialPosition();
-    _q = _eulXYZ2Quat(config->initialRotation()[0], config->initialRotation()[1], config->initialRotation()[2]);
+    const Eigen::Vector3d& initial_rotation_rad = config->initialRotation() * 3.1415 / 180.0;
+    _q = GeometryUtils::eulXYZ2Quat(initial_rotation_rad[0], initial_rotation_rad[1], initial_rotation_rad[2]);
 
     _v = config->initialVelocity();
     _w = config->initialAngularVelocity();
@@ -46,14 +48,5 @@ void RigidObject::update()
     // TODO: implement rigid body dynamics here
 }
 
-Eigen::Vector4d RigidObject::_eulXYZ2Quat(const double x, const double y, const double z) const
-{
-    const double q1 = std::sin(0.5*x)*std::cos(0.5*y)*std::cos(0.5*z) - std::cos(0.5*x)*std::sin(0.5*y)*std::sin(0.5*z);
-    const double q2 = std::cos(0.5*x)*std::sin(0.5*y)*std::cos(0.5*z) + std::sin(0.5*x)*std::cos(0.5*y)*std::sin(0.5*z);
-    const double q3 = std::cos(0.5*x)*std::cos(0.5*y)*std::sin(0.5*z) - std::sin(0.5*x)*std::sin(0.5*y)*std::cos(0.5*z);
-    const double w = std::cos(0.5*x)*std::cos(0.5*y)*std::cos(0.5*z) + std::sin(0.5*x)*std::sin(0.5*y)*std::sin(0.5*z);
-
-    return Eigen::Vector4d({q1, q2, q3, w});
-}
 
 } // namespace Simulation

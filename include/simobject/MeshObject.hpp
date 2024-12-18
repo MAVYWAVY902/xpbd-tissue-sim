@@ -19,8 +19,8 @@ class MeshObject
         _initial_position = obj_config->initialPosition();
         _initial_rotation = obj_config->initialRotation();
 
-        _initial_size = obj_config->size();
-        _max_size = obj_config->maxSize();
+        _initial_size = mesh_config->size();
+        _max_size = mesh_config->maxSize();
     }
 
     const Geometry::Mesh* mesh() const { return _mesh.get(); }

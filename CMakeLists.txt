@@ -19,6 +19,8 @@ add_library(MeshUtils include/utils/MeshUtils.hpp src/utils/MeshUtils.cpp) # cre
 set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX) # make sure the linker knows it's C++
 target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
 
+add_library(GeometryUtils include/utils/GeometryUtils.hpp src/utils/GeometryUtils.cpp)
+
 # Collision library
 add_library(Collision)
 add_subdirectory("src/collision")
@@ -48,7 +50,7 @@ add_subdirectory("src/simobject")
 target_link_libraries(Collision "/workspace/exact-ccd/libexact-ccd.a")
 target_link_libraries(Graphics easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
 target_link_libraries(Haptics HD HDU)   # link OpenHaptics API libraries for Haptics library
-target_link_libraries(SimObject MeshUtils Solver Geometry)   # link MeshUtils and Solver libraries
+target_link_libraries(SimObject MeshUtils GeometryUtils Solver Geometry)   # link MeshUtils and Solver libraries
 target_link_libraries(Solver SimObject)         # link SimObject library
 
 ### Simulation libraries - each has its own executable

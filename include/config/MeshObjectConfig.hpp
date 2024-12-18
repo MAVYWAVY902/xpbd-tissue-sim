@@ -19,14 +19,19 @@ class MeshObjectConfig
         Config::_extractParameter("draw-edges", node, _draw_edges, DEFAULT_DRAW_EDGES());
         Config::_extractParameter("draw-faces", node, _draw_faces, DEFAULT_DRAW_FACES());
         Config::_extractParameter("color", node, _color, DEFAULT_COLOR());
-    }
 
+        Config::_extractParameter("max-size", node, _max_size);
+        Config::_extractParameter("size", node, _size);
+    }
 
     std::string filename() const { return _filename.value.value(); }
     bool drawPoints() const { return _draw_points.value.value(); }
     bool drawEdges() const { return _draw_edges.value.value(); }
     bool drawFaces() const { return _draw_faces.value.value(); }
     Eigen::Vector4d color() const { return _color.value.value(); }
+
+    std::optional<double> maxSize() const { return _max_size.value; }
+    std::optional<Eigen::Vector3d> size() const { return _size.value; }
 
     protected:
     ConfigParameter<std::string> _filename;
@@ -35,6 +40,9 @@ class MeshObjectConfig
     ConfigParameter<bool> _draw_edges;
     ConfigParameter<bool> _draw_faces;
     ConfigParameter<Eigen::Vector4d> _color;
+
+    ConfigParameter<double> _max_size;
+    ConfigParameter<Eigen::Vector3d> _size;
 
 };
 
