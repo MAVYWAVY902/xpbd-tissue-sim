@@ -15,7 +15,7 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
     virtual std::string toString(const int indent) const override;
     virtual std::string type() const override { return "FirstOrderXPBDMeshObject"; }
 
-    // virtual void setup() override;
+    virtual void setup() override;
 
     double vertexDamping(const unsigned index) const { return 1.0/_inv_B[index]; }
 
