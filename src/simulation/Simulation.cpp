@@ -103,10 +103,7 @@ void Simulation::setup()
 
         // set up the new object
         new_obj->setup();
-
-        // if we get to here, we have successfully created a new MeshObject of some kind
-        // so add the new object to the simulation
-        _objects.push_back(std::move(new_obj));
+        
         // add the new object to the collision scene if collisions are enabled
         if (obj_config->collisions())
         {
@@ -117,6 +114,10 @@ void Simulation::setup()
         {
             _graphics_scene->addObject(new_obj.get(), obj_config.get());
         }
+
+        // if we get to here, we have successfully created a new MeshObject of some kind
+        // so add the new object to the simulation
+        _objects.push_back(std::move(new_obj));
     }
 
     // add text that displays the current Sim Time   
@@ -191,7 +192,7 @@ void Simulation::_timeStep()
         auto t1 = std::chrono::steady_clock::now();
         _collision_scene->collideObjects(_time);
         auto t2 = std::chrono::steady_clock::now();
-        std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+        // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
         
     }

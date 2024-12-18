@@ -236,7 +236,7 @@ class FirstOrder : public ConstraintProjectorDecorator
     FirstOrder(std::unique_ptr<ConstraintProjector> component)
         : ConstraintProjectorDecorator(std::move(component))
     {
-        for (unsigned i = 0; i < numPositions(); i++)
+        for (int i = 0; i < numPositions(); i++)
         {
             // try casting to FirstOrderXPBDMeshObject
             if (const Sim::FirstOrderXPBDMeshObject* fo_obj = dynamic_cast<const Sim::FirstOrderXPBDMeshObject*>(_state->_positions[i].obj))
@@ -255,7 +255,7 @@ class FirstOrder : public ConstraintProjectorDecorator
     /** Override the alphaTilde to use alpha_tilde = alpha / dt instead of alpha_tilde = alpha / dt^2. */
     inline virtual void alphaTilde(double* alpha_tilde_ptr) const override
     {
-        for (unsigned i = 0; i < numConstraints(); i++)
+        for (int i = 0; i < numConstraints(); i++)
         {
             alpha_tilde_ptr[i] = _state->_constraints[i]->alpha() / _state->_dt;
         }
