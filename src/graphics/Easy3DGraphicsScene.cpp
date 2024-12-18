@@ -56,7 +56,7 @@ int Easy3DGraphicsScene::run()
     return _easy3d_viewer->run();
 }
 
-size_t Easy3DGraphicsScene::addMeshObject(std::shared_ptr<MeshObject> obj, MeshObjectConfig* obj_config)
+int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const ObjectConfig* obj_config)
 {
 
     // make sure object with name doesn't already exist in the scene
@@ -66,25 +66,35 @@ size_t Easy3DGraphicsScene::addMeshObject(std::shared_ptr<MeshObject> obj, MeshO
         assert(0);
     }
 
-    // create a new MeshGraphicsObject for visualizing this MeshObject
-    std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), obj, obj_config);
-    
-    // add the easy3d::Drawables created by the Easy3DMeshGraphicsObject to the easy3d::Viewer
-    for (const auto& pt_drawable : e3d_mgo->renderer()->points_drawables())
+    // try downcasting to MeshObject
+    if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(obj))
     {
-        _easy3d_viewer->add_drawable(pt_drawable);
-    }
-    for (const auto& line_drawable : e3d_mgo->renderer()->lines_drawables())
-    {
-        _easy3d_viewer->add_drawable(line_drawable);
-    }
-    for (const auto& tri_drawable : e3d_mgo->renderer()->triangles_drawables())
-    {
-        _easy3d_viewer->add_drawable(tri_drawable);
+        // if the downcast was successful, we should be able to downcast the ObjectConfig object to a MeshObjectConfig
+        const MeshObjectConfig* mo_config = dynamic_cast<const MeshObjectConfig*>(obj_config);
+        assert(mo_config);
+
+        // create a new MeshGraphicsObject for visualizing this MeshObject
+        std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
+        
+        // add the easy3d::Drawables created by the Easy3DMeshGraphicsObject to the easy3d::Viewer
+        for (const auto& pt_drawable : e3d_mgo->renderer()->points_drawables())
+        {
+            _easy3d_viewer->add_drawable(pt_drawable);
+        }
+        for (const auto& line_drawable : e3d_mgo->renderer()->lines_drawables())
+        {
+            _easy3d_viewer->add_drawable(line_drawable);
+        }
+        for (const auto& tri_drawable : e3d_mgo->renderer()->triangles_drawables())
+        {
+            _easy3d_viewer->add_drawable(tri_drawable);
+        }
+
+        // store the MeshGraphicsObject and return its position in the vector
+        _graphics_objects.push_back(std::move(e3d_mgo));
     }
 
-    // store the MeshGraphicsObject and return its position in the vector
-    _graphics_objects.push_back(std::move(e3d_mgo));
+    
     return _graphics_objects.size() - 1;
 }
 

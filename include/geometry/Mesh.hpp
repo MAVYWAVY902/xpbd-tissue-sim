@@ -27,11 +27,17 @@ class Mesh
     int numVertices() const { return _vertices.cols(); }
     int numFaces() const { return _faces.cols(); }
 
-    const Eigen::Vector3d& vertex(const int index) const { return _vertices.col(index); }
+    Eigen::Vector3d vertex(const int index) const { return _vertices.col(index); }
     double* vertexPointer(const int index) const;
     void setVertex(const int index, const Eigen::Vector3d& new_pos) { _vertices.col(index) = new_pos; }
+    void displaceVertex(const int index, const double dx, const double dy, const double dz)
+    {
+        _vertices(0, index) += dx;
+        _vertices(1, index) += dy;
+        _vertices(2, index) += dz;
+    }
 
-    const Eigen::Vector3i& face(const int index) const { return _faces.col(index); }
+    Eigen::Vector3i face(const int index) const { return _faces.col(index); }
 
     /** Returns the axis-aligned bounding-box (AABB) for the mesh. */
     AABB boundingBox() const; 
@@ -65,8 +71,13 @@ class Mesh
     */
     void resize(const Eigen::Vector3d& size);
 
-    /** Moves the mesh by a specified amount. */
-    void move(const Eigen::Vector3d& delta);
+    /** Moves each vertex in the mesh by the same amount. */
+    void moveTogether(const Eigen::Vector3d& delta);
+
+    /** Moves each vertex in the mesh by a per-vertex amount.
+     * Up to the caller to ensure that the per-vertex displacement matrix is the same dimensions as the mesh's vertices matrix.
+     */
+    void moveSeparate(const VerticesMat& delta);
 
     /** Moves the center of the AABB of the mesh to a specified position.
      * @param position : the position to move the center of the AABB mesh to

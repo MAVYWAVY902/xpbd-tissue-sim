@@ -4,6 +4,9 @@
 
 #include "simobject/XPBDMeshObject.hpp"
 
+namespace Sim
+{
+
 void OutputSimulation::_init()
 {
     Simulation::_init();
@@ -51,3 +54,5 @@ void OutputSimulation::_timeStep()
     }
 
 }
+
+} // namespace Sim

@@ -8,15 +8,16 @@ namespace Geometry
 
 class TetMesh : public Mesh
 {
+    public:
     TetMesh(const VerticesMat& vertices, const FacesMat& faces, const ElementsMat& elements);
 
     const ElementsMat& elements() const { return _elements; }
     int numElements() const { return _elements.cols(); }
 
-    const Eigen::Vector4i& element(const int index) const { return _elements.col(index); }
+    Eigen::Vector4i element(const int index) const { return _elements.col(index); }
 
     /** Returns the volume of the specified element. */
-    double volume(const int index) const;
+    double elementVolume(const int index) const;
 
     /** Returns the number of edges along with the average edge length in the tetrahedra of the mesh.
      * Note that this is different from averageFaceEdgeLength, which only returns the average edge length in the faces (i.e. the surface) of the mesh.

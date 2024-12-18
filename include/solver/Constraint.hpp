@@ -16,8 +16,8 @@ namespace Solver
  */
 struct PositionReference
 {
-    XPBDMeshObject* obj;        // pointer to the MeshObject the position belongs to
-    unsigned index;             // the index of this position in the array of vertices
+    const Sim::XPBDMeshObject* obj;        // pointer to the MeshObject the position belongs to
+    int index;             // the index of this position in the array of vertices
     double* position_ptr;       // a direct pointer to the position - points to a data block owned by obj's vertices matrix
     double* prev_position_ptr;  // a direct pointer to the previous position - points to a data block owned by obj's previous positions matrix
     double inv_mass;            // store the inverse mass for quick lookup
@@ -29,11 +29,11 @@ struct PositionReference
     {}
 
     /** Constructor that initializes quantities from just an object pointer and index. */
-    PositionReference(XPBDMeshObject* obj_, unsigned index_)
+    PositionReference(const Sim::XPBDMeshObject* obj_, int index_)
         : obj(obj_), index(index_)
     {
-        position_ptr = obj->getVertexPointer(index);
-        prev_position_ptr = obj->getVertexPreviousPositionPointer(index);
+        position_ptr = obj->mesh()->vertexPointer(index);
+        prev_position_ptr = obj->vertexPreviousPositionPointer(index);
         inv_mass = obj->vertexInvMass(index);
         // NOTE: this requires knowing how many constraints a position will be a part of a priori - maybe is not the case all the time
         num_constraints = obj->numConstraintsForPosition(index);
@@ -78,7 +78,7 @@ class Constraint
         // default information about how the gradient vector should be formatted (see variables for more description)
         _gradient_vector_size = numCoordinates();
         _gradient_vector_index.resize(_gradient_vector_size);
-        for (unsigned i = 0; i < numCoordinates(); i++)
+        for (int i = 0; i < numCoordinates(); i++)
         {
             _gradient_vector_index[i] = i;
         }
@@ -133,13 +133,13 @@ class Constraint
 
 
     /** Returns the number of distinct positions needed by this constraint. */
-    inline unsigned numPositions() { return _positions.size(); }
+    inline int numPositions() { return _positions.size(); }
 
     /** Returns the number of coordinates (i.e. x1,y1,z1,x2,y2,z2) referenced by this constraint. In 3D, this is numPositions times 3. */
-    inline unsigned numCoordinates() { return _positions.size()*3; }
+    inline int numCoordinates() { return _positions.size()*3; }
 
     /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
-    inline virtual unsigned memoryNeeded() const = 0;
+    inline virtual size_t memoryNeeded() const = 0;
     
     /** Returns the compliance for this constraint. */
     double alpha() const { return _alpha; }
@@ -154,13 +154,13 @@ class Constraint
     const std::vector<PositionReference>& positions() const { return _positions; }
 
     /** Sets the size of the gradient vector. */
-    void setGradientVectorSize(const unsigned size) { _gradient_vector_size = size; }
+    void setGradientVectorSize(const int size) { _gradient_vector_size = size; }
 
     /** Updates the mapping of coordinate indices to their respective positions in the gradient vector.
      * @param coord_index : the coordinate index to be mapped (i.e. in 3D, coord_index of 7 would correspond to the y-coordinate of the 3rd position)
      * @param gradient_index : the index in the gradient vector that the coordinate should be mapped to
      */
-    void setGradientVectorIndex(const unsigned coord_index, const unsigned gradient_index) { _gradient_vector_index[coord_index] = gradient_index; }
+    void setGradientVectorIndex(const int coord_index, const int gradient_index) { _gradient_vector_index[coord_index] = gradient_index; }
 
     protected:
     double _alpha;      // Compliance for this constraint
@@ -170,7 +170,7 @@ class Constraint
      * 
      * The size of the gradient vector may be set larger to align with other constraints being projected simulatenously.
      */
-    unsigned _gradient_vector_size;
+    int _gradient_vector_size;
 
     /** Maps coordinate indices to their respective positions in the gradient vector.
      * For example, if _gradient_vector_index[0] = 5, coordinate 0 (i.e. the x-coordinate of _positions[0]) is mapped to index 5 in the gradient vector.
@@ -179,7 +179,7 @@ class Constraint
      * 
      * A non-default mapping exists to align with other constraints being projected simultaneously so that all constraints have the same position order in the gradient vector.
      */
-    std::vector<unsigned> _gradient_vector_index;
+    std::vector<int> _gradient_vector_index;
 
 
     std::vector<PositionReference> _positions;  // the positions associated with this constraint

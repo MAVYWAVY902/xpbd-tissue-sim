@@ -4,6 +4,9 @@
 #include "simulation/OutputSimulation.hpp"
 #include <Eigen/Dense>
 
+namespace Sim
+{
+
 class BeamStretchSimulation : public OutputSimulation
 {
     public:
@@ -20,5 +23,7 @@ class BeamStretchSimulation : public OutputSimulation
     double _stretch_velocity;
     double _stretch_time;
 };
+
+} // namespace Sim
 
 #endif // __BEAM_STRETCH_SIMULATION_HPP

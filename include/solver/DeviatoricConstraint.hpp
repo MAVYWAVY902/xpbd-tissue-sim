@@ -14,7 +14,7 @@ class DeviatoricConstraint : public ElementConstraint
     
     public:
     /** Creates the deviatoric constraint from a MeshObject and the 4 vertices that make up the tetrahedral element. */
-    DeviatoricConstraint(XPBDMeshObject* obj, unsigned v1, unsigned v2, unsigned v3, unsigned v4)
+    DeviatoricConstraint(const Sim::XPBDMeshObject* obj, int v1, int v2, int v3, int v4)
         : ElementConstraint(obj, v1, v2, v3, v4)
     {
         _alpha = 1/(obj->material().mu() * _volume);
@@ -104,7 +104,7 @@ class DeviatoricConstraint : public ElementConstraint
     }
 
     /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
-    inline unsigned memoryNeeded() const override
+    inline size_t memoryNeeded() const override
     {
         // 9 for F
         // 9 for X

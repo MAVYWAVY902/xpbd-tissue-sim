@@ -1,21 +1,16 @@
 #ifndef __COLLISION_SCENE_HPP
 #define __COLLISION_SCENE_HPP
 
-#include "simobject/MeshObject.hpp"
+// #include "simobject/MeshObject.hpp"
+#include "simobject/Object.hpp"
 
 /** Represents a collision between a vertex and a face */
 struct Collision
 {
-    MeshObject* obj1;
-    unsigned vertex_ind;
-    MeshObject* obj2;
-    unsigned face_ind;
-};
-
-struct CollisionObject
-{
-    MeshObject* obj_ptr;
-    MeshObject::VerticesMat prev_vertices;
+    Sim::Object* obj1;
+    int vertex_ind;
+    Sim::Object* obj2;
+    int face_ind;
 };
 
 /** Represents a collision bucket */
@@ -23,24 +18,22 @@ struct CollisionBucket
 {
     double time;
     // first index is object index, second index is vertex/face vertex
-    std::vector<std::pair<unsigned, unsigned>> vertices;
-    std::vector<std::pair<unsigned, unsigned>> faces;
+    std::vector<std::pair<int, int>> vertices;
+    std::vector<std::pair<int, int>> faces;
 };
 
 class CollisionScene
 {
     public:
-    explicit CollisionScene(const double dt, const double cell_size, const unsigned num_buckets);
+    explicit CollisionScene(const double dt, const double cell_size, const int num_buckets);
 
     void setCellSize(const double cell_size) { _cell_size = cell_size; }
 
-    void addObject(std::shared_ptr<MeshObject> new_obj);
+    void addObject(Sim::Object* new_obj);
 
     void collideObjects(const double sim_time);
 
     std::vector<Collision> potentialCollisions() const { return _potential_collisions; };
-
-    void updatePrevPositions();
 
     protected:
 
@@ -61,11 +54,10 @@ class CollisionScene
     double _cell_size;
 
     /** Number of collision buckets */
-    unsigned _num_buckets;
+    int _num_buckets;
 
     /** Stores the mesh objects in the scene. */
-    // std::vector<std::shared_ptr<MeshObject>> _objects;
-    std::vector<CollisionObject> _objects;
+    std::vector<Sim::Object*> _objects;
 
     /** Collision buckets */
     std::vector<CollisionBucket> _buckets;

@@ -124,9 +124,9 @@ void Mesh::resize(const double size_of_max_dim)
     double scaling_factor = size_of_max_dim / (aabb.max - aabb.min).maxCoeff();
 
     // move all vertices to be centered around (0,0,0), apply the scaling, and then move them back
-    move(-aabb.center());
+    moveTogether(-aabb.center());
     _vertices *= scaling_factor;
-    move(aabb.center());
+    moveTogether(aabb.center());
 }
 
 void Mesh::resize(const Eigen::Vector3d& new_size)
@@ -141,16 +141,21 @@ void Mesh::resize(const Eigen::Vector3d& new_size)
     double scaling_factor_z = (size(2) != 0) ? new_size(2) / size(2) : 1;
 
     // move all vertices to be centered around (0,0,0), apply the scaling, then move them back
-    move(-aabb.center());
+    moveTogether(-aabb.center());
     _vertices.row(0) *= scaling_factor_x;
     _vertices.row(1) *= scaling_factor_y;
     _vertices.row(2) *= scaling_factor_z;
-    move(aabb.center());
+    moveTogether(aabb.center());
 }
 
-void Mesh::move(const Eigen::Vector3d& delta)
+void Mesh::moveTogether(const Eigen::Vector3d& delta)
 {
     _vertices.colwise() += delta;
+}
+
+void Mesh::moveSeparate(const VerticesMat& delta)
+{
+    _vertices.noalias() += delta;
 }
 
 void Mesh::moveTo(const Eigen::Vector3d& position)
@@ -158,10 +163,10 @@ void Mesh::moveTo(const Eigen::Vector3d& position)
 
     // calculate the required position offset based on the current center of the AABB
     const AABB aabb = boundingBox();
-    Eigen::Vector3d offset = position - aabb.center();
+    const Eigen::Vector3d offset = position - aabb.center();
 
     // apply the position offset
-    move(offset);
+    moveTogether(offset);
 }
 
 void Mesh::rotate(const Eigen::Vector3d& xyz_angles)
@@ -189,9 +194,9 @@ void Mesh::rotate(const Eigen::Vector3d& xyz_angles)
 void Mesh::rotate(const Eigen::Matrix3d& rot_mat)
 {
     const AABB aabb = boundingBox();
-    move(-aabb.center());
+    moveTogether(-aabb.center());
     _vertices = rot_mat * _vertices;
-    move(aabb.center());
+    moveTogether(aabb.center());
 }
 
 } // namespace Geometry

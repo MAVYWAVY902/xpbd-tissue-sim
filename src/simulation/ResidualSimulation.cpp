@@ -6,6 +6,8 @@
 
 #include <regex>
 
+namespace Sim
+{
 
 ResidualSimulation::ResidualSimulation(const std::string& config_filename)
     : OutputSimulation(config_filename)
@@ -17,23 +19,23 @@ void ResidualSimulation::setup()
 {
     Simulation::setup();
 
-    _out_file << toString() << std::endl;
+    _out_file << toString(0) << std::endl;
 
-    for (auto& mesh_object : _mesh_objects) {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
+    for (auto& obj : _objects) {
+        if (XPBDMeshObject* xpbd_mo = dynamic_cast<XPBDMeshObject*>(obj.get()))
         {
-            _out_file << "\n" << elastic_mesh_object->toString() << std::endl;
+            _out_file << "\n" << xpbd_mo->toString(1) << std::endl;
         }
     }
 
     // write appropriate CSV column headers
     _out_file << "\nTime(s)";
-    for (auto& mesh_object : _mesh_objects)
+    for (auto& obj : _objects)
     {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
+        if (XPBDMeshObject* xpbd_mo = dynamic_cast<XPBDMeshObject*>(obj.get()))
         {
             std::regex r("\\s+");
-            const std::string& name = std::regex_replace(elastic_mesh_object->name(), r, "");
+            const std::string& name = std::regex_replace(xpbd_mo->name(), r, "");
             _out_file << " "+name+"DynamicsResidual" << " "+name+"PrimaryResidual" << " "+name+"ConstraintResidual" << " "+name+"VolumeRatio";
         }
     }
@@ -46,13 +48,13 @@ void ResidualSimulation::setup()
 void ResidualSimulation::printInfo() const
 {
     _out_file << _time;
-    for (unsigned i = 0; i < _mesh_objects.size(); i++) {
+    for (size_t i = 0; i < _objects.size(); i++) {
 
         double dynamics_residual = 0;
         double primary_residual = 0;
         double constraint_residual = 0;
         double volume_ratio = 1;
-        if (XPBDMeshObject* xpbd = dynamic_cast<XPBDMeshObject*>(_mesh_objects[i].get()))
+        if (XPBDMeshObject* xpbd = dynamic_cast<XPBDMeshObject*>(_objects[i].get()))
         {
             Eigen::VectorXd pres_vec = xpbd->solver()->primaryResidual();
             primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
@@ -76,3 +78,5 @@ void ResidualSimulation::printInfo() const
     }
     _out_file << std::endl;
 }
+
+} // namespace Sim

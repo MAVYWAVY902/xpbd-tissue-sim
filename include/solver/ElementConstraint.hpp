@@ -20,7 +20,7 @@ class ElementConstraint : public Constraint
      * @param v3 - the 3rd vertex of the tetrahedral element
      * @param v4 - the 4th vertex of the tetrahedral element
      */
-    ElementConstraint(XPBDMeshObject* obj, unsigned v1, unsigned v2, unsigned v3, unsigned v4)
+    ElementConstraint(const Sim::XPBDMeshObject* obj, int v1, int v2, int v3, int v4)
         : Constraint(std::vector<PositionReference>({
             PositionReference(obj, v1),
             PositionReference(obj, v2),

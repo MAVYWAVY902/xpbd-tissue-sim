@@ -2,18 +2,21 @@
 #define __RIGID_OBJECT_HPP
 
 #include "simobject/Object.hpp"
+#include "config/RigidObjectConfig.hpp"
 
-namespace Simulation
+namespace Sim
 {
 
 class RigidObject : public Object
 {
     public:
-    RigidObject(const std::string& name);
+    RigidObject(const Simulation* sim, const RigidObjectConfig* config);
 
-    RigidObject(const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation);
+    RigidObject(const Simulation* sim, const std::string& name);
 
-    RigidObject(const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation, const double mass, const Eigen::Matrix3d& inertia_mat);
+    RigidObject(const Simulation* sim, const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation);
+
+    RigidObject(const Simulation* sim, const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation, const double mass, const Eigen::Matrix3d& inertia_mat);
 
     /** TODO: constructor that initializes form Config object */
 
@@ -63,6 +66,9 @@ class RigidObject : public Object
     Eigen::Vector3d _v;
     /** Rotational velocity of rigid body. */
     Eigen::Vector3d _w;
+
+    private:
+    Eigen::Vector4d _eulXYZ2Quat(const double x, const double y, const double z) const;
 
 };
 

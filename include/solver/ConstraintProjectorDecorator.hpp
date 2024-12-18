@@ -239,7 +239,7 @@ class FirstOrder : public ConstraintProjectorDecorator
         for (unsigned i = 0; i < numPositions(); i++)
         {
             // try casting to FirstOrderXPBDMeshObject
-            if (FirstOrderXPBDMeshObject* fo_obj = dynamic_cast<FirstOrderXPBDMeshObject*>(_state->_positions[i].obj))
+            if (const Sim::FirstOrderXPBDMeshObject* fo_obj = dynamic_cast<const Sim::FirstOrderXPBDMeshObject*>(_state->_positions[i].obj))
             {
                 _state->_positions[i].inv_mass = fo_obj->vertexInvDamping(_state->_positions[i].index);     // instead of inverse mass, use inverse damping - still use the same "inv_mass" variable
             }

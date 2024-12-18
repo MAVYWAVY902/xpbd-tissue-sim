@@ -12,8 +12,11 @@
 
 #include <Eigen/Dense>
 
-class MeshObject;
-class MeshObjectConfig;
+namespace Sim
+{
+    class Object;
+}
+class ObjectConfig;
 
 namespace Graphics {
 
@@ -49,11 +52,11 @@ class GraphicsScene
     Viewer* viewer() { return _viewer.get(); }
 
     /** Creates a MeshGraphicsObject from a supplied MeshObject and adds it to the GraphicsScene
-     * @param obj : the MeshObject to add to the GraphicsScene for visualization
-     * @param obj_config : the MeshObjectConfig that contains visualization parameters (e.g. coloring, draw points, etc.)
+     * @param obj : the simulation Object to add to the GraphicsScene for visualization
+     * @param obj_config : the ObjectConfig that contains any visualization parameters (e.g. coloring, draw points, etc.)
      * @returns the index of the provided object in the _graphics_objects array (can be used to fetch it in the future)
      */
-    virtual size_t addMeshObject(std::shared_ptr<MeshObject> obj, MeshObjectConfig* obj_config) = 0;
+    virtual int addObject(const Sim::Object* obj, const ObjectConfig* obj_config) = 0;
 
     /** Sets the camera mode to Orthographic */
     virtual void setCameraOrthographic() = 0;
@@ -82,7 +85,7 @@ class GraphicsScene
      * @param index : the index of the GraphicsObject to get
      * @returns a ptr to the GraphicsObject at the specified index
      */
-    GraphicsObject* getObject(const size_t index);
+    GraphicsObject* getObject(const int index);
 
     /** Gets a GraphicsObject according to name.
      * @param name : the name of the GraphicsObject to get

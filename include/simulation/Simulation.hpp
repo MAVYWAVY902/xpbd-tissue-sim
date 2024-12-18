@@ -3,7 +3,7 @@
 
 #include <assimp/Importer.hpp>
 
-#include "simobject/MeshObject.hpp"
+#include "simobject/Object.hpp"
 
 #include "config/SimulationConfig.hpp"
 #include "collision/CollisionScene.hpp"
@@ -14,8 +14,10 @@
 #include <thread>
 #include <optional>
 
+namespace Sim
+{
 /** A class for managing the simulation being performed.
- * Owns the MeshObjects, keeps track fo the sim time, etc.
+ * Owns the Objects, keeps track fo the sim time, etc.
  * 
  */
 class Simulation
@@ -33,15 +35,17 @@ class Simulation
         explicit Simulation();
     
     public:
-        virtual std::string toString() const;
+        virtual std::string toString(const int indent) const;
         virtual std::string type() const { return "Simulation"; }
 
         /** Adds a MeshObject to the simulation. Will add its Drawables to the Viewer as well.
          * @param mesh_obj : the MeshObject being added  
         */        
-        void addObject(std::shared_ptr<MeshObject> mesh_obj);
+        // void addObject(std::shared_ptr<MeshObject> mesh_obj);
 
         double time() const { return _time; }
+
+        double dt() const { return _time_step; }
         
         double gAccel() const { return _g_accel; }
 
@@ -108,13 +112,15 @@ class Simulation
 
         double _last_collision_detection_time;
 
-        /** storage of all MeshObjects in the simulation */
-        std::vector<std::shared_ptr<MeshObject>> _mesh_objects;
+        /** storage of all Objects in the simulation */
+        std::vector<std::unique_ptr<Object>> _objects;
 
         std::unique_ptr<CollisionScene> _collision_scene;
 
         std::unique_ptr<Graphics::GraphicsScene> _graphics_scene;
 };
+
+} // namespace Sim
 
 #endif
 

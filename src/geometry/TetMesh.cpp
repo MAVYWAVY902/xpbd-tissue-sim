@@ -9,7 +9,7 @@ TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const Eleme
     : Mesh(vertices, faces), _elements(elements)
 {}
 
-double TetMesh::volume(const int index) const
+double TetMesh::elementVolume(const int index) const
 {
     const Eigen::Vector4i& elem = element(index);
     const Eigen::Vector3d& v1 = vertex(elem[0]);

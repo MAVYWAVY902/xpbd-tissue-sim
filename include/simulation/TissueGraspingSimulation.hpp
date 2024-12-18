@@ -8,6 +8,9 @@
 #include "simobject/RigidMeshObject.hpp"
 #include <Eigen/Dense>
 
+namespace Sim
+{
+
 class TissueGraspingSimulation : public OutputSimulation
 {
     public:
@@ -61,5 +64,7 @@ class TissueGraspingSimulation : public OutputSimulation
     /** Manages haptic device(s) */
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
 };
+
+} // namespace Sim
 
 #endif // __TISSUE_GRASPING_SIMULATION_HPP

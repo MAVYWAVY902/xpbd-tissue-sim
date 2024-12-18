@@ -51,16 +51,16 @@ target_link_libraries(Solver SimObject)         # link SimObject library
 ### Simulation libraries - each has its own executable
 add_library(ResidualSimulation)
 add_library(BeamSimulation)
-add_library(BeamStretchSimulation)
-add_library(TissueGraspingSimulation)
-add_library(InitialDeformationSimulation)
+# add_library(BeamStretchSimulation)
+# add_library(TissueGraspingSimulation)
+# add_library(InitialDeformationSimulation)
 add_subdirectory("src/simulation")
 
 target_link_libraries(ResidualSimulation Collision Graphics SimObject yaml-cpp)
 target_link_libraries(BeamSimulation ResidualSimulation)
-target_link_libraries(BeamStretchSimulation ResidualSimulation)
-target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
-target_link_libraries(InitialDeformationSimulation ResidualSimulation)
+# target_link_libraries(BeamStretchSimulation ResidualSimulation)
+# target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
+# target_link_libraries(InitialDeformationSimulation ResidualSimulation)
 
 ### Create executables
 add_executable(Test src/exec/main.cpp)
@@ -69,11 +69,11 @@ target_link_libraries(Test ResidualSimulation)
 add_executable(BeamTest src/exec/beam_test_main.cpp)
 target_link_libraries(BeamTest BeamSimulation)
 
-add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
-target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
+# add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
+# target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
 
-add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
-target_link_libraries(BeamStretchTest BeamStretchSimulation)
+# add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
+# target_link_libraries(BeamStretchTest BeamStretchSimulation)
 
-add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
-target_link_libraries(InitialDeformationTest InitialDeformationSimulation)
+# add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
+# target_link_libraries(InitialDeformationTest InitialDeformationSimulation)
