@@ -5,6 +5,7 @@
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
+#include "config/RigidPrimitiveConfigs.hpp"
 
 
 /** Enum defining the different ways the simulation can be run 
@@ -99,15 +100,34 @@ class SimulationConfig : public Config
                 std::unique_ptr<XPBDMeshObjectConfig> config = std::make_unique<XPBDMeshObjectConfig>(obj_node);
                 _object_configs.push_back(std::move(config));
             }
-            if (type == "FirstOrderXPBDMeshObject")
+            else if (type == "FirstOrderXPBDMeshObject")
             {
                 std::unique_ptr<FirstOrderXPBDMeshObjectConfig> config = std::make_unique<FirstOrderXPBDMeshObjectConfig>(obj_node);
                 _object_configs.push_back(std::move(config));
             }
-            if (type == "RigidMeshObject")
+            else if (type == "RigidMeshObject")
             {
                 std::unique_ptr<RigidMeshObjectConfig> config = std::make_unique<RigidMeshObjectConfig>(obj_node);
                 _object_configs.push_back(std::move(config));
+            }
+            else if (type == "RigidSphere")
+            {
+                std::unique_ptr<RigidSphereConfig> config = std::make_unique<RigidSphereConfig>(obj_node);
+                _object_configs.push_back(std::move(config));
+            }
+            else if (type == "RigidBox")
+            {
+                std::unique_ptr<RigidBoxConfig> config = std::make_unique<RigidBoxConfig>(obj_node);
+                _object_configs.push_back(std::move(config));
+            }
+            else if (type == "RigidCylinder")
+            {
+                std::unique_ptr<RigidCylinderConfig> config = std::make_unique<RigidCylinderConfig>(obj_node);
+                _object_configs.push_back(std::move(config));
+            }
+            else
+            {
+                std::cerr << "Unknown type of object! \"" << type << "\" is not a type of simulation object." << std::endl;
             }
             
         }

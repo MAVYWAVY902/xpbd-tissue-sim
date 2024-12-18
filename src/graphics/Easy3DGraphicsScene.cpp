@@ -1,6 +1,12 @@
 #include "graphics/Easy3DGraphicsScene.hpp"
 #include "graphics/Easy3DMeshGraphicsObject.hpp"
+#include "graphics/Easy3DSphereGraphicsObject.hpp"
+#include "graphics/Easy3DBoxGraphicsObject.hpp"
+#include "graphics/Easy3DCylinderGraphicsObject.hpp"
 #include "config/MeshObjectConfig.hpp"
+
+#include "simobject/MeshObject.hpp"
+#include "simobject/RigidPrimitives.hpp"
 
 #include <easy3d/viewer/viewer.h>
 #include <easy3d/renderer/renderer.h>
@@ -8,9 +14,8 @@
 #include <easy3d/renderer/drawable_lines.h>
 #include <easy3d/renderer/drawable_points.h>
 #include <easy3d/renderer/drawable_triangles.h>
-#include <easy3d/renderer/text_renderer.h>
+#include <easy3d/core/model.h>
 #include <easy3d/core/types.h>
-#include <easy3d/util/resource.h>
 #include <easy3d/util/initializer.h>
 
 namespace Graphics
@@ -66,6 +71,8 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const ObjectConfig* o
         assert(0);
     }
 
+    std::unique_ptr<GraphicsObject> new_graphics_obj;
+
     // try downcasting to MeshObject
     if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(obj))
     {
@@ -74,25 +81,52 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const ObjectConfig* o
         assert(mo_config);
 
         // create a new MeshGraphicsObject for visualizing this MeshObject
-        std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
-        
-        // add the easy3d::Drawables created by the Easy3DMeshGraphicsObject to the easy3d::Viewer
-        for (const auto& pt_drawable : e3d_mgo->renderer()->points_drawables())
-        {
-            _easy3d_viewer->add_drawable(pt_drawable);
-        }
-        for (const auto& line_drawable : e3d_mgo->renderer()->lines_drawables())
-        {
-            _easy3d_viewer->add_drawable(line_drawable);
-        }
-        for (const auto& tri_drawable : e3d_mgo->renderer()->triangles_drawables())
-        {
-            _easy3d_viewer->add_drawable(tri_drawable);
-        }
-
-        // store the MeshGraphicsObject and return its position in the vector
-        _graphics_objects.push_back(std::move(e3d_mgo));
+        // std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
+        new_graphics_obj = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
     }
+
+    // try downcasting to a RigidSphere
+    else if (const Sim::RigidSphere* sphere = dynamic_cast<const Sim::RigidSphere*>(obj))
+    {
+        // create a new SphereGraphicsObject for visualizing the sphere
+        // std::unique_ptr<Easy3DSphereGraphicsObject> e3d_sphere = std::make_unique<Easy3DSphereGraphicsObject>(sphere->name(), sphere);
+        new_graphics_obj = std::make_unique<Easy3DSphereGraphicsObject>(sphere->name(), sphere);
+        
+    }
+
+    // try downcasting to a RigidBox
+    else if (const Sim::RigidBox* box = dynamic_cast<const Sim::RigidBox*>(obj))
+    {
+        new_graphics_obj = std::make_unique<Easy3DBoxGraphicsObject>(box->name(), box);
+    }
+
+    // try downcasting to a RigidCylinder
+    else if (const Sim::RigidCylinder* cyl = dynamic_cast<const Sim::RigidCylinder*>(obj))
+    {
+        new_graphics_obj = std::make_unique<Easy3DCylinderGraphicsObject>(cyl->name(), cyl);
+    }
+
+    // all Easy3D graphics objects should be easy3d::Models themselves
+    easy3d::Model* model = dynamic_cast<easy3d::Model*>(new_graphics_obj.get());
+    assert(model);
+
+    // add the easy3d::Drawables created by the Easy3DMeshGraphicsObject to the easy3d::Viewer
+    for (const auto& pt_drawable : model->renderer()->points_drawables())
+    {
+        _easy3d_viewer->add_drawable(pt_drawable);
+    }
+    for (const auto& line_drawable : model->renderer()->lines_drawables())
+    {
+        _easy3d_viewer->add_drawable(line_drawable);
+    }
+    for (const auto& tri_drawable : model->renderer()->triangles_drawables())
+    {
+        _easy3d_viewer->add_drawable(tri_drawable);
+    }
+
+    // finally add the GraphicsObject to the list of GraphicsObjects
+    _graphics_objects.push_back(std::move(new_graphics_obj));
+
 
     
     return _graphics_objects.size() - 1;

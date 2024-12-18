@@ -18,8 +18,6 @@ class RigidObject : public Object
 
     RigidObject(const Simulation* sim, const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation, const double mass, const Eigen::Matrix3d& inertia_mat);
 
-    /** TODO: constructor that initializes form Config object */
-
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
     */
@@ -49,7 +47,6 @@ class RigidObject : public Object
     double mass() const { return _m; }
     Eigen::Matrix3d I() const { return _I; }
 
-
     protected:
     /** Position of rigid body */
     Eigen::Vector3d _p;
@@ -66,9 +63,7 @@ class RigidObject : public Object
     Eigen::Vector3d _v;
     /** Rotational velocity of rigid body. */
     Eigen::Vector3d _w;
-
-    private:
-    Eigen::Vector4d _eulXYZ2Quat(const double x, const double y, const double z) const;
+    
 
 };
 
