@@ -8,11 +8,13 @@
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
-#include "simobject/FastFEMMeshObject.hpp"
 
 #include "utils/MeshUtils.hpp"
 
 #include <gmsh.h>
+
+namespace Sim
+{
 
 void Simulation::_init()
 {
@@ -20,7 +22,7 @@ void Simulation::_init()
     gmsh::initialize();
 
     // set simulation properties based on YAML file
-    _name = _config->name().value();
+    _name = _config->name();
     _description = _config->description().value();
     _time_step = _config->timeStep().value();
     _end_time = _config->endTime().value();
@@ -58,43 +60,39 @@ Simulation::Simulation()
 
 }
 
-std::string Simulation::toString() const
+std::string Simulation::toString(const int indent) const
 {
     return  type() + " '" + _name + "':\n\tTime step: " + std::to_string(_time_step) + " s\n\tEnd time: " + std::to_string(_end_time) +
         " s\n\tGravity: " + std::to_string(_g_accel) + " m/s^2";
 }
 
-void Simulation::addObject(std::shared_ptr<MeshObject> mesh_object)
-{
-    mesh_object->setSimulation(this);
+// void Simulation::addObject(std::shared_ptr<MeshObject> mesh_object)
+// {
+//     mesh_object->setSimulation(this);
     
-    // add new object to MeshObjects container
-    _mesh_objects.push_back(mesh_object);
+//     // add new object to MeshObjects container
+//     _mesh_objects.push_back(mesh_object);
     
-}
+// }
 
 void Simulation::setup()
 {   
-    for (const auto& obj_config : _config->meshObjectConfigs())
+    for (const auto& obj_config : _config->objectConfigs())
     {
-        std::shared_ptr<MeshObject> new_obj;
+        std::unique_ptr<Object> new_obj;
         // try downcasting
         
         if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
         {
-            new_obj = std::make_shared<FirstOrderXPBDMeshObject>(xpbd_config);
+            new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
         }
         else if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
         {
-            new_obj = std::make_shared<XPBDMeshObject>(xpbd_config);
-        }
-        else if (FastFEMMeshObjectConfig* fem_config = dynamic_cast<FastFEMMeshObjectConfig*>(obj_config.get()))
-        {
-            new_obj = std::make_shared<FastFEMMeshObject>(fem_config);
+            new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
         }
         else if (RigidMeshObjectConfig* rigid_config = dynamic_cast<RigidMeshObjectConfig*>(obj_config.get()))
         {
-            new_obj = std::make_shared<RigidMeshObject>(rigid_config);
+            new_obj = std::make_unique<RigidMeshObject>(this, rigid_config);
         }
         else
         {
@@ -108,16 +106,16 @@ void Simulation::setup()
 
         // if we get to here, we have successfully created a new MeshObject of some kind
         // so add the new object to the simulation
-        addObject(new_obj);
+        _objects.push_back(std::move(new_obj));
         // add the new object to the collision scene if collisions are enabled
-        if (obj_config->collisions().value())
+        if (obj_config->collisions())
         {
-            _collision_scene->addObject(new_obj);
+            _collision_scene->addObject(new_obj.get());
         }
         // add the new object to the graphics scene to be visualized
         if (_graphics_scene)
         {
-            _graphics_scene->addMeshObject(new_obj, obj_config.get());
+            _graphics_scene->addObject(new_obj.get(), obj_config.get());
         }
     }
 
@@ -128,17 +126,17 @@ void Simulation::setup()
     }
 
     // update the cell size of the Collision scene now that we have added all the objects
-    unsigned total_num_edges = 0;
-    double total_edge_length = 0;
-    for (const auto& obj : _mesh_objects)
-    {
-        auto [num_edges, avg_edge_length] = obj->averageSurfaceEdgeLength();
-        total_num_edges += num_edges;
-        total_edge_length += avg_edge_length * num_edges;
-    }
-    _collision_scene->setCellSize(total_edge_length/total_num_edges);
+    // unsigned total_num_edges = 0;
+    // double total_edge_length = 0;
+    // for (const auto& obj : _objects)
+    // {
+    //     auto [num_edges, avg_edge_length] = obj->averageSurfaceEdgeLength();
+    //     total_num_edges += num_edges;
+    //     total_edge_length += avg_edge_length * num_edges;
+    // }
+    // _collision_scene->setCellSize(total_edge_length/total_num_edges);
 
-    std::cout << "Average edge length: " << total_edge_length / total_num_edges << std::endl;
+    // std::cout << "Average edge length: " << total_edge_length / total_num_edges << std::endl;
 }
 
 void Simulation::update()
@@ -190,11 +188,6 @@ void Simulation::_timeStep()
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
         // run collision detection
-        // std::cout << "RUNNING COLLISION DETECTION...time = " << time() << std::endl;
-        for (auto& mo : _mesh_objects)
-        {
-            
-        }
         auto t1 = std::chrono::steady_clock::now();
         _collision_scene->collideObjects(_time);
         auto t2 = std::chrono::steady_clock::now();
@@ -204,11 +197,11 @@ void Simulation::_timeStep()
     }
 
     // update each MeshObject
-    for (auto& mo : _mesh_objects)
+    for (auto& obj : _objects)
     {
-        if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(mo.get()))
+        if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
             xpbd_obj->removeOldCollisionConstraints(5);
-        mo->update();
+        obj->update();
     }
 
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
@@ -287,3 +280,5 @@ int Simulation::run()
     }
     
 }
+
+} // namespace Sim

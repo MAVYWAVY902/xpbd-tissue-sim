@@ -7,14 +7,14 @@
 
 namespace Graphics {
 
-Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, std::shared_ptr<MeshObject> mesh_object)
-    : MeshGraphicsObject(name, mesh_object)
+Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh)
+    : MeshGraphicsObject(name, mesh)
 {
     _init();
 }
 
-Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, std::shared_ptr<MeshObject> mesh_object, MeshObjectConfig* mesh_object_config)
-    : MeshGraphicsObject(name, mesh_object, mesh_object_config)
+Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const MeshObjectConfig* mesh_object_config)
+    : MeshGraphicsObject(name, mesh, mesh_object_config)
 {
     _init();
 }
@@ -22,7 +22,7 @@ Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, std:
 void Easy3DMeshGraphicsObject::_init()
 {
     // first ensure that the vertex cache has enough space for each vertex
-    _vertex_cache.resize(_mesh_object->numVertices());
+    _vertex_cache.resize(_mesh->numVertices());
     // then update the vertex cache to populate it initially
     _updateVertexCache();
 
@@ -95,13 +95,13 @@ void Easy3DMeshGraphicsObject::update()
 std::vector<unsigned int> Easy3DMeshGraphicsObject::facesAsFlatList() const
 {
     // each face (triangle) has 3 vertices
-    const MeshObject::FacesMat faces = _mesh_object->faces();
-    std::vector<unsigned int> faces_flat_list(faces.rows()*3);
+    const Geometry::Mesh::FacesMat& faces = _mesh->faces();
+    std::vector<unsigned int> faces_flat_list(_mesh->numFaces()*3);
 
     // iterate through faces and add them to 1D list
-    for (const auto& face : faces.rowwise())
+    for (const auto& face : faces.colwise())
     {
-        faces_flat_list.insert(faces_flat_list.end(), {face(0), face(1), face(2)});
+        faces_flat_list.insert(faces_flat_list.end(), {static_cast<unsigned>(face(0)), static_cast<unsigned>(face(1)), static_cast<unsigned>(face(2))});
     }
 
     return faces_flat_list;
@@ -111,13 +111,15 @@ std::vector<unsigned int> Easy3DMeshGraphicsObject::facesAsFlatList() const
 std::vector<unsigned int> Easy3DMeshGraphicsObject::edgesAsFlatList() const
 {
     // TODO: filter duplicate edges
-    const MeshObject::FacesMat faces = _mesh_object->faces();
-    std::vector<unsigned int> edges_flat_list(faces.rows()*6);
+    const Geometry::Mesh::FacesMat& faces = _mesh->faces();
+    std::vector<unsigned int> edges_flat_list(_mesh->numFaces()*6);
 
     // iterate through faces and add each edge to 1D list
-    for (const auto& face : faces.rowwise())
+    for (const auto& face : faces.colwise())
     {
-        edges_flat_list.insert(edges_flat_list.end(), {face(0), face(1), face(1), face(2), face(0), face(2)});
+        edges_flat_list.insert(edges_flat_list.end(), {static_cast<unsigned>(face(0)), static_cast<unsigned>(face(1)),
+            static_cast<unsigned>(face(1)), static_cast<unsigned>(face(2)),
+            static_cast<unsigned>(face(0)), static_cast<unsigned>(face(2))});
     }
 
     return edges_flat_list;
@@ -126,22 +128,22 @@ std::vector<unsigned int> Easy3DMeshGraphicsObject::edgesAsFlatList() const
 
 void Easy3DMeshGraphicsObject::_updateVertexCache()
 {
-    if (!_mesh_object)
+    if (!_mesh)
         return;
 
     // make sure the vertex cache is big enough for all the vertices
-    if(_vertex_cache.size() != _mesh_object->numVertices())
+    if(_vertex_cache.size() != static_cast<unsigned>(_mesh->numVertices()))
     {
-        _vertex_cache.resize(_mesh_object->numVertices());
+        _vertex_cache.resize(_mesh->numVertices());
     }
 
     // get vertices from MeshObject
-    const MeshObject::VerticesMat vertices = _mesh_object->vertices();
+    const Geometry::Mesh::VerticesMat& vertices = _mesh->vertices();
 
     // loop through and update each vertex in the cache
-    for (size_t i = 0; i < vertices.rows(); i++)
+    for (int i = 0; i < _mesh->numVertices(); i++)
     {
-        _vertex_cache.at(i) = (easy3d::vec3(vertices(i,0), vertices(i,1), vertices(i,2)));
+        _vertex_cache.at(i) = (easy3d::vec3(vertices(0,i), vertices(1,i), vertices(2,i)));
     }
 }
 

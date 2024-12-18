@@ -8,7 +8,7 @@ namespace Solver
 class CollisionConstraint : public Constraint
 {
     public:
-    CollisionConstraint(XPBDMeshObject* vertex_obj, unsigned vertex_index, XPBDMeshObject* face_obj, unsigned face_vertex1, unsigned face_vertex2, unsigned face_vertex3)
+    CollisionConstraint(const Sim::XPBDMeshObject* vertex_obj, int vertex_index, const Sim::XPBDMeshObject* face_obj, int face_vertex1, int face_vertex2, int face_vertex3)
         : Constraint(std::vector<PositionReference>({
         PositionReference(vertex_obj, vertex_index),
         PositionReference(face_obj, face_vertex1),
@@ -98,7 +98,7 @@ class CollisionConstraint : public Constraint
     }
 
     /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
-    inline unsigned memoryNeeded() const override
+    inline size_t memoryNeeded() const override
     {
         // 3 for a = (p2 - p1) x (p3 - p1)
         // 1 for 1/|a|

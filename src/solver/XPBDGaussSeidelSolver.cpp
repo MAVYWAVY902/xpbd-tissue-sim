@@ -8,7 +8,7 @@
 namespace Solver
 {
 
-XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(XPBDMeshObject const* obj, unsigned num_iter, XPBDResidualPolicy residual_policy)
+XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(const Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
     : XPBDSolver(obj, num_iter, residual_policy)
 {}
 
@@ -23,7 +23,7 @@ void XPBDGaussSeidelSolver::_solveConstraints(double* data)
         // get the position updates for this constraint - they are put in the _coordinate_updates data block
         proj->project(data, _coordinate_updates.data());
         const std::vector<PositionReference>& positions = proj->positions();
-        for (unsigned i = 0; i < proj->numPositions(); i++)
+        for (int i = 0; i < proj->numPositions(); i++)
         {
             const PositionReference& p_ref = positions[i];
 

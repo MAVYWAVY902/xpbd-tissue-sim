@@ -1,11 +1,10 @@
 #ifndef __SIMULATION_CONFIG_HPP
 #define __SIMULATION_CONFIG_HPP
 
-#include "config/MeshObjectConfig.hpp"
+#include "config/ObjectConfig.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
-#include "config/FastFEMMeshObjectConfig.hpp"
 
 
 /** Enum defining the different ways the simulation can be run 
@@ -98,27 +97,19 @@ class SimulationConfig : public Config
             if (type == "XPBDMeshObject")
             {
                 std::unique_ptr<XPBDMeshObjectConfig> config = std::make_unique<XPBDMeshObjectConfig>(obj_node);
-                config->timeStep(_time_step); 
-                _mesh_object_configs.push_back(std::move(config));
+                _object_configs.push_back(std::move(config));
             }
             if (type == "FirstOrderXPBDMeshObject")
             {
                 std::unique_ptr<FirstOrderXPBDMeshObjectConfig> config = std::make_unique<FirstOrderXPBDMeshObjectConfig>(obj_node);
-                config->timeStep(_time_step);
-                _mesh_object_configs.push_back(std::move(config));
-            }
-            if (type == "FastFEMMeshObject")
-            {
-                std::unique_ptr<FastFEMMeshObjectConfig> config = std::make_unique<FastFEMMeshObjectConfig>(obj_node);
-                config->timeStep(_time_step);
-                _mesh_object_configs.push_back(std::move(config));
+                _object_configs.push_back(std::move(config));
             }
             if (type == "RigidMeshObject")
             {
                 std::unique_ptr<RigidMeshObjectConfig> config = std::make_unique<RigidMeshObjectConfig>(obj_node);
-                config->timeStep(_time_step);
-                _mesh_object_configs.push_back(std::move(config));
+                _object_configs.push_back(std::move(config));
             }
+            
         }
     }
 
@@ -133,7 +124,7 @@ class SimulationConfig : public Config
     std::optional<double> collisionRate() const { return _collision_rate.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
-    const std::vector<std::unique_ptr<MeshObjectConfig> >& meshObjectConfigs() const { return _mesh_object_configs; }
+    const std::vector<std::unique_ptr<ObjectConfig> >& objectConfigs() const { return _object_configs; }
 
     protected:
     // Parameters
@@ -147,7 +138,7 @@ class SimulationConfig : public Config
     ConfigParameter<double> _collision_rate;
 
     /** List of MeshObject configs for each object in the Simulation */
-    std::vector<std::unique_ptr<MeshObjectConfig>> _mesh_object_configs;
+    std::vector<std::unique_ptr<ObjectConfig>> _object_configs;
 
 };
 

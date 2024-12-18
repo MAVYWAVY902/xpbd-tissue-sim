@@ -3,6 +3,9 @@
 
 #include "solver/XPBDSolver.hpp"
 
+namespace Sim
+{
+
 TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_filename)
     : OutputSimulation()
 {
@@ -467,3 +470,5 @@ void TissueGraspingSimulation::_fixOutsideSurface()
         }
     }
 }
+
+} // namespace Sim

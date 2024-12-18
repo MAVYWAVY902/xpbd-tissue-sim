@@ -13,7 +13,7 @@ class XPBDGaussSeidelSolver : public XPBDSolver
 {
     public:
     /** Same constructor as XPBDSolver */
-    explicit XPBDGaussSeidelSolver(XPBDMeshObject const* obj, unsigned num_iter, XPBDResidualPolicy residual_policy);
+    explicit XPBDGaussSeidelSolver(const Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy);
 
     protected:
     /** Implements a Gauss-Seidel update strategy for constraint projection.

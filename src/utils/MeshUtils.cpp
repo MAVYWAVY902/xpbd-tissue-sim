@@ -45,6 +45,166 @@ void MeshUtils::loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matr
     }
 }
 
+Geometry::Mesh MeshUtils::loadSurfaceMeshFromFile(const std::string& filename)
+{
+    Assimp::Importer importer;
+
+    // And have it read the given file with some example postprocessing
+    // Usually - if speed is not the most important aspect for you - you'll
+    // probably to request more postprocessing than we do in this example.
+    const aiScene* scene = importer.ReadFile( filename,
+        aiProcess_Triangulate            |
+        aiProcess_JoinIdenticalVertices  |
+        aiProcess_SortByPType);
+
+    // If the import failed, report it
+    if (scene == nullptr)
+    {
+        std::cerr << "\tAssimp::Importer could not open " << filename << std::endl;
+        std::cerr << "\tEnsure that the file is in a format that assimp can handle." << std::endl;
+        assert(0);
+    }
+
+    const aiMesh* ai_mesh = scene->mMeshes[0];
+
+    // Extract vertices
+    Geometry::Mesh::VerticesMat verts(3, ai_mesh->mNumVertices);
+    for (unsigned i = 0; i < ai_mesh->mNumVertices; i++)
+    {
+        verts(0,i) = ai_mesh->mVertices[i].x;
+        verts(1,i) = ai_mesh->mVertices[i].y;
+        verts(2,i) = ai_mesh->mVertices[i].z;
+    }
+
+    // Extract faces
+    Geometry::Mesh::FacesMat faces(3, ai_mesh->mNumFaces);
+    for (unsigned i = 0; i < ai_mesh->mNumFaces; i++)
+    {
+        faces(0,i) = ai_mesh->mFaces[i].mIndices[0];
+        faces(1,i) = ai_mesh->mFaces[i].mIndices[1];
+        faces(2,i) = ai_mesh->mFaces[i].mIndices[2];
+    }
+
+    Geometry::Mesh mesh(verts, faces);
+    return mesh;
+}
+
+Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename)
+{
+    std::cout << "MeshUtils::loadTetMeshFromGmshFile - loading mesh data from " << filename << " as a Geometry::Mesh..." << std::endl;
+
+    // ensure the file exists
+    if (!std::filesystem::exists(filename))
+    {
+        std::cerr << "\t" << filename << " does not exist!" << std::endl;
+        assert(0);
+    }
+
+
+    std::filesystem::path file_path(filename);
+
+    // ensure the file is a .msh file
+    if (file_path.extension() != ".msh" && file_path.extension() != ".MSH")
+    {
+        std::cerr << "\t" << filename << " is not a .msh file!" << std::endl;
+        assert(0);
+    }
+
+    gmsh::open(filename);
+
+    // Get all the elementary entities in the model, as a vector of (dimension,
+    // tag) pairs:
+    std::vector<std::pair<int, int> > entities;
+    gmsh::model::getEntities(entities);
+
+    Geometry::Mesh::VerticesMat vertices;
+    Geometry::Mesh::FacesMat faces;
+    Geometry::Mesh::ElementsMat elements;
+
+    for(auto e : entities) {
+        // Dimension and tag of the entity:
+        int dim = e.first, tag = e.second;
+
+        // Mesh data is made of `elements' (points, lines, triangles, ...), defined
+        // by an ordered list of their `nodes'. Elements and nodes are identified by
+        // `tags' as well (strictly positive identification numbers), and are stored
+        // ("classified") in the model entity they discretize. Tags for elements and
+        // nodes are globally unique (and not only per dimension, like entities).
+
+        // A model entity of dimension 0 (a geometrical point) will contain a mesh
+        // element of type point, as well as a mesh node. A model curve will contain
+        // line elements as well as its interior nodes, while its boundary nodes
+        // will be stored in the bounding model points. A model surface will contain
+        // triangular and/or quadrangular elements and all the nodes not classified
+        // on its boundary or on its embedded entities. A model volume will contain
+        // tetrahedra, hexahedra, etc. and all the nodes not classified on its
+        // boundary or on its embedded entities.
+
+        // Get the mesh nodes for the entity (dim, tag):
+        std::vector<std::size_t> nodeTags;
+        std::vector<double> nodeCoords, nodeParams;
+        gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, dim, tag);
+
+        unsigned vert_offset = vertices.cols();
+        vertices.conservativeResize(3, vert_offset + nodeTags.size());
+        for (unsigned i = 0; i < nodeTags.size(); i++)
+        {
+            vertices(0, vert_offset + i) = nodeCoords[i*3];
+            vertices(1, vert_offset + i) = nodeCoords[i*3 + 1];
+            vertices(2, vert_offset + i) = nodeCoords[i*3 + 2];
+        }
+
+        // Get the mesh elements for the entity (dim, tag):
+        std::vector<int> elemTypes;
+        std::vector<std::vector<std::size_t> > elemTags, elemNodeTags;
+        gmsh::model::mesh::getElements(elemTypes, elemTags, elemNodeTags, dim, tag);
+
+        // Extract all tetrahedra into a flat vector
+        std::vector<unsigned> tetrahedra_vertex_indices;
+        // Extract all surface triangles into a flat vector
+        std::vector<unsigned> triangle_vertex_indices;
+        for (unsigned i = 0; i < elemTypes.size(); i++)
+        {
+            if (elemTypes[i] == 4)
+            {
+                tetrahedra_vertex_indices.insert(tetrahedra_vertex_indices.end(), elemNodeTags[i].begin(), elemNodeTags[i].end());
+            }
+
+            if (elemTypes[i] == 2)
+            {
+                triangle_vertex_indices.insert(triangle_vertex_indices.end(), elemNodeTags[i].begin(), elemNodeTags[i].end());
+            }
+        }
+
+        unsigned elem_offset = elements.cols();
+        unsigned num_tetrahedra = tetrahedra_vertex_indices.size()/4;
+        elements.conservativeResize(4, elem_offset + num_tetrahedra);
+        for (unsigned i = 0; i < num_tetrahedra; i++)
+        {
+            elements(0, elem_offset + i) = tetrahedra_vertex_indices[i*4] - 1;
+            elements(1, elem_offset + i) = tetrahedra_vertex_indices[i*4 + 1] - 1;
+            elements(2, elem_offset + i) = tetrahedra_vertex_indices[i*4 + 2] - 1;
+            elements(3, elem_offset + i) = tetrahedra_vertex_indices[i*4 + 3] - 1;
+        }
+
+        unsigned face_offset = faces.cols();
+        unsigned num_faces = triangle_vertex_indices.size()/3;
+        faces.conservativeResize(3, face_offset + num_faces);
+        for (unsigned i = 0; i < num_faces; i++)
+        {
+            faces(0, face_offset + i) = triangle_vertex_indices[i*3] - 1;
+            faces(1, face_offset + i) = triangle_vertex_indices[i*3 + 1] - 1;
+            faces(2, face_offset + i) = triangle_vertex_indices[i*3 + 2] - 1;
+        }
+    }
+
+    Geometry::TetMesh tet_mesh(vertices, faces, elements);
+    return tet_mesh;
+
+}
+
+
+
 void MeshUtils::createBeamObjWithOffsetVerts(const std::string& filename, const double length, const double width, const double height)
 {
     // try and discretize so that the elements are roughly cube
@@ -619,12 +779,12 @@ void MeshUtils::createTissueBlock(const std::string& filename, const double leng
     verts.insert(verts.end(), high_res_verts.begin(), high_res_verts.end());
 
     std::ofstream ss(filename);
-    for (int i = 0; i < verts.size(); i++)
+    for (size_t i = 0; i < verts.size(); i++)
     {
         ss << "v " << verts[i](0) << " " << verts[i](1) << " " << verts[i](2) << "\n";
     }
 
-    for (int i = 0; i < faces.size(); i++)
+    for (size_t i = 0; i < faces.size(); i++)
     {
         ss << "f " << faces[i](0)+1 << " " << faces[i](1)+1 << " " << faces[i](2)+1 << "\n";
     }
@@ -692,7 +852,7 @@ void MeshUtils::convertSTLtoMSH(const std::string& filename)
 
     int surface_loop_tag = gmsh::model::geo::addSurfaceLoop(std::vector<int>{1});
 
-    int volume_tag = gmsh::model::geo::addVolume(std::vector<int>{surface_loop_tag});
+    gmsh::model::geo::addVolume(std::vector<int>{surface_loop_tag});
 
     gmsh::model::geo::synchronize();
     gmsh::model::mesh::generate(3);

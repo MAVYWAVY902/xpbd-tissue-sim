@@ -14,7 +14,7 @@ class HydrostaticConstraint : public virtual ElementConstraint
     
     public:
     /** Creates the hydrostatic constraint from a MeshObject and the 4 vertices that make up the tetrahedral element. */
-    HydrostaticConstraint(XPBDMeshObject* obj, unsigned v1, unsigned v2, unsigned v3, unsigned v4)
+    HydrostaticConstraint(const Sim::XPBDMeshObject* obj, int v1, int v2, int v3, int v4)
         : ElementConstraint(obj, v1, v2, v3, v4)
     {
         _alpha = 1/(obj->material().lambda() * _volume);            // set alpha after the ElementConstraint constructor because we need the element volume
@@ -102,7 +102,7 @@ class HydrostaticConstraint : public virtual ElementConstraint
     }
 
     /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
-    inline unsigned memoryNeeded() const override
+    inline size_t memoryNeeded() const override
     {
         // 9 for F
         // 9 for X

@@ -17,7 +17,7 @@ class ElasticMaterial
     public:
 
     explicit ElasticMaterial(const ElasticMaterialConfig* config)
-        : _name(config->name().value_or("")),
+        : _name(config->name()),
           _density(config->density().value_or(1000)),
           _E(config->E().value_or(3e6)),
           _nu(config->nu().value_or(0.49))

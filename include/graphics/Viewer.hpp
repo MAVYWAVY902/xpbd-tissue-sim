@@ -5,8 +5,10 @@
 #include <map>
 #include <array>
 
-class Simulation;
-
+namespace Sim
+{
+    class Simulation;
+}
 namespace Graphics
 {
 
@@ -88,7 +90,7 @@ class Viewer
     /** Assigns a weak reference to the simulation.
      * @param simulation : a non-owning pointer to the Simulation object
      */
-    void registerSimulation(Simulation* simulation) { _simulation = simulation; }
+    void registerSimulation(Sim::Simulation* simulation) { _simulation = simulation; }
 
     /** Add text to the Viewer to be rendered
      * Simply creates a TextSpec according to the parameters passed in
@@ -161,7 +163,7 @@ class Viewer
     /** Non-owning pointer to the Simulation object that owns this Viewer
      * Used to notify Simulation object when a key is pressed (which applies when using the Frame-by-frame simulation mode)
      */
-    Simulation* _simulation;
+    Sim::Simulation* _simulation;
 
     /** Whether or not the default Viewer response to mouse events is enabled.
      * E.g. normally when the user clicks and drags the Viewer window, the view of the camera is rotated. In some interactive sims we may not want that.

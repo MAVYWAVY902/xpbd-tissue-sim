@@ -4,8 +4,9 @@
 #include <string>
 
 #include "geometry/AABB.hpp"
+#include "config/ObjectConfig.hpp"
 
-namespace Simulation
+namespace Sim
 {
 
 class Simulation;
@@ -13,8 +14,12 @@ class Simulation;
 class Object
 {
     public:
-    Object(const std::string& name)
-        : _name(name)
+    Object(const Simulation* sim, const ObjectConfig* config)
+        : _name(config->name()), _sim(sim)
+    {}
+
+    Object(const Simulation* sim, const std::string& name)
+        : _name(name), _sim(sim)
     {
     }
 
@@ -33,6 +38,11 @@ class Object
 
     /** Returns the name of this object. */
     std::string name() const { return _name; }
+
+    /** Performs any necessary setup for this object.
+     * Called after instantiation (i.e. outside the constructor) and before update() is called for the first time.
+     */
+    virtual void setup() = 0;
 
     /** Evolves this object one time step forward in time. 
      * Completely up to the derived classes to decide how they should step forward in time.

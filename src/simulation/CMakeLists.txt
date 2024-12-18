@@ -20,20 +20,20 @@ target_sources(BeamSimulation
         ${SIMULATION_SRC_DIR}/BeamSimulation.cpp
 )
 
-target_sources(BeamStretchSimulation
-    PRIVATE
-        ${SIMULATION_INCLUDE_DIR}/BeamStretchSimulation.hpp
-        ${SIMULATION_SRC_DIR}/BeamStretchSimulation.cpp
-)
+# target_sources(BeamStretchSimulation
+#     PRIVATE
+#         ${SIMULATION_INCLUDE_DIR}/BeamStretchSimulation.hpp
+#         ${SIMULATION_SRC_DIR}/BeamStretchSimulation.cpp
+# )
 
-target_sources(InitialDeformationSimulation
-    PRIVATE
-        ${SIMULATION_INCLUDE_DIR}/InitialDeformationSimulation.hpp
-        ${SIMULATION_SRC_DIR}/InitialDeformationSimulation.cpp
-)
+# target_sources(InitialDeformationSimulation
+#     PRIVATE
+#         ${SIMULATION_INCLUDE_DIR}/InitialDeformationSimulation.hpp
+#         ${SIMULATION_SRC_DIR}/InitialDeformationSimulation.cpp
+# )
 
-target_sources(TissueGraspingSimulation
-    PRIVATE
-        ${SIMULATION_INCLUDE_DIR}/TissueGraspingSimulation.hpp
-        ${SIMULATION_SRC_DIR}/TissueGraspingSimulation.cpp
-)
+# target_sources(TissueGraspingSimulation
+#     PRIVATE
+#         ${SIMULATION_INCLUDE_DIR}/TissueGraspingSimulation.hpp
+#         ${SIMULATION_SRC_DIR}/TissueGraspingSimulation.cpp
+# )
