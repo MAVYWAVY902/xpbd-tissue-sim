@@ -1,7 +1,7 @@
 #include "simobject/XPBDMeshObject.hpp"
 #include "simulation/Simulation.hpp"
 #include "solver/XPBDGaussSeidelSolver.hpp"
-#include "solver/CollisionConstraint.hpp"
+#include "solver/StaticDeformableCollisionConstraint.hpp"
 #include "solver/HydrostaticConstraint.hpp"
 #include "solver/DeviatoricConstraint.hpp"
 #include "solver/ConstraintProjectorDecorator.hpp"
@@ -69,13 +69,30 @@ int XPBDMeshObject::numConstraintsForPosition(const int index) const
 
 void XPBDMeshObject::addCollisionConstraint(XPBDMeshObject* vertex_obj, int vertex_ind, XPBDMeshObject* face_obj, int face_vertex1, int face_vertex2, int face_vertex3)
 {
-    std::unique_ptr<Solver::CollisionConstraint> collision_constraint = std::make_unique<Solver::CollisionConstraint>(vertex_obj, vertex_ind,
-                                                                                                                    face_obj, face_vertex1,
-                                                                                                                    face_vertex2, face_vertex3);
+    // std::unique_ptr<Solver::CollisionConstraint> collision_constraint = std::make_unique<Solver::CollisionConstraint>(vertex_obj, vertex_ind,
+    //                                                                                                                 face_obj, face_vertex1,
+    //                                                                                                                 face_vertex2, face_vertex3);
+    // std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
+    // std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _sim->dt());
+
+    // int index = _solver->addConstraintProjector(std::move(collision_projector));
+    // XPBDCollisionConstraint xpbd_collision_constraint;
+    // xpbd_collision_constraint.constraint = std::move(collision_constraint);
+    // xpbd_collision_constraint.projector_index = index;
+    // xpbd_collision_constraint.num_steps_unused = 0;
+
+    // _collision_constraints.push_back(std::move(xpbd_collision_constraint));
+}
+
+void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
+                                    const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
+{
+    std::unique_ptr<Solver::Constraint> collision_constraint = std::make_unique<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, obj, v1, v2, v3, u, v, w);
     std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
     std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _sim->dt());
 
     int index = _solver->addConstraintProjector(std::move(collision_projector));
+
     XPBDCollisionConstraint xpbd_collision_constraint;
     xpbd_collision_constraint.constraint = std::move(collision_constraint);
     xpbd_collision_constraint.projector_index = index;

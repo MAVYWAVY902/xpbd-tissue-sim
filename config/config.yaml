@@ -60,12 +60,12 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0, 0, 0.25]
+    position: [0, 0, 2.6]
     velocity: [0, 0, 0]
-    rotation: [0, 0, 0]
+    rotation: [0, 180, 0]
     num-solver-iters: 1
     damping-gamma: 2000
-    collisions: false
+    collisions: true
     damping-multiplier: 100000
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
@@ -77,21 +77,22 @@ objects:
   -
     name: "sphere"
     type: "RigidSphere"
-    radius: 0.5
-    position: [0, 0.5, 1]
+    radius: 0.25
+    position: [0, 0, 1]
+    collisions: true
 
-  - name: "box"
-    type: "RigidBox"
-    size: [0.5, 0.2, 0.1]
-    position: [0.0, 0.0, 0]
-    rotation: [0, 0, 0]
+  # - name: "box"
+  #   type: "RigidBox"
+  #   size: [0.5, 0.2, 0.1]
+  #   position: [0.0, 0.0, 0]
+  #   rotation: [0, 0, 0]
 
-  - name: "cylinder"
-    type: "RigidCylinder"
-    radius: 0.5
-    height: 1
-    position: [0, 0, 0]
-    rotation: [0, 90, 0]
+  # - name: "cylinder"
+  #   type: "RigidCylinder"
+  #   radius: 0.5
+  #   height: 1
+  #   position: [0, 0, 0]
+  #   rotation: [0, 90, 0]
 
   # -
   #   name: "Cube2_res"

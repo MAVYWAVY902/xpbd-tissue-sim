@@ -3,6 +3,25 @@
 namespace GeometryUtils
 {
 
+std::tuple<double,double,double> barycentricCoords(const Eigen::Vector3d& p, const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c)
+{
+    // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
+    const Eigen::Vector3d v0 = b - a;
+    const Eigen::Vector3d v1 = c - a;
+    const Eigen::Vector3d v2 = p - a;
+    const double d00 = v0.dot(v0);
+    const double d01 = v0.dot(v1);
+    const double d11 = v1.dot(v1);
+    const double d20 = v2.dot(v0);
+    const double d21 = v2.dot(v1);
+    const double denom = d00*d11 - d01*d01;
+    const double v = (d11*d20 - d01*d21) / denom;
+    const double w = (d00*d21 - d01*d20) / denom;
+    const double u = 1 - v - w;
+
+    return std::tuple<double, double, double>(u, v, w);
+}
+
 Eigen::Matrix3d quatToMat(const Eigen::Vector4d& quat)
 {
     Eigen::Matrix3d mat;

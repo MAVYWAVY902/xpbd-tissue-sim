@@ -16,15 +16,22 @@ Easy3DCylinderGraphicsObject::Easy3DCylinderGraphicsObject(const std::string& na
     {
         p[2] -= _cylinder->height()/2.0;
     }
-
     _initial_points = _e3d_mesh.points();
+
+    _transformPoints();
+
     _e3d_mesh.set_renderer(new easy3d::Renderer(&_e3d_mesh, true));
     set_renderer(_e3d_mesh.renderer());
 }
 
 void Easy3DCylinderGraphicsObject::update() 
 {
-    // TODO: transform mesh according to current position
+    _transformPoints();
+    renderer()->update();
+}
+
+void Easy3DCylinderGraphicsObject::_transformPoints()
+{
     std::vector<easy3d::vec3>& mesh_points = _e3d_mesh.points();
     const easy3d::vec3 e3d_position(_cylinder->position()[0], _cylinder->position()[1], _cylinder->position()[2]);
 
@@ -35,7 +42,6 @@ void Easy3DCylinderGraphicsObject::update()
     {
         mesh_points[i] = e3d_rot_mat * _initial_points[i] + e3d_position;
     }
-    renderer()->update();
 }
 
 
