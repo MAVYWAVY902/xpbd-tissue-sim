@@ -47,7 +47,7 @@ void Simulation::_init()
 
     // initialize the collision scene
     // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
-    _collision_scene = std::make_unique<CollisionScene>(_time_between_collision_checks, 0.05, 10007);
+    _collision_scene = std::make_unique<CollisionScene>(this);
     _last_collision_detection_time = 0;
 }
 
@@ -204,9 +204,15 @@ void Simulation::_timeStep()
     {
         // run collision detection
         auto t1 = std::chrono::steady_clock::now();
-        _collision_scene->collideObjects(_time);
+        for (auto& obj : _objects)
+        {
+            if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
+                xpbd_obj->clearCollisionConstraints();
+        }
+        
+        _collision_scene->collideObjects();
         auto t2 = std::chrono::steady_clock::now();
-        // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+        std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
         
     }
@@ -214,8 +220,6 @@ void Simulation::_timeStep()
     // update each MeshObject
     for (auto& obj : _objects)
     {
-        if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
-            xpbd_obj->removeOldCollisionConstraints(5);
         obj->update();
     }
 

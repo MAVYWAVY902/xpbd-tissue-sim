@@ -30,6 +30,9 @@ class Easy3DSphereGraphicsObject : public SphereGraphicsObject, public easy3d::M
      */
     const std::vector<easy3d::vec3>& points() const override { return _e3d_mesh.points(); };
 
+    private:
+    void _transformPoints();
+
     protected:
     easy3d::SurfaceMesh _e3d_mesh;
     std::vector<easy3d::vec3> _initial_points;
