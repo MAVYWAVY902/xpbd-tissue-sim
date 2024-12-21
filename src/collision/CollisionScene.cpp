@@ -5,6 +5,7 @@
 #include "simobject/XPBDMeshObject.hpp"
 #include "geometry/SphereSDF.hpp"
 #include "geometry/BoxSDF.hpp"
+#include "geometry/CylinderSDF.hpp"
 #include "geometry/Mesh.hpp"
 #include "utils/GeometryUtils.hpp"
 
@@ -29,6 +30,10 @@ void CollisionScene::addObject(Sim::Object* new_obj)
     {
         sdf = std::make_unique<Geometry::BoxSDF>(box);
     }
+    else if (Sim::RigidCylinder* cyl = dynamic_cast<Sim::RigidCylinder*>(new_obj))
+    {
+        sdf = std::make_unique<Geometry::CylinderSDF>(cyl);
+    }
 
     // create a new collision object
     CollisionObject c_obj;
@@ -52,6 +57,7 @@ void CollisionScene::collideObjects()
 
 void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject& c_obj2)
 {
+    std::cout << "Colliding " << c_obj1.obj->name() << " and " << c_obj2.obj->name() << std::endl;
     const Geometry::SDF* sdf;
     const Geometry::Mesh* mesh;
     Sim::XPBDMeshObject* xpbd_obj;
