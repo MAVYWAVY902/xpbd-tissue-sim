@@ -38,6 +38,18 @@ Eigen::Matrix3d quatToMat(const Eigen::Vector4d& quat)
     return mat;
 }
 
+Eigen::Vector3d rotateVectorByQuat(const Eigen::Vector3d& v, const Eigen::Vector4d& quat)
+{
+    // from https://gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion
+    const Eigen::Vector3d& u = quat(Eigen::seq(0,2));
+    return 2*u.dot(v)*u + (2*quat[3]*quat[3] - 1)*v + 2*quat[3]*u.cross(v);
+}
+
+Eigen::Vector4d inverseQuat(const Eigen::Vector4d& quat)
+{
+    return Eigen::Vector4d({-quat[0], -quat[1], -quat[2], quat[3]}) / (quat.squaredNorm());
+}
+
 Eigen::Vector4d eulXYZ2Quat(const double x, const double y, const double z)
 {
     const double q1 = std::sin(0.5*x)*std::cos(0.5*y)*std::cos(0.5*z) - std::cos(0.5*x)*std::sin(0.5*y)*std::sin(0.5*z);

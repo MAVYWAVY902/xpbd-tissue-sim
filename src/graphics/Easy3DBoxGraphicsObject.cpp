@@ -12,9 +12,12 @@ Easy3DBoxGraphicsObject::Easy3DBoxGraphicsObject(const std::string& name, const 
     _e3d_mesh = easy3d::SurfaceMeshFactory::hexahedron();
     for (auto& p : _e3d_mesh.points())
     {
-        p[0] *= box->size()[0];
-        p[1] *= box->size()[1];
-        p[2] *= box->size()[2];
+        // for some reason, when Easy3D creates a hexahedron primitive, it is a cube centered at the origin with length of diagonal = 1,
+        // meaning that the side length is 2/sqrt(3). To scale it to be a unit cube, we multiply each vertex by sqrt(3)/2, and then scale
+        // it to the size that we want.
+        p[0] *= std::sqrt(3)/2.0 * box->size()[0];
+        p[1] *= std::sqrt(3)/2.0 * box->size()[1];
+        p[2] *= std::sqrt(3)/2.0 * box->size()[2];
     }
 
     _initial_points = _e3d_mesh.points();

@@ -1,12 +1,12 @@
 name: "blah"
 visualization: "Easy3D"
 g-accel: 9.81 # m/s2
-# sim-mode: "Frame-by-frame"
+sim-mode: "Frame-by-frame"
 # sim-mode: "Visualization"
-sim-mode: "AFAP"
+# sim-mode: "AFAP"
 time-step: 1e-3
 fps: 30
-end-time: 10
+end-time: 100
 objects:
   # -
   #   name: "Trachea"
@@ -60,9 +60,9 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0, 0, 2.6]
+    position: [0, 0, 1.5]
     velocity: [0, 0, 0]
-    rotation: [0, 180, 0]
+    rotation: [0, 0, 0]
     num-solver-iters: 1
     damping-gamma: 2000
     collisions: true
@@ -74,18 +74,19 @@ objects:
     # residual-policy: "Every-Substep"
     residual-policy: "Never"
   
-  -
-    name: "sphere"
-    type: "RigidSphere"
-    radius: 0.25
-    position: [0, 0, 1]
-    collisions: true
+  # -
+  #   name: "sphere"
+  #   type: "RigidSphere"
+  #   radius: 0.5
+  #   position: [0, 0, 0]
+  #   collisions: true
 
-  # - name: "box"
-  #   type: "RigidBox"
-  #   size: [0.5, 0.2, 0.1]
-  #   position: [0.0, 0.0, 0]
-  #   rotation: [0, 0, 0]
+  - name: "box"
+    type: "RigidBox"
+    size: [1, 1, 1]
+    position: [0.0, 0, 0]
+    rotation: [45, 45, 45]
+    collisions: true
 
   # - name: "cylinder"
   #   type: "RigidCylinder"

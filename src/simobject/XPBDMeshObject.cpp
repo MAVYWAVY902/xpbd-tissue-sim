@@ -17,7 +17,7 @@ XPBDMeshObject::XPBDMeshObject(const Simulation* sim, const XPBDMeshObjectConfig
     /* extract values from the Config object */
     
     // set initial velocity if specified in config
-    _vertex_velocities.colwise() = config->initialVelocity();
+    _initial_velocity = config->initialVelocity();
 
     // solver options
     _solver_type = config->solverType().value();
@@ -49,6 +49,7 @@ void XPBDMeshObject::setup()
     // initialize the previous vertices matrix once we've loaded the mesh
     _previous_vertices = _mesh->vertices();
     _vertex_velocities = Geometry::Mesh::VerticesMat::Zero(3, _mesh->numVertices());
+    _vertex_velocities.colwise() = _initial_velocity;
 
     _calculatePerVertexQuantities();
     _createSolver(_solver_type, _num_solver_iters, _residual_policy);       // create the Solver object first and then add ConstraintProjectors to it
