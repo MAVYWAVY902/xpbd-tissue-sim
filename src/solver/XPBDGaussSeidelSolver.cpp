@@ -14,7 +14,6 @@ XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(const Sim::XPBDMeshObject* obj, int
 
 void XPBDGaussSeidelSolver::_solveConstraints(double* data)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
     for (const auto& proj : _constraint_projectors)
     {
         if (!proj)

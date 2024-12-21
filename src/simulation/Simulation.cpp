@@ -64,8 +64,13 @@ Simulation::Simulation()
 
 std::string Simulation::toString(const int indent) const
 {
-    return  type() + " '" + _name + "':\n\tTime step: " + std::to_string(_time_step) + " s\n\tEnd time: " + std::to_string(_end_time) +
-        " s\n\tGravity: " + std::to_string(_g_accel) + " m/s^2";
+    std::string indent_str(indent, '\t');
+    std::stringstream ss;
+    ss << indent_str << "=====" << type() << " '" << _name << "'=====" << std::endl;
+    ss << indent_str << "Time step: " << _time_step << " s" << std::endl;
+    ss << indent_str << "End time: " << _end_time << " s" << std::endl;
+    ss << indent_str << "Gravity: " << _g_accel << " m/s2" << std::endl;
+    return  ss.str();
 }
 
 // void Simulation::addObject(std::shared_ptr<MeshObject> mesh_object)
@@ -139,19 +144,6 @@ void Simulation::setup()
     {
         _graphics_scene->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
     }
-
-    // update the cell size of the Collision scene now that we have added all the objects
-    // unsigned total_num_edges = 0;
-    // double total_edge_length = 0;
-    // for (const auto& obj : _objects)
-    // {
-    //     auto [num_edges, avg_edge_length] = obj->averageSurfaceEdgeLength();
-    //     total_num_edges += num_edges;
-    //     total_edge_length += avg_edge_length * num_edges;
-    // }
-    // _collision_scene->setCellSize(total_edge_length/total_num_edges);
-
-    // std::cout << "Average edge length: " << total_edge_length / total_num_edges << std::endl;
 }
 
 void Simulation::update()
@@ -162,8 +154,6 @@ void Simulation::update()
     auto wall_time_start = std::chrono::steady_clock::now();
     // the wall time of the last viewer redraw
     auto last_redraw = std::chrono::steady_clock::now();
-
-    double last_collision_detection_time = _time;
 
     // loop until end time is reached
     while(_time < _end_time)

@@ -85,8 +85,6 @@ class XPBDMeshObject : public Object, public TetMeshObject
      */
     int numConstraintsForPosition(const int index) const;
 
-    void addCollisionConstraint(XPBDMeshObject* vertex_obj, int vertex_ind, XPBDMeshObject* face_obj, int face_vertex1, int face_vertex2, int face_vertex3);
-
     void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
                                     const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const double u, const double v, const double w);
 

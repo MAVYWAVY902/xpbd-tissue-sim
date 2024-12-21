@@ -66,23 +66,11 @@ int XPBDMeshObject::numConstraintsForPosition(const int index) const
     {
         return _vertex_attached_elements[index];     // if combined constraints are used, there are 2 constraints per element but they are solved together ==> # of constraint updates = # of elements attached to that vertex
     }
-}
-
-void XPBDMeshObject::addCollisionConstraint(XPBDMeshObject* vertex_obj, int vertex_ind, XPBDMeshObject* face_obj, int face_vertex1, int face_vertex2, int face_vertex3)
-{
-    // std::unique_ptr<Solver::CollisionConstraint> collision_constraint = std::make_unique<Solver::CollisionConstraint>(vertex_obj, vertex_ind,
-    //                                                                                                                 face_obj, face_vertex1,
-    //                                                                                                                 face_vertex2, face_vertex3);
-    // std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
-    // std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _sim->dt());
-
-    // int index = _solver->addConstraintProjector(std::move(collision_projector));
-    // XPBDCollisionConstraint xpbd_collision_constraint;
-    // xpbd_collision_constraint.constraint = std::move(collision_constraint);
-    // xpbd_collision_constraint.projector_index = index;
-    // xpbd_collision_constraint.num_steps_unused = 0;
-
-    // _collision_constraints.push_back(std::move(xpbd_collision_constraint));
+    else
+    {
+        assert(0); // something weird happened, shouldn't get to here
+        return 0;
+    }
 }
 
 void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
