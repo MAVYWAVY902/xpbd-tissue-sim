@@ -55,9 +55,8 @@ class StaticDeformableCollisionConstraint : public Constraint
      * i.e. returns C(x)
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint calculation, if necessary
      */
-    inline void evaluate(double* C, double* additional_memory) const override
+    inline void evaluate(double* C) const override
     {
         const Eigen::Vector3d a = _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
         *C = _n.dot(a - _p)/10.0 + 1e-4;
@@ -67,9 +66,8 @@ class StaticDeformableCollisionConstraint : public Constraint
      * i.e. returns delC(x)
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint gradient calculation, if necessary
      */
-    inline void gradient(double* grad, double* additional_memory) const override
+    inline void gradient(double* grad) const override
     {
         grad[_gradient_vector_index[0]] = _u*_n[0];
         grad[_gradient_vector_index[1]] = _u*_n[1];
@@ -92,18 +90,11 @@ class StaticDeformableCollisionConstraint : public Constraint
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values, if necessary
      */
-    void evaluateWithGradient(double* C, double* grad, double* additional_memory) const override
+    void evaluateWithGradient(double* C, double* grad) const override
     {
-        evaluate(C, additional_memory);
-        gradient(grad, additional_memory);
-    }
-
-    /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
-    inline size_t memoryNeeded() const override
-    {
-        return 0;
+        evaluate(C);
+        gradient(grad);
     }
 
     /** Collision constraints should be implemented as inequalities, i.e. as C(x) >= 0. */

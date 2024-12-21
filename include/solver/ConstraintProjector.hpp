@@ -111,7 +111,6 @@ class ConstraintProjector
      *  - LHS matrix (i.e. delC * M^-1 * delC^T + alpha_tilde) - numConstraints x numConstraints
      *  - RHS matrix (i.e. -C - alpha tilde * lambda) - numConstraints x 1
      *  - Delta lambda vector - numConstraints x 1
-     *  - Additional memory block - to be used by the Constraint class for intermediate values necessary to evaluate the constraint and its gradient (e.g. calculating the deformation gradient)
      * 
      * Helper functions exist to get the memory address of various quantities within the pre-allocated data block.
      * 
@@ -133,10 +132,9 @@ class ConstraintProjector
         double* lhs_ptr = _LHS_ptr();
         double* rhs_ptr = _RHS_ptr();
         double* dlam_ptr = _dlam_ptr();
-        double* C_mem_ptr = _C_mem_ptr();
 
         // evaluate constraints and their gradients
-        _evaluateConstraintsAndGradients(C_ptr, delC_ptr, C_mem_ptr);
+        _evaluateConstraintsAndGradients(C_ptr, delC_ptr);
 
         if (C_ptr[0] > 0 && _state->_constraints[0]->isInequality())
         {
@@ -216,10 +214,9 @@ class ConstraintProjector
         double* C_ptr = _C_ptr();
         double* delC_ptr = _delC_ptr();
         double* alpha_tilde_ptr = _alpha_tilde_ptr();
-        double* C_mem_ptr = _C_mem_ptr();
 
         // evaluate constraints and their gradients
-        _evaluateConstraintsAndGradients(C_ptr, delC_ptr, C_mem_ptr);
+        _evaluateConstraintsAndGradients(C_ptr, delC_ptr);
 
         alphaTilde(alpha_tilde_ptr);
 
@@ -246,17 +243,6 @@ class ConstraintProjector
         num_bytes += numConstraints() * numConstraints() * sizeof(double); // size needed for LHS matrix
         num_bytes += numConstraints()* sizeof(double); // size needed for RHS vector
         num_bytes += numConstraints()* sizeof(double); // size needed for dlam vector
-
-        // find max amount of additional memory needed by constraints for doing calculations
-        unsigned max_constraint_mem = 0;
-        for (const auto& c : _state->_constraints)
-        {
-            if (c->memoryNeeded() > max_constraint_mem)
-            {
-                max_constraint_mem = c->memoryNeeded();
-            }
-        }
-        num_bytes += max_constraint_mem;
 
         return num_bytes;
     }
@@ -315,15 +301,14 @@ class ConstraintProjector
     /** Evaluates the constraints and their gradients. This may be overloaded by derived classes if there is a more efficient way than the below naive approach. 
      * @param C_ptr - the pointer to the constraint vector. Expects it to be numConstraints x 1.
      * @param delC_ptr - the pointer to the delC matrix. Expects it to be row-major and numConstraints x numCoordinates.
-     * @param C_mem_ptr - the pointer to additional memory for the constraints to store intermediate calculations 
     */
-    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr, double* C_mem_ptr)
+    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr)
     {
         for (unsigned ci = 0; ci < numConstraints(); ci++)
         {
             // C(x) is a vector: C_ptr+ci points to the index ci in the C(x) vector
             // delC(x) is a matrix: delC_ptr + ci*numCoordinates() points to the row corresponding to the ci'th constraint
-            _state->_constraints[ci]->evaluateWithGradient(C_ptr+ci, delC_ptr+ci*numCoordinates(), C_mem_ptr);
+            _state->_constraints[ci]->evaluateWithGradient(C_ptr+ci, delC_ptr+ci*numCoordinates());
         }
     }
 
@@ -451,9 +436,6 @@ class ConstraintProjector
      * The delta_lambda vector has length numConstraints.
      */
     inline double* _dlam_ptr() const { return _RHS_ptr() + numConstraints(); }
-
-    /** Returns a pointer to the start of the additional scratch memory used by the Constraint class to perform calculations. */
-    inline double* _C_mem_ptr() const { return _dlam_ptr() + numConstraints(); }
 
     protected:
 

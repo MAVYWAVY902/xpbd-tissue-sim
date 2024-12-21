@@ -43,16 +43,16 @@ class CombinedNeohookeanConstraintProjector : public ConstraintProjector
      * @param delC_ptr - the pointer to the delC matrix. Expects it to be row-major and numConstraints x numCoordinates.
      * @param C_mem_ptr - the pointer to additional memory for the constraints to store intermediate calculations 
      */
-    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr, double* C_mem_ptr) override
+    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr) override
     {
-        double* F = C_mem_ptr;
-        double* X = F+9;
+        double F[9];
+        double X[9];
         _dev_constraint->_computeF(F, X);
         _dev_constraint->_evaluate(C_ptr, F);
         _dev_constraint->_gradient(delC_ptr, C_ptr, F);
 
         _hyd_constraint->_evaluate(C_ptr+1, F);
-        _hyd_constraint->_gradient(delC_ptr+numCoordinates(), F, X + 9);      // additional memory needed for the gradient calculation (after F and X) is provided after X        
+        _hyd_constraint->_gradient(delC_ptr+numCoordinates(), F);        
     }
 
     private:
