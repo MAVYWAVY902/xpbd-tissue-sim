@@ -17,7 +17,7 @@ class BoxSDF : public SDF
 
     virtual double evaluate(const Eigen::Vector3d& x) const override
     {
-        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x, GeometryUtils::inverseQuat(_box->orientation())) - _box->position();
+        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x - _box->position(), GeometryUtils::inverseQuat(_box->orientation()));
         const Eigen::Vector3d q = x_body.cwiseAbs() - _box->size()/2.0;
         // std::cout << "x: " << x[0] << ", " << x[1] << ", " << x[2] << std::endl;
         // std::cout << "x_body: " << x_body[0] << ", " << x_body[1] << ", " << x_body[2] << std::endl;
@@ -32,7 +32,7 @@ class BoxSDF : public SDF
     virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const override
     {
         // const Eigen::Vector4d quat_inv = GeometryUtils::inverseQuat(_box->orientation());
-        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x, GeometryUtils::inverseQuat(_box->orientation())) - _box->position();
+        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x - _box->position(), GeometryUtils::inverseQuat(_box->orientation()));
         // std::cout << "quat: " << _box->orientation()[0] << ", " << _box->orientation()[1] << ", " << _box->orientation()[2] << ", " << _box->orientation()[3] << std::endl;
         // std::cout << "quat_inv: " << quat_inv[0] << ", " << quat_inv[1] << ", " << quat_inv[2] << ", " << quat_inv[3] << std::endl;
         // std::cout << "x_body: " << x_body[0] << ", " << x_body[1] << ", " << x_body[2] << std::endl;

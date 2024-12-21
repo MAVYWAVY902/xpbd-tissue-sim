@@ -299,11 +299,11 @@ void XPBDMeshObject::_projectConstraints()
         //     _vertices.row(i) = _x_prev.row(i);
         // }
         
-        const Eigen::Vector3d& v = _mesh->vertex(i);
-        if (v[2] <= 0)
-        {
-            _mesh->displaceVertex(i, 0, 0, -v[2]);
-        }
+        // const Eigen::Vector3d& v = _mesh->vertex(i);
+        // if (v[2] <= 0)
+        // {
+        //     _mesh->displaceVertex(i, 0, 0, -v[2]);
+        // }
     }
 }
 

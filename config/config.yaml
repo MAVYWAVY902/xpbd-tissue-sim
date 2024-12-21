@@ -1,8 +1,8 @@
 name: "blah"
 visualization: "Easy3D"
 g-accel: 9.81 # m/s2
-sim-mode: "Frame-by-frame"
-# sim-mode: "Visualization"
+# sim-mode: "Frame-by-frame"
+sim-mode: "Visualization"
 # sim-mode: "AFAP"
 time-step: 1e-3
 fps: 30
@@ -60,7 +60,7 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0, 0, 1.5]
+    position: [0, 0, 1.7]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
@@ -81,19 +81,29 @@ objects:
   #   position: [0, 0, 0]
   #   collisions: true
 
-  - name: "box"
+  # - name: "box"
+  #   type: "RigidBox"
+  #   size: [1, 1, 1]
+  #   position: [10, 10, 10]
+  #   rotation: [45, 45, 45]
+  #   collisions: true
+
+  - name: "box2"
     type: "RigidBox"
-    size: [1, 1, 1]
-    position: [0.0, 0, 0]
+    size: [0.5, 0.5, 0.5]
+    position: [0, 1.8, 0.5]
     rotation: [45, 45, 45]
     collisions: true
 
-  # - name: "cylinder"
-  #   type: "RigidCylinder"
-  #   radius: 0.5
-  #   height: 1
-  #   position: [0, 0, 0]
-  #   rotation: [0, 90, 0]
+  - name: "cylinder"
+    type: "RigidCylinder"
+    radius: 0.5
+    height: 1
+    position: [0, 0.0, 0.0]
+    rotation: [70, 0, 0]
+    collisions: true
+
+  
 
   # -
   #   name: "Cube2_res"
