@@ -25,7 +25,7 @@ int XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> proj
     }
 
     // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
-    if (projector->numCoordinates() > _coordinate_updates.size())
+    if (static_cast<unsigned>(projector->numCoordinates()) > _coordinate_updates.size())
     {
         _coordinate_updates.resize(projector->numCoordinates());
     }

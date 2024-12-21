@@ -76,11 +76,11 @@ class ConstraintProjector
         {
             c->setGradientVectorSize(numCoordinates());              // set the size of the gradient vector to be the number of coordinates
 
-            for (unsigned i = 0; i < c->numPositions(); i++)     // iterate through constraint's positions
+            for (int i = 0; i < c->numPositions(); i++)     // iterate through constraint's positions
             {
                 const PositionReference& pref_i = c->positions()[i];
                 // get index of constraint's position in the combined _positions vector of this ConstraintProjector
-                unsigned p_index = std::distance(_state->_positions.begin(), std::find(_state->_positions.begin(), _state->_positions.end(), pref_i));
+                int p_index = std::distance(_state->_positions.begin(), std::find(_state->_positions.begin(), _state->_positions.end(), pref_i));
 
                 // map the ith coordinate in the constraint to the correct index in the constraint gradient vector
                 c->setGradientVectorIndex(3*i, 3*p_index);
@@ -95,7 +95,7 @@ class ConstraintProjector
      */
     inline virtual void initialize()
     {
-        for (unsigned i = 0; i < numConstraints(); i++)
+        for (int i = 0; i < numConstraints(); i++)
         {
             setLambda(i, 0);
         }
@@ -139,7 +139,7 @@ class ConstraintProjector
         if (C_ptr[0] > 0 && _state->_constraints[0]->isInequality())
         {
             // std::cout << "Inequality not violated!" << " C: " << C_ptr[0] << std::endl;
-            for (unsigned i = 0; i < numCoordinates(); i++)
+            for (int i = 0; i < numCoordinates(); i++)
             {
                 coordinate_updates_ptr[i] = 0;
             }
@@ -183,14 +183,14 @@ class ConstraintProjector
         }
 
         // update the lambdas with the recently calculate dlam vector
-        for (unsigned i = 0; i < numConstraints(); i++)
+        for (int i = 0; i < numConstraints(); i++)
         {
             setLambda(i, _state->_lambda[i]+dlam_ptr[i]);
         }
         
 
         // calculate position updates based on computed quantities
-        for (unsigned i = 0; i < numPositions(); i++)
+        for (int i = 0; i < numPositions(); i++)
         {
            _getPositionUpdate(i, delC_ptr, M_inv_ptr[i], dlam_ptr, coordinate_updates_ptr+3*i);
         }
@@ -224,18 +224,18 @@ class ConstraintProjector
     }
 
     /** The number of constraints projected simultaneously by this ConstraintProjector. */
-    inline unsigned numConstraints() const { return _state->_constraints.size(); }
+    inline int numConstraints() const { return _state->_constraints.size(); }
 
     /** The number of positions (vertices) affected by the constraints. */
-    inline unsigned numPositions() const { return _state->_positions.size(); }
+    inline int numPositions() const { return _state->_positions.size(); }
 
     /** The number of coordinates (i.e. x1,y1,z1, x2,y2,z2, etc.) affected by the constraints = 3 times the number of positions. */
-    inline unsigned numCoordinates() const { return numPositions() * 3; }
+    inline int numCoordinates() const { return numPositions() * 3; }
 
     /** Amount of space in bytes required to perform the computation. */
-    inline unsigned memoryNeeded() const
+    inline int memoryNeeded() const
     {
-        unsigned num_bytes = 0;
+        int num_bytes = 0;
         num_bytes += numCoordinates() * numConstraints() * sizeof(double); // size of the gradient matrix
         num_bytes += numConstraints() * sizeof(double); // size of constraint vector
         num_bytes += numPositions() * sizeof(double); // size needed for M^-1
@@ -261,7 +261,7 @@ class ConstraintProjector
      */
     virtual void alphaTilde(double* alpha_tilde_ptr) const
     {
-        for (unsigned i = 0; i < numConstraints(); i++)
+        for (int i = 0; i < numConstraints(); i++)
         {
             alpha_tilde_ptr[i] = _state->_constraints[i]->alpha() / (_state->_dt * _state->_dt);
         }
@@ -272,7 +272,7 @@ class ConstraintProjector
      */
     void MInv(double* inv_M_ptr) const
     {
-        for (unsigned i = 0; i < numPositions(); i++)
+        for (int i = 0; i < numPositions(); i++)
         {
             inv_M_ptr[i] = _state->_positions[i].inv_mass;
         }
@@ -282,7 +282,7 @@ class ConstraintProjector
      * @param index - the constraint index
      * @param val - the new Lagrange multiplier
      */
-    virtual void setLambda(const unsigned index, const double val) { _state->_lambda[index] = val; }
+    virtual void setLambda(const int index, const double val) { _state->_lambda[index] = val; }
 
     /** Whether or not this constraint needs the primary residual to do its constraint projection.
      * By default, this is false, but can be overridden by derived classes to be true if a constraint needs the primary residual.
@@ -304,7 +304,7 @@ class ConstraintProjector
     */
     inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr)
     {
-        for (unsigned ci = 0; ci < numConstraints(); ci++)
+        for (int ci = 0; ci < numConstraints(); ci++)
         {
             // C(x) is a vector: C_ptr+ci points to the index ci in the C(x) vector
             // delC(x) is a matrix: delC_ptr + ci*numCoordinates() points to the row corresponding to the ci'th constraint
@@ -321,9 +321,9 @@ class ConstraintProjector
     inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr)
     {
         // set LHS matrix to 0 with alpha_tilde along the diagonal
-        for (unsigned ci = 0; ci < numConstraints(); ci++)
+        for (int ci = 0; ci < numConstraints(); ci++)
         {
-            for (unsigned cj = 0; cj < numConstraints(); cj++)
+            for (int cj = 0; cj < numConstraints(); cj++)
             {
                 // if ci == cj, this is the diagonal, so put alpha_tilde there
                 if (ci == cj)
@@ -339,13 +339,13 @@ class ConstraintProjector
         }
 
         // add up contributions from delC*M^-1*delC^T
-        for (unsigned ci = 0; ci < numConstraints(); ci++)
+        for (int ci = 0; ci < numConstraints(); ci++)
         {
             const double* delC_i = delC_ptr + numCoordinates()*ci;        // pointer to the delC vector of the ith constraint (1 x numCoordinates)
-            for (unsigned cj = ci; cj < numConstraints(); cj++)     // delC*M^-1*delC^T is symmetric, so we only need to iterate the upper triangle
+            for (int cj = ci; cj < numConstraints(); cj++)     // delC*M^-1*delC^T is symmetric, so we only need to iterate the upper triangle
             {
                 const double* delC_j = delC_ptr + numCoordinates()*cj;    // pointer to the delC vector of the jth constraint (1 x numCoordinates)
-                for (unsigned pi = 0; pi < numPositions(); pi++)    
+                for (int pi = 0; pi < numPositions(); pi++)    
                 {
                     const double inv_m = M_inv_ptr[pi];
                     // add the contribution for each position (inv_m times the dot product of the constraint gradient vectors)
@@ -364,9 +364,9 @@ class ConstraintProjector
      * @param alpha_tilde_ptr - the pointer to the alpha_tilde "matrix". Expects it to be a vector and numConstraints x 1.
      * @param rhs_ptr (OUTPUT) - the pointer to the (currently empty) RHS vector. Expects it to be numConstraints x 1.
      */
-    inline virtual void _RHS(const double* C_ptr, const double* delC_ptr, const double* alpha_tilde_ptr, double* rhs_ptr)
+    inline virtual void _RHS(const double* C_ptr, const double* /* delC_ptr */, const double* alpha_tilde_ptr, double* rhs_ptr)
     {
-        for (unsigned ci = 0; ci < numConstraints(); ci++)
+        for (int ci = 0; ci < numConstraints(); ci++)
         {
             // RHS vector is simply -C - alpha_tilde * lambda
             rhs_ptr[ci] = -C_ptr[ci] - alpha_tilde_ptr[ci] * _state->_lambda[ci];
@@ -381,12 +381,12 @@ class ConstraintProjector
      * @param dlam_ptr - the pointer to the Delta lambda vector. Expects it to be numConstraints x 1.
      * @param pos_update_ptr (OUTPUT) - the pointer to the (currently empty) position update vector. Expects it to be a 3-vector.
      */
-    inline virtual void _getPositionUpdate(const unsigned position_index, const double* delC_ptr, const double inv_m, const double* dlam_ptr, double* pos_update_ptr) const
+    inline virtual void _getPositionUpdate(const int position_index, const double* delC_ptr, const double inv_m, const double* dlam_ptr, double* pos_update_ptr) const
     {
         pos_update_ptr[0] = 0;
         pos_update_ptr[1] = 0;
         pos_update_ptr[2] = 0;
-        for (unsigned ci = 0; ci < numConstraints(); ci++)
+        for (int ci = 0; ci < numConstraints(); ci++)
         {
             pos_update_ptr[0] += inv_m * delC_ptr[ci*numCoordinates() + 3*position_index]   * dlam_ptr[ci];
             pos_update_ptr[1] += inv_m * delC_ptr[ci*numCoordinates() + 3*position_index+1] * dlam_ptr[ci];
