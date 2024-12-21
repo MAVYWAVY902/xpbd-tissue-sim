@@ -39,7 +39,7 @@ class ConstraintProjectorDecorator : public ConstraintProjector
     inline virtual bool usesDamping() const override { return _component->usesDamping(); }
 
     protected:
-    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr, double* C_mem_ptr) override { _component->_evaluateConstraintsAndGradients(C_ptr, delC_ptr, C_mem_ptr); }
+    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr) override { _component->_evaluateConstraintsAndGradients(C_ptr, delC_ptr); }
 
     inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr) override { _component->_LHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr); }
 

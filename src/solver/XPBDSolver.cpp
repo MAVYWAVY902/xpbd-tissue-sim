@@ -126,8 +126,7 @@ void XPBDSolver::_calculatePrimaryResidual()
         for (size_t ci = 0; ci < constraints.size(); ci++)
         {
             double* delC = _data.data();
-            double* additional_memory = delC + proj->numCoordinates();
-            constraints[ci]->gradient(delC, additional_memory);
+            constraints[ci]->gradient(delC);
             for (size_t pi = 0; pi < positions.size(); pi++)
             {
                 if (_obj != positions[pi].obj)

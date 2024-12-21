@@ -57,12 +57,11 @@ class DeviatoricConstraint : public ElementConstraint
      * i.e. returns C(x)
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint calculation, if necessary
      */
-    inline void evaluate(double* C, double* additional_memory) const
+    inline void evaluate(double* C) const
     {
-        double* F = additional_memory;
-        double* X = F + 9;
+        double F[9];
+        double X[9];
         _computeF(F, X);
         _evaluate(C, F);
     }
@@ -71,13 +70,11 @@ class DeviatoricConstraint : public ElementConstraint
      * i.e. returns delC(x)
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint gradient calculation, if necessary
      */
-    inline void gradient(double* grad, double* additional_memory) const
+    inline void gradient(double* grad) const
     {
-        // deformation gradient, F and deformed state matrix, X will be calculated using the pre-allocated scratch memory
-        double* F = additional_memory;
-        double* X = F+9;                    // deformation gradient is 3x3, so X starts 9 after F
+        double F[9];
+        double X[9];
         _computeF(F, X);
         double C;
         _evaluate(&C, F);                   // we need C(x) since it is used in the gradient calculation
@@ -91,24 +88,14 @@ class DeviatoricConstraint : public ElementConstraint
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values, if necessary
      */
-    inline void evaluateWithGradient(double* C, double* grad, double* additional_memory) const
+    inline void evaluateWithGradient(double* C, double* grad) const
     {
-        // deformation gradient, F and deformed state matrix, X will be calculated using the pre-allocated scratch memory
-        double* F = additional_memory;
-        double* X = F+9;                // deformation gradient is 3x3, so X starts 9 after F
+        double F[9];
+        double X[9];
         _computeF(F, X);
         _evaluate(C, F);
         _gradient(grad, C, F);
-    }
-
-    /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
-    inline size_t memoryNeeded() const override
-    {
-        // 9 for F
-        // 9 for X
-        return 18 * sizeof(double);
     }
 
     private:

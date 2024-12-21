@@ -106,18 +106,16 @@ class Constraint
      * i.e. returns C(x)
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint calculation, if necessary
      */
-    inline virtual void evaluate(double* C, double* additional_memory) const = 0;
+    inline virtual void evaluate(double* C) const = 0;
 
 
     /** Computes the gradient of this constraint in vector form with pre-allocated memory.
      * i.e. returns delC(x)
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint gradient calculation, if necessary
      */
-    inline virtual void gradient(double* grad, double* additional_memory) const = 0;
+    inline virtual void gradient(double* grad) const = 0;
 
 
     /** Computes the value and gradient of this constraint with pre-allocated memory.
@@ -127,9 +125,8 @@ class Constraint
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values, if necessary
      */
-    inline virtual void evaluateWithGradient(double* C, double* grad, double* additional_memory) const = 0;
+    inline virtual void evaluateWithGradient(double* C, double* grad) const = 0;
 
 
     /** Returns the number of distinct positions needed by this constraint. */
@@ -139,7 +136,7 @@ class Constraint
     inline int numCoordinates() { return _positions.size()*3; }
 
     /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
-    inline virtual size_t memoryNeeded() const = 0;
+    // inline virtual size_t memoryNeeded() const = 0;
     
     /** Returns the compliance for this constraint. */
     double alpha() const { return _alpha; }
