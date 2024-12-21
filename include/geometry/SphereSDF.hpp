@@ -14,13 +14,13 @@ class SphereSDF : public SDF
         : SDF(), _sphere(sphere)
     {}
 
-    virtual double evaluate(const Eigen::Vector3d& x) const
+    virtual double evaluate(const Eigen::Vector3d& x) const override
     {
         // std::cout << "x: " << x[0] << ", " << x[1] << ", " << x[2] << "\tdistance: " << (x - _sphere->position()).norm() - _sphere->radius() << std::endl;
         return (x - _sphere->position()).norm() - _sphere->radius();
     }
 
-    virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const
+    virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const override
     {
         const double dist = (x - _sphere->position()).norm();
         return (x - _sphere->position()) / dist;

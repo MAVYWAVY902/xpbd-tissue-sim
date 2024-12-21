@@ -140,6 +140,8 @@ class XPBDMeshObject : public Object, public TetMeshObject
     Geometry::Mesh::VerticesMat _previous_vertices;
     Geometry::Mesh::VerticesMat _vertex_velocities;
 
+    Eigen::Vector3d _initial_velocity;
+
     ElasticMaterial _material;
 
     std::vector<double> _vertex_masses;

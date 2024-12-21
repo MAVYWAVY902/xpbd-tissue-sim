@@ -4,6 +4,7 @@
 #include "simobject/MeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "geometry/SphereSDF.hpp"
+#include "geometry/BoxSDF.hpp"
 #include "geometry/Mesh.hpp"
 #include "utils/GeometryUtils.hpp"
 
@@ -23,6 +24,10 @@ void CollisionScene::addObject(Sim::Object* new_obj)
     if (Sim::RigidSphere* sphere = dynamic_cast<Sim::RigidSphere*>(new_obj))
     {
         sdf = std::make_unique<Geometry::SphereSDF>(sphere);
+    }
+    else if (Sim::RigidBox* box = dynamic_cast<Sim::RigidBox*>(new_obj))
+    {
+        sdf = std::make_unique<Geometry::BoxSDF>(box);
     }
 
     // create a new collision object
@@ -116,6 +121,32 @@ Eigen::Vector3d CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Eige
     const double d_p1 = sdf->evaluate(p1);
     const double d_p2 = sdf->evaluate(p2);
     const double d_p3 = sdf->evaluate(p3);
+
+    // std::cout << "p1: " << p1[0] << ", " << p1[1] << ", " << p1[2] << std::endl;
+    // std::cout << "p2: " << p2[0] << ", " << p2[1] << ", " << p2[2] << std::endl;
+    // std::cout << "p3: " << p3[0] << ", " << p3[1] << ", " << p3[2] << std::endl;
+
+    // special case: face-face collision, edge-face collision - not sure if this is needed
+    // bool e1 = std::abs(d_p1 - d_p2) < 1e-8;
+    // bool e2 = std::abs(d_p2 - d_p3) < 1e-8;
+    // bool e3 = std::abs(d_p3 - d_p1) < 1e-8;
+    // if (e1 && e2)
+    // {
+    //     return 0.3333333*p1 + 0.3333333*p2 + 0.3333333*p3;
+    // }
+    // else if (e1)
+    // {
+    //     return 0.5*p1 + 0.5*p2;
+    // }
+    // else if (e2)
+    // {
+    //     return 0.5*p2 + 0.5*p3;
+    // }
+    // else if (e3)
+    // {
+    //     return 0.5*p1 + 0.5*p3;
+    // }
+
     Eigen::Vector3d x;
     if (d_p1 <= d_p2 && d_p1 <= d_p3)       x = p1;
     else if (d_p2 <= d_p1 && d_p2 <= d_p3)  x = p2;
@@ -126,6 +157,8 @@ Eigen::Vector3d CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Eige
     {
         const double alpha = 2.0/(i+3);
         const Eigen::Vector3d& gradient = sdf->gradient(x);
+        // std::cout << "x: " << x[0] << ", " << x[1] << ", " << x[2] << std::endl;
+        // std::cout << "gradient: " << gradient[0] << ", " << gradient[1] << ", " << gradient[2] << std::endl;
         const double sg1 = p1.dot(gradient);
         const double sg2 = p2.dot(gradient);
         const double sg3 = p3.dot(gradient);
@@ -135,7 +168,7 @@ Eigen::Vector3d CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Eige
         else                                s = p3;
 
         x = x + alpha * (s - x);
-        // std::cout << "x: " << x[0] << ", " << x[1] << ", " << x[2] << std::endl;
+        
     }
 
     return x;
