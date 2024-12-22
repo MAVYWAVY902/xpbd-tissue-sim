@@ -7,6 +7,7 @@
 namespace Geometry
 {
 
+/** Implements a signed distance function for a rigid sphere. */
 class SphereSDF : public SDF
 {
     public:
@@ -14,19 +15,28 @@ class SphereSDF : public SDF
         : SDF(), _sphere(sphere)
     {}
 
+    /** Evaluates F(x) for a sphere.
+     * @param x - the point at which to evaluate the SDF
+     * @returns the distance from x to the shape boundary ( F(x) )
+    */
     virtual double evaluate(const Eigen::Vector3d& x) const override
     {
-        // std::cout << "x: " << x[0] << ", " << x[1] << ", " << x[2] << "\tdistance: " << (x - _sphere->position()).norm() - _sphere->radius() << std::endl;
+        // the distance from any point the surface of the sphere is simply the distance of the point to the sphere center minus the radius
         return (x - _sphere->position()).norm() - _sphere->radius();
     }
 
+    /** Evaluates the gradient of F at x.
+     * @param x - the point at which to evaluate the graient of the SDF
+     * @returns the gradient of the SDF at x.
+     */
     virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const override
     {
-        const double dist = (x - _sphere->position()).norm();
-        return (x - _sphere->position()) / dist;
+        // the gradient simply is a normalized vector pointing out from the sphere center in the direction of x
+        return (x - _sphere->position()).normalized();
     }
 
     protected:
+    /** Pointer to sphere needed for sphere's current position and radius. */
     const Sim::RigidSphere* _sphere;
 };
 
