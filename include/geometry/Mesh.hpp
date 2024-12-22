@@ -7,29 +7,50 @@
 namespace Geometry
 {
 
+/** A class for a surface mesh which consists of a set of vertices and a set of faces connecting those vertices.
+ * The vertices are specified as 3-vectors of vertex coordinates.
+ * The faces are specified as 3-vectors of vertex indices.
+ * No face normal checking is performed - this class assumes all face normals are pointed correctly outwards from the interior of the mesh.
+ */
 class Mesh
 {
     // public typedefs
     public:
-    typedef Eigen::Matrix<double, 3, -1, Eigen::ColMajor> VerticesMat;
-    typedef Eigen::Matrix<int, 3, -1, Eigen::ColMajor> FacesMat;
-    typedef Eigen::Matrix<int, 4, -1, Eigen::ColMajor> ElementsMat;
+    typedef Eigen::Matrix<double, 3, -1, Eigen::ColMajor> VerticesMat;  // vertex matrix type
+    typedef Eigen::Matrix<int, 3, -1, Eigen::ColMajor> FacesMat;        // faces matrix type
+    typedef Eigen::Matrix<int, 4, -1, Eigen::ColMajor> ElementsMat;     // elements matrix type (used by tetrahedral meshes)
 
     public:
 
+    /** Constructs a mesh from a set of vertices and faces.
+     * This is usually done using helper methods in the MeshUtils library.
+    */
     Mesh(const VerticesMat& vertices, const FacesMat& faces);
 
     virtual ~Mesh() = default;
 
+    /** Returns a const-reference to the vertices of the mesh. */
     const VerticesMat& vertices() const { return _vertices; }
+    /** Returns a const-reference to the faces of the mesh. */
     const FacesMat& faces() const { return _faces; }
 
+    /** Number of verticees in the mesh. */
     int numVertices() const { return _vertices.cols(); }
+    /** Number of faces in the mesh. */
     int numFaces() const { return _faces.cols(); }
 
+    /** Returns a single vertex as an Eigen 3-vector, given the vertex index. */
     Eigen::Vector3d vertex(const int index) const { return _vertices.col(index); }
+
+    /** Returns a pointer to the vertex data in memory, given the vertex index.
+     * This is useful to avoid multiple pointer dereferences in critical code sections (i.e. the Constraint projection)
+     */
     double* vertexPointer(const int index) const;
+
+    /** Sets the vertex at the specified to a new position. */
     void setVertex(const int index, const Eigen::Vector3d& new_pos) { _vertices.col(index) = new_pos; }
+    
+    /** Displaces the vertex at the specified index by a certain amount. */
     void displaceVertex(const int index, const double dx, const double dy, const double dz)
     {
         _vertices(0, index) += dx;
@@ -37,6 +58,7 @@ class Mesh
         _vertices(2, index) += dz;
     }
 
+    /** Returns a single face as an Eigen 3-vector, given the vertex index. */
     Eigen::Vector3i face(const int index) const { return _faces.col(index); }
 
     /** Returns the axis-aligned bounding-box (AABB) for the mesh. */
@@ -98,8 +120,8 @@ class Mesh
     
     protected:
 
-    VerticesMat _vertices;
-    FacesMat _faces;
+    VerticesMat _vertices;  // the vertices of the mesh
+    FacesMat _faces;    // the faces of the mesh
 };
 
 } // namespace Geometry
