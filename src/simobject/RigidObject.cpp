@@ -1,5 +1,6 @@
 #include "simobject/RigidObject.hpp"
 #include "utils/GeometryUtils.hpp"
+#include "simulation/Simulation.hpp"
 
 namespace Sim
 {
@@ -44,8 +45,35 @@ std::string RigidObject::toString(const int indent) const
 
 void RigidObject::update()
 {
-    // do nothing for now
-    // TODO: implement rigid body dynamics here
+    // update positions inertially
+    _p_prev = _p;
+
+    const Eigen::Vector3d f_ext({0,0,-_m*_sim->gAccel()});
+    _v = _v + _sim->dt() * f_ext / _m;
+    _p = _p + _sim->dt() * _v;
+
+    // update orientation inertially
+    _q_prev = _q;
+    const Eigen::Vector3d t_ext({0.0, 0.0, 0.0});
+    _w = _w + _sim->dt() * _I_inv * (t_ext - (_w.cross(_I*_w)));
+    const Eigen::Vector4d w4({_w[0], _w[1], _w[2], 0.0});
+    _q = _q + 0.5 * _sim->dt() * (GeometryUtils::quatMult(w4, _q));
+    _q.normalize();
+
+    // std::cout << "q: " << _q[0] << ", " << _q[1] << ", " << _q[2] << ", " << _q[3] << std::endl;
+
+    // TODO: solve constraints here
+
+
+    // update linear velocity
+    _v = (_p - _p_prev) / _sim->dt();
+
+    // TODO: update angular velocity
+    const Eigen::Vector4d dq = GeometryUtils::quatMult(_q, GeometryUtils::inverseQuat(_q_prev));
+    _w = 2 / _sim->dt() * dq(Eigen::seq(0,2));
+    if (dq[3] < 0)  
+        _w = -_w;
+
 }
 
 

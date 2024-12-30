@@ -1,6 +1,6 @@
 name: "blah"
 visualization: "Easy3D"
-g-accel: 9.81 # m/s2
+g-accel: 0 # m/s2
 # sim-mode: "Frame-by-frame"
 sim-mode: "Visualization"
 # sim-mode: "AFAP"
@@ -61,7 +61,7 @@ objects:
     draw-edges: true
     max-size: 0.5
     position: [0, 0, 1.7]
-    velocity: [0, 0, 0]
+    velocity: [0, 0, -3]
     rotation: [0, 0, 0]
     num-solver-iters: 1
     damping-gamma: 2000
@@ -92,7 +92,9 @@ objects:
     type: "RigidBox"
     size: [0.5, 0.5, 0.5]
     position: [0, 1.8, 0.5]
-    rotation: [45, 45, 45]
+    rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 3.1415]
     collisions: true
 
   - name: "cylinder"
@@ -101,6 +103,7 @@ objects:
     height: 1
     position: [0, 0.0, 0.0]
     rotation: [70, 0, 0]
+    angular-velocity: [2, 2, 1]
     collisions: true
 
   

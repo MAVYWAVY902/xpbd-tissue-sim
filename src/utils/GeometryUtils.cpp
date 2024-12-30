@@ -38,6 +38,17 @@ Eigen::Matrix3d quatToMat(const Eigen::Vector4d& quat)
     return mat;
 }
 
+Eigen::Vector4d quatMult(const Eigen::Vector4d& a, const Eigen::Vector4d& b)
+{
+    Eigen::Vector4d res;
+    res[0] = a[3]*b[0] + a[0]*b[3] + a[1]*b[2] - a[2]*b[1];
+    res[1] = a[3]*b[1] + a[1]*b[3] + a[2]*b[0] - a[0]*b[2];
+    res[2] = a[3]*b[2] + a[2]*b[3] + a[0]*b[1] - a[1]*b[0];
+    res[3] = a[3]*b[3] - a[0]*b[0] - a[1]*b[1] - a[2]*b[2];
+
+    return res;
+}
+
 Eigen::Vector3d rotateVectorByQuat(const Eigen::Vector3d& v, const Eigen::Vector4d& quat)
 {
     // from https://gamedev.stackexchange.com/questions/28395/rotating-vector3-by-a-quaternion

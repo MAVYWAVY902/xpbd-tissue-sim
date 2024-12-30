@@ -16,6 +16,8 @@ RigidSphere::RigidSphere(const Simulation* sim, const RigidSphereConfig* config)
     _I(0,0) = 2.0/5.0 * _m * _radius * _radius;
     _I(1,1) = 2.0/5.0 * _m * _radius * _radius;
     _I(2,2) = 2.0/5.0 * _m * _radius * _radius;
+
+    _I_inv = _I.inverse();
 }
 
 std::string RigidSphere::toString(const int indent) const
@@ -50,6 +52,8 @@ RigidBox::RigidBox(const Simulation* sim, const RigidBoxConfig* config)
     _I(0,0) = 1.0/12.0 * _m * (_size[1]*_size[1] + _size[2]*_size[2]);
     _I(1,1) = 1.0/12.0 * _m * (_size[0]*_size[0] + _size[2]*_size[2]);
     _I(2,2) = 1.0/12.0 * _m * (_size[0]*_size[0] + _size[1]*_size[1]);
+
+    _I_inv = _I.inverse();
 
     _origin_bbox_points.col(0) = Eigen::Vector3d({-_size[0]/2, -_size[1]/2, -_size[2]/2});
     _origin_bbox_points.col(1) = Eigen::Vector3d({ _size[0]/2, -_size[1]/2, -_size[2]/2});
@@ -106,6 +110,8 @@ RigidCylinder::RigidCylinder(const Simulation* sim, const RigidCylinderConfig* c
     _I(0,0) = 1.0/12.0 * _m * (3*_radius*_radius + _height*_height);
     _I(1,1) = 1.0/12.0 * _m * (3*_radius*_radius + _height*_height);
     _I(2,2) = 1.0/2.0 * _m * _radius * _radius;
+
+    _I_inv = _I.inverse();
 
     _origin_bbox_points.col(0) = Eigen::Vector3d({-_radius, -_radius, -_height/2});
     _origin_bbox_points.col(1) = Eigen::Vector3d({ _radius, -_radius, -_height/2});
