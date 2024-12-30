@@ -50,13 +50,19 @@ class RigidObject : public Object
     protected:
     /** Position of rigid body */
     Eigen::Vector3d _p;
+    /** Preious position of rigid body. */
+    Eigen::Vector3d _p_prev;
     /** Orientation of rigid body, expressed as a quaternion. */
     Eigen::Vector4d _q;
+    /** Previous orientation of rigid body. */
+    Eigen::Vector4d _q_prev;
 
     /** Total mass of rigid body. */
     double _m;
     /** Moment of inertia matrix. */
     Eigen::Matrix3d _I;
+    /** Inerse of moment of inertia matrix. */
+    Eigen::Matrix3d _I_inv;
     
 
     /** Translational velocity of rigid body. */
