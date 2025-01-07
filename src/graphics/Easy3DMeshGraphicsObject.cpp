@@ -27,7 +27,7 @@ void Easy3DMeshGraphicsObject::_init()
     _updateVertexCache();
 
     // create a new Renderer for this Model so that the Drawables (below) get updated
-    set_renderer(new easy3d::Renderer(this, false));
+    set_renderer(std::make_shared<easy3d::Renderer>(this, true));
 
     if (_draw_faces)
     {

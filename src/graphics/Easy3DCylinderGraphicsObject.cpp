@@ -20,8 +20,9 @@ Easy3DCylinderGraphicsObject::Easy3DCylinderGraphicsObject(const std::string& na
 
     _transformPoints();
 
-    _e3d_mesh.set_renderer(new easy3d::Renderer(&_e3d_mesh, true));
-    set_renderer(_e3d_mesh.renderer());
+    std::shared_ptr<easy3d::Renderer> renderer = std::make_shared<easy3d::Renderer>(&_e3d_mesh, true);
+    _e3d_mesh.set_renderer(renderer);
+    set_renderer(renderer);
 }
 
 void Easy3DCylinderGraphicsObject::update() 
