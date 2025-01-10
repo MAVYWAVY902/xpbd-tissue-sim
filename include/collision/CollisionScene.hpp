@@ -32,7 +32,7 @@ class CollisionScene
      * 
      * @param new_obj - the pointer to the new simulation object to be added to the scene
     */
-    void addObject(Sim::Object* new_obj);
+    void addObject(Sim::Object* new_obj, const ObjectConfig* config);
 
     /** Detects collisions between objects in the CollisionScene.
      * When collisions are detected, collision constraints are created and added to the appropriate objects to resolve collisions.

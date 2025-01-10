@@ -11,10 +11,13 @@ class RigidMeshObjectConfig : public RigidObjectConfig, public MeshObjectConfig
     explicit RigidMeshObjectConfig(const YAML::Node& node)
         : RigidObjectConfig(node), MeshObjectConfig(node)
     {
-        
+        _extractParameter("sdf-filename", node, _sdf_filename);
     }
 
+    std::optional<std::string> sdfFilename() const { return _sdf_filename.value; }
+
     protected:
+    ConfigParameter<std::string> _sdf_filename;
 };
 
 #endif // __RIGID_MESH_OBJECT_CONFIG

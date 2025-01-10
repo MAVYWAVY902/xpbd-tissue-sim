@@ -1,6 +1,7 @@
 #include "geometry/Mesh.hpp"
 
 #include <set>
+#include <iostream>
 
 namespace Geometry
 {
@@ -8,6 +9,8 @@ namespace Geometry
 Mesh::Mesh(const VerticesMat& vertices, const FacesMat& faces)
     : _vertices(vertices), _faces(faces)
 {
+    AABB bbox = boundingBox();
+    _unrotated_size_xyz = bbox.size();
 }
 
 double* Mesh::vertexPointer(const int index) const
@@ -124,9 +127,12 @@ void Mesh::resize(const double size_of_max_dim)
     double scaling_factor = size_of_max_dim / (aabb.max - aabb.min).maxCoeff();
 
     // move all vertices to be centered around (0,0,0), apply the scaling, and then move them back
-    moveTogether(-aabb.center());
+    // moveTogether(-aabb.center());
     _vertices *= scaling_factor;
-    moveTogether(aabb.center());
+    // moveTogether(aabb.center());
+
+    // scale the unrotated size
+    _unrotated_size_xyz *= scaling_factor;
 }
 
 void Mesh::resize(const Eigen::Vector3d& new_size)
@@ -141,11 +147,16 @@ void Mesh::resize(const Eigen::Vector3d& new_size)
     double scaling_factor_z = (size(2) != 0) ? new_size(2) / size(2) : 1;
 
     // move all vertices to be centered around (0,0,0), apply the scaling, then move them back
-    moveTogether(-aabb.center());
+    // moveTogether(-aabb.center());
     _vertices.row(0) *= scaling_factor_x;
     _vertices.row(1) *= scaling_factor_y;
     _vertices.row(2) *= scaling_factor_z;
-    moveTogether(aabb.center());
+    // moveTogether(aabb.center());
+
+    // scale the unrotated size
+    _unrotated_size_xyz[0] *= scaling_factor_x;
+    _unrotated_size_xyz[1] *= scaling_factor_y;
+    _unrotated_size_xyz[2] *= scaling_factor_z;
 }
 
 void Mesh::moveTogether(const Eigen::Vector3d& delta)
@@ -169,7 +180,7 @@ void Mesh::moveTo(const Eigen::Vector3d& position)
     moveTogether(offset);
 }
 
-void Mesh::rotate(const Eigen::Vector3d& xyz_angles)
+void Mesh::rotateAbout(const Eigen::Vector3d& p, const Eigen::Vector3d& xyz_angles)
 {
     const double x = xyz_angles(0) * M_PI / 180.0;
     const double y = xyz_angles(1) * M_PI / 180.0;
@@ -188,15 +199,100 @@ void Mesh::rotate(const Eigen::Vector3d& xyz_angles)
     rot_mat(2,1) = std::sin(x)*std::cos(y);
     rot_mat(2,2) = std::cos(x)*std::cos(y);
     
-    rotate(rot_mat);
+    rotateAbout(p, rot_mat);
 }
 
-void Mesh::rotate(const Eigen::Matrix3d& rot_mat)
+void Mesh::rotateAbout(const Eigen::Vector3d& p, const Eigen::Matrix3d& rot_mat)
 {
-    const AABB aabb = boundingBox();
-    moveTogether(-aabb.center());
+    moveTogether(-p);
     _vertices = rot_mat * _vertices;
-    moveTogether(aabb.center());
+    moveTogether(p);
+}
+
+std::tuple<double, Eigen::Vector3d, Eigen::Matrix3d> Mesh::massProperties(double density) const
+{
+    // uses the algorithm described here: http://number-none.com/blow/inertia/index.html
+    double total_volume = 0;
+    Eigen::Vector3d center_of_mass(0,0,0);
+    Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero();
+
+    // covariance of "canonical" tetrahedron which is (0,0,0), (1,0,0), (0,1,0), (0,0,1)
+    Eigen::Matrix3d C_canonical;
+    C_canonical <<  1.0/60.0, 1.0/120.0, 1.0/120.0,
+                    1.0/120.0, 1.0/60.0, 1.0/120.0,
+                    1.0/120.0, 1.0/120.0, 1.0/60.0;
+    for (const auto& f : _faces.colwise())
+    {
+        // each triangle in the mesh + origin forms a tetrahedron
+        // v0=origin, v1=f[0], v2=f[1], v3=f[2]
+        const Eigen::Vector3d v0(0,0,0);
+        const Eigen::Vector3d v1 = _vertices.col(f[0]);
+        const Eigen::Vector3d v2 = _vertices.col(f[1]);
+        const Eigen::Vector3d v3 = _vertices.col(f[2]);
+
+        // tet basis matrix
+        Eigen::Matrix3d A;
+        A.col(0) = (v1 - v0);
+        A.col(1) = (v2 - v0);
+        A.col(2) = (v3 - v0);
+
+        // find signed volume of tet
+        const double volume = A.determinant() / 6.0;
+
+        // calculate the center of mass of this tetrahedron - just average of 4 vertices
+        const Eigen::Vector3d tet_cm = 0.25*(v0 + v1 + v2 + v3);
+        // update overall center of mass using a weighted average
+        if (total_volume + volume > 0)
+            center_of_mass = (center_of_mass*total_volume + tet_cm*volume) / (total_volume + volume);
+
+        // add covariance matrix from this tet
+        covariance += A.determinant() * A * C_canonical * A.transpose();
+        // update overall volume
+        total_volume += volume;
+    }
+
+    // move covariance matrix to center of mass
+    covariance = covariance + total_volume * ( 2*(-center_of_mass) * (center_of_mass).transpose() + (-center_of_mass)*(-center_of_mass).transpose());
+
+    // compute moment of inertia tensor from covariance mat
+    const Eigen::Matrix3d I = Eigen::Matrix3d::Identity() * covariance.trace() - covariance;
+
+    return std::tuple<double, Eigen::Vector3d, Eigen::Matrix3d>(density*total_volume, center_of_mass, density*I);
+}
+
+Eigen::Vector3d Mesh::massCenter() const
+{
+    double total_volume = 0;
+    Eigen::Vector3d center_of_mass(0,0,0);
+    for (const auto& f : _faces.colwise())
+    {
+        // each triangle in the mesh + origin forms a tetrahedron
+        // v0=origin, v1=f[0], v2=f[1], v3=f[2]
+        const Eigen::Vector3d v0(0,0,0);
+        const Eigen::Vector3d v1 = _vertices.col(f[0]);
+        const Eigen::Vector3d v2 = _vertices.col(f[1]);
+        const Eigen::Vector3d v3 = _vertices.col(f[2]);
+
+        // tet basis matrix
+        Eigen::Matrix3d A;
+        A.col(0) = (v1 - v0);
+        A.col(1) = (v2 - v0);
+        A.col(2) = (v3 - v0);
+
+        // find signed volume of tet
+        const double volume = A.determinant() / 6.0;
+
+        // calculate the center of mass of this tetrahedron - just average of 4 vertices
+        const Eigen::Vector3d tet_cm = 0.25*(v0 + v1 + v2 + v3);
+        // update overall center of mass using a weighted average
+        if (total_volume + volume > 0)
+            center_of_mass = (center_of_mass*total_volume + tet_cm*volume) / (total_volume + volume);
+
+        // update overall volume
+        total_volume += volume;
+    }
+
+    return center_of_mass;
 }
 
 } // namespace Geometry
