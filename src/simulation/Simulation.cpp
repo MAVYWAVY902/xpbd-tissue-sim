@@ -126,7 +126,7 @@ void Simulation::setup()
         // add the new object to the collision scene if collisions are enabled
         if (obj_config->collisions())
         {
-            _collision_scene->addObject(new_obj.get());
+            _collision_scene->addObject(new_obj.get(), obj_config.get());
         }
         // add the new object to the graphics scene to be visualized
         if (_graphics_scene)

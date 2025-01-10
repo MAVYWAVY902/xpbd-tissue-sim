@@ -16,3 +16,6 @@ Makefile
 
 # ignore output folder
 output/
+
+# ignore all SDF files
+*.sdf

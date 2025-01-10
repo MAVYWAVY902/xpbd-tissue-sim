@@ -64,6 +64,11 @@ class Mesh
     /** Returns the axis-aligned bounding-box (AABB) for the mesh. */
     AABB boundingBox() const; 
 
+    /** Returns the unrotated size of the mesh. 
+     * This does not change when the mesh rotates - only when the mesh is resized.
+    */
+    Eigen::Vector3d unrotatedSize() const { return _unrotated_size_xyz; }
+
     /** Returns the number of edges along with the average edge length in the faces of the mesh. */
     std::pair<int,double> averageFaceEdgeLength() const;
 
@@ -106,22 +111,37 @@ class Mesh
     */
     void moveTo(const Eigen::Vector3d& position);
 
-    /** Rotates the mesh according to a vector of (x angle, y angle, and z angle) around its bounding box center
-     * Rotates x degrees about x-axis, then y degrees about y-axis, and then z degrees about z-axis
+    /** Rotates the mesh according to a vector of (x angle, y angle, and z angle) Euler angles around some point p.
+     * Usees the XYZ Euler angle convention - rotates x degrees about x-axis, then y degrees about y-axis, and then z degrees about z-axis
+     * @param p : the point around which to rotate the mesh
      * @param xyz_angles : a 3-vector corresponding to successive rotation angles
     */
-    void rotate(const Eigen::Vector3d& xyz_angles);
+    void rotateAbout(const Eigen::Vector3d& p, const Eigen::Vector3d& xyz_angles);
 
-    /** Rotates the mesh according to a rotation matrix around its bounding box center
-     * First moves the mesh to have its bounding box center at the origin, applies the rotation, and moves the mesh back its previous position.
+    /** Rotates the mesh using a 3x3 rotation matrix around some point p.
+     * @param p : the point around which to rotate the mesh
      * @param rot_mat : the rotation matrix used to rotate the vertices
     */
-    void rotate(const Eigen::Matrix3d& rot_mat);
+    void rotateAbout(const Eigen::Vector3d& p, const Eigen::Matrix3d& rot_mat);
+
+    /** Computes the current total mass, center of mass, and moment of inertia tensor (about center of mass) for the mesh, given a density.
+     * Uses the algorithm described here: http://number-none.com/blow/inertia/index.html
+     * @param density : the density to be used in the calculation (DEFAULT = 1). If omitted, the "mass" returned is actually the volume of the mesh.
+     * @returns these quantities as a 3-tuple: (mass, center-of-mass, moment-of-inertia)
+     */
+    std::tuple<double, Eigen::Vector3d, Eigen::Matrix3d> massProperties(double density=1.0) const;
+
+    /** Computes the current center of mass for the mesh. 
+     * Uses the same algorithm as massProperties(), but without calculating the moment of inertia.
+    */
+    Eigen::Vector3d massCenter() const;
     
     protected:
 
     VerticesMat _vertices;  // the vertices of the mesh
     FacesMat _faces;    // the faces of the mesh
+
+    Eigen::Vector3d _unrotated_size_xyz; // the size of the mesh in each dimension in its unrotated state
 };
 
 } // namespace Geometry

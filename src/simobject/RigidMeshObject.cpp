@@ -7,6 +7,7 @@ namespace Sim
 RigidMeshObject::RigidMeshObject(const Simulation* sim, const RigidMeshObjectConfig* config)
     : RigidObject(sim, config), MeshObject(config, config)
 {
+    _density = config->density();
 }
 
 // RigidMeshObject::RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density)
@@ -35,9 +36,11 @@ Geometry::AABB RigidMeshObject::boundingBox() const
 void RigidMeshObject::setup()
 {
     _loadAndConfigureMesh();
-    // TODO
-    // calculate the mass based on the density and the volume of the mesh
-    // also calculate the moment of inertia    
+
+    // compute mass and inertia properties of mesh
+    // TODO: Does it matter that the mesh has already been rotated?
+    std::tie(_m, std::ignore, _I) = _mesh->massProperties(_density);
+    _I_inv = _I.inverse();
 }
 
 void RigidMeshObject::update()

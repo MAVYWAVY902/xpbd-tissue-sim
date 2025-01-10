@@ -59,7 +59,7 @@ class StaticDeformableCollisionConstraint : public Constraint
     inline void evaluate(double* C) const override
     {
         const Eigen::Vector3d a = _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
-        *C = _n.dot(a - _p)/10.0 + 1e-4;
+        *C = _n.dot(a - _p) + 1e-4;
     }
 
     /** Computes the gradient of this constraint in vector form with pre-allocated memory.

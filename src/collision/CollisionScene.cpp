@@ -6,6 +6,7 @@
 #include "geometry/SphereSDF.hpp"
 #include "geometry/BoxSDF.hpp"
 #include "geometry/CylinderSDF.hpp"
+#include "geometry/MeshSDF.hpp"
 #include "geometry/Mesh.hpp"
 #include "utils/GeometryUtils.hpp"
 
@@ -18,7 +19,7 @@ CollisionScene::CollisionScene(const Sim::Simulation* sim)
 
 }
 
-void CollisionScene::addObject(Sim::Object* new_obj)
+void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
 {
     // create a SDF for the new object, if applicable
     std::unique_ptr<Geometry::SDF> sdf = nullptr;
@@ -33,6 +34,12 @@ void CollisionScene::addObject(Sim::Object* new_obj)
     else if (Sim::RigidCylinder* cyl = dynamic_cast<Sim::RigidCylinder*>(new_obj))
     {
         sdf = std::make_unique<Geometry::CylinderSDF>(cyl);
+    }
+    else if (Sim::RigidMeshObject* mesh_obj = dynamic_cast<Sim::RigidMeshObject*>(new_obj))
+    {
+        const RigidMeshObjectConfig* obj_config = dynamic_cast<const RigidMeshObjectConfig*>(config);
+        assert(obj_config);
+        sdf = std::make_unique<Geometry::MeshSDF>(mesh_obj, obj_config);
     }
 
     // create a new collision object
@@ -95,12 +102,15 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
     }
 
     // iterate through faces of mesh
-    const Geometry::Mesh::FacesMat faces = mesh->faces();
+    const Geometry::Mesh::FacesMat& faces = mesh->faces();
     for (const auto& f : faces.colwise())
     {
         const Eigen::Vector3d& p1 = mesh->vertex(f[0]);
         const Eigen::Vector3d& p2 = mesh->vertex(f[1]);
         const Eigen::Vector3d& p3 = mesh->vertex(f[2]);
+        // std::cout << "v1: " << p1[0] << ", " << p1[1] << ", " << p1[2] << "\tdist: " << sdf->evaluate(p1) << std::endl;
+        // std::cout << "v2: " << p2[0] << ", " << p2[1] << ", " << p2[2] << "\tdist: " << sdf->evaluate(p2) << std::endl;
+        // std::cout << "v3: " << p3[0] << ", " << p3[1] << ", " << p3[2] << "\tdist: " << sdf->evaluate(p3) << std::endl;
         const Eigen::Vector3d x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
         if (distance < 1e-4)

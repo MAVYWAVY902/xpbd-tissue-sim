@@ -42,14 +42,25 @@ class MeshObject
             _mesh->resize(_initial_size.value());
         }
 
+        const Eigen::Vector3d center_of_mass = _mesh->massCenter();
+
+        // move center of mass of the mesh to the specified initial position
+        _mesh->moveTogether(-center_of_mass + _initial_position);
+
         // then do rigid transformation - rotation and translation
-        _mesh->rotate(_initial_rotation);
-        _mesh->moveTo(_initial_position);
+        _mesh->rotateAbout(_initial_position, _initial_rotation);
+        
+        
     }
 
     virtual void _loadMeshFromFile(const std::string& fname)
     {
         _mesh = std::make_unique<Geometry::Mesh>(MeshUtils::loadSurfaceMeshFromFile(fname));
+    }
+
+    void _scaleMesh()
+    {
+        
     }
 
     protected:
