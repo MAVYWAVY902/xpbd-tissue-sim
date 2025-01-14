@@ -5,7 +5,7 @@ sim-mode: "Frame-by-frame"
 # sim-mode: "Visualization"
 # sim-mode: "AFAP"
 time-step: 1e-3
-collision-rate: 1000
+collision-rate: 100
 fps: 30
 end-time: 100
 objects:
@@ -61,8 +61,8 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0.35, 0.0, 1.1]
-    velocity: [0, 0, -3]
+    position: [0.0, 0.4, 2]
+    velocity: [0, 0, -1.5]
     rotation: [0, 0, 0]
     num-solver-iters: 1
     damping-gamma: 2000
@@ -79,14 +79,20 @@ objects:
   #   name: "sphere"
   #   type: "RigidSphere"
   #   radius: 0.5
+  #   density: 100
   #   position: [0, 0, 0]
+  #   velocity: [0, 0, 0]
   #   collisions: true
 
-  # - name: "box"
+  # - 
+  #   name: "box"
   #   type: "RigidBox"
   #   size: [1, 1, 1]
-  #   position: [10, 10, 10]
-  #   rotation: [45, 45, 45]
+  #   density: 100
+  #   position: [0, 0, 0]
+  #   rotation: [0, 0, 0]
+  #   velocity: [0, 0, 1]
+  #   angular-velocity: [0.7, 0, 0.4]
   #   collisions: true
 
   # - name: "box2"
@@ -98,24 +104,24 @@ objects:
   #   angular-velocity: [0, 0, 3.1415]
   #   collisions: true
 
-  # - name: "cylinder"
-  #   type: "RigidCylinder"
-  #   radius: 0.5
-  #   height: 1
-  #   position: [0, 0.0, 0.0]
-  #   rotation: [70, 0, 0]
-  #   angular-velocity: [2, 2, 1]
-  #   collisions: true
-
-  - name: "mesh_obj"
-    type: "RigidMeshObject"
-    filename: "../resource/general/stanford_bunny_lowpoly.stl"
-    # filename: "../resource/cube/cube.obj"
-    sdf-filename: "../resource/sdf/stanford_bunny_lowpoly96.sdf"
-    position: [0, 0.4, 0]
-    rotation: [20, 20, 30]
-    max-size: 1
+  - name: "cylinder"
+    type: "RigidCylinder"
+    radius: 0.5
+    height: 1
+    position: [0, 0.0, 0.0]
+    rotation: [70, 0, 0]
+    angular-velocity: [2, 2, 1]
     collisions: true
+
+  # - name: "mesh_obj"
+  #   type: "RigidMeshObject"
+  #   filename: "../resource/general/stanford_bunny_lowpoly.stl"
+  #   # filename: "../resource/cube/cube.obj"
+  #   sdf-filename: "../resource/sdf/stanford_bunny_lowpoly96.sdf"
+  #   position: [0, 0.4, 0]
+  #   rotation: [20, 20, 30]
+  #   max-size: 1
+  #   collisions: true
 
   # - name: "mesh_obj2"
   #   type: "RigidMeshObject"
