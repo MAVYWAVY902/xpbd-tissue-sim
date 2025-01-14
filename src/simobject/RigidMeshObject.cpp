@@ -1,5 +1,6 @@
 #include "simobject/RigidMeshObject.hpp"
 #include "utils/MeshUtils.hpp"
+#include "utils/GeometryUtils.hpp"
 
 namespace Sim
 {
@@ -47,6 +48,15 @@ void RigidMeshObject::update()
 {
     // TODO: move the mesh according to rigid body dynamics
     RigidObject::update();
+
+    // move the mesh accordingly
+    const Eigen::Vector4d dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q_prev), _q);
+    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(dq);
+    const Eigen::Vector3d dx = _p - _p_prev;
+
+    _mesh->moveTogether(dx);
+    _mesh->rotateAbout(_p, rot_mat);
+
 }
 
 } // namespace Simulation
