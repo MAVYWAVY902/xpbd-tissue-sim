@@ -24,6 +24,8 @@ namespace Geometry
 namespace Sim
 {
 
+class RigidObject;
+
 struct XPBDCollisionConstraint
 {
     std::unique_ptr<Solver::Constraint> constraint;
@@ -77,6 +79,8 @@ class XPBDMeshObject : public Object, public TetMeshObject
     /** Steps forward one time step. */
     virtual void update() override;
 
+    virtual void velocityUpdate() override;
+
     /** Returns the AABB around this object. */
     virtual Geometry::AABB boundingBox() const override;
 
@@ -87,6 +91,9 @@ class XPBDMeshObject : public Object, public TetMeshObject
 
     void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
                                     const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const double u, const double v, const double w);
+
+    void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal, double penetration_dist,
+                                       const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const double u, const double v, const double w);
 
     void clearCollisionConstraints();
 
@@ -105,7 +112,7 @@ class XPBDMeshObject : public Object, public TetMeshObject
 
     /** Update the velocities based on the updated positions.
      */
-    void _updateVelocities();
+    // void _updateVelocities();
 
     virtual void _calculatePerVertexQuantities();
 

@@ -23,7 +23,7 @@ class BoxSDF : public SDF
     virtual double evaluate(const Eigen::Vector3d& x) const override
     {
         // transform x into body coordinates
-        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x - _box->position(), GeometryUtils::inverseQuat(_box->orientation()));
+        const Eigen::Vector3d x_body = _box->globalToBody(x);
         
         // with x in body coordinates, we find the distance from x to an axis-aligned box centered at the origin
         // due to the symmetry of a box centered at the origin, we only need to handle the first quadrant case
@@ -55,7 +55,7 @@ class BoxSDF : public SDF
     virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const override
     {
         // transform x into body coordinates
-        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x - _box->position(), GeometryUtils::inverseQuat(_box->orientation()));
+        const Eigen::Vector3d x_body = _box->globalToBody(x);
         
         // with x in body coordinates, we can find the gradient evaluated at x for an axis-aligned box centered at the origin
         // and then rotate the gradient back to global coordinates

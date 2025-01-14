@@ -26,7 +26,7 @@ class CylinderSDF : public SDF
     virtual double evaluate(const Eigen::Vector3d& x) const override
     {
         // transform x into body coordinates
-        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x - _cyl->position(), GeometryUtils::inverseQuat(_cyl->orientation()));
+        const Eigen::Vector3d x_body = _cyl->globalToBody(x);
 
         // the distance from x to the cylinder in the XY plane (i.e. the distance from x to the surface of an infinite cylinder with the same radius)
         const double xy_dist = std::sqrt(x_body[0]*x_body[0] + x_body[1]*x_body[1]) - _cyl->radius();
@@ -57,7 +57,7 @@ class CylinderSDF : public SDF
     virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const override
     {
         // transform x into body coordinates
-        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x - _cyl->position(), GeometryUtils::inverseQuat(_cyl->orientation()));
+        const Eigen::Vector3d x_body = _cyl->globalToBody(x);
 
         // the distance from x to the cylinder in the XY plane (i.e. the distance from x to the surface of an infinite cylinder with the same radius)        
         const double xy_dist = std::sqrt(x_body[0]*x_body[0] + x_body[1]*x_body[1]) - _cyl->radius();

@@ -48,6 +48,9 @@ class Object
      * Completely up to the derived classes to decide how they should step forward in time.
     */
     virtual void update() = 0;
+
+    /** Update the velocity of this object */
+    virtual void velocityUpdate() = 0;
     
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const = 0;

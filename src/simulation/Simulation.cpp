@@ -213,6 +213,12 @@ void Simulation::_timeStep()
         obj->update();
     }
 
+    // update each object's velocities
+    for (auto& obj : _objects)
+    {
+        obj->velocityUpdate();
+    }
+
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
         // _collision_scene->updatePrevPositions();

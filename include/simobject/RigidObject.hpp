@@ -30,6 +30,8 @@ class RigidObject : public Object
      * Completely up to the derived classes to decide how they should step forward in time.
     */
     virtual void update() override;
+
+    virtual void velocityUpdate() override;
     
     /** Getters and setters */
     virtual void setLinearVelocity(const Eigen::Vector3d& lin_velocity) { _v = lin_velocity; }
@@ -46,6 +48,19 @@ class RigidObject : public Object
 
     double mass() const { return _m; }
     Eigen::Matrix3d I() const { return _I; }
+    Eigen::Matrix3d invI() const { return _I_inv; }
+
+    /** Returns the coordinates of p (which is specified in global coords) w.r.t the current body frame of this rigid object.
+     * @param p : the point expressed in world frame coords
+     * @returns the point p expressed in the current body-frame coordinates
+    */
+    Eigen::Vector3d globalToBody(const Eigen::Vector3d& p) const;
+
+    /** Returns the coordinates of p (which is specified in body-frame coords) w.r.t the global XYZ coordinate system.
+     * @param p : a point in body-frame coordinates
+     * @returns the point p expressed in world frame coords
+    */
+    Eigen::Vector3d bodyToGlobal(const Eigen::Vector3d& p) const;
 
     protected:
     /** Position of rigid body */

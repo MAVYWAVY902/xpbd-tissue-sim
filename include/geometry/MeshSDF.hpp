@@ -44,7 +44,7 @@ class MeshSDF : public SDF
     virtual double evaluate(const Eigen::Vector3d& x) const
     {
         // transform x into body coordinates
-        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x - _mesh_obj->position(), GeometryUtils::inverseQuat(_mesh_obj->orientation()));
+        const Eigen::Vector3d x_body = _mesh_obj->globalToBody(x);
         // SDF may not be centered about the origin
         if (_from_file)
         {
@@ -69,7 +69,7 @@ class MeshSDF : public SDF
     virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const
     {
         // transform x into body coordinates
-        const Eigen::Vector3d x_body = GeometryUtils::rotateVectorByQuat(x - _mesh_obj->position(), GeometryUtils::inverseQuat(_mesh_obj->orientation()));
+        const Eigen::Vector3d x_body = _mesh_obj->globalToBody(x);
         Eigen::Vector3d grad;
         // SDF may not be centered about the origin
         if (_from_file)

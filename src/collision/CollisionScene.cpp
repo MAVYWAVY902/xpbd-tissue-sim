@@ -64,10 +64,11 @@ void CollisionScene::collideObjects()
 
 void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject& c_obj2)
 {
-    std::cout << "Colliding " << c_obj1.obj->name() << " and " << c_obj2.obj->name() << std::endl;
+    // std::cout << "Colliding " << c_obj1.obj->name() << " and " << c_obj2.obj->name() << std::endl;
     const Geometry::SDF* sdf;
     const Geometry::Mesh* mesh;
     Sim::XPBDMeshObject* xpbd_obj;
+    Sim::RigidObject* rigid_obj;
     if (c_obj1.sdf && c_obj2.sdf)
     {
         std::cout << "Can't collide 2 SDFs (yet)!" << std::endl;
@@ -88,6 +89,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         assert(mesh_obj);
         mesh = mesh_obj->mesh();
         xpbd_obj = dynamic_cast<Sim::XPBDMeshObject*>(mesh_obj);
+        rigid_obj = dynamic_cast<Sim::RigidObject*>(c_obj1.obj);
         assert(xpbd_obj);
     } 
     else
@@ -98,6 +100,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         assert(mesh_obj);
         mesh = mesh_obj->mesh();
         xpbd_obj = dynamic_cast<Sim::XPBDMeshObject*>(mesh_obj);
+        rigid_obj = dynamic_cast<Sim::RigidObject*>(c_obj2.obj);
         assert(xpbd_obj);
     }
 
@@ -119,12 +122,13 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
             const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
             const Eigen::Vector3d grad = sdf->gradient(x);
             const Eigen::Vector3d surface_x = x - grad*distance;
-            std::cout << "COLLISION!" << std::endl;
-            std::cout << "u: " << u << ", v: " << v << ", w: " << w << std::endl;
-            std::cout << "position: " << x[0] << ", " << x[1] << ", " << x[2] << "\tnormal: " << grad[0] << ", " << grad[1] << ", " << grad[2] << std::endl;
-            std::cout << "surface position: " << surface_x[0] << ", " << surface_x[1] << ", " << surface_x[2] << std::endl;
+            // std::cout << "COLLISION!" << std::endl;
+            // std::cout << "u: " << u << ", v: " << v << ", w: " << w << std::endl;
+            // std::cout << "position: " << x[0] << ", " << x[1] << ", " << x[2] << "\tnormal: " << grad[0] << ", " << grad[1] << ", " << grad[2] << std::endl;
+            // std::cout << "surface position: " << surface_x[0] << ", " << surface_x[1] << ", " << surface_x[2] << std::endl;
         
-            xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
+            // xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
+            xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, distance, xpbd_obj, f[0], f[1], f[2], u, v, w);
         }
     }
 

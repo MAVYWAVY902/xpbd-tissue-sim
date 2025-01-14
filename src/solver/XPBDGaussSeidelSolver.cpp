@@ -1,6 +1,7 @@
 #include "solver/XPBDGaussSeidelSolver.hpp"
 #include "solver/Constraint.hpp"
 #include "solver/ConstraintProjector.hpp"
+#include "solver/RigidDeformableCollisionConstraintProjector.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 
 #include <chrono>
@@ -18,9 +19,21 @@ void XPBDGaussSeidelSolver::_solveConstraints(double* data)
     {
         if (!proj)
             continue;
-            
-        // get the position updates for this constraint - they are put in the _coordinate_updates data block
-        proj->project(data, _coordinate_updates.data());
+        
+        if (RigidDeformableCollisionConstraintProjector* rdcc_proj = dynamic_cast<RigidDeformableCollisionConstraintProjector*>(proj.get()))
+        {
+            Eigen::Vector<double, 7> rigid_body_update;
+            rdcc_proj->project(data, _coordinate_updates.data(), rigid_body_update);
+            Sim::RigidObject* rigid_obj = rdcc_proj->rigidObject();
+            rigid_obj->setPosition(rigid_obj->position() + rigid_body_update(Eigen::seq(0,2)));
+            rigid_obj->setOrientation(rigid_obj->orientation() + rigid_body_update(Eigen::seq(3,6)));
+        }
+        else
+        {
+            // get the position updates for this constraint - they are put in the _coordinate_updates data block
+            proj->project(data, _coordinate_updates.data());
+        }
+
         const std::vector<PositionReference>& positions = proj->positions();
         for (int i = 0; i < proj->numPositions(); i++)
         {
