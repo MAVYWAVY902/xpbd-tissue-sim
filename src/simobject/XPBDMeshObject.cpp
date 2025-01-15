@@ -4,7 +4,7 @@
 #include "solver/XPBDGaussSeidelSolver.hpp"
 #include "solver/StaticDeformableCollisionConstraint.hpp"
 #include "solver/RigidDeformableCollisionConstraint.hpp"
-#include "solver/RigidDeformableCollisionConstraintProjector.hpp"
+#include "solver/RigidBodyConstraintProjector.hpp"
 #include "solver/HydrostaticConstraint.hpp"
 #include "solver/DeviatoricConstraint.hpp"
 #include "solver/ConstraintProjectorDecorator.hpp"
@@ -96,8 +96,8 @@ void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, cons
 void XPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal, double penetration_dist,
                                        const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
 {
-    std::unique_ptr<Solver::RigidDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, penetration_dist, deformable_obj, v1, v2, v3, u, v, w);
-    std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::RigidDeformableCollisionConstraintProjector>(collision_constraint.get(), _sim->dt());
+    std::unique_ptr<Solver::RigidDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, deformable_obj, v1, v2, v3, u, v, w);
+    std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::RigidBodyConstraintProjector>(collision_constraint.get(), _sim->dt());
 
     int index = _solver->addConstraintProjector(std::move(collision_projector));
 

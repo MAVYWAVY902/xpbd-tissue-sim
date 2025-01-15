@@ -93,7 +93,7 @@ class XPBDSolver
 
     mutable std::vector<double> _data;                          // the vector class is used to pre-allocate data for the solver loop
     std::vector<double> _coordinate_updates;                    // stores updates to the coordinates determined by the constraint projections - also pre-allocated. Needs to be have a size >= the max number of positions affected by a single constraint projection.
-    
+    std::vector<double> _rigid_body_updates;                    // stores updates to any rigid bodies involved in the constraint projections - also pre-allocated. Each rigid body update consists of a position update and an orientation update, which is 7 doubles.
 };
 
 } // namespace Solver

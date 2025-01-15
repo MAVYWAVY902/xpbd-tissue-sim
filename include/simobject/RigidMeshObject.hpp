@@ -28,6 +28,7 @@ class RigidMeshObject : public RigidObject, public MeshObject
 
     protected:
     double _density;
+    std::unique_ptr<Geometry::Mesh> _initial_mesh;
 };
 
 } // namespace Simulation

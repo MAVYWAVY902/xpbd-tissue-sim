@@ -38,24 +38,37 @@ void RigidMeshObject::setup()
 {
     _loadAndConfigureMesh();
 
-    // compute mass and inertia properties of mesh
-    // TODO: Does it matter that the mesh has already been rotated?
-    std::tie(_m, std::ignore, _I) = _mesh->massProperties(_density);
+    // compute mass and inertia properties of mesh - in its REST STATE
+    // meaning that we have to calculate the mass properties in the mesh's unrotated state
+    Geometry::Mesh mesh_copy = *(_mesh);
+    // untranslate the copy of the mesh
+    mesh_copy.moveTogether(-_p);
+    // unrotate the copy of the mesh
+    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(_q));
+    mesh_copy.rotateAbout(Eigen::Vector3d::Zero(), rot_mat);
+    _initial_mesh = std::make_unique<Geometry::Mesh>(mesh_copy);
+    std::tie(_m, std::ignore, _I) = mesh_copy.massProperties(_density);
     _I_inv = _I.inverse();
 }
 
 void RigidMeshObject::update()
 {
-    // TODO: move the mesh according to rigid body dynamics
     RigidObject::update();
 
+    // TODO: make this work without the need for _initial_mesh
     // move the mesh accordingly
-    const Eigen::Vector4d dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q_prev), _q);
-    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(dq);
-    const Eigen::Vector3d dx = _p - _p_prev;
+    // const Eigen::Vector4d dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q_prev), _q);
+    // const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(dq);
+    // const Eigen::Vector3d dx = _p - _p_prev;
 
-    _mesh->moveTogether(dx);
-    _mesh->rotateAbout(_p, rot_mat);
+    // _mesh->moveTogether(dx);
+    // _mesh->rotateAbout(_p, rot_mat);
+
+    // THIS SUCKS! have to copy the initial mesh every time
+    *_mesh = *_initial_mesh;
+    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(_q);
+    _mesh->rotateAbout(Eigen::Vector3d::Zero(), rot_mat);
+    _mesh->moveTogether(_p);
 
 }
 
