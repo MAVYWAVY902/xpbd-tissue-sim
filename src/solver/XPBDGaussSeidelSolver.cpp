@@ -1,7 +1,7 @@
 #include "solver/XPBDGaussSeidelSolver.hpp"
 #include "solver/Constraint.hpp"
 #include "solver/ConstraintProjector.hpp"
-#include "solver/RigidDeformableCollisionConstraintProjector.hpp"
+#include "solver/RigidBodyConstraintProjector.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 
 #include <chrono>
@@ -20,13 +20,19 @@ void XPBDGaussSeidelSolver::_solveConstraints(double* data)
         if (!proj)
             continue;
         
-        if (RigidDeformableCollisionConstraintProjector* rdcc_proj = dynamic_cast<RigidDeformableCollisionConstraintProjector*>(proj.get()))
+        if (RigidBodyConstraintProjector* rb_proj = dynamic_cast<RigidBodyConstraintProjector*>(proj.get()))
         {
-            Eigen::Vector<double, 7> rigid_body_update;
-            rdcc_proj->project(data, _coordinate_updates.data(), rigid_body_update);
-            Sim::RigidObject* rigid_obj = rdcc_proj->rigidObject();
-            rigid_obj->setPosition(rigid_obj->position() + rigid_body_update(Eigen::seq(0,2)));
-            rigid_obj->setOrientation(rigid_obj->orientation() + rigid_body_update(Eigen::seq(3,6)));
+            rb_proj->project(data, _coordinate_updates.data(), _rigid_body_updates.data());
+            const std::vector<Sim::RigidObject*>& rigid_bodies = rb_proj->rigidBodies();
+            for (int i = 0; i < rb_proj->numRigidBodies(); i++)
+            {
+                double* rb_update = _rigid_body_updates.data() + 7*i;
+                rigid_bodies[i]->setPosition(rigid_bodies[i]->position() + Eigen::Map<Eigen::Vector3d>(rb_update));
+                rigid_bodies[i]->setOrientation(rigid_bodies[i]->orientation() + Eigen::Map<Eigen::Vector4d>(rb_update+3));
+            }
+            // Sim::RigidObject* rigid_obj = rdcc_proj->rigidObject();
+            // rigid_obj->setPosition(rigid_obj->position() + rigid_body_update(Eigen::seq(0,2)));
+            // rigid_obj->setOrientation(rigid_obj->orientation() + rigid_body_update(Eigen::seq(3,6)));
         }
         else
         {

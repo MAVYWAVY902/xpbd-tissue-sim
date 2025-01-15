@@ -64,7 +64,7 @@ void CollisionScene::collideObjects()
 
 void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject& c_obj2)
 {
-    // std::cout << "Colliding " << c_obj1.obj->name() << " and " << c_obj2.obj->name() << std::endl;
+    std::cout << "Colliding " << c_obj1.obj->name() << " and " << c_obj2.obj->name() << std::endl;
     const Geometry::SDF* sdf;
     const Geometry::Mesh* mesh;
     Sim::XPBDMeshObject* xpbd_obj;

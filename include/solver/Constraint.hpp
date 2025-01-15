@@ -72,7 +72,7 @@ class Constraint
     typedef std::pair<double, Eigen::VectorXd> ValueAndGradient;
 
     /** Create a constraint from PositionReferences and an associated compliance (which is by default 0, indicating a hard constraint). */
-    Constraint(std::vector<PositionReference> positions, const double alpha = 0)
+    Constraint(const std::vector<PositionReference>& positions, const double alpha = 0)
         : _alpha(alpha), _positions(positions)
     {
         // default information about how the gradient vector should be formatted (see variables for more description)
