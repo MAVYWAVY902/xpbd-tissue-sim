@@ -301,22 +301,31 @@ void XPBDMeshObject::_projectConstraints()
     }
 
     // friction
-    const double mu_s = 0.0;
-    const double mu_k = 0.0;
+    const double mu_s = 0.5;
+    const double mu_k = 0.3;
     for (const auto& c : _collision_constraints)
     {
         const double lam = _solver->constraintProjectors()[c.projector_index]->lambda()[0];
         if (lam > 0)
         {
+            const double u = c.constraint->u();
+            const double v = c.constraint->v();
+            const double w = c.constraint->w();
             const int v1 = c.constraint->positions()[0].index;
+            const int v2 = c.constraint->positions()[1].index;
+            const int v3 = c.constraint->positions()[2].index;
+
+            const Eigen::Vector3d p1 = _mesh->vertex(v1);
+            const Eigen::Vector3d p2 = _mesh->vertex(v2);
+            const Eigen::Vector3d p3 = _mesh->vertex(v3);
 
             const Eigen::Vector3d n = c.constraint->collisionNormal();
 
             const Eigen::Vector3d vel1 = vertexVelocity(v1);
             const Eigen::Vector3d vel1_tan = vel1 - (vel1.dot(n))*n;
 
-            const Eigen::Vector3d p_cur = _mesh->vertex(v1);
-            const Eigen::Vector3d p_prev = vertexPreviousPosition(v1);
+            const Eigen::Vector3d p_cur = c.constraint->p1();
+            const Eigen::Vector3d p_prev = c.constraint->prevP1();
             const Eigen::Vector3d dp = p_cur - p_prev;
             const Eigen::Vector3d dp_tan = dp - (dp.dot(n))*n;
 
@@ -326,18 +335,28 @@ void XPBDMeshObject::_projectConstraints()
             const double VELOCITY_THRESH = 1e-2;
             if (vel1_tan.norm() < VELOCITY_THRESH)
             {
-                std::cout << "VELOCITY THRESHOLD MET" << std::endl;
+                // std::cout << "VELOCITY THRESHOLD MET" << std::endl;
                 
-                if (dp_tan.norm() < mu_s*lam)
-                {
-                    std::cout << "APPLYING STATIC FRICTION!" << std::endl;
-                    _mesh->setVertex(v1, p_cur - dp_tan);
-                }
+                // if (dp_tan.norm() < mu_s*lam)
+                // {
+                //     std::cout << "APPLYING STATIC FRICTION!" << std::endl;
+                //     if (u>1e-4)
+                //         _mesh->setVertex(v1, p1 - dp_tan);
+                //     if (v>1e-4)
+                //         _mesh->setVertex(v2, p2 - dp_tan);
+                //     if (w>1e-4)
+                //         _mesh->setVertex(v3, p3 - dp_tan);
+                    
+                // }
             }
             else
             {
-                const Eigen::Vector3d correction = -dp_tan * std::min(mu_k*lam/dp_tan.norm(), 1.0);
-                _mesh->setVertex(v1, p_cur + correction);
+                const Eigen::Vector3d corr_v1 = -dp_tan * std::min(vertexInvMass(v1)*mu_k*lam/dp_tan.norm(), 1.0);
+                const Eigen::Vector3d corr_v2 = -dp_tan * std::min(vertexInvMass(v2)*mu_k*lam/dp_tan.norm(), 1.0);
+                const Eigen::Vector3d corr_v3 = -dp_tan * std::min(vertexInvMass(v3)*mu_k*lam/dp_tan.norm(), 1.0);
+                _mesh->setVertex(v1, p1 + u*corr_v1);
+                _mesh->setVertex(v2, p2 + v*corr_v2);
+                _mesh->setVertex(v3, p3 + w*corr_v3);
             }
 
             

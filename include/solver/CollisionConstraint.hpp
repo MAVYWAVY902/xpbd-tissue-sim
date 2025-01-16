@@ -22,6 +22,10 @@ class CollisionConstraint : public Constraint
     inline virtual Eigen::Vector3d prevP1() const = 0;
     inline virtual Eigen::Vector3d prevP2() const = 0;
 
+    inline virtual double u() const = 0;
+    inline virtual double v() const = 0;
+    inline virtual double w() const = 0;
+
     inline Eigen::Vector3d collisionNormal() const { return _collision_normal; }
 
     protected:

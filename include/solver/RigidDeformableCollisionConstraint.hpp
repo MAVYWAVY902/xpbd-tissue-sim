@@ -164,6 +164,10 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public Co
         return obj->prevPosition() + GeometryUtils::rotateVectorByQuat(p_body, obj->prevOrientation());
     }
 
+    inline virtual double u() const override { return _u; }
+    inline virtual double v() const override { return _v; }
+    inline virtual double w() const override { return _w; }
+
     private:
 
     protected:

@@ -124,6 +124,10 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
         return _p;
     }
 
+    inline virtual double u() const override { return _u; }
+    inline virtual double v() const override { return _v; }
+    inline virtual double w() const override { return _w; }
+
     protected:
     const Geometry::SDF* _sdf;
     Eigen::Vector3d _p;
