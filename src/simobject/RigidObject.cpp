@@ -16,6 +16,8 @@ RigidObject::RigidObject(const Simulation* sim, const RigidObjectConfig* config)
 
     _v = config->initialVelocity();
     _w = config->initialAngularVelocity();
+
+    _fixed = config->fixed();
 }
 
 RigidObject::RigidObject(const Simulation* sim, const std::string& name)
@@ -47,6 +49,9 @@ std::string RigidObject::toString(const int indent) const
 
 void RigidObject::update()
 {
+    if (_fixed)
+        return;
+
     // update positions inertially
     const Eigen::Vector3d f_ext({0,0,-_m*_sim->gAccel()});
     _v = _v + _sim->dt() * f_ext / _m;
@@ -65,6 +70,9 @@ void RigidObject::update()
 
 void RigidObject::velocityUpdate()
 {
+    if (_fixed)
+        return;
+
     // update linear velocity
     _v = (_p - _p_prev) / _sim->dt();
 
