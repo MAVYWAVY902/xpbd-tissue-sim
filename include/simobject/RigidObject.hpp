@@ -50,6 +50,8 @@ class RigidObject : public Object
     Eigen::Matrix3d I() const { return _I; }
     Eigen::Matrix3d invI() const { return _I_inv; }
 
+    bool isFixed() const { return _fixed; }
+
     /** Returns the coordinates of p (which is specified in global coords) w.r.t the current body frame of this rigid object.
      * @param p : the point expressed in world frame coords
      * @returns the point p expressed in the current body-frame coordinates
@@ -84,6 +86,9 @@ class RigidObject : public Object
     Eigen::Vector3d _v;
     /** Rotational velocity of rigid body. */
     Eigen::Vector3d _w;
+
+    /** If the rigid body is fixed (i.e. can't move or rotate). */
+    bool _fixed;
     
 
 };

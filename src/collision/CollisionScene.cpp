@@ -122,13 +122,21 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
             const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
             const Eigen::Vector3d grad = sdf->gradient(x);
             const Eigen::Vector3d surface_x = x - grad*distance;
-            std::cout << "COLLISION!" << std::endl;
-            std::cout << "u: " << u << ", v: " << v << ", w: " << w << std::endl;
-            std::cout << "position: " << x[0] << ", " << x[1] << ", " << x[2] << "\tnormal: " << grad[0] << ", " << grad[1] << ", " << grad[2] << std::endl;
-            std::cout << "surface position: " << surface_x[0] << ", " << surface_x[1] << ", " << surface_x[2] << std::endl;
+            // std::cout << "COLLISION!" << std::endl;
+            // std::cout << "u: " << u << ", v: " << v << ", w: " << w << std::endl;
+            // std::cout << "position: " << x[0] << ", " << x[1] << ", " << x[2] << "\tnormal: " << grad[0] << ", " << grad[1] << ", " << grad[2] << std::endl;
+            // std::cout << "surface position: " << surface_x[0] << ", " << surface_x[1] << ", " << surface_x[2] << std::endl;
         
-            // xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
-            xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, distance, xpbd_obj, f[0], f[1], f[2], u, v, w);
+             
+            if (rigid_obj->isFixed())
+            {
+                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
+            }
+            else
+            {
+                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, distance, xpbd_obj, f[0], f[1], f[2], u, v, w);
+            }
+            
         }
     }
 
