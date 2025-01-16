@@ -8,6 +8,13 @@
 namespace Solver
 {
 
+/** A specialized XPBD constraint projector that knows specifically how to deal with constraints involving rigid bodies.
+ * 
+ * Most parts of the constraint projection are the same, except:
+ *  - only one constraint can be projected at a time (no simultaneous solves)
+ *  - the LHS computation (i.e. the denominator in the lambda update expression) involves rigid body inertial weights
+ *  - the position update now involves a specialized position+orientation update for rigid bodies
+ */
 class RigidBodyConstraintProjector : public ConstraintProjector
 {
 
@@ -17,11 +24,20 @@ class RigidBodyConstraintProjector : public ConstraintProjector
     {
     }
 
+    /** Specialized project method that takes an additional output argument for rigid body updates.
+     * Calls the ConstraintProjector::project method and then computes updates for the rigid bodies.
+     * 
+     * @param data_ptr - a pointer to a block of pre-allocated data, assumed to be at least as large as that given by memoryNeeded(). Used to store results from computations, but not necessarily to be used as an output parameter.
+     * @param coordinate_updates_ptr (OUTPUT) - a pointer to an array of "coordinate updates" with structure [Delta x1, Delta y1, Delta z1, Delta x2, Delta y2, Delta z2, etc.). Assumed to be at least numCoordintes() x 1.
+     * @param rigid_body_updates_ptr (OUTPUT) - a pointer to an array of rigid body updates with structure [Delta position 1, Delta orientation 1, Delta position 2, Delta orientation 2, etc.]. Assumed to be at least 7 x numRigidBodies().
+     */
     inline void project(double* data_ptr, double* coordinate_updates_ptr, double* rigid_body_updates_ptr)
     {
+        // project the constraint as normal
         ConstraintProjector::project(data_ptr, coordinate_updates_ptr);
 
-        if (_C_ptr()[0] > 0)
+        // if the constraint is an inequality constraint and C(x) > 0, do not enforce the constraint
+        if (_C_ptr()[0] > 0 && rb_constraint->isInequality())
         {
             for (int i = 0; i < numRigidBodies()*7; i++)
             {
@@ -31,29 +47,23 @@ class RigidBodyConstraintProjector : public ConstraintProjector
         }
 
         const double dlam = _dlam_ptr()[0];
+        // compute the update for each rigid body using the corresponding RigidBodyXPBDHelper object
         for (int ri = 0; ri < numRigidBodies(); ri++)
         {
             rb_constraint->rigidBodyHelpers()[ri]->update(dlam, rigid_body_updates_ptr + 7*ri);
         }
-        // const Eigen::Vector3d n = -rb_constraint->collisionNormal();
-        // const Eigen::Vector3d r = rb_constraint->pointOnRigidBody() - rb_constraint->rigidObj()->position();
-        // const Eigen::Matrix3d inv_I = rb_constraint->rigidObj()->invI();
-        // const double m = rb_constraint->rigidObj()->mass();
-
-        // const Eigen::Vector3d impulse = _dlam_ptr()[0] * n;
-        // const Eigen::Vector3d position_update = impulse / m;
-
-        // const Eigen::Vector3d I_r_cross_p = 0.5 * inv_I * (r.cross(impulse));
-        // const Eigen::Vector4d orientation_update = GeometryUtils::quatMult(Eigen::Vector4d(I_r_cross_p[0], I_r_cross_p[1], I_r_cross_p[2], 0), rb_constraint->rigidObj()->orientation());
-    
-        // rigid_body_update_ptr(Eigen::seq(0,2)) = position_update;
-        // rigid_body_update_ptr(Eigen::seq(3,6)) = orientation_update;
     }
 
     std::vector<Sim::RigidObject*> rigidBodies() const { return rb_constraint->rigidBodies(); }
     int numRigidBodies() const { return rb_constraint->numRigidBodies(); }
 
     protected:
+    /** Specialized _LHS method that includes the weights of the rigid bodies in the denominator.
+     * @param delC_ptr - the pointer to the delC matrix. Expects it to be row-major and numConstraints x numCoordinates.
+     * @param M_inv_ptr - the pointer to the M^-1 "matrix". Expects it to be a vector that is numPositions x 1.
+     * @param alpha_tilde_ptr - the pointer to the alpha_tilde "matrix". Expects it to be a vector and numConstraints x 1.
+     * @param lhs_ptr (OUTPUT) - the pointer to the (currently empty) LHS matrix. Expects it to be column-major and numConstraints x numConstraints.
+     */
     inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr) override
     {
         lhs_ptr[0] = alpha_tilde_ptr[0];
@@ -64,22 +74,15 @@ class RigidBodyConstraintProjector : public ConstraintProjector
             lhs_ptr[0] += inv_m * (delC_ptr[3*pi]*delC_ptr[3*pi] + delC_ptr[3*pi+1]*delC_ptr[3*pi+1] + delC_ptr[3*pi+2]*delC_ptr[3*pi+2]);
         }
 
-        // add contribution from rigid body
-        // 1/m1 + (r1 x n)^T I1^-1 (r1 x n)
+        // add contribution from rigid body - computed with the RigidBodyXBPDHelper class
         for (int ri = 0; ri < numRigidBodies(); ri++)
         {
             lhs_ptr[0] += rb_constraint->rigidBodyHelpers()[ri]->weight();
         }
-        // const Eigen::Vector3d n = -rb_constraint->collisionNormal();
-        // const Eigen::Vector3d r = rb_constraint->pointOnRigidBody() - rb_constraint->rigidObj()->position();
-        // const Eigen::Matrix3d inv_I = rb_constraint->rigidObj()->invI();
-        // const double m = rb_constraint->rigidObj()->mass();
-        // const Eigen::Vector3d r_cross_n = r.cross(n);
-        // lhs_ptr[0] += 1.0/m + r_cross_n.transpose() * inv_I * r_cross_n;
     }
 
     protected:
-    const RigidBodyConstraint* rb_constraint;
+    const RigidBodyConstraint* rb_constraint;   // store the constraint as a RigidBodyConstraint for convenience
 
 };
 
