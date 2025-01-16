@@ -20,19 +20,20 @@ void XPBDGaussSeidelSolver::_solveConstraints(double* data)
         if (!proj)
             continue;
         
+        // if the constraint projector is projecting a constraint that involves a rigid body, we need to handle the rigid body updates specially
         if (RigidBodyConstraintProjector* rb_proj = dynamic_cast<RigidBodyConstraintProjector*>(proj.get()))
         {
+            // get the deformable position updates for this constraint - they are put in the _coordinate_updates data block
+            // this will also get the rigid body position + orientation updates for this constraint - they are put in the _rigid_body_updates data block
             rb_proj->project(data, _coordinate_updates.data(), _rigid_body_updates.data());
             const std::vector<Sim::RigidObject*>& rigid_bodies = rb_proj->rigidBodies();
+            // apply the rigid body updates
             for (int i = 0; i < rb_proj->numRigidBodies(); i++)
             {
                 double* rb_update = _rigid_body_updates.data() + 7*i;
                 rigid_bodies[i]->setPosition(rigid_bodies[i]->position() + Eigen::Map<Eigen::Vector3d>(rb_update));
                 rigid_bodies[i]->setOrientation(rigid_bodies[i]->orientation() + Eigen::Map<Eigen::Vector4d>(rb_update+3));
             }
-            // Sim::RigidObject* rigid_obj = rdcc_proj->rigidObject();
-            // rigid_obj->setPosition(rigid_obj->position() + rigid_body_update(Eigen::seq(0,2)));
-            // rigid_obj->setOrientation(rigid_obj->orientation() + rigid_body_update(Eigen::seq(3,6)));
         }
         else
         {
@@ -40,6 +41,7 @@ void XPBDGaussSeidelSolver::_solveConstraints(double* data)
             proj->project(data, _coordinate_updates.data());
         }
 
+        // apply the deformable position updates
         const std::vector<PositionReference>& positions = proj->positions();
         for (int i = 0; i < proj->numPositions(); i++)
         {

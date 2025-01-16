@@ -190,10 +190,12 @@ void Simulation::update()
 
 void Simulation::_timeStep()
 {
+    // auto t1 = std::chrono::steady_clock::now();
+
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
         // run collision detection
-        auto t1 = std::chrono::steady_clock::now();
+        // auto t1 = std::chrono::steady_clock::now();
         for (auto& obj : _objects)
         {
             if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
@@ -201,8 +203,8 @@ void Simulation::_timeStep()
         }
         
         _collision_scene->collideObjects();
-        auto t2 = std::chrono::steady_clock::now();
-        std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+        // auto t2 = std::chrono::steady_clock::now();
+        // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
         
     }
@@ -227,6 +229,9 @@ void Simulation::_timeStep()
     
     // increment the time by the time step
     _time += _time_step;
+
+    // auto t2 = std::chrono::steady_clock::now();
+    // std::cout << "Time step took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 }
 
 void Simulation::_updateGraphics()
