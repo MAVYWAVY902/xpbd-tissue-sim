@@ -2,6 +2,7 @@
 #define __RIGID_DEFORMABLE_COLLISION_CONSTRAINT_HPP
 
 #include "solver/RigidBodyConstraint.hpp"
+#include "solver/CollisionConstraint.hpp"
 #include "simobject/RigidObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "geometry/SDF.hpp"
@@ -26,7 +27,7 @@ namespace Solver
  * distance given by the SDF evolving in time). So far, this seems to be a reasonable assumption - i.e. if the bodies are still colliding after multiple frames, it is highly
  * likely that the penetrating points and collision normal are pretty similar to what they were when this collision constraint was created.
  */
-class RigidDeformableCollisionConstraint : public RigidBodyConstraint
+class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public CollisionConstraint
 {
     public:
     /** 
@@ -40,11 +41,12 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint
      */
     RigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal,
                                        const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
-    : RigidBodyConstraint(std::vector<PositionReference>({
+    : CollisionConstraint(std::vector<PositionReference>({
         PositionReference(deformable_obj, v1),
         PositionReference(deformable_obj, v2),
-        PositionReference(deformable_obj, v3)}), std::vector<Sim::RigidObject*>({rigid_obj})),
-        _sdf(sdf), _collision_normal(collision_normal), _u(u), _v(v), _w(w)
+        PositionReference(deformable_obj, v3)}), collision_normal),
+        RigidBodyConstraint(std::vector<Sim::RigidObject*>({rigid_obj})),
+        _sdf(sdf), _point_on_rigid_body(rigid_body_point), _u(u), _v(v), _w(w)
     {
         // create the Helper class that will evaluate the rigid body "weight" and the rigid body update when this constraint is projected
         // it is created here because the Helper needs info from the collision itself, such as the normal and the point on the rigid body
@@ -136,11 +138,37 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint
     /** Collision constraints should be implemented as inequalities, i.e. as C(x) >= 0. */
     inline virtual bool isInequality() const override { return true; }
 
+    inline virtual Eigen::Vector3d p1() const override
+    {
+        return _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + 
+               _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + 
+               _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
+    }
+
+    inline virtual Eigen::Vector3d p2() const override
+    {
+        return _point_on_rigid_body;
+    }
+
+    inline virtual Eigen::Vector3d prevP1() const override
+    {
+        return _u*Eigen::Map<Eigen::Vector3d>(_positions[0].prev_position_ptr) + 
+               _v*Eigen::Map<Eigen::Vector3d>(_positions[1].prev_position_ptr) + 
+               _w*Eigen::Map<Eigen::Vector3d>(_positions[2].prev_position_ptr);
+    }
+
+    inline virtual Eigen::Vector3d prevP2() const override
+    {
+        const Sim::RigidObject* obj = _rigid_bodies[0];
+        const Eigen::Vector3d p_body = obj->globalToBody(_point_on_rigid_body);
+        return obj->prevPosition() + GeometryUtils::rotateVectorByQuat(p_body, obj->prevOrientation());
+    }
+
     private:
 
     protected:
     const Geometry::SDF* _sdf;  // the SDF of the rigid body - used to get accurate penetration distance
-    Eigen::Vector3d _collision_normal;  // the "collision normal" - the direction of minimum separation
+    Eigen::Vector3d _point_on_rigid_body; // the colliding point on the rigid body, in global coordinates
     double _u;  // barycentric coordinates of point on deformable body
     double _v;  // the vertices themselves are stored in the _positions vector defined in the Constraint base class
     double _w;
