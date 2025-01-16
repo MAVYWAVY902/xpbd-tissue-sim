@@ -12,6 +12,7 @@
 namespace Solver
 {
     class Constraint;
+    class CollisionConstraint;
     class ConstraintProjector;
     class XPBDSolver;
 }
@@ -28,7 +29,7 @@ class RigidObject;
 
 struct XPBDCollisionConstraint
 {
-    std::unique_ptr<Solver::Constraint> constraint;
+    std::unique_ptr<Solver::CollisionConstraint> constraint;
     int projector_index;
     int num_steps_unused;
 };

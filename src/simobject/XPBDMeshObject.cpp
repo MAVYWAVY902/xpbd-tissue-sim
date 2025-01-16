@@ -79,7 +79,7 @@ int XPBDMeshObject::numConstraintsForPosition(const int index) const
 void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
                                     const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
 {
-    std::unique_ptr<Solver::Constraint> collision_constraint = std::make_unique<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, obj, v1, v2, v3, u, v, w);
+    std::unique_ptr<Solver::StaticDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, obj, v1, v2, v3, u, v, w);
     std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
     std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _sim->dt());
 
@@ -300,19 +300,49 @@ void XPBDMeshObject::_projectConstraints()
         }
     }
 
-    // TODO: replace with real collision detection
-    for (int i = 0; i < _mesh->numVertices(); i++)
+    // friction
+    const double mu_s = 0.0;
+    const double mu_k = 0.0;
+    for (const auto& c : _collision_constraints)
     {
-        // if (vertexFixed(i))
-        // {
-        //     _vertices.row(i) = _x_prev.row(i);
-        // }
-        
-        // const Eigen::Vector3d& v = _mesh->vertex(i);
-        // if (v[2] <= 0)
-        // {
-        //     _mesh->displaceVertex(i, 0, 0, -v[2]);
-        // }
+        const double lam = _solver->constraintProjectors()[c.projector_index]->lambda()[0];
+        if (lam > 0)
+        {
+            const int v1 = c.constraint->positions()[0].index;
+
+            const Eigen::Vector3d n = c.constraint->collisionNormal();
+
+            const Eigen::Vector3d vel1 = vertexVelocity(v1);
+            const Eigen::Vector3d vel1_tan = vel1 - (vel1.dot(n))*n;
+
+            const Eigen::Vector3d p_cur = _mesh->vertex(v1);
+            const Eigen::Vector3d p_prev = vertexPreviousPosition(v1);
+            const Eigen::Vector3d dp = p_cur - p_prev;
+            const Eigen::Vector3d dp_tan = dp - (dp.dot(n))*n;
+
+
+            // TODO: think of better way to get velocity just at the point we care about
+            // do we need to somehow get the barycentric coords u,v,w?
+            const double VELOCITY_THRESH = 1e-2;
+            if (vel1_tan.norm() < VELOCITY_THRESH)
+            {
+                std::cout << "VELOCITY THRESHOLD MET" << std::endl;
+                
+                if (dp_tan.norm() < mu_s*lam)
+                {
+                    std::cout << "APPLYING STATIC FRICTION!" << std::endl;
+                    _mesh->setVertex(v1, p_cur - dp_tan);
+                }
+            }
+            else
+            {
+                const Eigen::Vector3d correction = -dp_tan * std::min(mu_k*lam/dp_tan.norm(), 1.0);
+                _mesh->setVertex(v1, p_cur + correction);
+            }
+
+            
+            
+        }
     }
 }
 

@@ -220,11 +220,11 @@ class AngularRigidBodyXPBDHelper : public RigidBodyXPBDHelper
  * For both of these computations, the RigidBodyConstraint class provides a RigidBodyXPBDHelper object for each rigid body involved in the constraint that
  * will provide the necessary quantities to perform these updates. It is the responsibility of the derived class to create the Helper classes.
 */
-class RigidBodyConstraint : public Constraint
+class RigidBodyConstraint// : public Constraint
 {
     public:
-    RigidBodyConstraint(const std::vector<PositionReference>& positions, const std::vector<Sim::RigidObject*>& rigid_bodies, double alpha=0)
-        : Constraint(positions, alpha), _rigid_bodies(rigid_bodies), _rigid_body_helpers()
+    RigidBodyConstraint(/*const std::vector<PositionReference>& positions,*/ const std::vector<Sim::RigidObject*>& rigid_bodies, double alpha=0)
+        : /*Constraint(positions, alpha),*/ _rigid_bodies(rigid_bodies), _rigid_body_helpers()
     {
     }
 

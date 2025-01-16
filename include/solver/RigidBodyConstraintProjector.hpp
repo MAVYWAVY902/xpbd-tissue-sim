@@ -19,9 +19,11 @@ class RigidBodyConstraintProjector : public ConstraintProjector
 {
 
     public:
-    explicit RigidBodyConstraintProjector(RigidBodyConstraint* constraint, const double dt)
-        : ConstraintProjector(std::vector<Constraint*>({constraint}), dt), rb_constraint(constraint)
+    explicit RigidBodyConstraintProjector(Constraint* constraint, const double dt)
+        : ConstraintProjector(std::vector<Constraint*>({constraint}), dt), rb_constraint(dynamic_cast<RigidBodyConstraint*>(constraint))
     {
+        // make sure the constraint that was passed into the constructor is a RigidBodyConstraint
+        assert(rb_constraint);
     }
 
     /** Specialized project method that takes an additional output argument for rigid body updates.
@@ -37,7 +39,7 @@ class RigidBodyConstraintProjector : public ConstraintProjector
         ConstraintProjector::project(data_ptr, coordinate_updates_ptr);
 
         // if the constraint is an inequality constraint and C(x) > 0, do not enforce the constraint
-        if (_C_ptr()[0] > 0 && rb_constraint->isInequality())
+        if (_C_ptr()[0] > 0 && _state->_constraints[0]->isInequality())
         {
             for (int i = 0; i < numRigidBodies()*7; i++)
             {

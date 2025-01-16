@@ -42,9 +42,11 @@ class RigidObject : public Object
 
     virtual void setPosition(const Eigen::Vector3d& position) { _p = position; }
     Eigen::Vector3d position() const { return _p; }
+    Eigen::Vector3d prevPosition() const { return _p_prev; }
 
     virtual void setOrientation(const Eigen::Vector4d& orientation) { _q = orientation; }
     Eigen::Vector4d orientation() const { return _q; }
+    Eigen::Vector4d prevOrientation() const { return _q_prev; }
 
     double mass() const { return _m; }
     Eigen::Matrix3d I() const { return _I; }
