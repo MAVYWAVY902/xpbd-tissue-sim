@@ -16,15 +16,7 @@ class CollisionConstraint : public Constraint
         : Constraint(positions, 0), _collision_normal(collision_normal)
     {}
 
-    inline virtual Eigen::Vector3d p1() const = 0;
-    inline virtual Eigen::Vector3d p2() const = 0;
-
-    inline virtual Eigen::Vector3d prevP1() const = 0;
-    inline virtual Eigen::Vector3d prevP2() const = 0;
-
-    inline virtual double u() const = 0;
-    inline virtual double v() const = 0;
-    inline virtual double w() const = 0;
+    inline virtual void applyFriction(double lam, double mu_s, double mu_k) const = 0;
 
     inline Eigen::Vector3d collisionNormal() const { return _collision_normal; }
 

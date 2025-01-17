@@ -54,12 +54,14 @@ void RigidObject::update()
 
     // update positions inertially
     const Eigen::Vector3d f_ext({0,0,-_m*_sim->gAccel()});
-    _v = _v + _sim->dt() * f_ext / _m;
+    // _v = _v + _sim->dt() * f_ext / _m;
     _p = _p + _sim->dt() * _v;
 
     // update orientation inertially
     const Eigen::Vector3d t_ext({0.0, 0.0, 0.0});
-    _w = _w + _sim->dt() * _I_inv * (t_ext - (_w.cross(_I*_w)));
+    Eigen::Vector3d _w_body = GeometryUtils::rotateVectorByQuat(_w, GeometryUtils::inverseQuat(_q));
+    _w_body = _w_body + _sim->dt() * _I_inv * (t_ext - (_w_body.cross(_I*_w_body)));
+    _w = GeometryUtils::rotateVectorByQuat(_w_body, _q);
     const Eigen::Vector4d w4({_w[0], _w[1], _w[2], 0.0});
     _q = _q + 0.5 * _sim->dt() * (GeometryUtils::quatMult(w4, _q));
     _q.normalize();
@@ -73,10 +75,14 @@ void RigidObject::velocityUpdate()
     if (_fixed)
         return;
 
+    //TODO: remove after testing
+    // _q = Eigen::Vector4d({0,0,0,1});
+    // _p[2] = 0;
+
     // update linear velocity
     _v = (_p - _p_prev) / _sim->dt();
 
-    // TODO: update angular velocity
+    // update angular velocity
     const Eigen::Vector4d dq = GeometryUtils::quatMult(_q, GeometryUtils::inverseQuat(_q_prev));
     _w = 2 / _sim->dt() * dq(Eigen::seq(0,2));
     if (dq[3] < 0)  
@@ -86,6 +92,20 @@ void RigidObject::velocityUpdate()
     _q_prev = _q;
 }
 
+void RigidObject::applyForceAtPoint(const Eigen::Vector3d& f, const Eigen::Vector3d& p) 
+{
+    // update position
+    _p = _p + _sim->dt() * _sim->dt() * f / _m;
+
+    // update orientation
+    const Eigen::Vector3d torque = (p - _p).cross(f);
+    const Eigen::Vector3d body_torque = GeometryUtils::rotateVectorByQuat(torque, GeometryUtils::inverseQuat(_q));
+    const Eigen::Vector3d body_omega = _sim->dt() * _I_inv * body_torque;
+    const Eigen::Vector3d global_omega = GeometryUtils::rotateVectorByQuat(body_omega, _q);
+    const Eigen::Vector4d w4({global_omega[0], global_omega[1], global_omega[2], 0.0});
+    _q = _q + 0.5 * _sim->dt() * (GeometryUtils::quatMult(w4, _q));
+}
+
 Eigen::Vector3d RigidObject::globalToBody(const Eigen::Vector3d& x) const
 {
     return GeometryUtils::rotateVectorByQuat(x - _p, GeometryUtils::inverseQuat(_q));
@@ -93,7 +113,7 @@ Eigen::Vector3d RigidObject::globalToBody(const Eigen::Vector3d& x) const
 
 Eigen::Vector3d RigidObject::bodyToGlobal(const Eigen::Vector3d& x) const
 {
-    return x + GeometryUtils::rotateVectorByQuat(x, _q);
+    return _p + GeometryUtils::rotateVectorByQuat(x, _q);
 }
 
 

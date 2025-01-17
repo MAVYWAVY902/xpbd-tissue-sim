@@ -3,6 +3,7 @@
 
 #include "simobject/Object.hpp"
 #include "config/RigidObjectConfig.hpp"
+#include "utils/GeometryUtils.hpp"
 
 namespace Sim
 {
@@ -34,11 +35,13 @@ class RigidObject : public Object
     virtual void velocityUpdate() override;
     
     /** Getters and setters */
-    virtual void setLinearVelocity(const Eigen::Vector3d& lin_velocity) { _v = lin_velocity; }
-    Eigen::Vector3d linearVelocity() const { return _v; }
+    virtual void setGlobalLinearVelocity(const Eigen::Vector3d& lin_velocity) { _v = lin_velocity; }
+    Eigen::Vector3d globalLinearVelocity() const { return _v; }
+    Eigen::Vector3d bodyLinearVelocity() const { return GeometryUtils::rotateVectorByQuat(_v, GeometryUtils::inverseQuat(_q)); }
 
-    virtual void setAngularVelocity(const Eigen::Vector3d& ang_velocity) { _w = ang_velocity; }
-    Eigen::Vector3d angularVelocity() const { return _w; }
+    virtual void setGlobalAngularVelocity(const Eigen::Vector3d& ang_velocity) { _w = ang_velocity; }
+    Eigen::Vector3d globalAngularVelocity() const { return _w; }
+    Eigen::Vector3d bodyAngularVelocity() const { return GeometryUtils::rotateVectorByQuat(_w, GeometryUtils::inverseQuat(_q)); }
 
     virtual void setPosition(const Eigen::Vector3d& position) { _p = position; }
     Eigen::Vector3d position() const { return _p; }
@@ -53,6 +56,12 @@ class RigidObject : public Object
     Eigen::Matrix3d invI() const { return _I_inv; }
 
     bool isFixed() const { return _fixed; }
+
+    /** Applies the force f to the rigid body at point p for a single time step.
+     * @param f : the force vector in global coordinates
+     * @param p : the point at which to apply the force to the rigid body, in global coordinates
+     */
+    void applyForceAtPoint(const Eigen::Vector3d& f, const Eigen::Vector3d& p);
 
     /** Returns the coordinates of p (which is specified in global coords) w.r.t the current body frame of this rigid object.
      * @param p : the point expressed in world frame coords
@@ -84,9 +93,9 @@ class RigidObject : public Object
     Eigen::Matrix3d _I_inv;
     
 
-    /** Translational velocity of rigid body. */
+    /** Translational velocity of rigid body in the global frame */
     Eigen::Vector3d _v;
-    /** Rotational velocity of rigid body. */
+    /** Rotational velocity of rigid body in the global frame */
     Eigen::Vector3d _w;
 
     /** If the rigid body is fixed (i.e. can't move or rotate). */

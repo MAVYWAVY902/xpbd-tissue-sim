@@ -59,7 +59,7 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
     inline void evaluate(double* C) const override
     {
         const Eigen::Vector3d a = _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
-        *C = _collision_normal.dot(a - _p) + 1e-4;
+        *C = _collision_normal.dot(a - _p);
     }
 
     /** Computes the gradient of this constraint in vector form with pre-allocated memory.
@@ -100,33 +100,71 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
     /** Collision constraints should be implemented as inequalities, i.e. as C(x) >= 0. */
     inline virtual bool isInequality() const override { return true; }
 
-    inline virtual Eigen::Vector3d p1() const override
+    inline virtual void applyFriction(double lam, double mu_s, double mu_k) const override
     {
-        return _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + 
-               _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + 
-               _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
-    }
+        const Eigen::Vector3d p1 = Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr);
+        const Eigen::Vector3d p2 = Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr);
+        const Eigen::Vector3d p3 = Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
 
-    inline virtual Eigen::Vector3d p2() const override
-    {
-        return _p;
-    }
+        const Eigen::Vector3d p1_prev = Eigen::Map<Eigen::Vector3d>(_positions[0].prev_position_ptr);
+        const Eigen::Vector3d p2_prev = Eigen::Map<Eigen::Vector3d>(_positions[1].prev_position_ptr);
+        const Eigen::Vector3d p3_prev = Eigen::Map<Eigen::Vector3d>(_positions[2].prev_position_ptr);
 
-    inline virtual Eigen::Vector3d prevP1() const override
-    {
-        return _u*Eigen::Map<Eigen::Vector3d>(_positions[0].prev_position_ptr) + 
-               _v*Eigen::Map<Eigen::Vector3d>(_positions[1].prev_position_ptr) + 
-               _w*Eigen::Map<Eigen::Vector3d>(_positions[2].prev_position_ptr);
-    }
+        const Eigen::Vector3d p_cur = _u*p1 + _v*p2 + _w*p3;
+        const Eigen::Vector3d p_prev = _u*p1_prev + _v*p2_prev + _w*p3_prev;
+        const Eigen::Vector3d dp = p_cur - p_prev;
+        const Eigen::Vector3d dp_tan = dp - (dp.dot(_collision_normal))*_collision_normal;
 
-    inline virtual Eigen::Vector3d prevP2() const override
-    {
-        return _p;
-    }
+        const double m = _u*(1.0/_positions[0].inv_mass) + _v*(1.0/_positions[1].inv_mass) + _w*(1.0/_positions[2].inv_mass);
 
-    inline virtual double u() const override { return _u; }
-    inline virtual double v() const override { return _v; }
-    inline virtual double w() const override { return _w; }
+        if (dp_tan.norm() < mu_s*lam/m)
+        {
+            if (_u>1e-4 && dp_tan.norm() < mu_s*lam*_positions[0].inv_mass)
+            {
+                const Eigen::Vector3d dp1 = p1 - p1_prev;
+                const Eigen::Vector3d dp1_tan = dp1 - (dp1.dot(_collision_normal))*_collision_normal;
+                _positions[0].position_ptr[0] -= dp1_tan[0];
+                _positions[0].position_ptr[1] -= dp1_tan[1];
+                _positions[0].position_ptr[2] -= dp1_tan[2];
+            }
+                
+            if (_v>1e-4 && dp_tan.norm() < mu_s*lam*_positions[1].inv_mass)
+            {
+                const Eigen::Vector3d dp2 = p2 - p2_prev;
+                const Eigen::Vector3d dp2_tan = dp2 - (dp2.dot(_collision_normal))*_collision_normal;
+                _positions[1].position_ptr[0] -= dp2_tan[0];
+                _positions[1].position_ptr[1] -= dp2_tan[1];
+                _positions[1].position_ptr[2] -= dp2_tan[2];
+
+            }
+
+            if (_w>1e-4 && dp_tan.norm() < mu_s*lam*_positions[2].inv_mass)
+            {
+                const Eigen::Vector3d dp3 = p3 - p3_prev;
+                const Eigen::Vector3d dp3_tan = dp3 - (dp3.dot(_collision_normal))*_collision_normal;
+                _positions[2].position_ptr[0] -= dp3_tan[0];
+                _positions[2].position_ptr[1] -= dp3_tan[1];
+                _positions[2].position_ptr[2] -= dp3_tan[2];
+            }
+        }
+        else
+        {
+            const Eigen::Vector3d corr_v1 = -_u * dp_tan * std::min(_positions[0].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
+            const Eigen::Vector3d corr_v2 = -_v * dp_tan * std::min(_positions[1].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
+            const Eigen::Vector3d corr_v3 = -_w * dp_tan * std::min(_positions[2].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
+            _positions[0].position_ptr[0] += corr_v1[0];
+            _positions[0].position_ptr[1] += corr_v1[1];
+            _positions[0].position_ptr[2] += corr_v1[2];
+
+            _positions[1].position_ptr[0] += corr_v2[0];
+            _positions[1].position_ptr[1] += corr_v2[1];
+            _positions[1].position_ptr[2] += corr_v2[2];
+
+            _positions[2].position_ptr[0] += corr_v3[0];
+            _positions[2].position_ptr[1] += corr_v3[1];
+            _positions[2].position_ptr[2] += corr_v3[2];
+        }
+    }
 
     protected:
     const Geometry::SDF* _sdf;

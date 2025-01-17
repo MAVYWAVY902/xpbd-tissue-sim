@@ -46,7 +46,7 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public Co
         PositionReference(deformable_obj, v2),
         PositionReference(deformable_obj, v3)}), collision_normal),
         RigidBodyConstraint(std::vector<Sim::RigidObject*>({rigid_obj})),
-        _sdf(sdf), _point_on_rigid_body(rigid_body_point), _u(u), _v(v), _w(w)
+        _sdf(sdf), _point_on_rigid_body(rigid_obj->globalToBody(rigid_body_point)), _u(u), _v(v), _w(w)
     {
         // create the Helper class that will evaluate the rigid body "weight" and the rigid body update when this constraint is projected
         // it is created here because the Helper needs info from the collision itself, such as the normal and the point on the rigid body
@@ -94,7 +94,7 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public Co
         const Eigen::Vector3d a = _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
         
         // constraint value is the penetration distance, which we can get from the rigid body SDF
-        *C = _sdf->evaluate(a) + 1e-4;
+        *C = _sdf->evaluate(a);
     }
 
     /** Computes the gradient of this constraint in vector form with pre-allocated memory.
@@ -138,35 +138,105 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public Co
     /** Collision constraints should be implemented as inequalities, i.e. as C(x) >= 0. */
     inline virtual bool isInequality() const override { return true; }
 
-    inline virtual Eigen::Vector3d p1() const override
+    inline virtual void applyFriction(double lam, double mu_s, double mu_k) const override
     {
-        return _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + 
-               _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + 
-               _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
-    }
+        const Eigen::Vector3d p1 = Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr);
+        const Eigen::Vector3d p2 = Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr);
+        const Eigen::Vector3d p3 = Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
 
-    inline virtual Eigen::Vector3d p2() const override
-    {
-        return _point_on_rigid_body;
-    }
+        const Eigen::Vector3d p1_prev = Eigen::Map<Eigen::Vector3d>(_positions[0].prev_position_ptr);
+        const Eigen::Vector3d p2_prev = Eigen::Map<Eigen::Vector3d>(_positions[1].prev_position_ptr);
+        const Eigen::Vector3d p3_prev = Eigen::Map<Eigen::Vector3d>(_positions[2].prev_position_ptr);
 
-    inline virtual Eigen::Vector3d prevP1() const override
-    {
-        return _u*Eigen::Map<Eigen::Vector3d>(_positions[0].prev_position_ptr) + 
-               _v*Eigen::Map<Eigen::Vector3d>(_positions[1].prev_position_ptr) + 
-               _w*Eigen::Map<Eigen::Vector3d>(_positions[2].prev_position_ptr);
-    }
+        const Eigen::Vector3d p_cur = _u*p1 + _v*p2 + _w*p3;
+        const Eigen::Vector3d p_prev = _u*p1_prev + _v*p2_prev + _w*p3_prev;
+        const Eigen::Vector3d dp = p_cur - p_prev;
 
-    inline virtual Eigen::Vector3d prevP2() const override
-    {
         const Sim::RigidObject* obj = _rigid_bodies[0];
-        const Eigen::Vector3d p_body = obj->globalToBody(_point_on_rigid_body);
-        return obj->prevPosition() + GeometryUtils::rotateVectorByQuat(p_body, obj->prevOrientation());
-    }
+        // TODO: make point_on_rigid_body in body coords
+        const Eigen::Vector3d rigid_p_cur = obj->bodyToGlobal(_point_on_rigid_body);
+        const Eigen::Vector3d rigid_p_prev = obj->prevPosition() + GeometryUtils::rotateVectorByQuat(_point_on_rigid_body, obj->prevOrientation());
+        const Eigen::Vector3d rigid_dp = rigid_p_cur - rigid_p_prev;
 
-    inline virtual double u() const override { return _u; }
-    inline virtual double v() const override { return _v; }
-    inline virtual double w() const override { return _w; }
+        // std::cout << "position: " << obj->position()[0] << ", " << obj->position()[1] << ", " << obj->position()[2] << std::endl;
+        // std::cout << "prev_position: " << obj->prevPosition()[0] << ", " << obj->prevPosition()[1] << ", " << obj->prevPosition()[2] << std::endl;
+        // std::cout << "rigid_p_cur: " << rigid_p_cur[0] << ", " << rigid_p_cur[1] << ", " << rigid_p_cur[2] << std::endl;
+        // std::cout << "rigid_p_prev: " << rigid_p_prev[0] << ", " << rigid_p_prev[1] << ", " << rigid_p_prev[2] << std::endl;
+        // std::cout << "rigid_dp:\n" << rigid_dp << std::endl;
+
+        const Eigen::Vector3d relative_dp = dp - rigid_dp;
+
+        const Eigen::Vector3d dp_tan = relative_dp - (relative_dp.dot(_collision_normal))*_collision_normal;
+
+        const double m = _u*(1.0/_positions[0].inv_mass) + _v*(1.0/_positions[1].inv_mass) + _w*(1.0/_positions[2].inv_mass);
+
+        Eigen::Vector3d force_dtdt = Eigen::Vector3d::Zero();
+        if (dp_tan.norm() < mu_s*lam/m)
+        {
+            if (_u>1e-4 && dp_tan.norm() < mu_s*lam*_positions[0].inv_mass)
+            {
+                const Eigen::Vector3d dp1 = (p1 - p1_prev) - rigid_dp;
+                const Eigen::Vector3d dp1_tan = dp1 - (dp1.dot(_collision_normal))*_collision_normal;
+                _positions[0].position_ptr[0] -= dp1_tan[0];
+                _positions[0].position_ptr[1] -= dp1_tan[1];
+                _positions[0].position_ptr[2] -= dp1_tan[2];
+            }
+                
+            if (_v>1e-4 && dp_tan.norm() < mu_s*lam*_positions[1].inv_mass)
+            {
+                const Eigen::Vector3d dp2 = (p2 - p2_prev) - rigid_dp;
+                const Eigen::Vector3d dp2_tan = dp2 - (dp2.dot(_collision_normal))*_collision_normal;
+                _positions[1].position_ptr[0] -= dp2_tan[0];
+                _positions[1].position_ptr[1] -= dp2_tan[1];
+                _positions[1].position_ptr[2] -= dp2_tan[2];
+
+            }
+
+            if (_w>1e-4 && dp_tan.norm() < mu_s*lam*_positions[2].inv_mass)
+            {
+                const Eigen::Vector3d dp3 = (p3 - p3_prev) - rigid_dp;
+                const Eigen::Vector3d dp3_tan = dp3 - (dp3.dot(_collision_normal))*_collision_normal;
+                _positions[2].position_ptr[0] -= dp3_tan[0];
+                _positions[2].position_ptr[1] -= dp3_tan[1];
+                _positions[2].position_ptr[2] -= dp3_tan[2];
+            }
+
+            force_dtdt = dp_tan;
+
+        }
+        else
+        {
+            const Eigen::Vector3d corr_v1 = -_u * dp_tan * std::min(_positions[0].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
+            const Eigen::Vector3d corr_v2 = -_v * dp_tan * std::min(_positions[1].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
+            const Eigen::Vector3d corr_v3 = -_w * dp_tan * std::min(_positions[2].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
+            _positions[0].position_ptr[0] += corr_v1[0];
+            _positions[0].position_ptr[1] += corr_v1[1];
+            _positions[0].position_ptr[2] += corr_v1[2];
+
+            _positions[1].position_ptr[0] += corr_v2[0];
+            _positions[1].position_ptr[1] += corr_v2[1];
+            _positions[1].position_ptr[2] += corr_v2[2];
+
+            _positions[2].position_ptr[0] += corr_v3[0];
+            _positions[2].position_ptr[1] += corr_v3[1];
+            _positions[2].position_ptr[2] += corr_v3[2];
+
+            force_dtdt = -(corr_v1/_positions[0].inv_mass + corr_v2/_positions[1].inv_mass + corr_v3/_positions[2].inv_mass);
+            // _rigid_bodies[0]->applyForceAtPoint(force, rigid_p_cur);
+        }
+
+        // update orientation - compute torque caused by applied force
+        const Eigen::Vector3d torque = (rigid_p_cur - _rigid_bodies[0]->position()).cross(force_dtdt);
+        const Eigen::Vector3d body_torque = GeometryUtils::rotateVectorByQuat(torque, GeometryUtils::inverseQuat(_rigid_bodies[0]->orientation()));
+        const Eigen::Vector3d body_omega = _rigid_bodies[0]->invI() * body_torque;
+        const Eigen::Vector3d global_omega = GeometryUtils::rotateVectorByQuat(body_omega, _rigid_bodies[0]->orientation());
+        const Eigen::Vector4d w4({global_omega[0], global_omega[1], global_omega[2], 0.0});
+        const Eigen::Vector4d q_update = 0.5 * (GeometryUtils::quatMult(w4, _rigid_bodies[0]->orientation()));
+        _rigid_bodies[0]->setOrientation(_rigid_bodies[0]->orientation() + q_update);
+
+        // update position
+        _rigid_bodies[0]->setPosition(_rigid_bodies[0]->position() + force_dtdt / _rigid_bodies[0]->mass() );
+    }
 
     private:
 
