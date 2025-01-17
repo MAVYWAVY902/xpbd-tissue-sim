@@ -40,6 +40,18 @@ objects:
   #   damping-multiplier: 20000
   #   solve-mode: "Simultaneous"
 
+  - 
+    name: "ramp"
+    type: "RigidBox"
+    size: [1, 5, 0.2]
+    density: 100
+    position: [0, 0, 0]
+    rotation: [20, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    fixed: true
+    collisions: true
+
   -
     name: "Cube2"
     # type: "FirstOrderXPBDMeshObject"
@@ -57,12 +69,14 @@ objects:
       density: 1000
       E: 6e4
       nu: 0.45
+      mu-s: 1.0
+      mu-k: 0.6
     color: [1.0, 0.5, 0.0, 1.0]
     draw-points: false
     draw-edges: true
     max-size: 0.5
     position: [0, 0, 0.38]
-    velocity: [0, 0, 0]
+    velocity: [0, 0, 0.0]
     rotation: [20, 0, 0]
     num-solver-iters: 1
     damping-gamma: 2000
@@ -83,18 +97,6 @@ objects:
   #   position: [0, 0, 0]
   #   velocity: [0, 0, 0]
   #   collisions: true
-
-  - 
-    name: "ramp"
-    type: "RigidBox"
-    size: [1, 5, 0.2]
-    density: 100
-    position: [0, 0, 0]
-    rotation: [20, 0, 0]
-    velocity: [0, 0, 0]
-    angular-velocity: [0, 0, 0]
-    fixed: true
-    collisions: true
 
   # - name: "box2"
   #   type: "RigidBox"
@@ -124,7 +126,7 @@ objects:
   #   density: 100
   #   position: [0, 0, 0]
   #   rotation: [0, 0, 0]
-  #   velocity: [0, 0, 2]
+  #   velocity: [0, 0, 5]
   #   angular-velocity: [10, 0, 0]
   #   max-size: 1
   #   collisions: true

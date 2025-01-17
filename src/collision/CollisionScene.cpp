@@ -116,7 +116,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         // std::cout << "v3: " << p3[0] << ", " << p3[1] << ", " << p3[2] << "\tdist: " << sdf->evaluate(p3) << std::endl;
         const Eigen::Vector3d x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
-        if (distance < 1e-4)
+        if (distance <= 1e-4)
         {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
             // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
             const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);

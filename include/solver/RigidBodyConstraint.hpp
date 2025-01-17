@@ -115,7 +115,7 @@ class PositionalRigidBodyXPBDHelper : public RigidBodyXPBDHelper
         // compute the body angular velocity (with quantities in the body frame, since I is in the rest state i.e. body frame)
         const Eigen::Vector3d omega_body = 0.5 * _rigid_obj->invI() * (r_body.cross(dlam * n_body));
         // convert body anuglar velocity to spatial angular velocity
-        const Eigen::Vector3d omega_spatial = GeometryUtils::rotateVectorByQuat(omega_body, GeometryUtils::inverseQuat(_rigid_obj->orientation()));
+        const Eigen::Vector3d omega_spatial = GeometryUtils::rotateVectorByQuat(omega_body, _rigid_obj->orientation());
         // compute the orientation update (in the global frame)
         const Eigen::Vector4d orientation_update = GeometryUtils::quatMult(Eigen::Vector4d(omega_spatial[0], omega_spatial[1], omega_spatial[2], 0), _rigid_obj->orientation());
     
@@ -185,7 +185,7 @@ class AngularRigidBodyXPBDHelper : public RigidBodyXPBDHelper
         // compute the body angular velocity (with quantities in the body frame, since I is in the rest state i.e. body frame)
         const Eigen::Vector3d omega_body = 0.5 * _rigid_obj->invI() * (dlam * rot_axis_body);
         // convert to global angular velocity of the body
-        const Eigen::Vector3d omega_spatial = GeometryUtils::rotateVectorByQuat(omega_body, GeometryUtils::inverseQuat(_rigid_obj->orientation()));
+        const Eigen::Vector3d omega_spatial = GeometryUtils::rotateVectorByQuat(omega_body, _rigid_obj->orientation());
         // compute orientation update
         const Eigen::Vector4d orientation_update = GeometryUtils::quatMult(Eigen::Vector4d(omega_spatial[0], omega_spatial[1], omega_spatial[2], 0), _rigid_obj->orientation());
 
