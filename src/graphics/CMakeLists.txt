@@ -15,6 +15,7 @@ target_sources(Graphics
         ${GRAPHICS_INCLUDE_DIR}/Easy3DBoxGraphicsObject.hpp
         ${GRAPHICS_INCLUDE_DIR}/Easy3DCylinderGraphicsObject.hpp
         ${GRAPHICS_INCLUDE_DIR}/Easy3DMeshGraphicsObject.hpp
+        ${GRAPHICS_INCLUDE_DIR}/Easy3DVirtuosoArmGraphicsObject.hpp
         ${GRAPHICS_INCLUDE_DIR}/Easy3DTextRenderingViewer.hpp
         ${GRAPHICS_SRC_DIR}/Viewer.cpp
         ${GRAPHICS_SRC_DIR}/GraphicsScene.cpp
@@ -24,5 +25,6 @@ target_sources(Graphics
         ${GRAPHICS_SRC_DIR}/Easy3DBoxGraphicsObject.cpp
         ${GRAPHICS_SRC_DIR}/Easy3DCylinderGraphicsObject.cpp
         ${GRAPHICS_SRC_DIR}/Easy3DMeshGraphicsObject.cpp
+        ${GRAPHICS_SRC_DIR}/Easy3DVirtuosoArmGraphicsObject.cpp
         ${GRAPHICS_SRC_DIR}/Easy3DTextRenderingViewer.cpp
 )

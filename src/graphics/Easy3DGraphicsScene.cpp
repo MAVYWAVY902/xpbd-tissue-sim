@@ -3,10 +3,12 @@
 #include "graphics/Easy3DSphereGraphicsObject.hpp"
 #include "graphics/Easy3DBoxGraphicsObject.hpp"
 #include "graphics/Easy3DCylinderGraphicsObject.hpp"
+#include "graphics/Easy3DVirtuosoArmGraphicsObject.hpp"
 #include "config/MeshObjectConfig.hpp"
 
 #include "simobject/MeshObject.hpp"
 #include "simobject/RigidPrimitives.hpp"
+#include "simobject/VirtuosoArm.hpp"
 
 #include <easy3d/viewer/viewer.h>
 #include <easy3d/renderer/renderer.h>
@@ -104,6 +106,12 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const ObjectConfig* o
     else if (const Sim::RigidCylinder* cyl = dynamic_cast<const Sim::RigidCylinder*>(obj))
     {
         new_graphics_obj = std::make_unique<Easy3DCylinderGraphicsObject>(cyl->name(), cyl);
+    }
+
+    // try downcasting to a VirtuosoArm
+    else if (const Sim::VirtuosoArm* arm = dynamic_cast<const Sim::VirtuosoArm*>(obj))
+    {
+        new_graphics_obj = std::make_unique<Easy3DVirtuosoArmGraphicsObject>(arm->name(), arm);
     }
 
     // all Easy3D graphics objects should be easy3d::Models themselves
