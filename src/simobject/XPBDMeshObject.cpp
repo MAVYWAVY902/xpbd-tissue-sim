@@ -93,7 +93,7 @@ void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, cons
     _collision_constraints.push_back(std::move(xpbd_collision_constraint));
 }
 
-void XPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal, double penetration_dist,
+void XPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal,
                                        const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
 {
     std::unique_ptr<Solver::RigidDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, deformable_obj, v1, v2, v3, u, v, w);
@@ -285,9 +285,7 @@ void XPBDMeshObject::_movePositionsInertially()
 
 void XPBDMeshObject::_projectConstraints()
 {
-    // std::cout << "Vertex positions after inertial move:\n" << _mesh->vertices() << std::endl;
     _solver->solve();
-    // std::cout << "Vertex positions after constraint solve:\n" << _mesh->vertices() << std::endl;
 
     // update collision constraints unused
     for (auto& c : _collision_constraints)
@@ -302,89 +300,23 @@ void XPBDMeshObject::_projectConstraints()
         }
     }
 
-    // friction
-    // std::cout << "Num collision constraints: " << _collision_constraints.size() << std::endl;
-    // std::cout << "NEW FRICTION UPDATE..." << std::endl;
-    for (const auto& c : _collision_constraints)
-    {
-        const double lam = _solver->constraintProjectors()[c.projector_index]->lambda()[0];
-        if (lam > 0)
-        {
-            c.constraint->applyFriction(lam, _material.muS(), _material.muK());
-            // const double u = c.constraint->u();
-            // const double v = c.constraint->v();
-            // const double w = c.constraint->w();
-            // const int v1 = c.constraint->positions()[0].index;
-            // const int v2 = c.constraint->positions()[1].index;
-            // const int v3 = c.constraint->positions()[2].index;
-
-            // const Eigen::Vector3d p1 = _mesh->vertex(v1);
-            // const Eigen::Vector3d p2 = _mesh->vertex(v2);
-            // const Eigen::Vector3d p3 = _mesh->vertex(v3);
-
-            // const Eigen::Vector3d n = c.constraint->collisionNormal();
-
-            // const Eigen::Vector3d vel1 = vertexVelocity(v1);
-            // const Eigen::Vector3d vel1_tan = vel1 - (vel1.dot(n))*n;
-
-            // const Eigen::Vector3d p_cur = c.constraint->p1();
-            // const Eigen::Vector3d p_prev = c.constraint->prevP1();
-            // const Eigen::Vector3d dp = p_cur - p_prev;
-            // const Eigen::Vector3d dp_tan = dp - (dp.dot(n))*n;
-
-            // const Eigen::Vector3d dp1 = p1 - _previous_vertices.col(v1);
-            // const Eigen::Vector3d dp1_tan = dp1 - (dp1.dot(n))*n;
-            // // std::cout << "n: " << n[0] << ", " << n[1] << ", " << n[2] << std::endl;
-            // // std::cout << "dp: " << dp[0] << ", " << dp[1] << ", " << dp[2] << std::endl;
-            // // std::cout << "dp_tan: " << dp_tan[0] << ", " << dp_tan[1] << ", " << dp_tan[2] << std::endl; 
-            // const Eigen::Vector3d dp2 = p2 - _previous_vertices.col(v2);
-            // const Eigen::Vector3d dp2_tan = dp2 - (dp2.dot(n))*n;
-            // const Eigen::Vector3d dp3 = p3 - _previous_vertices.col(v3);
-            // const Eigen::Vector3d dp3_tan = dp3 - (dp3.dot(n))*n;
-
-
-            // // TODO: think of better way to get velocity just at the point we care about
-            // // do we need to somehow get the barycentric coords u,v,w?
-            // const double VELOCITY_THRESH = 1e-2;
-            // if (dp_tan.norm() < _material.muS()*lam*vertexInvMass(v1))
-            // {
-            //     // std::cout << "VELOCITY THRESHOLD MET" << std::endl;
-            //     // std::cout << "APPLYING STATIC FRICTION!" << std::endl;
-            //     if (u>1e-4 && dp_tan.norm() < _material.muS()*lam*vertexInvMass(v1))
-            //     {
-            //         // std::cout << "p1_prev: " << _previous_vertices.col(v1)[0] << ", " << _previous_vertices.col(v1)[1] << ", " << _previous_vertices.col(v1)[2] << std::endl;
-            //         // std::cout << "p1_cur: " << p1[0] << ", " << p1[1] << ", " << p1[2] << std::endl;
-            //         // std::cout << "p1_cur - dp1_tan: " << (p1-dp1_tan)[0] << ", " << (p1-dp1_tan)[1] << ", " << (p1-dp1_tan)[2] << std::endl;
-            //         _mesh->setVertex(v1, p1 - dp1_tan);
-            //         // _mesh->setVertex(v1, _previous_vertices.col(v1));
-            //     }
-                    
-            //     if (v>1e-4 && dp_tan.norm() < _material.muS()*lam*vertexInvMass(v2))
-            //         _mesh->setVertex(v2, p2 - dp2_tan);
-            //         // _mesh->setVertex(v2, _previous_vertices.col(v2));
-
-            //     if (w>1e-4 && dp_tan.norm() < _material.muS()*lam*vertexInvMass(v3))
-            //         _mesh->setVertex(v3, p3 - dp3_tan);
-            //         // _mesh->setVertex(v3, _previous_vertices.col(v3));
-                    
-                
-            // }
-            // else
-            // {
-            //     const Eigen::Vector3d corr_v1 = -dp_tan * std::min(vertexInvMass(v1)*_material.muK()*lam/dp_tan.norm(), 1.0);
-            //     const Eigen::Vector3d corr_v2 = -dp_tan * std::min(vertexInvMass(v2)*_material.muK()*lam/dp_tan.norm(), 1.0);
-            //     const Eigen::Vector3d corr_v3 = -dp_tan * std::min(vertexInvMass(v3)*_material.muK()*lam/dp_tan.norm(), 1.0);
-            //     _mesh->setVertex(v1, p1 + u*corr_v1);
-            //     _mesh->setVertex(v2, p2 + v*corr_v2);
-            //     _mesh->setVertex(v3, p3 + w*corr_v3);
-            // }
-            
-        }
-    }
 }
 
 void XPBDMeshObject::velocityUpdate()
 {
+    // apply frictional forces
+    // we do this in the velocity update (i.e. after update() is finished) to ensure that all objects have had their constraints projected already
+    for (const auto& c : _collision_constraints)
+    {
+        const double lam = _solver->constraintProjectors()[c.projector_index]->lambda()[0];
+        // only apply friction forces for this constraint if it was active (i.e. lambda > 0)
+        // if it was "inactive", there was no penetration and thus no contact and thus no friction
+        if (lam > 0)
+        {
+            c.constraint->applyFriction(lam, _material.muS(), _material.muK());
+        }
+    }
+
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();

@@ -134,7 +134,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
             }
             else
             {
-                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, distance, xpbd_obj, f[0], f[1], f[2], u, v, w);
+                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
             }
             
         }
