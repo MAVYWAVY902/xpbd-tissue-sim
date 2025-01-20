@@ -28,6 +28,8 @@ struct ConfigParameter
  */
 class Config
 {
+    friend class MeshObjectConfig;
+    
     /** Static predefined default name */
     static std::optional<std::string>& DEFAULT_NAME() { static std::optional<std::string> name(""); return name; }
 
@@ -43,14 +45,14 @@ class Config
         // load the name parameter
         _extractParameter("name", node, _name, DEFAULT_NAME());
 
-        std::cout << "\nExtracting parameters for object with name " << BOLD << name().value() << RST << "..." << std::endl;
+        std::cout << "\nExtracting parameters for object with name " << BOLD << name() << RST << "..." << std::endl;
     }
 
     /** Declare virtual destructor for polymorphism */
     virtual ~Config() = default;
 
     // Getters
-    std::optional<std::string> name() const { return _name.value; }
+    std::string name() const { return _name.value.value(); }
 
     protected:
 
@@ -62,7 +64,7 @@ class Config
      * 
      */
     template<typename T>
-    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<T>& param, const std::optional<T>& default_value = std::nullopt)
+    static void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<T>& param, const std::optional<T>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;
@@ -98,7 +100,7 @@ class Config
     }
 
     template<typename K, typename T>
-    void _extractParameterWithOptions(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<T>& param, const std::map<K, T>& options, const std::optional<T>& default_value = std::nullopt)
+    static void _extractParameterWithOptions(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<T>& param, const std::map<K, T>& options, const std::optional<T>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;
@@ -153,7 +155,7 @@ class Config
      * @param yaml_node : the YAML node to extract information from
      * @param param : (output) the ConfigParameter, which gets set by the function
      */
-    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector3d>& param, const std::optional<Eigen::Vector3d>& default_value = std::nullopt)
+    static void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector3d>& param, const std::optional<Eigen::Vector3d>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;
@@ -205,7 +207,7 @@ class Config
      * @param yaml_node : the YAML node to extract information from
      * @param param : (output) the ConfigParameter, which gets set by the function
     */
-    void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector4d>& param, const std::optional<Eigen::Vector4d>& default_value = std::nullopt)
+    static void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector4d>& param, const std::optional<Eigen::Vector4d>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;

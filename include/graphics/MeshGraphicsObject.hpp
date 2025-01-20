@@ -2,7 +2,7 @@
 #define __MESH_GRAPHICS_OBJECT_HPP
 
 #include "graphics/GraphicsObject.hpp"
-#include "simobject/MeshObject.hpp"
+#include "geometry/Mesh.hpp"
 #include "config/MeshObjectConfig.hpp"
 
 #include <Eigen/Dense>
@@ -25,7 +25,7 @@ class MeshGraphicsObject : public GraphicsObject
      * @param name : the name of the new MeshGraphicsObject
      * @param mesh_object : the simulation MeshObject to get mesh information from
      */
-    explicit MeshGraphicsObject(const std::string& name, std::shared_ptr<MeshObject> mesh_object);
+    explicit MeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh);
 
     /** Creates a MeshGraphicsObject with a given name and for a given MeshObject, and sets additional parameters
      * using a MeshObjectConfig object.
@@ -33,18 +33,18 @@ class MeshGraphicsObject : public GraphicsObject
      * @param mesh_object : the simulation MeshObject to get mesh information from
      * @param mesh_object_config : the MeshObjectConfig file to get additional parameters from
      */
-    explicit MeshGraphicsObject(const std::string& name, std::shared_ptr<MeshObject> mesh_object, MeshObjectConfig* mesh_object_config);
+    explicit MeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const MeshObjectConfig* mesh_object_config);
 
     virtual ~MeshGraphicsObject();
 
     /** Returns the underlying simulation MeshObject
      * @returns the underlying simulation MeshObject
      */
-    MeshObject* meshObject() { return _mesh_object.get(); }
+    const Geometry::Mesh* mesh() { return _mesh; }
 
     protected:
     /** The underlying simulation MeshObject */
-    std::shared_ptr<MeshObject> _mesh_object;
+    const Geometry::Mesh* _mesh;
 
     /** Whether or not to draw mesh vertices on screen */
     bool _draw_points;

@@ -9,7 +9,7 @@ GraphicsScene::GraphicsScene(const std::string& name)
 
 }
 
-GraphicsObject* GraphicsScene::getObject(const size_t index)
+GraphicsObject* GraphicsScene::getObject(const int index)
 {
     return _graphics_objects[index].get();
 }

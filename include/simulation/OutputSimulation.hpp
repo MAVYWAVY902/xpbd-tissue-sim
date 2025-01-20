@@ -6,6 +6,9 @@
 
 #include <fstream>
 
+namespace Sim
+{
+
 class OutputSimulation : public Simulation
 {
     public:
@@ -29,5 +32,7 @@ class OutputSimulation : public Simulation
 
     mutable std::ofstream _out_file;
 };
+
+} // namespace Sim
 
 #endif // __OUTPUT_SIMULATION_HPP

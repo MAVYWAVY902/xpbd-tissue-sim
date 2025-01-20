@@ -1,59 +1,65 @@
 #ifndef __COLLISION_SCENE_HPP
 #define __COLLISION_SCENE_HPP
 
-#include "simobject/MeshObject.hpp"
+// #include "simobject/MeshObject.hpp"
+#include "simobject/Object.hpp"
+#include "geometry/SDF.hpp"
 
-/** Represents a collision between a vertex and a face */
-struct Collision
+namespace Sim
 {
-    unsigned obj1_ind;
-    unsigned vertex_ind;
-    unsigned obj2_ind;
-    unsigned face_ind;
+    class Simulation;
+}
+
+/** Includes a reference to the object itself and its collision geometry. */
+struct CollisionObject
+{
+    Sim::Object* obj;
+    std::unique_ptr<Geometry::SDF> sdf;
 };
 
-/** Represents a collision bucket */
-struct CollisionBucket
-{
-    // first index is object index, second index is vertex/face vertex
-    std::vector<std::pair<unsigned, unsigned>> vertices;
-    std::vector<std::pair<unsigned, unsigned>> faces;
-};
-
+/** Responsible for determining collisions between objects in the simulation.
+ * When a collision is identified between two objects, a collision constraint is created to resolve the collision over the subsequent time steps.
+ * When the Simulation adds an object to the CollisionScene, a collision geometry (i.e. a SDF) is created for that object.
+ */
 class CollisionScene
 {
     public:
-    explicit CollisionScene(const double dt, const double cell_size, const unsigned num_buckets);
+    /** Constructor - needs a reference back to the simulation to access the time step, current sim time, etc. */
+    explicit CollisionScene(const Sim::Simulation* sim);
 
-    void addObject(std::shared_ptr<MeshObject> new_obj);
+    /** Adds a new object to the CollisionScene.
+     * Creates a new collision geometry for this object depending on the type. (i.e. for a RigidBox, a BoxSDF is created, for a RigidSphere, a SphereSDF, etc.)
+     * 
+     * @param new_obj - the pointer to the new simulation object to be added to the scene
+    */
+    void addObject(Sim::Object* new_obj, const ObjectConfig* config);
 
+    /** Detects collisions between objects in the CollisionScene.
+     * When collisions are detected, collision constraints are created and added to the appropriate objects to resolve collisions.
+     */
     void collideObjects();
 
-    std::vector<Collision> potentialCollisions() const { return _potential_collisions; };
+    protected:
+    /** Helper function that checks for collision between a pair of objects.
+     * Implements the per face optimization described in Macklin et. al 2020 to find contact points between a SDF and a mesh.
+     */
+    void _collideObjectPair(CollisionObject& c_obj1, CollisionObject& c_obj2);
+
+    /** Implements the Frank-Wolfe optimization algorithm applied to finding a contact point between a SDF and a 3D triangle face. 
+     * @param sdf - the signed distance function (SDF) to collide against
+     * @param p1 - 1st triangle vertex
+     * @param p2 - 2nd triangle vertex
+     * @param p3 - 3rd tringle vertex
+     * @returns the closest point on the triangle to the boundary of the SDF - if at this closest point the SDF evaluates to negative, we have a collision!
+    */
+    Eigen::Vector3d _frankWolfe(const Geometry::SDF* sdf, const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3) const;
 
     protected:
-
-    inline int _hash(int i, int j, int k) const;
-
-    inline bool _rayTriangleIntersection(const Eigen::Vector3d& ray_origin, const Eigen::Vector3d& ray_vector, const Eigen::Vector3d& A, const Eigen::Vector3d& B, const Eigen::Vector3d& C) const;
-
-    /** Time step */
-    double _dt;
-
-    /** Cell size for 3D space discretization */
-    double _cell_size;
-
-    /** Number of collision buckets */
-    unsigned _num_buckets;
+    /** Non-owning pointer to the Simulation object that this CollisionScene belongs to */
+    const Sim::Simulation* _sim;
 
     /** Stores the mesh objects in the scene. */
-    std::vector<std::shared_ptr<MeshObject>> _objects;
-
-    /** Collision buckets */
-    std::vector<CollisionBucket> _buckets;
-
-    /** Stores potential collisions (continuous collision detection) */
-    std::vector<Collision> _potential_collisions;
+    std::vector<CollisionObject> _collision_objects;
 
 
 };

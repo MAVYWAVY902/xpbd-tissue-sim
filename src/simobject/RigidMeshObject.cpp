@@ -1,129 +1,75 @@
 #include "simobject/RigidMeshObject.hpp"
 #include "utils/MeshUtils.hpp"
+#include "utils/GeometryUtils.hpp"
 
-RigidMeshObject::RigidMeshObject(const std::string& name)
-    : MeshObject(name)
+namespace Sim
 {
 
+RigidMeshObject::RigidMeshObject(const Simulation* sim, const RigidMeshObjectConfig* config)
+    : RigidObject(sim, config), MeshObject(config, config)
+{
+    _density = config->density();
 }
 
-// RigidMeshObject::RigidMeshObject(const std::string& name, const YAML::Node& config)
-//     : MeshObject(name)
+// RigidMeshObject::RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density)
+//     : RigidObject(sim, name), _density(density)
 // {
-//     // read in filename and load from file if specified
-//     YAML::Node filename_yaml_node = config["filename"];
-//     if (filename_yaml_node.Type() != YAML::NodeType::Null)
-//     {
-//         _loadMeshFromFile(filename_yaml_node.as<std::string>());
-//     }
+//     _mesh = MeshUtils::loadTetMeshFromGmshFile(filename);
 // }
-RigidMeshObject::RigidMeshObject(const RigidMeshObjectConfig* config)
-    : MeshObject(config)
+
+std::string RigidMeshObject::toString(const int indent) const
 {
-    if (config->filename().has_value())
-    {
-        _loadMeshFromFile(config->filename().value());
-    }
-    else if (config->primitiveType().has_value())
-    {
-        createPrimitiveGeometry(config->primitiveType().value());
-    }
-    
+    std::string indent_str(indent, '\t');
+    std::stringstream ss;
+    ss << indent_str << "=====" << type() << "=====" << std::endl;
+    ss << indent_str << "Mesh vertices: " << _mesh->numVertices() << std::endl;
+    ss << indent_str << "Mesh faces: " << _mesh->numFaces() << std::endl;
+    ss << RigidObject::toString(indent + 1);
 
-    if (config->initialPosition().has_value())
-    {
-        moveTo(config->initialPosition().value(), PositionReference::CENTER);
-    }
-
-    if (config->maxSize().has_value())
-    {
-        resize(config->maxSize().value());
-    }
-
-    if (config->size().has_value())
-    {
-        resize(config->size().value());
-    }
-
-    if (config->initialVelocity().has_value())
-    {
-        _v = config->initialVelocity().value();
-    }
+    return ss.str(); 
 }
 
-RigidMeshObject::RigidMeshObject(const std::string& name, const std::string& filename)
-    : MeshObject(name)
+Geometry::AABB RigidMeshObject::boundingBox() const
 {
-    // load from the file specified
-    _loadMeshFromFile(filename);
-}
-
-RigidMeshObject::RigidMeshObject(const std::string& name, const VerticesMat& verts, const FacesMat& faces)
-    : MeshObject(name, verts, faces)
-{
-
-}
-
-void RigidMeshObject::_loadMeshFromFile(const std::string& filename)
-{
-    VerticesMat loaded_verts;
-    FacesMat loaded_faces;
-
-    // load vertices and faces from file
-    MeshUtils::loadSurfaceMeshFromFile(filename, loaded_verts, loaded_faces);
-
-    // set the new vertices and faces
-    setVertices(loaded_verts);
-    setFaces(loaded_faces);
-}
-
-void RigidMeshObject::createPrimitiveGeometry(const RigidMeshPrimitiveType primitive_type)
-{
-    if (primitive_type == RigidMeshPrimitiveType::PLANE)
-    {
-        createPlaneGeometry();
-    }
-}
-
-void RigidMeshObject::createPlaneGeometry(const Eigen::Vector3d& center_pos, const double size)
-{
-    // create 4 vertices in a square
-    // VerticesMat verts { {-size/2 + center_pos(0),    -size/2 + center_pos(1),    0 + center_pos(2)},
-    //                     {size/2 + center_pos(0),     -size/2 + center_pos(1),    0 + center_pos(2)},
-    //                     {size/2 + center_pos(0),     size/2 + center_pos(1),     0 + center_pos(2)},
-    //                     {-size/2 + center_pos(0),    size/2 + center_pos(1),     0 + center_pos(2)} };
-
-    // // create 2 triangular faces spanning the square
-    // FacesMat faces { {0, 1, 2},
-    //                  {0, 2, 3} };
-
-    createPlaneGeometry();
-    resize(size, size, 0);
-    moveTo(center_pos, PositionReference::CENTER);
-}
-
-void RigidMeshObject::createPlaneGeometry()
-{
-    // create 4 vertices in a 1x1 square
-    VerticesMat verts { { -1, -1, 0 },
-                        { 1, -1, 0 },
-                        { 1, 1, 0 },
-                        { -1, 1, 0 } };
-    
-    FacesMat faces { {0, 1, 2},
-                     {0, 2, 3} };
-    
-    // set the new vertices and faces
-    setVertices(verts);
-    setFaces(faces);
+    return _mesh->boundingBox();
 }
 
 void RigidMeshObject::setup()
 {
-    
+    _loadAndConfigureMesh();
+
+    // compute mass and inertia properties of mesh - in its REST STATE
+    // meaning that we have to calculate the mass properties in the mesh's unrotated state
+    Geometry::Mesh mesh_copy = *(_mesh);
+    // untranslate the copy of the mesh
+    mesh_copy.moveTogether(-_p);
+    // unrotate the copy of the mesh
+    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(_q));
+    mesh_copy.rotateAbout(Eigen::Vector3d::Zero(), rot_mat);
+    _initial_mesh = std::make_unique<Geometry::Mesh>(mesh_copy);
+    std::tie(_m, std::ignore, _I) = mesh_copy.massProperties(_density);
+    _I_inv = _I.inverse();
 }
 
 void RigidMeshObject::update()
 {
-    // do nothing for now
+    RigidObject::update();
+
+    // TODO: make this work without the need for _initial_mesh
+    // move the mesh accordingly
+    // const Eigen::Vector4d dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q_prev), _q);
+    // const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(dq);
+    // const Eigen::Vector3d dx = _p - _p_prev;
+
+    // _mesh->moveTogether(dx);
+    // _mesh->rotateAbout(_p, rot_mat);
+
+    // THIS SUCKS! have to copy the initial mesh every time
+    *_mesh = *_initial_mesh;
+    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(_q);
+    _mesh->rotateAbout(Eigen::Vector3d::Zero(), rot_mat);
+    _mesh->moveTogether(_p);
+
 }
+
+} // namespace Simulation

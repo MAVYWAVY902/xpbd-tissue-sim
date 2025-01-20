@@ -4,19 +4,22 @@
 #include "simobject/XPBDMeshObject.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 
+namespace Sim
+{
+
 class FirstOrderXPBDMeshObject : public XPBDMeshObject
 {
     public:
-    explicit FirstOrderXPBDMeshObject(const FirstOrderXPBDMeshObjectConfig* config);
+    explicit FirstOrderXPBDMeshObject(const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config);
 
-    virtual std::string toString() const override;
+    virtual std::string toString(const int indent) const override;
     virtual std::string type() const override { return "FirstOrderXPBDMeshObject"; }
 
     virtual void setup() override;
 
-    double vertexDamping(const unsigned index) const { return _B(index); }
+    double vertexDamping(const unsigned index) const { return 1.0/_inv_B[index]; }
 
-    double vertexInvDamping(const unsigned index) const { return _inv_B(index); }
+    double vertexInvDamping(const unsigned index) const { return _inv_B[index]; }
 
     protected:
     /** Moves the vertices in the absence of constraints.
@@ -25,15 +28,15 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
     virtual void _movePositionsInertially() override;
 
     private:
-    virtual void _calculatePerVertexDamping();
+    virtual void _calculatePerVertexQuantities() override;
 
     protected:
     double _damping_multiplier;
 
-    Eigen::VectorXd _B;
-
-    Eigen::VectorXd _inv_B;
+    std::vector<double> _inv_B;
 
 };
+
+} // namespace Sim
 
 #endif // __FIRST_ORDER_XPBD_MESH_OBJECT_HPP

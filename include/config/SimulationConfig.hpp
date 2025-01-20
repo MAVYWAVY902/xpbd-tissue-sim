@@ -1,11 +1,11 @@
 #ifndef __SIMULATION_CONFIG_HPP
 #define __SIMULATION_CONFIG_HPP
 
-#include "config/MeshObjectConfig.hpp"
+#include "config/ObjectConfig.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
-#include "config/FastFEMMeshObjectConfig.hpp"
+#include "config/RigidPrimitiveConfigs.hpp"
 
 
 /** Enum defining the different ways the simulation can be run 
@@ -42,6 +42,7 @@ class SimulationConfig : public Config
     /** Static predefined default for simulation FPS */
     static std::optional<double>& DEFAULT_FPS() { static std::optional<double> fps(30.0); return fps; }
 
+    static std::optional<double>& DEFAULT_COLLISION_RATE() { static std::optional<double> collision_rate(100); return collision_rate; }
     /** Static predifined options for the simulation mode. Maps strings to the Simulation mode enum. */
     static std::map<std::string, SimulationMode> SIM_MODE_OPTIONS()
     {
@@ -74,6 +75,7 @@ class SimulationConfig : public Config
         _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
         _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
         _extractParameter("fps", node, _fps, DEFAULT_FPS());
+        _extractParameter("collision-rate", node, _collision_rate, DEFAULT_COLLISION_RATE());
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -96,27 +98,38 @@ class SimulationConfig : public Config
             if (type == "XPBDMeshObject")
             {
                 std::unique_ptr<XPBDMeshObjectConfig> config = std::make_unique<XPBDMeshObjectConfig>(obj_node);
-                config->timeStep(_time_step); 
-                _mesh_object_configs.push_back(std::move(config));
+                _object_configs.push_back(std::move(config));
             }
-            if (type == "FirstOrderXPBDMeshObject")
+            else if (type == "FirstOrderXPBDMeshObject")
             {
                 std::unique_ptr<FirstOrderXPBDMeshObjectConfig> config = std::make_unique<FirstOrderXPBDMeshObjectConfig>(obj_node);
-                config->timeStep(_time_step);
-                _mesh_object_configs.push_back(std::move(config));
+                _object_configs.push_back(std::move(config));
             }
-            if (type == "FastFEMMeshObject")
-            {
-                std::unique_ptr<FastFEMMeshObjectConfig> config = std::make_unique<FastFEMMeshObjectConfig>(obj_node);
-                config->timeStep(_time_step);
-                _mesh_object_configs.push_back(std::move(config));
-            }
-            if (type == "RigidMeshObject")
+            else if (type == "RigidMeshObject")
             {
                 std::unique_ptr<RigidMeshObjectConfig> config = std::make_unique<RigidMeshObjectConfig>(obj_node);
-                config->timeStep(_time_step);
-                _mesh_object_configs.push_back(std::move(config));
+                _object_configs.push_back(std::move(config));
             }
+            else if (type == "RigidSphere")
+            {
+                std::unique_ptr<RigidSphereConfig> config = std::make_unique<RigidSphereConfig>(obj_node);
+                _object_configs.push_back(std::move(config));
+            }
+            else if (type == "RigidBox")
+            {
+                std::unique_ptr<RigidBoxConfig> config = std::make_unique<RigidBoxConfig>(obj_node);
+                _object_configs.push_back(std::move(config));
+            }
+            else if (type == "RigidCylinder")
+            {
+                std::unique_ptr<RigidCylinderConfig> config = std::make_unique<RigidCylinderConfig>(obj_node);
+                _object_configs.push_back(std::move(config));
+            }
+            else
+            {
+                std::cerr << "Unknown type of object! \"" << type << "\" is not a type of simulation object." << std::endl;
+            }
+            
         }
     }
 
@@ -128,9 +141,10 @@ class SimulationConfig : public Config
     std::optional<double> gAccel() const { return _g_accel.value; }
     std::optional<std::string> description() const { return _description.value; }
     std::optional<double> fps() const { return _fps.value; }
+    std::optional<double> collisionRate() const { return _collision_rate.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
-    const std::vector<std::unique_ptr<MeshObjectConfig> >& meshObjectConfigs() const { return _mesh_object_configs; }
+    const std::vector<std::unique_ptr<ObjectConfig> >& objectConfigs() const { return _object_configs; }
 
     protected:
     // Parameters
@@ -141,9 +155,10 @@ class SimulationConfig : public Config
     ConfigParameter<double> _g_accel;
     ConfigParameter<std::string> _description;
     ConfigParameter<double> _fps;
+    ConfigParameter<double> _collision_rate;
 
     /** List of MeshObject configs for each object in the Simulation */
-    std::vector<std::unique_ptr<MeshObjectConfig>> _mesh_object_configs;
+    std::vector<std::unique_ptr<ObjectConfig>> _object_configs;
 
 };
 

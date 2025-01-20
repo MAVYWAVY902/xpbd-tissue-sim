@@ -7,6 +7,10 @@
 
 #include <regex>
 
+
+namespace Sim
+{
+
 InitialDeformationSimulation::InitialDeformationSimulation(const std::string& config_filename)
     : OutputSimulation()
 {
@@ -114,3 +118,5 @@ void InitialDeformationSimulation::printInfo() const
     }
     _out_file << std::endl;
 }
+
+} // namespace Sim

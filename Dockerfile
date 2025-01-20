@@ -26,6 +26,7 @@ WORKDIR /thirdparty
 ########################
 # YAML-cpp
 ########################
+WORKDIR /thirdparty
 RUN git clone https://github.com/jbeder/yaml-cpp.git
 WORKDIR yaml-cpp/build
 RUN cmake ..
@@ -38,12 +39,17 @@ RUN make install
 #########################
 WORKDIR /thirdparty
 RUN git clone https://gitlab.com/libeigen/eigen.git
+WORKDIR eigen/build
+RUN cmake ..
+RUN make -j 8
+RUN make install
 
 
 
 ###########################
 # Easy3D install
 ###########################
+WORKDIR /thirdparty
 RUN git clone https://github.com/LiangliangNan/Easy3D.git
 WORKDIR Easy3D/build
 RUN cmake ..
@@ -60,6 +66,18 @@ RUN git clone https://gitlab.onelab.info/gmsh/gmsh.git
 WORKDIR gmsh/build
 # install from source as a dynamic library for access to C++ API
 RUN cmake -DENABLE_BUILD_DYNAMIC=1 ..
+RUN make -j 8
+RUN make install
+
+
+
+#########################
+# Mesh2SDF install
+#########################
+WORKDIR /thirdparty
+RUN git clone https://github.com/smtobin/Mesh2SDF.git
+WORKDIR Mesh2SDF/build
+RUN cmake .. -DUSE_DOUBLE_PRECISION=True
 RUN make -j 8
 RUN make install
 

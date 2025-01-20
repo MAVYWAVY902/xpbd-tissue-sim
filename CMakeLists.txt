@@ -3,17 +3,20 @@ project(MyProject)
 set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
-list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build")
+list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build") # needed in order to find Easy3D
 
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
+find_package(Eigen3 3.3 REQUIRED)   # find Eigen
 
 include_directories("./include")
-include_directories("/thirdparty/eigen")
 
 add_library(MeshUtils include/utils/MeshUtils.hpp src/utils/MeshUtils.cpp) # create MeshUtils library
 set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX) # make sure the linker knows it's C++
-target_link_libraries(MeshUtils gmsh assimp) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
+target_link_libraries(MeshUtils gmsh assimp Eigen3::Eigen) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
+
+add_library(GeometryUtils include/utils/GeometryUtils.hpp src/utils/GeometryUtils.cpp)
+target_link_libraries(GeometryUtils Eigen3::Eigen)
 
 # Collision library
 add_library(Collision)
@@ -22,6 +25,10 @@ add_subdirectory("src/collision")
 # Graphics library
 add_library(Graphics)
 add_subdirectory("src/graphics")
+
+# Geometry library
+add_library(Geometry)
+add_subdirectory("src/geometry")
 
 # Haptics library
 add_library(Haptics)
@@ -37,24 +44,26 @@ add_library(SimObject)
 add_subdirectory("src/simobject")
 
 # link in necessary libraries
-target_link_libraries(Graphics easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
-target_link_libraries(Haptics HD HDU)   # link OpenHaptics API libraries for Haptics library
-target_link_libraries(SimObject MeshUtils Solver)   # link MeshUtils and Solver libraries
-target_link_libraries(Solver SimObject)         # link SimObject library
+target_link_libraries(Collision Eigen3::Eigen mesh2sdf)
+target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
+target_link_libraries(Geometry Eigen3::Eigen mesh2sdf)
+target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
+target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Solver Geometry)   # link MeshUtils and Solver libraries
+target_link_libraries(Solver Eigen3::Eigen SimObject)         # link SimObject library
 
 ### Simulation libraries - each has its own executable
 add_library(ResidualSimulation)
 add_library(BeamSimulation)
-add_library(BeamStretchSimulation)
-add_library(TissueGraspingSimulation)
-add_library(InitialDeformationSimulation)
+# add_library(BeamStretchSimulation)
+# add_library(TissueGraspingSimulation)
+# add_library(InitialDeformationSimulation)
 add_subdirectory("src/simulation")
 
 target_link_libraries(ResidualSimulation Collision Graphics SimObject yaml-cpp)
 target_link_libraries(BeamSimulation ResidualSimulation)
-target_link_libraries(BeamStretchSimulation ResidualSimulation)
-target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
-target_link_libraries(InitialDeformationSimulation ResidualSimulation)
+# target_link_libraries(BeamStretchSimulation ResidualSimulation)
+# target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
+# target_link_libraries(InitialDeformationSimulation ResidualSimulation)
 
 ### Create executables
 add_executable(Test src/exec/main.cpp)
@@ -63,11 +72,11 @@ target_link_libraries(Test ResidualSimulation)
 add_executable(BeamTest src/exec/beam_test_main.cpp)
 target_link_libraries(BeamTest BeamSimulation)
 
-add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
-target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
+# add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
+# target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
 
-add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
-target_link_libraries(BeamStretchTest BeamStretchSimulation)
+# add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
+# target_link_libraries(BeamStretchTest BeamStretchSimulation)
 
-add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
-target_link_libraries(InitialDeformationTest InitialDeformationSimulation)
+# add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
+# target_link_libraries(InitialDeformationTest InitialDeformationSimulation)

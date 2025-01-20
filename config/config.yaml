@@ -2,121 +2,161 @@ name: "blah"
 visualization: "Easy3D"
 g-accel: 9.81 # m/s2
 # sim-mode: "Frame-by-frame"
-# sim-mode: "Visualization"
-sim-mode: "AFAP"
+sim-mode: "Visualization"
+# sim-mode: "AFAP"
 time-step: 1e-3
+collision-rate: 1010
 fps: 30
-end-time: 10
+end-time: 100
 objects:
+
+  -
+    name: "Cube1"
+    # type: "FirstOrderXPBDMeshObject"
+    type: "XPBDMeshObject"
+    # type: "FastFEMMeshObject"
+    # filename: "../resource/general/stanford_bunny_lowpoly.msh"
+    # filename: "../resource/general/stanford_bunny_medpoly.msh"
+    # filename: "../resource/general/single.msh"
+    filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/cube/cube16.msh"
+    # filename: "../resource/tissue/Prostate.msh"
+    # filename: "../resource/tissue/Trachea_processed.stl"
+    material:
+      name: "Soft Tissue"
+      density: 1000
+      E: 6e4
+      nu: 0.45
+      mu-s: 0.8
+      mu-k: 0.4
+    color: [1.0, 0.5, 0.0, 1.0]
+    draw-points: false
+    draw-edges: true
+    max-size: 0.5
+    position: [0, 0, 0.5]
+    velocity: [0, 0, 0.0]
+    rotation: [0, 0, 0]
+    num-solver-iters: 1
+    damping-gamma: 2000
+    collisions: true
+    damping-multiplier: 100000
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    with-residual: false
+    with-damping: false
+    # residual-policy: "Every-Substep"
+    residual-policy: "Never"
+  
+  - 
+    name: "ramp"
+    type: "RigidBox"
+    size: [1, 5, 0.2]
+    density: 100000
+    position: [0, 0, 0]
+    rotation: [0, 0, 0]
+    velocity: [0, 2, 0]
+    angular-velocity: [0, 0, 0]
+    fixed: false
+    collisions: true
+
   # -
-  #   name: "Trachea"
+  #   name: "sphere"
+  #   type: "RigidSphere"
+  #   radius: 0.5
+  #   density: 100
+  #   position: [0, 0, 0]
+  #   velocity: [0, 0, 0]
+  #   collisions: true
+
+  # - name: "box2"
+  #   type: "RigidBox"
+  #   size: [0.5, 0.5, 0.5]
+  #   position: [0, 1.8, 0.5]
+  #   rotation: [0, 0, 0]
+  #   velocity: [0, 0, 0]
+  #   angular-velocity: [0, 0, 3.1415]
+  #   collisions: true
+
+  # - name: "cylinder"
+  #   type: "RigidCylinder"
+  #   radius: 0.2
+  #   height: 1
+  #   density: 1000
+  #   position: [0, 0.0, 0.4]
+  #   rotation: [0, 0, 0]
+  #   angular-velocity: [0, 0, 0]
+  #   collisions: true
+
+  # - 
+  #   name: "mesh_obj"
+  #   type: "RigidMeshObject"
+  #   filename: "../resource/general/stanford_bunny_lowpoly.stl"
+  #   # filename: "../resource/cube/cube.obj"
+  #   sdf-filename: "../resource/sdf/stanford_bunny_lowpoly96.sdf"
+  #   density: 100
+  #   position: [0, 0, 0]
+  #   rotation: [0, 0, 0]
+  #   velocity: [0, 0, 5]
+  #   angular-velocity: [10, 0, 0]
+  #   max-size: 1
+  #   collisions: true
+
+  # - name: "mesh_obj2"
+  #   type: "RigidMeshObject"
+  #   filename: "../resource/general/stanford_bunny_lowpoly.stl"
+  #   # sdf-filename: "../resource/sdf/stanford_bunny_lowpoly.sdf"
+  #   # filename: "../resource/cube/cube.obj"
+  #   position: [0, 0, 0]
+  #   rotation: [0, 0, 0]
+  #   max-size: 1
+  #   collisions: false
+  #   color: [1, 0, 0, 0]
+
+  
+
+  # -
+  #   name: "Cube2_res"
   #   # type: "FirstOrderXPBDMeshObject"
   #   type: "XPBDMeshObject"
   #   # type: "FastFEMMeshObject"
   #   # filename: "../resource/general/stanford_bunny_lowpoly.msh"
   #   # filename: "../resource/general/stanford_bunny_medpoly.msh"
   #   # filename: "../resource/general/single.msh"
-    # filename: "../resource/cube/cube8.msh"
+  #   filename: "../resource/cube/cube8.msh"
   #   # filename: "../resource/cube/cube16.msh"
   #   # filename: "../resource/tissue/Prostate.msh"
   #   # filename: "../resource/tissue/Trachea_processed.stl"
-  #   # filename: "../resource/tissue/Trachea_processed_refined.stl"
   #   material:
   #     name: "Soft Tissue"
   #     density: 1000
   #     E: 6e4
-  #     nu: 0.4
+  #     nu: 0.45
   #   color: [1.0, 0.5, 0.0, 1.0]
   #   draw-points: false
-  #   draw-edges: false
-  #   max-size: 0.1
-  #   position: [0, 0, 1]
+  #   draw-edges: true
+  #   max-size: 0.5
+  #   position: [0, 1, 0.25]
   #   velocity: [0, 0, 0]
   #   rotation: [0, 0, 0]
   #   num-solver-iters: 1
-  #   damping-stiffness: 0
+  #   damping-gamma: 2000
   #   collisions: false
-  #   damping-multiplier: 20000
-  #   solve-mode: "Simultaneous"
-
-  -
-    name: "Cube2"
-    type: "FirstOrderXPBDMeshObject"
-    # type: "XPBDMeshObject"
-    # type: "FastFEMMeshObject"
-    # filename: "../resource/general/stanford_bunny_lowpoly.msh"
-    # filename: "../resource/general/stanford_bunny_medpoly.msh"
-    # filename: "../resource/general/single.msh"
-    filename: "../resource/cube/cube8.msh"
-    # filename: "../resource/cube/cube16.msh"
-    # filename: "../resource/tissue/Prostate.msh"
-    # filename: "../resource/tissue/Trachea_processed.stl"
-    material:
-      name: "Soft Tissue"
-      density: 1000
-      E: 6e4
-      nu: 0.45
-    color: [1.0, 0.5, 0.0, 1.0]
-    draw-points: false
-    draw-edges: true
-    max-size: 0.5
-    position: [0, 0, 0.25]
-    velocity: [0, 0, 0]
-    rotation: [0, 0, 0]
-    num-solver-iters: 1
-    damping-gamma: 2000
-    collisions: false
-    damping-multiplier: 25000
-    solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean-Combined"
-    with-residual: false
-    with-damping: false
-    residual-policy: "Every-Substep"
-    # residual-policy: "Never"
-
-  -
-    name: "Cube2_res"
-    type: "FirstOrderXPBDMeshObject"
-    # type: "XPBDMeshObject"
-    # type: "FastFEMMeshObject"
-    # filename: "../resource/general/stanford_bunny_lowpoly.msh"
-    # filename: "../resource/general/stanford_bunny_medpoly.msh"
-    # filename: "../resource/general/single.msh"
-    filename: "../resource/cube/cube8.msh"
-    # filename: "../resource/cube/cube16.msh"
-    # filename: "../resource/tissue/Prostate.msh"
-    # filename: "../resource/tissue/Trachea_processed.stl"
-    material:
-      name: "Soft Tissue"
-      density: 1000
-      E: 6e4
-      nu: 0.45
-    color: [1.0, 0.5, 0.0, 1.0]
-    draw-points: false
-    draw-edges: true
-    max-size: 0.5
-    position: [0, 1, 0.25]
-    velocity: [0, 0, 0]
-    rotation: [0, 0, 0]
-    num-solver-iters: 1
-    damping-gamma: 2000
-    collisions: false
-    damping-multiplier: 25000
-    solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean-Combined"
-    with-residual: true
-    with-damping: false
-    residual-policy: "Every-Substep"
-    # residual-policy: "Never"
+  #   damping-multiplier: 25000
+  #   solver-type: "Gauss-Seidel"
+  #   constraint-type: "Stable-Neohookean-Combined"
+  #   with-residual: true
+  #   with-damping: false
+  #   # residual-policy: "Every-Substep"
+  #   residual-policy: "Never"
 
 
   
-  -
-    name: "Ground"
-    type: "RigidMeshObject"
-    primitive-type: "Plane"
-    size: [1, 1, 0]
-    position: [0, 0, 0]
-    color: [1.0, 1.0, 1.0, 1.0]
+  # -
+  #   name: "Ground"
+  #   type: "RigidMeshObject"
+  #   primitive-type: "Plane"
+  #   size: [1, 1, 0]
+  #   position: [0, 0, 0]
+  #   color: [1.0, 1.0, 1.0, 1.0]
 
 

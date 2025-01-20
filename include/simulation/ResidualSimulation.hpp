@@ -4,6 +4,9 @@
 #include "simulation/OutputSimulation.hpp"
 #include <Eigen/Dense>
 
+namespace Sim
+{
+
 class ResidualSimulation : public OutputSimulation
 {
     public:
@@ -16,5 +19,7 @@ class ResidualSimulation : public OutputSimulation
 
     void printInfo() const override;
 };
+
+} // namespace Sim
 
 #endif // __RESIDUAL_SIMULATION_HPP

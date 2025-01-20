@@ -5,6 +5,9 @@
 #include "config/InitialDeformationSimulationConfig.hpp"
 #include <Eigen/Dense>
 
+namespace Sim
+{
+
 class InitialDeformationSimulation : public OutputSimulation
 {
     public:
@@ -24,5 +27,7 @@ class InitialDeformationSimulation : public OutputSimulation
     DeformationType _deformation_type;
     double _deformation_factor;
 };
+
+} // namespace Sim
 
 #endif // __INITIAL_DEFORMATION_SIMULATION_HPP

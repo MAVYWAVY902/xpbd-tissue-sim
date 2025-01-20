@@ -12,15 +12,17 @@ class ElasticMaterial
 {
     public:
     /** Static predefined Rubber material */
-    static ElasticMaterial& RUBBER() { static ElasticMaterial rubber("Rubber", 100*100*100/1000, 3e6, 0.49); return rubber; }
+    static ElasticMaterial& RUBBER() { static ElasticMaterial rubber("Rubber", 100*100*100/1000, 3e6, 0.49, 0.6, 0.3); return rubber; }
     
     public:
 
     explicit ElasticMaterial(const ElasticMaterialConfig* config)
-        : _name(config->name().value_or("")),
-          _density(config->density().value_or(1000)),
-          _E(config->E().value_or(3e6)),
-          _nu(config->nu().value_or(0.49))
+        : _name(config->name()),
+          _density(config->density()),
+          _E(config->E()),
+          _nu(config->nu()),
+          _mu_s(config->muS()),
+          _mu_k(config->muK())
     {
         // calculate Lame parameters
         _mu = _E / (2 * (1 + _nu));
@@ -33,8 +35,8 @@ class ElasticMaterial
      * @param E : the elastic modulus of the material
      * @param nu : the Poisson's ratio of the material
     */
-    explicit ElasticMaterial(const std::string& name, const double density, const double E, const double nu)
-        : _name(name), _density(density), _E(E), _nu(nu)
+    explicit ElasticMaterial(const std::string& name, const double density, const double E, const double nu, const double mu_s, const double mu_k)
+        : _name(name), _density(density), _E(E), _nu(nu), _mu_s(mu_s), _mu_k(mu_k)
     {
         // calculate Lame parameters
         _mu = _E / (2 * (1 + _nu));
@@ -54,6 +56,8 @@ class ElasticMaterial
     double nu() const { return _nu; }
     double mu() const { return _mu; }
     double lambda() const { return _lambda; }
+    double muS() const { return _mu_s; }
+    double muK() const { return _mu_k; }
 
     protected:
     /** Name of the material */
@@ -68,7 +72,11 @@ class ElasticMaterial
     double _lambda;
     /**  Lame's second parameter */
     double _mu;
-    
+
+    /** Coefficient of static friction */
+    double _mu_s;
+    /** Coefficient of kinetic friction */
+    double _mu_k;
 
 };
 

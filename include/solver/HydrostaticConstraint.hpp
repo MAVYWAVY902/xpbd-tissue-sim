@@ -14,7 +14,7 @@ class HydrostaticConstraint : public virtual ElementConstraint
     
     public:
     /** Creates the hydrostatic constraint from a MeshObject and the 4 vertices that make up the tetrahedral element. */
-    HydrostaticConstraint(XPBDMeshObject* obj, unsigned v1, unsigned v2, unsigned v3, unsigned v4)
+    HydrostaticConstraint(const Sim::XPBDMeshObject* obj, int v1, int v2, int v3, int v4)
         : ElementConstraint(obj, v1, v2, v3, v4)
     {
         _alpha = 1/(obj->material().lambda() * _volume);            // set alpha after the ElementConstraint constructor because we need the element volume
@@ -54,13 +54,11 @@ class HydrostaticConstraint : public virtual ElementConstraint
      * i.e. returns C(x)
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint calculation, if necessary
      */
-    inline void evaluate(double* C, double* additional_memory) const override
+    inline void evaluate(double* C) const override
     {
-        // deformation gradient, F and deformed state matrix, X will be calculated using the pre-allocated scratch memory
-        double* F = additional_memory;
-        double* X = F + 9;              // deformation gradient is 3x3, so X starts 9 after F
+        double F[9];
+        double X[9];
 
         _computeF(F, X);
         _evaluate(C, F);
@@ -70,15 +68,13 @@ class HydrostaticConstraint : public virtual ElementConstraint
      * i.e. returns delC(x)
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values in the constraint gradient calculation, if necessary
      */
-    inline void gradient(double* grad, double* additional_memory) const override
+    inline void gradient(double* grad) const override
     {
-        // deformation gradient, F and deformed state matrix, X will be calculated using the pre-allocated scratch memory
-        double* F = additional_memory;
-        double* X = F + 9;              // deformation gradient is 3x3, so X starts 9 after F
+        double F[9];
+        double X[9];
         _computeF(F, X);
-        _gradient(grad, F, X + 9);     // additional memory needed for the gradient calculation (after F and X) is provided after X
+        _gradient(grad, F);     // additional memory needed for the gradient calculation (after F and X) is provided after X
     }
 
 
@@ -89,25 +85,14 @@ class HydrostaticConstraint : public virtual ElementConstraint
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
-     * @param additional_memory - a pointer to some pre-allocated memory that will be used to compute intermediate values, if necessary
      */
-    void evaluateWithGradient(double* C, double* grad, double* additional_memory) const override
+    void evaluateWithGradient(double* C, double* grad) const override
     {
-        // deformation gradient, F and deformed state matrix, X will be calculated using the pre-allocated scratch memory
-        double* F = additional_memory;
-        double* X = F+9;                // deformation gradient is 3x3, so X starts 9 after F
+        double F[9];
+        double X[9];
         _computeF(F, X);
         _evaluate(C, F);
-        _gradient(grad, F, X + 9);      // additional memory needed for the gradient calculation (after F and X) is provided after X
-    }
-
-    /** Returns the number of bytes of pre-allocated dynamic memory needed to do its computation. */
-    inline unsigned memoryNeeded() const override
-    {
-        // 9 for F
-        // 9 for X
-        // 9 for F_cross (part of the gradient calculation)
-        return 27 * sizeof(double);
+        _gradient(grad, F);
     }
 
     private:
@@ -161,12 +146,12 @@ class HydrostaticConstraint : public virtual ElementConstraint
      * 
      * Requires at least 9 * sizeof(double) bytes of additional memory for intermediate quantities.
      */
-    inline void _gradient(double* grad, double* F, double* additional_memory) const
+    inline void _gradient(double* grad, double* F) const
     {   
         // F_cross = [f2 x f3, f3 x f1, f1 x f2] where f_i are the columns of F
         // F_cross and F are both column-major
         // see supplementary material of Macklin paper for more details
-        double* F_cross = additional_memory;
+        double F_cross[9];
         _cross3(F+3, F+6, F_cross);             // 2nd column of F crossed with 3rd column
         _cross3(F+6, F, F_cross+3);             // 3rd column of F crossed with 1st column
         _cross3(F, F+3, F_cross+6);             // 1st column of F crossed with 2nd column

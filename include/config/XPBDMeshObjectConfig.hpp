@@ -1,7 +1,11 @@
 #ifndef __XPBD_MESH_OBJECT_CONFIG_HPP
 #define __XPBD_MESH_OBJECT_CONFIG_HPP
 
-#include "config/ElasticMeshObjectConfig.hpp"
+#include "config/ObjectConfig.hpp"
+#include "config/MeshObjectConfig.hpp"
+#include "config/ElasticMaterialConfig.hpp"
+
+#include <memory>
 
 enum class XPBDSolverType
 {
@@ -22,10 +26,10 @@ enum class XPBDResidualPolicy
     EVERY_ITERATION
 };
 
-class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
+class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 {
     /** Static predefined default for the number of solver iterations */
-    static std::optional<unsigned>& DEFAULT_NUM_SOLVER_ITERS() { static std::optional<unsigned> num_solver_iters(1); return num_solver_iters; }
+    static std::optional<int>& DEFAULT_NUM_SOLVER_ITERS() { static std::optional<int> num_solver_iters(1); return num_solver_iters; }
     /** Static predefined default for solve mode */
     static std::optional<XPBDSolverType>& DEFAULT_SOLVER_TYPE() { static std::optional<XPBDSolverType> solver_type(XPBDSolverType::GAUSS_SEIDEL); return solver_type; }
     /** Static predefined default for constraint type */
@@ -38,10 +42,6 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
     static std::optional<double>& DEFAULT_DAMPING_GAMMA() { static std::optional<double> damping_stiffness(0); return damping_stiffness; }
     /** Static predefined default for residual policy */
     static std::optional<XPBDResidualPolicy>& DEFAULT_RESIDUAL_POLICY() { static std::optional<XPBDResidualPolicy> residual_policy(XPBDResidualPolicy::EVERY_SUBSTEP); return residual_policy; }
-
-    static std::optional<double>& DEFAULT_MASS_TO_DAMPING_MULTIPLIER() { static std::optional<double> mass_to_damping(1); return mass_to_damping; }
-
-    static std::optional<double>& DEFAULT_G_SCALING() { static std::optional<double> g_scaling(1); return g_scaling; }
 
     static std::map<std::string, XPBDSolverType>& SOLVER_TYPE_OPTIONS() 
     {
@@ -76,9 +76,13 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
      * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
      */
     explicit XPBDMeshObjectConfig(const YAML::Node& node)
-        : ElasticMeshObjectConfig(node)
+        : ObjectConfig(node), MeshObjectConfig(node)
     {
+        // create the ElasticMaterialConfig from the material yaml node
+        _material_config = std::make_unique<ElasticMaterialConfig>(node["material"]);
+
         // extract parameters
+
         _extractParameter("num-solver-iters", node, _num_solver_iters, DEFAULT_NUM_SOLVER_ITERS());
         _extractParameterWithOptions("solver-type", node, _solve_type, SOLVER_TYPE_OPTIONS(), DEFAULT_SOLVER_TYPE());
         _extractParameterWithOptions("constraint-type", node, _constraint_type, CONSTRAINT_TYPE_OPTIONS(), DEFAULT_CONSTRAINT_TYPE());
@@ -86,33 +90,31 @@ class XPBDMeshObjectConfig : public ElasticMeshObjectConfig
         _extractParameter("with-damping", node, _with_damping, DEFAULT_WITH_DAMPING());
         _extractParameter("damping-gamma", node, _damping_gamma, DEFAULT_DAMPING_GAMMA());
         _extractParameterWithOptions("residual-policy", node, _residual_policy, RESIDUAL_POLICY_OPTIONS(), DEFAULT_RESIDUAL_POLICY());
-        _extractParameter("mass-to-damping-multiplier", node, _mass_to_damping_multiplier, DEFAULT_MASS_TO_DAMPING_MULTIPLIER());
-        _extractParameter("g-scaling", node, _g_scaling, DEFAULT_G_SCALING());
         
     }
 
     // Getters
-    std::optional<unsigned> numSolverIters() const { return _num_solver_iters.value; }
+    std::optional<int> numSolverIters() const { return _num_solver_iters.value; }
     std::optional<XPBDSolverType> solverType() const { return _solve_type.value; }
     std::optional<XPBDConstraintType> constraintType() const { return _constraint_type.value; }
     std::optional<bool> withResidual() const { return _with_residual.value; }
     std::optional<bool> withDamping() const { return _with_damping.value; }
     std::optional<double> dampingGamma() const { return _damping_gamma.value; }
     std::optional<XPBDResidualPolicy> residualPolicy() const { return _residual_policy.value; }
-    std::optional<double> massToDampingMultiplier() const { return _mass_to_damping_multiplier.value; }
-    std::optional<double> gScaling() const { return _g_scaling.value; }
+
+    ElasticMaterialConfig* materialConfig() const { return _material_config.get(); }
 
     protected:
     // Parameters
-    ConfigParameter<unsigned> _num_solver_iters;
+    ConfigParameter<int> _num_solver_iters;
     ConfigParameter<XPBDSolverType> _solve_type;
     ConfigParameter<XPBDConstraintType> _constraint_type;
     ConfigParameter<bool> _with_residual;
     ConfigParameter<bool> _with_damping;
     ConfigParameter<double> _damping_gamma;
     ConfigParameter<XPBDResidualPolicy> _residual_policy;
-    ConfigParameter<double> _mass_to_damping_multiplier;
-    ConfigParameter<double> _g_scaling;
+
+    std::unique_ptr<ElasticMaterialConfig> _material_config;
 };
 
 #endif // __XPBD_MESH_OBJECT_CONFIG_HPP

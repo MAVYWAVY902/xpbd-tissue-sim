@@ -8,6 +8,9 @@
 
 #include <regex>
 
+namespace Sim
+{
+
 BeamStretchSimulation::BeamStretchSimulation(const std::string& config_filename)
     : OutputSimulation()
 {
@@ -142,3 +145,5 @@ void BeamStretchSimulation::printInfo() const
     }
     _out_file << std::endl;
 }
+
+} // namespace Sim
