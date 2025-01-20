@@ -54,7 +54,7 @@ void RigidObject::update()
 
     // update positions inertially
     const Eigen::Vector3d f_ext({0,0,-_m*_sim->gAccel()});
-    // _v = _v + _sim->dt() * f_ext / _m;
+    _v = _v + _sim->dt() * f_ext / _m;
     _p = _p + _sim->dt() * _v;
 
     // update orientation inertially
@@ -74,10 +74,6 @@ void RigidObject::velocityUpdate()
 {
     if (_fixed)
         return;
-
-    //TODO: remove after testing
-    // _q = Eigen::Vector4d({0,0,0,1});
-    // _p[2] = 0;
 
     // update linear velocity
     _v = (_p - _p_prev) / _sim->dt();

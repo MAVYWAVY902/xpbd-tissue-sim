@@ -210,9 +210,9 @@ class AngularRigidBodyXPBDHelper : public RigidBodyXPBDHelper
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-/** Represents a constraint that involves one or more rigid bodies.
+/** A class "extension" for constraints that involve one or more rigid bodies.
  * 
- * All constraints that involve a rigid body should inherit from this class.
+ * All constraints that involve a rigid body should inherit from this class (as well as the base Constraint class)
  * 
  * The inclusion of rigid bodies in XPBD needs to be handled specially - based on "Detailed rigid Body Simulation with Extended Position Based Dynamics".
  * In two main ways: (1) the calculation of the XPBD Lagrange multiplier update formula and (2) the computation of the rigid body update.
@@ -220,11 +220,11 @@ class AngularRigidBodyXPBDHelper : public RigidBodyXPBDHelper
  * For both of these computations, the RigidBodyConstraint class provides a RigidBodyXPBDHelper object for each rigid body involved in the constraint that
  * will provide the necessary quantities to perform these updates. It is the responsibility of the derived class to create the Helper classes.
 */
-class RigidBodyConstraint// : public Constraint
+class RigidBodyConstraint
 {
     public:
-    RigidBodyConstraint(/*const std::vector<PositionReference>& positions,*/ const std::vector<Sim::RigidObject*>& rigid_bodies, double alpha=0)
-        : /*Constraint(positions, alpha),*/ _rigid_bodies(rigid_bodies), _rigid_body_helpers()
+    RigidBodyConstraint(const std::vector<Sim::RigidObject*>& rigid_bodies)
+        : _rigid_bodies(rigid_bodies), _rigid_body_helpers()
     {
     }
 

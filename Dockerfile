@@ -77,7 +77,7 @@ RUN make install
 WORKDIR /thirdparty
 RUN git clone https://github.com/smtobin/Mesh2SDF.git
 WORKDIR Mesh2SDF/build
-RUN cmake ..
+RUN cmake .. -DUSE_DOUBLE_PRECISION=True
 RUN make -j 8
 RUN make install
 

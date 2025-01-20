@@ -43,11 +43,11 @@ class RigidObject : public Object
     Eigen::Vector3d globalAngularVelocity() const { return _w; }
     Eigen::Vector3d bodyAngularVelocity() const { return GeometryUtils::rotateVectorByQuat(_w, GeometryUtils::inverseQuat(_q)); }
 
-    virtual void setPosition(const Eigen::Vector3d& position) { _p = position; }
+    virtual void setPosition(const Eigen::Vector3d& position) { if (!_fixed) _p = position; }
     Eigen::Vector3d position() const { return _p; }
     Eigen::Vector3d prevPosition() const { return _p_prev; }
 
-    virtual void setOrientation(const Eigen::Vector4d& orientation) { _q = orientation; }
+    virtual void setOrientation(const Eigen::Vector4d& orientation) { if (!_fixed) _q = orientation; }
     Eigen::Vector4d orientation() const { return _q; }
     Eigen::Vector4d prevOrientation() const { return _q_prev; }
 

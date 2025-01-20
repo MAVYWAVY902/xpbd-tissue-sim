@@ -27,7 +27,7 @@ namespace Solver
  * distance given by the SDF evolving in time). So far, this seems to be a reasonable assumption - i.e. if the bodies are still colliding after multiple frames, it is highly
  * likely that the penetrating points and collision normal are pretty similar to what they were when this collision constraint was created.
  */
-class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public CollisionConstraint
+class RigidDeformableCollisionConstraint : public CollisionConstraint, public RigidBodyConstraint
 {
     public:
     /** 
@@ -138,8 +138,16 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public Co
     /** Collision constraints should be implemented as inequalities, i.e. as C(x) >= 0. */
     inline virtual bool isInequality() const override { return true; }
 
+    /** Applies a frictional force to the two colliding bodies given the coefficients of friction and the Lagrange multiplier from this constraint.
+     * @param lam - the Lagrange multiplier for this constraint after the XPBD update
+     * @param mu_s - the coefficient of static friction between the two bodies
+     * @param mu_k - the coefficient of kinetic friction between the two bodies
+     */
     inline virtual void applyFriction(double lam, double mu_s, double mu_k) const override
     {
+        // since we are colliding with a rigid body, we need to apply frictional forces to both the deformable body and the rigid body
+
+        // get Eigen vectors of positions and previous positions - just easier to work with
         const Eigen::Vector3d p1 = Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr);
         const Eigen::Vector3d p2 = Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr);
         const Eigen::Vector3d p3 = Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
@@ -148,31 +156,35 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public Co
         const Eigen::Vector3d p2_prev = Eigen::Map<Eigen::Vector3d>(_positions[1].prev_position_ptr);
         const Eigen::Vector3d p3_prev = Eigen::Map<Eigen::Vector3d>(_positions[2].prev_position_ptr);
 
-        const Eigen::Vector3d p_cur = _u*p1 + _v*p2 + _w*p3;
-        const Eigen::Vector3d p_prev = _u*p1_prev + _v*p2_prev + _w*p3_prev;
+        const Eigen::Vector3d p_cur = _u*p1 + _v*p2 + _w*p3;    // current colliding point on the deformable body
+        const Eigen::Vector3d p_prev = _u*p1_prev + _v*p2_prev + _w*p3_prev;    // previous colliding point on the deformable body
+        // get the movement of the colliding point in the directions tangent to the collision normal
+        // this is directly related to the amount of tangential force felt by the colliding point
         const Eigen::Vector3d dp = p_cur - p_prev;
 
         const Sim::RigidObject* obj = _rigid_bodies[0];
-        // TODO: make point_on_rigid_body in body coords
-        const Eigen::Vector3d rigid_p_cur = obj->bodyToGlobal(_point_on_rigid_body);
-        const Eigen::Vector3d rigid_p_prev = obj->prevPosition() + GeometryUtils::rotateVectorByQuat(_point_on_rigid_body, obj->prevOrientation());
+        const Eigen::Vector3d rigid_p_cur = obj->bodyToGlobal(_point_on_rigid_body);    // current colliding point on the rigid body (global coords)
+        const Eigen::Vector3d rigid_p_prev = obj->prevPosition() + GeometryUtils::rotateVectorByQuat(_point_on_rigid_body, obj->prevOrientation()); // previous colliding point on the rigid body (global coords)
+        // get the movement of the colliding point in the directions tangent to the collision normal
         const Eigen::Vector3d rigid_dp = rigid_p_cur - rigid_p_prev;
 
-        // std::cout << "position: " << obj->position()[0] << ", " << obj->position()[1] << ", " << obj->position()[2] << std::endl;
-        // std::cout << "prev_position: " << obj->prevPosition()[0] << ", " << obj->prevPosition()[1] << ", " << obj->prevPosition()[2] << std::endl;
-        // std::cout << "rigid_p_cur: " << rigid_p_cur[0] << ", " << rigid_p_cur[1] << ", " << rigid_p_cur[2] << std::endl;
-        // std::cout << "rigid_p_prev: " << rigid_p_prev[0] << ", " << rigid_p_prev[1] << ", " << rigid_p_prev[2] << std::endl;
-        // std::cout << "rigid_dp:\n" << rigid_dp << std::endl;
-
+        // get the relative movement of the two colliding points...
         const Eigen::Vector3d relative_dp = dp - rigid_dp;
+        const Eigen::Vector3d dp_tan = relative_dp - (relative_dp.dot(_collision_normal))*_collision_normal;    // in the directions tangent to the collision normal
 
-        const Eigen::Vector3d dp_tan = relative_dp - (relative_dp.dot(_collision_normal))*_collision_normal;
-
+        // the mass at the deformable colliding point - weighted average of masses of the face vertices depending on barycentric coords
         const double m = _u*(1.0/_positions[0].inv_mass) + _v*(1.0/_positions[1].inv_mass) + _w*(1.0/_positions[2].inv_mass);
 
+        // we will apply a positional correction dx to vertices on the deformable body - the equivalent force on the rigid body is dx/(dt^2)
+        // i.e. the force * dt * dt = dx
         Eigen::Vector3d force_dtdt = Eigen::Vector3d::Zero();
+
+        // check to see if static friction should be enforced
         if (dp_tan.norm() < mu_s*lam/m)
         {
+            // static friction is applied by undoing tangential movement this frame 
+            // only do it for the vertices on the deformable object that have barycentric coordinates > 0
+
             if (_u>1e-4 && dp_tan.norm() < mu_s*lam*_positions[0].inv_mass)
             {
                 const Eigen::Vector3d dp1 = (p1 - p1_prev) - rigid_dp;
@@ -201,11 +213,14 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public Co
                 _positions[2].position_ptr[2] -= dp3_tan[2];
             }
 
+            // the equivalent force * dt * dt oin the rigid body is simply just the tangential relative movement that we undid at the colliding point ont he deformable body
             force_dtdt = dp_tan;
 
         }
+        // if not static friction, apply dynamic friction
         else
         {
+            // calculate the positional correction for each vertex - never greater than the size of the tangential movement this time step
             const Eigen::Vector3d corr_v1 = -_u * dp_tan * std::min(_positions[0].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
             const Eigen::Vector3d corr_v2 = -_v * dp_tan * std::min(_positions[1].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
             const Eigen::Vector3d corr_v3 = -_w * dp_tan * std::min(_positions[2].inv_mass*mu_k*lam/dp_tan.norm(), 1.0);
@@ -221,11 +236,16 @@ class RigidDeformableCollisionConstraint : public RigidBodyConstraint, public Co
             _positions[2].position_ptr[1] += corr_v3[1];
             _positions[2].position_ptr[2] += corr_v3[2];
 
+            // the equivalent force * dt * dt is the opposite positional correction that we applied to the colliding point ont he deformable body
             force_dtdt = -(corr_v1/_positions[0].inv_mass + corr_v2/_positions[1].inv_mass + corr_v3/_positions[2].inv_mass);
-            // _rigid_bodies[0]->applyForceAtPoint(force, rigid_p_cur);
         }
 
-        // update orientation - compute torque caused by applied force
+
+        // apply the force on the rigid body
+        // the force is applied at the colliding point on the rigid body
+
+        // update orientation of rigid body - from the torque caused by the applied force * dt * dt
+        // these formulas are the same as when we apply an impulse to a rigid body during a collision
         const Eigen::Vector3d torque = (rigid_p_cur - _rigid_bodies[0]->position()).cross(force_dtdt);
         const Eigen::Vector3d body_torque = GeometryUtils::rotateVectorByQuat(torque, GeometryUtils::inverseQuat(_rigid_bodies[0]->orientation()));
         const Eigen::Vector3d body_omega = _rigid_bodies[0]->invI() * body_torque;
