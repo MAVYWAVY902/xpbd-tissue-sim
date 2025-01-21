@@ -6,6 +6,16 @@ namespace Sim
 VirtuosoArm::VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config)
     : Object(sim, config)
 {
+    _it_dia = config->innerTubeDiameter();
+    _it_translation = config->innerTubeInitialTranslation();
+    _it_rotation = config->innerTubeInitialRotation() * 3.1415/180.0;   // convert to radians
+
+    _ot_dia = config->outerTubeDiameter();
+    _ot_curvature = config->outerTubeCurvature();
+    _ot_translation = config->outerTubeInitialTranslation();
+    _ot_rotation = config->outerTubeInitialRotation() * 3.1415/180.0;   // convert to radians
+
+    _ot_position = config->outerTubeInitialPosition();
 
 }
 

@@ -31,6 +31,7 @@ class Easy3DVirtuosoArmGraphicsObject : public VirtuosoArmGraphicsObject, public
     const std::vector<easy3d::vec3>& points() const override { return _e3d_mesh.points(); };
 
     private:
+    void _generateMesh();
     void _generateTorusMesh(double radius, double thickness, double max_angle, int radial_res, int tubular_res);
 
     protected:

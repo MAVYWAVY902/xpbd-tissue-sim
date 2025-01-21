@@ -13,7 +13,13 @@ objects:
   -
     name: "Arm1"
     type: "VirtuosoArm"
-    
+    outer-tube-diameter: 5e-3
+    outer-tube-curvature: 1e-2
+    outer-tube-translation: 1e-2
+    outer-tube-rotation: 25
+    inner-tube-diameter: 3e-3
+    inner-tube-translation: 1e-2
+
   # -
   #   name: "Cube1"
   #   # type: "FirstOrderXPBDMeshObject"

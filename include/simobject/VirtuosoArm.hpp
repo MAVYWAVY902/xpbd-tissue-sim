@@ -36,6 +36,29 @@ class VirtuosoArm : public Object
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const override;
 
+    double innerTubeDiameter() const { return _it_dia; }
+    double innerTubeTranslation() const { return _it_translation; }
+    double innerTubeRotation() const { return _it_rotation; }
+
+    double outerTubeDiameter() const { return _ot_dia; }
+    double outerTubeCurvature() const { return _ot_curvature; }
+    double outerTubeTranslation() const { return _ot_translation; }
+    double outerTubeRotation() const { return _ot_rotation; }
+    Eigen::Vector3d outerTubePosition() const { return _ot_position; }
+
+    private:
+    double _it_dia; // inner tube diameter, in m
+    double _ot_dia; // outer tube diameter, in m
+    double _ot_curvature; // outer tube precurvature, in m
+
+    double _it_translation; // translation of the inner tube. Right now, assuming that when translation=0, inner tube is fully retracted
+    double _it_rotation;    // rotation of inner tube. Right now, assuming angle is measured CCW from positive x-axis 
+    double _ot_translation; // translation of the outer tube. Right now, assuming that when translation=0, outer tube is fully retracted
+    double _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
+
+    Eigen::Vector3d _ot_position; // the position of the base of the outer tube
+
+
 };
 
 } // namespace Sim

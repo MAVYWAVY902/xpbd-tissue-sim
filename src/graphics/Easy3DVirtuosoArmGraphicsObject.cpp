@@ -9,8 +9,7 @@ namespace Graphics
 Easy3DVirtuosoArmGraphicsObject::Easy3DVirtuosoArmGraphicsObject(const std::string& name, const Sim::VirtuosoArm* virtuoso_arm)
     : VirtuosoArmGraphicsObject(name, virtuoso_arm)
 {
-    // _e3d_mesh = easy3d::SurfaceMeshFactory::torus();
-    _generateTorusMesh(1, 0.25, 5, 40, 20);
+    _generateMesh();
 
     std::shared_ptr<easy3d::Renderer> renderer = std::make_shared<easy3d::Renderer>(&_e3d_mesh, true);
     _e3d_mesh.set_renderer(renderer);
@@ -19,7 +18,60 @@ Easy3DVirtuosoArmGraphicsObject::Easy3DVirtuosoArmGraphicsObject(const std::stri
 
 void Easy3DVirtuosoArmGraphicsObject::update()
 {
+    _generateMesh();
     renderer()->update();
+}
+
+void Easy3DVirtuosoArmGraphicsObject::_generateMesh()
+{
+    const double max_angle = _virtuoso_arm->outerTubeTranslation() / _virtuoso_arm->outerTubeCurvature();
+    _generateTorusMesh(_virtuoso_arm->outerTubeCurvature(), _virtuoso_arm->outerTubeDiameter(), max_angle, 10, 10);
+
+    if (_virtuoso_arm->innerTubeTranslation() > 0)
+    {
+        easy3d::SurfaceMesh inner_tube_mesh = easy3d::SurfaceMeshFactory::cylinder(15, _virtuoso_arm->innerTubeDiameter()/2.0, _virtuoso_arm->innerTubeTranslation());
+        // translate the cylinder down so that it is centered about the origin 
+        const double offset_x = _virtuoso_arm->outerTubeCurvature()*std::cos(max_angle) - _virtuoso_arm->outerTubeCurvature();
+        const double offset_y = _virtuoso_arm->outerTubeCurvature()*std::sin(max_angle);
+        for (auto& p : inner_tube_mesh.points())
+        {
+            // rotate about X-axis 90 degrees
+            const double p1 = p[1];
+            p[1] = p[2];
+            p[2] = -p1;
+
+            // rotate about Z-axis by max_angle to align the tube's angle with the end of the outer tube
+            const double x = p[0];
+            const double y = p[1];
+            p[0] = std::cos(max_angle)*x - std::sin(max_angle)*y;
+            p[1] = std::sin(max_angle)*x + std::cos(max_angle)*y;
+
+            // translate the inner tube the end of the outer tube
+            p[0] += offset_x;
+            p[1] += offset_y;
+        }
+
+        _e3d_mesh.join(inner_tube_mesh);
+    }
+    
+
+    // right now, the center of the base of the outer tube is located at (0,0,0)
+    // rotate the whole mesh around (0,0,0) according to the outer tube rotation and then translate the mesh to the appropriate location
+    const double ot_rot = _virtuoso_arm->outerTubeRotation();
+    const Eigen::Vector3d& ot_pos = _virtuoso_arm->outerTubePosition();
+    for (auto& p : _e3d_mesh.points())
+    {
+        // rotate around Y-axis
+        const double x = p[0];
+        const double z = p[2];
+        p[0] = std::cos(ot_rot)*x + std::sin(ot_rot)*z;
+        p[2] = -std::sin(ot_rot)*x + std::cos(ot_rot)*z;
+
+        // translate mesh to outer tube position
+        p[0] += ot_pos[0];
+        p[1] += ot_pos[1];
+        p[2] += ot_pos[2];
+    }
 }
 
 void Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double thickness, double max_angle, int radial_res, int tubular_res)
@@ -32,7 +84,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double t
     double center_angle = 0;
     for (int i = 0; i < radial_res; i++)
     {
-        const easy3d::vec3 center_pt(radius*std::cos(center_angle), radius*std::sin(center_angle), 0.0);
+        const easy3d::vec3 center_pt(radius*std::cos(center_angle) - radius, radius*std::sin(center_angle), 0.0);
         center_pts.push_back(center_pt);
 
         center_angle += max_angle / (radial_res - 1);
