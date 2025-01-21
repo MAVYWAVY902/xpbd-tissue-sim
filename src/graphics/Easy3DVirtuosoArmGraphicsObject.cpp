@@ -2,6 +2,7 @@
 
 #include <easy3d/algo/surface_mesh_factory.h>
 #include <easy3d/renderer/renderer.h>
+#include <easy3d/renderer/drawable_triangles.h>
 
 namespace Graphics
 {
@@ -14,6 +15,13 @@ Easy3DVirtuosoArmGraphicsObject::Easy3DVirtuosoArmGraphicsObject(const std::stri
     std::shared_ptr<easy3d::Renderer> renderer = std::make_shared<easy3d::Renderer>(&_e3d_mesh, true);
     _e3d_mesh.set_renderer(renderer);
     set_renderer(renderer);
+
+    // color the mesh gray
+    for (auto& tri_drawable : renderer->triangles_drawables())
+    {
+        easy3d::vec4 color(0.7, 0.7, 0.7, 1.0);
+        tri_drawable->set_uniform_coloring(color);
+    }
 }
 
 void Easy3DVirtuosoArmGraphicsObject::update()

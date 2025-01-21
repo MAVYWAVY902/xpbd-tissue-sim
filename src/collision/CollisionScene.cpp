@@ -133,8 +133,11 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
             // std::cout << "position: " << x[0] << ", " << x[1] << ", " << x[2] << "\tnormal: " << grad[0] << ", " << grad[1] << ", " << grad[2] << std::endl;
             // std::cout << "surface position: " << surface_x[0] << ", " << surface_x[1] << ", " << surface_x[2] << std::endl;
         
-             
-            if (rigid_obj->isFixed())
+            if (!rigid_obj)
+            {
+                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
+            }
+            else if (rigid_obj->isFixed())
             {
                 xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
             }
