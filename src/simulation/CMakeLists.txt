@@ -20,6 +20,12 @@ target_sources(BeamSimulation
         ${SIMULATION_SRC_DIR}/BeamSimulation.cpp
 )
 
+target_sources(VirtuosoSimulation
+    PRIVATE
+        ${SIMULATION_INCLUDE_DIR}/VirtuosoSimulation.hpp
+        ${SIMULATION_SRC_DIR}/VirtuosoSimulation.cpp
+)
+
 # target_sources(BeamStretchSimulation
 #     PRIVATE
 #         ${SIMULATION_INCLUDE_DIR}/BeamStretchSimulation.hpp

@@ -47,7 +47,8 @@ bool Easy3DTextRenderingViewer::callback_event_keyboard(int key, int action, int
 {
     _processKeyboardEvent(key, action, modifiers);
 
-    return easy3d::Viewer::callback_event_keyboard(key, action, modifiers);
+    return true;
+    // return easy3d::Viewer::callback_event_keyboard(key, action, modifiers);
 }
 
 bool Easy3DTextRenderingViewer::callback_event_mouse_button(int button, int action, int modifiers)

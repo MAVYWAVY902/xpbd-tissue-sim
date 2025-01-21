@@ -46,6 +46,12 @@ class VirtuosoArm : public Object
     double outerTubeRotation() const { return _ot_rotation; }
     Eigen::Vector3d outerTubePosition() const { return _ot_position; }
 
+    void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; }
+    void setInnerTubeRotation(double r) { _it_rotation = r; }
+    void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; }
+    void setOuterTubeRotation(double r) { _ot_rotation = r; }
+    void setOuterTubePosition(const Eigen::Vector3d& p) { _ot_position = p; }
+
     private:
     double _it_dia; // inner tube diameter, in m
     double _ot_dia; // outer tube diameter, in m
