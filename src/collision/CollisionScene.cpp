@@ -3,11 +3,13 @@
 #include "simobject/RigidPrimitives.hpp"
 #include "simobject/MeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
+#include "simobject/VirtuosoArm.hpp"
 #include "geometry/SphereSDF.hpp"
 #include "geometry/BoxSDF.hpp"
 #include "geometry/CylinderSDF.hpp"
 #include "geometry/MeshSDF.hpp"
 #include "geometry/Mesh.hpp"
+#include "geometry/VirtuosoArmSDF.hpp"
 #include "utils/GeometryUtils.hpp"
 
 // namespace Collision
@@ -40,6 +42,10 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
         const RigidMeshObjectConfig* obj_config = dynamic_cast<const RigidMeshObjectConfig*>(config);
         assert(obj_config);
         sdf = std::make_unique<Geometry::MeshSDF>(mesh_obj, obj_config);
+    }
+    else if (Sim::VirtuosoArm* arm = dynamic_cast<Sim::VirtuosoArm*>(new_obj))
+    {
+        sdf = std::make_unique<Geometry::VirtuosoArmSDF>(arm);
     }
 
     // create a new collision object
