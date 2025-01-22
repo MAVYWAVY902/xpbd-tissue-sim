@@ -38,8 +38,8 @@ target_sources(VirtuosoSimulation
 #         ${SIMULATION_SRC_DIR}/InitialDeformationSimulation.cpp
 # )
 
-# target_sources(TissueGraspingSimulation
-#     PRIVATE
-#         ${SIMULATION_INCLUDE_DIR}/TissueGraspingSimulation.hpp
-#         ${SIMULATION_SRC_DIR}/TissueGraspingSimulation.cpp
-# )
+target_sources(TissueGraspingSimulation
+    PRIVATE
+        ${SIMULATION_INCLUDE_DIR}/TissueGraspingSimulation.hpp
+        ${SIMULATION_SRC_DIR}/TissueGraspingSimulation.cpp
+)

@@ -8,6 +8,11 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
 {
 }
 
+VirtuosoSimulation::VirtuosoSimulation()
+    : Simulation()
+{
+}
+
 void VirtuosoSimulation::setup()
 {
     Simulation::setup();

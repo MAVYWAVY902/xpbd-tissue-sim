@@ -12,6 +12,8 @@ class VirtuosoSimulation : public Simulation
     public:
     VirtuosoSimulation(const std::string& config_filename);
 
+    VirtuosoSimulation();
+
     virtual std::string type() const override { return "ResidualSimulation"; }
 
     virtual void setup() override;
@@ -25,10 +27,10 @@ class VirtuosoSimulation : public Simulation
 
     protected:
     // TODO: make these settable simulation parameters
-    constexpr static double IT_ROT_RATE = 50; // rad/s
-    constexpr static double IT_TRANS_RATE = 10; // m/s
-    constexpr static double OT_ROT_RATE = 50; // rad/s
-    constexpr static double OT_TRANS_RATE = 10; // m/s 
+    constexpr static double IT_ROT_RATE = 10; // rad/s
+    constexpr static double IT_TRANS_RATE = 0.02; // m/s
+    constexpr static double OT_ROT_RATE = 10; // rad/s
+    constexpr static double OT_TRANS_RATE = 0.02; // m/s 
     VirtuosoArm* _virtuoso_arm;
 };
 

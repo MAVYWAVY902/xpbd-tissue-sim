@@ -32,12 +32,12 @@ void Easy3DVirtuosoArmGraphicsObject::update()
 
 void Easy3DVirtuosoArmGraphicsObject::_generateMesh()
 {
-    _e3d_mesh.clear();
+    easy3d::SurfaceMesh new_mesh;
     double max_angle = 0;
     if (_virtuoso_arm->outerTubeTranslation() > 0)
     {
         max_angle = _virtuoso_arm->outerTubeTranslation() / _virtuoso_arm->outerTubeCurvature();
-        _generateTorusMesh(_virtuoso_arm->outerTubeCurvature(), _virtuoso_arm->outerTubeDiameter(), max_angle, 20, 10);
+        new_mesh = _generateTorusMesh(_virtuoso_arm->outerTubeCurvature(), _virtuoso_arm->outerTubeDiameter(), max_angle, 20, 10);
     }
 
     if (_virtuoso_arm->innerTubeTranslation() > 0)
@@ -72,7 +72,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateMesh()
             p[1] += offset_y;
         }
 
-        _e3d_mesh.join(inner_tube_mesh);
+        new_mesh.join(inner_tube_mesh);
     }
     
 
@@ -80,7 +80,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateMesh()
     // rotate the whole mesh around (0,0,0) according to the outer tube rotation and then translate the mesh to the appropriate location
     const double ot_rot = _virtuoso_arm->outerTubeRotation();
     const Eigen::Vector3d& ot_pos = _virtuoso_arm->outerTubePosition();
-    for (auto& p : _e3d_mesh.points())
+    for (auto& p : new_mesh.points())
     {
         // rotate around Y-axis
         const double x = p[0];
@@ -93,11 +93,13 @@ void Easy3DVirtuosoArmGraphicsObject::_generateMesh()
         p[1] += ot_pos[1];
         p[2] += ot_pos[2];
     }
+
+    _e3d_mesh = new_mesh;
 }
 
-void Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double thickness, double max_angle, int radial_res, int tubular_res)
+easy3d::SurfaceMesh Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double thickness, double max_angle, int radial_res, int tubular_res)
 {
-    _e3d_mesh.clear();
+    easy3d::SurfaceMesh mesh;
 
     // get discrete points along center curve - [0, max_angle]
     // center curve will be in the XY plane (arbitrarily)
@@ -114,7 +116,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double t
     const int num_vertices = center_pts.size()*tubular_res + 2;
     const int num_edges = 2*tubular_res + center_pts.size()*tubular_res + (center_pts.size() - 1)*(tubular_res + tubular_res - 1);
     const int num_faces = (center_pts.size() - 1)*tubular_res*2 + 2*tubular_res;
-    _e3d_mesh.reserve(num_vertices, num_edges, num_faces);
+    mesh.reserve(num_vertices, num_edges, num_faces);
 
     // create "tube" (i.e. a circle) around each point on the center curve
     for (unsigned ci = 0; ci < center_pts.size(); ci++)
@@ -128,13 +130,13 @@ void Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double t
             const easy3d::vec3 tube_pt(center_pt[0] + std::cos(center_angle) * circle_pt[0] - std::sin(center_angle) * circle_pt[1],
                                        center_pt[1] + std::cos(center_angle) * circle_pt[1] + std::sin(center_angle) * circle_pt[0],
                                        center_pt[2] + circle_pt[2]);
-            _e3d_mesh.add_vertex(tube_pt);
+            mesh.add_vertex(tube_pt);
         }
     }
 
     // add middle vertices on each end
-    _e3d_mesh.add_vertex(center_pts[0]);
-    _e3d_mesh.add_vertex(center_pts.back());
+    mesh.add_vertex(center_pts[0]);
+    mesh.add_vertex(center_pts.back());
 
     // create faces
 
@@ -147,7 +149,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double t
             const int v2 = (ti != tubular_res-1) ? v1 + 1 : ci*tubular_res;
             const int v3 = v2 + tubular_res;
             const int v4 = v1 + tubular_res;
-            _e3d_mesh.add_quad(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v4), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
+            mesh.add_quad(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v4), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
         }
     }
 
@@ -157,7 +159,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double t
         const int v1 = num_vertices - 2;
         const int v2 = (ti != tubular_res-1) ? ti + 1 : 0;
         const int v3 = ti;
-        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
+        mesh.add_triangle(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
     }
 
     for (int ti = 0; ti < tubular_res; ti++)
@@ -165,11 +167,11 @@ void Easy3DVirtuosoArmGraphicsObject::_generateTorusMesh(double radius, double t
         const int v1 = num_vertices - 1;
         const int v2 = (center_pts.size()-1)*tubular_res + ti;
         const int v3 = (ti != tubular_res-1) ? v2 + 1 : (center_pts.size()-1)*tubular_res;
-        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
+        mesh.add_triangle(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
     }
 
 
-
+    return mesh;
 
 }
 

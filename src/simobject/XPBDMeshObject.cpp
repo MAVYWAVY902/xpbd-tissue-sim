@@ -138,6 +138,7 @@ void XPBDMeshObject::_calculatePerVertexQuantities()
     _vertex_inv_masses.resize(_mesh->numVertices());
     _vertex_volumes.resize(_mesh->numVertices());
     _vertex_attached_elements.resize(_mesh->numVertices());
+    _is_fixed_vertex.resize(_mesh->numVertices());
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
         const Eigen::Vector4i& element = tetMesh()->element(i);
@@ -170,6 +171,7 @@ void XPBDMeshObject::_calculatePerVertexQuantities()
     for (int i = 0; i < _mesh->numVertices(); i++)
     {
         _vertex_inv_masses[i] = 1.0 / _vertex_masses[i];
+        _is_fixed_vertex[i] = false;
     } 
 }
 
@@ -314,6 +316,16 @@ void XPBDMeshObject::velocityUpdate()
         if (lam > 0)
         {
             c.constraint->applyFriction(lam, _material.muS(), _material.muK());
+        }
+    }
+
+    // put each fixed vertex back to where it was
+    // TODO: is this where this should go?
+    for (int i = 0; i < _mesh->numVertices(); i++)
+    {
+        if (_is_fixed_vertex[i])
+        {
+            _mesh->setVertex(i, _previous_vertices.col(i));
         }
     }
 

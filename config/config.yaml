@@ -1,8 +1,8 @@
 name: "blah"
 visualization: "Easy3D"
-g-accel: 0 # m/s2
-# sim-mode: "Frame-by-frame"
-sim-mode: "Visualization"
+g-accel: 9.81 # m/s2
+sim-mode: "Frame-by-frame"
+# sim-mode: "Visualization"
 # sim-mode: "AFAP"
 time-step: 1e-3
 collision-rate: 1010
@@ -11,28 +11,13 @@ end-time: 100
 objects:
 
   -
-    name: "Arm1"
-    type: "VirtuosoArm"
-    outer-tube-diameter: 5e-1
-    outer-tube-curvature: 1
-    outer-tube-translation: 8e-1
-    outer-tube-rotation: 270
-    inner-tube-diameter: 3e-1
-    inner-tube-translation: 1e0
-    collisions: true
-
-  -
     name: "Cube1"
-    # type: "FirstOrderXPBDMeshObject"
-    type: "XPBDMeshObject"
+    type: "FirstOrderXPBDMeshObject"
+    # type: "XPBDMeshObject"
     # type: "FastFEMMeshObject"
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
-    # filename: "../resource/general/stanford_bunny_medpoly.msh"
-    # filename: "../resource/general/single.msh"
     filename: "../resource/cube/cube8.msh"
     # filename: "../resource/cube/cube16.msh"
-    # filename: "../resource/tissue/Prostate.msh"
-    # filename: "../resource/tissue/Trachea_processed.stl"
     material:
       name: "Soft Tissue"
       density: 1000
@@ -44,7 +29,7 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0.0, 0.9, 0.5]
+    position: [0.0, 0.0, 0.35]
     velocity: [0, 0, 0.0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
@@ -58,17 +43,17 @@ objects:
     # residual-policy: "Every-Substep"
     residual-policy: "Never"
   
-  # - 
-  #   name: "ramp"
-  #   type: "RigidBox"
-  #   size: [1, 5, 0.2]
-  #   density: 100000
-  #   position: [0, 0, 0]
-  #   rotation: [20, 0, 0]
-  #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
-  #   fixed: true
-  #   collisions: true
+  - 
+    name: "ramp"
+    type: "RigidBox"
+    size: [5, 1, 0.2]
+    density: 100000
+    position: [0, 0, 0]
+    rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    fixed: true
+    collisions: true
 
   # -
   #   name: "sphere"
@@ -81,11 +66,12 @@ objects:
 
   # - name: "box2"
   #   type: "RigidBox"
-  #   size: [0.5, 0.5, 0.5]
+  #   size: [1, 1, 0.5]
   #   position: [0, 1.8, 0.5]
   #   rotation: [0, 0, 0]
   #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 3.1415]
+  #   angular-velocity: [0, 0, 0]
+  #   fixed: true
   #   collisions: true
 
   # - name: "cylinder"

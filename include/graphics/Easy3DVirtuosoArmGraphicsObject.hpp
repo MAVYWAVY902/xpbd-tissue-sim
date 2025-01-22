@@ -32,7 +32,7 @@ class Easy3DVirtuosoArmGraphicsObject : public VirtuosoArmGraphicsObject, public
 
     private:
     void _generateMesh();
-    void _generateTorusMesh(double radius, double thickness, double max_angle, int radial_res, int tubular_res);
+    easy3d::SurfaceMesh _generateTorusMesh(double radius, double thickness, double max_angle, int radial_res, int tubular_res);
 
     protected:
     easy3d::SurfaceMesh _e3d_mesh;
