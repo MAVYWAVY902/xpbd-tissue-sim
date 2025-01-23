@@ -33,6 +33,9 @@ class XPBDSolver
      */
     virtual void solve();
 
+    /** Projects only collision constraints */
+    virtual void solveCollisionConstraints();
+
     /** Returns the current primary residual (Equation (8) from XPBD paper).
      * Does NOT recalculate if stale.
      */
@@ -66,6 +69,8 @@ class XPBDSolver
      * @param data - the pre-allocated data block to use for evaluating the constraints and their gradients. Assumes that it is large enough to accomodate the ConstraintProjector with the largest memory requirement.
      */
     virtual void _solveConstraints(double* data) = 0;
+
+    virtual void _solveCollisionConstraints(double* data) = 0;
     
     /** Calculates the primary residual (Equation (8) from XPBD paper). */
     void _calculatePrimaryResidual();

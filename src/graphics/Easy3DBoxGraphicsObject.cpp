@@ -40,7 +40,7 @@ void Easy3DBoxGraphicsObject::_transformPoints()
     std::vector<easy3d::vec3>& mesh_points = _e3d_mesh.points();
     const easy3d::vec3 e3d_position(_box->position()[0], _box->position()[1], _box->position()[2]);
 
-    const Eigen::Vector4d& quat = _box->orientation();
+    const Eigen::Vector4d& quat = _box->orientation().normalized();
     const easy3d::Quat e3d_quat(static_cast<float>(quat[0]), static_cast<float>(quat[1]), static_cast<float>(quat[2]), static_cast<float>(quat[3]));
     const easy3d::mat3 e3d_rot_mat = easy3d::mat3::rotation(e3d_quat);
     for (size_t i = 0; i < mesh_points.size(); i++)

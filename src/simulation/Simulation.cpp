@@ -208,10 +208,10 @@ void Simulation::_timeStep()
     }
 
     // update each MeshObject
-    // for (auto& obj : _objects)
-    // {
-    //     obj->update();
-    // }
+    for (auto& obj : _objects)
+    {
+        obj->update();
+    }
 
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
@@ -226,10 +226,10 @@ void Simulation::_timeStep()
         
     }
 
-    for (auto& obj : _objects)
-    {
-        obj->update();
-    }
+    // for (auto& obj : _objects)
+    // {
+    //     obj->update();
+    // }
 
     // update each object's velocities
     for (auto& obj : _objects)

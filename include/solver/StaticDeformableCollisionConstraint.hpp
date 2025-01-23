@@ -58,8 +58,14 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
      */
     inline void evaluate(double* C) const override
     {
+        // const Eigen::Vector3d a = _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
+        // *C = _collision_normal.dot(a - _p);
+        
+        // get the point on the deformable body from the barycentric coordinates
         const Eigen::Vector3d a = _u*Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) + _v*Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) + _w*Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
-        *C = _collision_normal.dot(a - _p);
+        
+        // constraint value is the penetration distance, which we can get from the rigid body SDF
+        *C = _sdf->evaluate(a);
     }
 
     /** Computes the gradient of this constraint in vector form with pre-allocated memory.

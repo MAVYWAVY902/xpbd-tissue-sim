@@ -20,6 +20,8 @@ class XPBDGaussSeidelSolver : public XPBDSolver
      * @param data - the pre-allocated data block to use for evaluating the constraints and their gradients. Assumes that it is large enough to accomodate the ConstraintProjector with the largest memory requirement.
      */
     virtual void _solveConstraints(double* data) override;
+
+    virtual void _solveCollisionConstraints(double* data) override;
 };
 
 } // namespace Solver

@@ -1,5 +1,6 @@
 #include "solver/XPBDSolver.hpp"
 #include "solver/Constraint.hpp"
+#include "solver/CollisionConstraint.hpp"
 #include "solver/ConstraintProjectorDecorator.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 
@@ -92,6 +93,23 @@ void XPBDSolver::solve()
     {
         _calculatePrimaryResidual();
         _calculateConstraintResidual();
+    }
+}
+
+void XPBDSolver::solveCollisionConstraints()
+{
+    // initialize all the constraints
+    for (const auto& c : _constraint_projectors)
+    {
+        if (c)
+            if (CollisionConstraint* cc = dynamic_cast<CollisionConstraint*>(c->constraints()[0]))
+                c->initialize();
+    }
+
+    for (int i = 0; i < _num_iter; i++)
+    {
+        // iterate through the constraints and solve them
+        _solveCollisionConstraints(_data.data());
     }
 }
 

@@ -33,7 +33,8 @@ class VirtuosoArmSDF : public SDF
     virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const override
     {
         const Eigen::Vector3d x_sdf = _globalToBodyInnerTube(x);
-        const Eigen::Vector3d body_grad = _cylinderSDFGradient(x_sdf, _virtuoso_arm->innerTubeDiameter()/2.0, _virtuoso_arm->innerTubeTranslation());
+        const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
+        const Eigen::Vector3d body_grad = _cylinderSDFGradient(x_sdf, _virtuoso_arm->innerTubeDiameter()/2.0, l);
         return _bodyToGlobalInnerTubeGradient(body_grad);
     }
 

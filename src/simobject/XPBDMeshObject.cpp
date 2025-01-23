@@ -306,6 +306,7 @@ void XPBDMeshObject::_projectConstraints()
 
 void XPBDMeshObject::velocityUpdate()
 {
+    _solver->solveCollisionConstraints();
     // apply frictional forces
     // we do this in the velocity update (i.e. after update() is finished) to ensure that all objects have had their constraints projected already
     for (const auto& c : _collision_constraints)
