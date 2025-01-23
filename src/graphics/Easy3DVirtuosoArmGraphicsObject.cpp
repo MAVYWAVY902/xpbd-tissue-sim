@@ -34,7 +34,8 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
 {
     // generate the initial mesh by combining the torus (outer tube) and the cylinder (inner tube) meshes
     easy3d::SurfaceMesh torus_mesh = _generateTorusMesh(_virtuoso_arm->outerTubeCurvature(), _virtuoso_arm->outerTubeDiameter(), 0, _OT_RADIAL_RES, _OT_TUBULAR_RES);
-    easy3d::SurfaceMesh cyl_mesh = easy3d::SurfaceMeshFactory::cylinder(_IT_TUBULAR_RES, _virtuoso_arm->innerTubeDiameter()/2.0, _virtuoso_arm->innerTubeTranslation());
+    const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
+    easy3d::SurfaceMesh cyl_mesh = easy3d::SurfaceMeshFactory::cylinder(_IT_TUBULAR_RES, _virtuoso_arm->innerTubeDiameter()/2.0, l);
     _e3d_mesh = torus_mesh.join(cyl_mesh);
 }
 
@@ -71,8 +72,9 @@ void Easy3DVirtuosoArmGraphicsObject::_updateInnerTubeMesh()
     const double offset_x = _virtuoso_arm->outerTubeCurvature()*std::cos(max_angle) - _virtuoso_arm->outerTubeCurvature();
     const double offset_y = _virtuoso_arm->outerTubeCurvature()*std::sin(max_angle);
     const double it_rot = _virtuoso_arm->innerTubeRotation();
+    const double it_length = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
 
-    easy3d::SurfaceMesh cyl = easy3d::SurfaceMeshFactory::cylinder(_IT_TUBULAR_RES, _virtuoso_arm->innerTubeDiameter()/2.0, _virtuoso_arm->innerTubeTranslation());
+    easy3d::SurfaceMesh cyl = easy3d::SurfaceMeshFactory::cylinder(_IT_TUBULAR_RES, _virtuoso_arm->innerTubeDiameter()/2.0, it_length);
     for (int i = ind_offset; i < _e3d_mesh.points().size(); i++)
     {
         auto& p = _e3d_mesh.points()[i];

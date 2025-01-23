@@ -22,7 +22,8 @@ class VirtuosoArmSDF : public SDF
     virtual double evaluate(const Eigen::Vector3d& x) const override
     {
         const Eigen::Vector3d x_sdf = _globalToBodyInnerTube(x);
-        return _cylinderSDFDistance(x_sdf, _virtuoso_arm->innerTubeDiameter()/2.0, _virtuoso_arm->innerTubeTranslation());
+        const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
+        return _cylinderSDFDistance(x_sdf, _virtuoso_arm->innerTubeDiameter()/2.0, l);
     }
 
     /** Evaluates the gradient of F at x.
@@ -64,7 +65,7 @@ class VirtuosoArmSDF : public SDF
         
         const double p_x = ot_curv * std::cos(ot_max_angle) - ot_curv;
         const double p_y = ot_curv * std::sin(ot_max_angle);
-        const double l = _virtuoso_arm->innerTubeTranslation();
+        const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
         const Eigen::Vector3d ot_pos = _virtuoso_arm->outerTubePosition();
         Eigen::Vector3d trans_vec(  std::cos(ot_rot) * (p_x - std::sin(ot_max_angle)*l*0.5) + ot_pos[0],
                                     p_y + std::cos(ot_max_angle)*l*0.5 + ot_pos[1],
