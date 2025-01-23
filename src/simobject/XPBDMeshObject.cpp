@@ -315,7 +315,7 @@ void XPBDMeshObject::velocityUpdate()
         // if it was "inactive", there was no penetration and thus no contact and thus no friction
         if (lam > 0)
         {
-            c.constraint->applyFriction(lam, _material.muS(), _material.muK());
+            // c.constraint->applyFriction(lam, _material.muS(), _material.muK());
         }
     }
 

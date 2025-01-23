@@ -1,5 +1,9 @@
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "solver/ConstraintProjectorDecorator.hpp"
+#include "solver/StaticDeformableCollisionConstraint.hpp"
+#include "solver/RigidDeformableCollisionConstraint.hpp"
+#include "solver/RigidBodyConstraintProjector.hpp"
+#include "solver/XPBDGaussSeidelSolver.hpp"
 #include "simulation/Simulation.hpp"
 
 namespace Sim
@@ -52,6 +56,41 @@ void FirstOrderXPBDMeshObject::_movePositionsInertially()
     {
         _mesh->displaceVertex(i, 0, 0, -_sim->gAccel() * _vertex_masses[i] * _sim->dt() * _inv_B[i]);
     }   
+}
+
+void FirstOrderXPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
+                                    const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
+{
+    std::unique_ptr<Solver::StaticDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, obj, v1, v2, v3, u, v, w);
+    std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
+    std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _sim->dt());
+
+    // std::cout << "FirstOrder addStaticCollisionConstraint" << std::endl;
+    int index = _solver->addConstraintProjector(_decorateConstraintProjector(std::move(collision_projector), false, false, true));
+
+    XPBDCollisionConstraint xpbd_collision_constraint;
+    xpbd_collision_constraint.constraint = std::move(collision_constraint);
+    xpbd_collision_constraint.projector_index = index;
+    xpbd_collision_constraint.num_steps_unused = 0;
+
+    _collision_constraints.push_back(std::move(xpbd_collision_constraint));
+}
+
+void FirstOrderXPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal,
+                                       const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
+{
+    std::unique_ptr<Solver::RigidDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, deformable_obj, v1, v2, v3, u, v, w);
+    std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::RigidBodyConstraintProjector>(collision_constraint.get(), _sim->dt());
+
+    // int index = _solver->addConstraintProjector(_decorateConstraintProjector(std::move(collision_projector), false, false, true));
+    int index = _solver->addConstraintProjector(std::move(collision_projector));
+
+    XPBDCollisionConstraint xpbd_collision_constraint;
+    xpbd_collision_constraint.constraint = std::move(collision_constraint);
+    xpbd_collision_constraint.projector_index = index;
+    xpbd_collision_constraint.num_steps_unused = 0;
+
+    _collision_constraints.push_back(std::move(xpbd_collision_constraint));
 }
 
 } //namespace Sim

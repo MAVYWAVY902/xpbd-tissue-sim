@@ -200,13 +200,24 @@ void Simulation::_timeStep()
 
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
-        // run collision detection
-        // auto t1 = std::chrono::steady_clock::now();
         for (auto& obj : _objects)
         {
             if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
                 xpbd_obj->clearCollisionConstraints();
         }
+    }
+
+    // update each MeshObject
+    // for (auto& obj : _objects)
+    // {
+    //     obj->update();
+    // }
+
+    if (_time - _last_collision_detection_time > _time_between_collision_checks)
+    {
+        // run collision detection
+        // auto t1 = std::chrono::steady_clock::now();
+        
         
         _collision_scene->collideObjects();
         // auto t2 = std::chrono::steady_clock::now();
@@ -215,7 +226,6 @@ void Simulation::_timeStep()
         
     }
 
-    // update each MeshObject
     for (auto& obj : _objects)
     {
         obj->update();

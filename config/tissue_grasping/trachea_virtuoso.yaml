@@ -12,20 +12,31 @@ g-accel: 0 # m/s2
 sim-mode: "AFAP"
 time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
-collision-rate: 333
+collision-rate: 33333
 fps: 30
 end-time: 1000
 objects:
 
+  # -
+  #   name: "Arm1"
+  #   type: "VirtuosoArm"
+  #   outer-tube-diameter: 1.56e-3
+  #   outer-tube-curvature: 1.5383e-2
+  #   outer-tube-translation: 1e-3
+  #   outer-tube-rotation: 90
+  #   inner-tube-diameter: 1.04e-3
+  #   inner-tube-translation: 1e-3
+  #   outer-tube-position: [0, -0.03, 0]
+  #   collisions: true
   -
     name: "Arm1"
     type: "VirtuosoArm"
-    outer-tube-diameter: 1.56e-3
-    outer-tube-curvature: 0.01538
-    outer-tube-translation: 1e-3
-    outer-tube-rotation: 0
-    inner-tube-diameter: 1.04e-3
-    inner-tube-translation: 1e-2
+    outer-tube-diameter: 1.5e-2
+    outer-tube-curvature: 1e-1
+    outer-tube-translation: 1e-2
+    outer-tube-rotation: 45
+    inner-tube-diameter: 1e-2
+    inner-tube-translation: 2e-3
     outer-tube-position: [0, -0.03, 0]
     collisions: true
 
@@ -52,8 +63,18 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     with-residual: false
     with-damping: false
-    damping-multiplier: 200000000
+    damping-multiplier: 400000000
     collisions: true
+
+  # -
+  #   name: "sphere"
+  #   type: "RigidSphere"
+  #   radius: 1e-3
+  #   density: 1000000
+  #   position: [0, -0.01, 0.005]
+  #   velocity: [0, 0.1, 0]
+  #   fixed: false
+  #   collisions: true
 
   - 
     # name: "Cube2"
