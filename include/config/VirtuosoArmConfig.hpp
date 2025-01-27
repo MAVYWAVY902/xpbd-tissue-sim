@@ -13,6 +13,7 @@ class VirtuosoArmConfig : public ObjectConfig
     static std::optional<double>& DEFAULT_IT_INITIAL_ROTATION() { static std::optional<double> it_rot(0); return it_rot; }
     static std::optional<double>& DEFAULT_OT_INITIAL_TRANSLATION() { static std::optional<double> ot_trans(0.1); return ot_trans; }
     static std::optional<double>& DEFAULT_OT_INITIAL_ROTATION() { static std::optional<double> ot_rot(0); return ot_rot; }
+    static std::optional<double>& DEFAULT_OT_DISTAL_STRAIGHT_LENGTH() { static std::optional<double> ot_l(0); return ot_l; }
     static std::optional<Eigen::Vector3d>& DEFAULT_OT_INITIAL_POSITION() { static std::optional<Eigen::Vector3d> ot_pos({0.0, 0.0, 0.0}); return ot_pos; }
 
     explicit VirtuosoArmConfig(const YAML::Node& node)
@@ -26,6 +27,8 @@ class VirtuosoArmConfig : public ObjectConfig
         _extractParameter("outer-tube-curvature", node, _ot_curvature, DEFUALT_OT_CURVATURE());
         _extractParameter("outer-tube-translation", node, _ot_initial_translation, DEFAULT_OT_INITIAL_TRANSLATION());
         _extractParameter("outer-tube-rotation", node, _ot_initial_rotation, DEFAULT_OT_INITIAL_ROTATION());
+        _extractParameter("outer-tube-distal-straight-length", node, _ot_distal_straight_length, DEFAULT_OT_DISTAL_STRAIGHT_LENGTH());
+
         _extractParameter("outer-tube-position", node, _ot_initial_position, DEFAULT_OT_INITIAL_POSITION());
     }
 
@@ -37,6 +40,7 @@ class VirtuosoArmConfig : public ObjectConfig
     double outerTubeCurvature() const { return _ot_curvature.value.value(); }
     double outerTubeInitialTranslation() const { return _ot_initial_translation.value.value(); }
     double outerTubeInitialRotation() const { return _ot_initial_rotation.value.value(); }
+    double outerTubeDistalStraightLength() const { return _ot_distal_straight_length.value.value(); }
     Eigen::Vector3d outerTubeInitialPosition() const { return _ot_initial_position.value.value(); }
 
     protected:
@@ -46,6 +50,7 @@ class VirtuosoArmConfig : public ObjectConfig
 
     ConfigParameter<double> _ot_diameter;
     ConfigParameter<double> _ot_curvature;
+    ConfigParameter<double> _ot_distal_straight_length;
     ConfigParameter<double> _ot_initial_translation;
     ConfigParameter<double> _ot_initial_rotation;
     ConfigParameter<Eigen::Vector3d> _ot_initial_position;

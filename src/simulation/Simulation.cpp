@@ -3,7 +3,7 @@
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 #include "config/RigidPrimitiveConfigs.hpp"
-#include "config/VirutosoArmConfig.hpp"
+#include "config/VirtuosoArmConfig.hpp"
 
 #include "graphics/Easy3DGraphicsScene.hpp"
 

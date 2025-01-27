@@ -14,6 +14,7 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config)
     _ot_curvature = config->outerTubeCurvature();
     _ot_translation = config->outerTubeInitialTranslation();
     _ot_rotation = config->outerTubeInitialRotation() * 3.1415/180.0;   // convert to radians
+    _ot_distal_straight_length = config->outerTubeDistalStraightLength();
 
     _ot_position = config->outerTubeInitialPosition();
 

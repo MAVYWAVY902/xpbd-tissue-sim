@@ -7,9 +7,9 @@ input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic"
 fixed-faces-filename: "../resource/tissue/tracheal_tumor_v2_fixed_faces.txt"
 
 g-accel: 0 # m/s2
-# sim-mode: "Visualization"
+sim-mode: "Visualization"
 # sim-mode: "Frame-by-frame"
-sim-mode: "AFAP"
+# sim-mode: "AFAP"
 time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
 collision-rate: 33333
@@ -22,10 +22,11 @@ objects:
     type: "VirtuosoArm"
     outer-tube-diameter: 1.56e-3
     outer-tube-curvature: 1.5383e-2
-    outer-tube-translation: 1e-3
+    outer-tube-distal-straight-length: 5e-3
+    outer-tube-translation: 6e-3
     outer-tube-rotation: 90
     inner-tube-diameter: 1.04e-3
-    inner-tube-translation: 2e-2
+    inner-tube-translation: 2.3e-2
     outer-tube-position: [0, -0.03, 0]
     collisions: true
   # -

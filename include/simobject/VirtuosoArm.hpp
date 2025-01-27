@@ -2,7 +2,7 @@
 #define __VIRTUOSO_ARM_HPP
 
 #include "simobject/Object.hpp"
-#include "config/VirutosoArmConfig.hpp"
+#include "config/VirtuosoArmConfig.hpp"
 
 namespace Sim
 {
@@ -44,6 +44,7 @@ class VirtuosoArm : public Object
     double outerTubeCurvature() const { return _ot_curvature; }
     double outerTubeTranslation() const { return _ot_translation; }
     double outerTubeRotation() const { return _ot_rotation; }
+    double outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
     Eigen::Vector3d outerTubePosition() const { return _ot_position; }
 
     void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; }
@@ -61,6 +62,7 @@ class VirtuosoArm : public Object
     double _it_rotation;    // rotation of inner tube. Right now, assuming angle is measured CCW from positive x-axis 
     double _ot_translation; // translation of the outer tube. Right now, assuming that when translation=0, outer tube is fully retracted
     double _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
+    double _ot_distal_straight_length; // the length of the straight section on the distal part of the outer tube
 
     Eigen::Vector3d _ot_position; // the position of the base of the outer tube
 

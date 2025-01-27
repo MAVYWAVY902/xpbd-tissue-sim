@@ -28,9 +28,9 @@ class VirtuosoSimulation : public Simulation
     protected:
     // TODO: make these settable simulation parameters
     constexpr static double IT_ROT_RATE = 10; // rad/s
-    constexpr static double IT_TRANS_RATE = 0.002; // m/s
+    constexpr static double IT_TRANS_RATE = 0.005; // m/s
     constexpr static double OT_ROT_RATE = 10; // rad/s
-    constexpr static double OT_TRANS_RATE = 0.002; // m/s 
+    constexpr static double OT_TRANS_RATE = 0.005; // m/s 
     VirtuosoArm* _virtuoso_arm;
 };
 

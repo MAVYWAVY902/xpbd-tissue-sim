@@ -6,7 +6,7 @@
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 #include "config/RigidMeshObjectConfig.hpp"
 #include "config/RigidPrimitiveConfigs.hpp"
-#include "config/VirutosoArmConfig.hpp"
+#include "config/VirtuosoArmConfig.hpp"
 
 
 /** Enum defining the different ways the simulation can be run 

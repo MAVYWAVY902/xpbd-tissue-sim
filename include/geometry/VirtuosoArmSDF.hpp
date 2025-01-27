@@ -44,7 +44,8 @@ class VirtuosoArmSDF : public SDF
         const double ot_curv = _virtuoso_arm->outerTubeCurvature();
         const double ot_rot = _virtuoso_arm->outerTubeRotation();
         const double ot_trans = _virtuoso_arm->outerTubeTranslation();
-        const double ot_max_angle = ot_trans/ot_curv;
+        const double ot_distal_len = _virtuoso_arm->outerTubeDistalStraightLength();
+        const double ot_max_angle = std::max(ot_trans - ot_distal_len, 0.0) / ot_curv;
 
         Eigen::Matrix3d rot_mat;
         rot_mat <<  std::cos(ot_rot)*std::cos(ot_max_angle), -std::sin(ot_rot), -std::cos(ot_rot)*std::sin(ot_max_angle),
@@ -57,15 +58,16 @@ class VirtuosoArmSDF : public SDF
         const double ot_curv = _virtuoso_arm->outerTubeCurvature();
         const double ot_rot = _virtuoso_arm->outerTubeRotation();
         const double ot_trans = _virtuoso_arm->outerTubeTranslation();
-        const double ot_max_angle = ot_trans/ot_curv;
+        const double ot_distal_len = _virtuoso_arm->outerTubeDistalStraightLength();
+        const double ot_max_angle = std::max(ot_trans - ot_distal_len, 0.0) / ot_curv;
 
         Eigen::Matrix3d rot_mat;
         rot_mat <<  std::cos(ot_rot)*std::cos(ot_max_angle), -std::sin(ot_rot), -std::cos(ot_rot)*std::sin(ot_max_angle),
                     std::sin(ot_max_angle), 0, std::cos(ot_max_angle),
                     -std::sin(ot_rot)*std::cos(ot_max_angle), -std::cos(ot_rot), std::sin(ot_rot)*std::sin(ot_max_angle);
-        
-        const double p_x = ot_curv * std::cos(ot_max_angle) - ot_curv;
-        const double p_y = ot_curv * std::sin(ot_max_angle);
+
+        const double p_x = ot_curv * std::cos(ot_max_angle) - ot_curv - ot_distal_len*std::sin(ot_max_angle);
+        const double p_y = ot_curv * std::sin(ot_max_angle) + ot_distal_len*std::cos(ot_max_angle);
         const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
         const Eigen::Vector3d ot_pos = _virtuoso_arm->outerTubePosition();
         Eigen::Vector3d trans_vec(  std::cos(ot_rot) * (p_x - std::sin(ot_max_angle)*l*0.5) + ot_pos[0],
