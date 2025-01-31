@@ -76,25 +76,33 @@ RUN ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/libtinfo.so.5
 
 ####### Install NVidia stuff
 # for getting libtinfo5 which is needed by CUDA 12.4
-RUN echo "Types: deb" >> /etc/apt/sources.list.d/ubuntu.sources
-RUN echo "URIs: http://archive.ubuntu.com/ubuntu/" >> /etc/apt/sources.list.d/ubuntu.sources
-RUN echo "Suites: lunar" >> /etc/apt/sources.list.d/ubuntu.sources
-RUN echo "Components: universe" >> /etc/apt/sources.list.d/ubuntu.sources
-RUN echo "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg" >> /etc/apt/sources.list.d/ubuntu.sources
+# RUN echo "Types: deb" >> /etc/apt/sources.list.d/ubuntu.sources
+# RUN echo "URIs: http://archive.ubuntu.com/ubuntu/" >> /etc/apt/sources.list.d/ubuntu.sources
+# RUN echo "Suites: lunar" >> /etc/apt/sources.list.d/ubuntu.sources
+# RUN echo "Components: universe" >> /etc/apt/sources.list.d/ubuntu.sources
+# RUN echo "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg" >> /etc/apt/sources.list.d/ubuntu.sources
 
 # install CUDA 12.4
 WORKDIR /thirdparty
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-RUN mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-RUN wget https://developer.download.nvidia.com/compute/cuda/12.4.0/local_installers/cuda-repo-ubuntu2204-12-4-local_12.4.0-550.54.14-1_amd64.deb
-RUN dpkg -i cuda-repo-ubuntu2204-12-4-local_12.4.0-550.54.14-1_amd64.deb
-RUN cp /var/cuda-repo-ubuntu2204-12-4-local/cuda-*-keyring.gpg /usr/share/keyrings/
+# RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+# RUN mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+# RUN wget https://developer.download.nvidia.com/compute/cuda/12.4.0/local_installers/cuda-repo-ubuntu2204-12-4-local_12.4.0-550.54.14-1_amd64.deb
+# RUN dpkg -i cuda-repo-ubuntu2204-12-4-local_12.4.0-550.54.14-1_amd64.deb
+# RUN cp /var/cuda-repo-ubuntu2204-12-4-local/cuda-*-keyring.gpg /usr/share/keyrings/
+# RUN apt-get update
+# RUN apt-get -y install cuda-toolkit-12-4
+
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+RUN dpkg -i cuda-keyring_1.1-1_all.deb
 RUN apt-get update
-RUN apt-get -y install cuda-toolkit-12-4
+RUN apt-get -y install cuda-toolkit-12-8
+
+RUN apt-get remove --purge nvidia-* -y
+RUN apt-get install -y nvidia-open
 
 # finish installation by updating path
-RUN export PATH=/usr/local/cuda-12.4/bin${PATH:+:${PATH}}
-RUN export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+RUN export PATH=/usr/local/cuda-12.8/bin${PATH:+:${PATH}}
+RUN export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 
 # clone cuda samples
 RUN git clone https://github.com/NVIDIA/cuda-samples.git
