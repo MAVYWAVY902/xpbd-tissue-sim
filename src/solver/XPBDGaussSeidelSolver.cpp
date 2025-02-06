@@ -13,7 +13,7 @@ XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(const Sim::XPBDMeshObject* obj, int
     : XPBDSolver(obj, num_iter, residual_policy)
 {}
 
-void XPBDGaussSeidelSolver::_solveConstraints(double* data)
+void XPBDGaussSeidelSolver::_solveConstraints(Real* data)
 {
     for (const auto& proj : _constraint_projectors)
     {
@@ -30,9 +30,9 @@ void XPBDGaussSeidelSolver::_solveConstraints(double* data)
             // apply the rigid body updates
             for (int i = 0; i < rb_proj->numRigidBodies(); i++)
             {
-                double* rb_update = _rigid_body_updates.data() + 7*i;
-                rigid_bodies[i]->setPosition(rigid_bodies[i]->position() + Eigen::Map<Eigen::Vector3d>(rb_update));
-                rigid_bodies[i]->setOrientation(rigid_bodies[i]->orientation() + Eigen::Map<Eigen::Vector4d>(rb_update+3));
+                Real* rb_update = _rigid_body_updates.data() + 7*i;
+                rigid_bodies[i]->setPosition(rigid_bodies[i]->position() + Eigen::Map<Vec3r>(rb_update));
+                rigid_bodies[i]->setOrientation(rigid_bodies[i]->orientation() + Eigen::Map<Vec4r>(rb_update+3));
             }
         }
         else

@@ -23,7 +23,7 @@ class DeviatoricConstraint : public ElementConstraint
     /** Evaluates the current value of this constraint.
      * i.e. returns C(x)
      */
-    inline double evaluate() const
+    inline Real evaluate() const
     {
         return _evaluate(_computeF());
     }
@@ -31,10 +31,10 @@ class DeviatoricConstraint : public ElementConstraint
     /** Returns the gradient of this constraint in vector form.
      * i.e. returns delC(x)
      */
-    inline Eigen::VectorXd gradient() const
+    inline VecXr gradient() const
     {
-        const Eigen::Matrix3d F = _computeF();
-        const double C = _evaluate(F);
+        const Mat3r F = _computeF();
+        const Real C = _evaluate(F);
 
         return _gradient(F, C);
         
@@ -47,8 +47,8 @@ class DeviatoricConstraint : public ElementConstraint
      */
     inline Constraint::ValueAndGradient evaluateWithGradient() const
     {
-        const Eigen::Matrix3d F = _computeF();
-        const double C = _evaluate(F);
+        const Mat3r F = _computeF();
+        const Real C = _evaluate(F);
         return ValueAndGradient(C, _gradient(F, C));
     }
 
@@ -58,10 +58,10 @@ class DeviatoricConstraint : public ElementConstraint
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      */
-    inline void evaluate(double* C) const
+    inline void evaluate(Real* C) const
     {
-        double F[9];
-        double X[9];
+        Real F[9];
+        Real X[9];
         _computeF(F, X);
         _evaluate(C, F);
     }
@@ -71,12 +71,12 @@ class DeviatoricConstraint : public ElementConstraint
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    inline void gradient(double* grad) const
+    inline void gradient(Real* grad) const
     {
-        double F[9];
-        double X[9];
+        Real F[9];
+        Real X[9];
         _computeF(F, X);
-        double C;
+        Real C;
         _evaluate(&C, F);                   // we need C(x) since it is used in the gradient calculation
         _gradient(grad, &C, F);
     }
@@ -89,10 +89,10 @@ class DeviatoricConstraint : public ElementConstraint
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    inline void evaluateWithGradient(double* C, double* grad) const
+    inline void evaluateWithGradient(Real* C, Real* grad) const
     {
-        double F[9];
-        double X[9];
+        Real F[9];
+        Real X[9];
         _computeF(F, X);
         _evaluate(C, F);
         _gradient(grad, C, F);
@@ -103,7 +103,7 @@ class DeviatoricConstraint : public ElementConstraint
     /** Helper method to evaluate the constraint given the deformation gradient, F.
      * Avoids the need to recompute F if we already have it.
      */
-    inline double _evaluate(const Eigen::Matrix3d& F) const
+    inline Real _evaluate(const Mat3r& F) const
     {
         assert(0);
         return std::sqrt(F.col(0).squaredNorm() + F.col(1).squaredNorm() + F.col(2).squaredNorm());
@@ -112,13 +112,13 @@ class DeviatoricConstraint : public ElementConstraint
     /** Helper method to evaluate the constraint gradient given the deformation gradient, F.
      * Avoids the need to recompute F if we already have it.
      */
-    inline Eigen::VectorXd _gradient(const Eigen::Matrix3d& F, const double C) const
+    inline VecXr _gradient(const Mat3r& F, const Real C) const
     {
         assert(0);
 
-        Eigen::Matrix3d prod = 1/C * F * _Q.transpose();
+        Mat3r prod = 1/C * F * _Q.transpose();
 
-        Eigen::VectorXd grad = Eigen::VectorXd::Zero(_gradient_vector_size);
+        VecXr grad = VecXr::Zero(_gradient_vector_size);
         grad(Eigen::seq(_gradient_vector_index[0],_gradient_vector_index[0]+2)) = prod.col(0);
         grad(Eigen::seq(_gradient_vector_index[1],_gradient_vector_index[1]+2)) = prod.col(1);
         grad(Eigen::seq(_gradient_vector_index[2],_gradient_vector_index[2]+2)) = prod.col(2);
@@ -130,7 +130,7 @@ class DeviatoricConstraint : public ElementConstraint
     /** Helper method to evaluate the constraint given the deformation gradient, F, using pre-allocated memory.
      * Avoids the need to recompute F if we already have it.
      */
-    inline void _evaluate(double* C, double* F) const
+    inline void _evaluate(Real* C, Real* F) const
     {
         // C = frob(F)
         *C = std::sqrt(F[0]*F[0] + F[1]*F[1] + F[2]*F[2] + F[3]*F[3] + F[4]*F[4] + F[5]*F[5] + F[6]*F[6] + F[7]*F[7] + F[8]*F[8]);
@@ -139,7 +139,7 @@ class DeviatoricConstraint : public ElementConstraint
     /** Helper method to evaluate the constraint gradient given the deformation gradient, F, useing pre-allocated memory.
      * Avoids the need to recompute F and C(x) if we already have it.
      */
-    inline void _gradient(double* grad, double* C, double* F) const
+    inline void _gradient(Real* grad, Real* C, Real* F) const
     {
         // for A = 1/C * F * Q^T,
         // 1st column of A is delC wrt 1st position
@@ -148,7 +148,7 @@ class DeviatoricConstraint : public ElementConstraint
         // delC wrt 4th position is (-1st column - 2nd column - 3rd column)
         // see supplementary material of Macklin paper for more details
 
-        double inv_C = 1.0/(*C);
+        Real inv_C = 1.0/(*C);
 
         // F is column major
         // calculation of delC wrt 1st position

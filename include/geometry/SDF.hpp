@@ -1,7 +1,7 @@
 #ifndef __SDF_HPP
 #define __SDF_HPP
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 namespace Geometry
 {
@@ -21,13 +21,13 @@ class SDF
      * @param x - the point at which to evaluate the SDF
      * @returns the distance from x to the shape boundary ( F(x) )
      */
-    virtual double evaluate(const Eigen::Vector3d& x) const = 0;
+    virtual Real evaluate(const Vec3r& x) const = 0;
 
     /** Evaluates the gradient of F at x.
      * @param x - the point at which to evaluate the graient of the SDF
      * @returns the gradient of the SDF at x.
      */
-    virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const = 0;
+    virtual Vec3r gradient(const Vec3r& x) const = 0;
 
 };
 

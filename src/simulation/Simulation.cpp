@@ -164,7 +164,7 @@ void Simulation::update()
     while(_time < _end_time)
     {
         // the elapsed seconds in wall time since the simulation has started
-        double wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
+        Real wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
         // if the simulation is ahead of the current elapsed wall time, stall
         if (_sim_mode == SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
         {
@@ -276,7 +276,7 @@ void Simulation::notifyMouseButtonPressed(int /* button */, int /* action */, in
     // do nothing
 }
 
-void Simulation::notifyMouseMoved(double /* x */, double /* y */)
+void Simulation::notifyMouseMoved(Real /* x */, Real /* y */)
 {
     // do nothing
 }

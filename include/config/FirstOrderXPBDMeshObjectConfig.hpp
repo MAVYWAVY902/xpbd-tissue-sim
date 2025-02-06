@@ -34,7 +34,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
     /** Static predefined default for residual policy */
     // static std::optional<FirstOrderXPBDResidualPolicy>& DEFAULT_RESIDUAL_POLICY() { static std::optional<FirstOrderXPBDResidualPolicy> residual_policy(FirstOrderXPBDResidualPolicy::EVERY_SUBSTEP); return residual_policy; }
 
-    static std::optional<double>& DEFAULT_DAMPING_MULTIPLIER() { static std::optional<double> damping(1); return damping; }
+    static std::optional<Real>& DEFAULT_DAMPING_MULTIPLIER() { static std::optional<Real> damping(1); return damping; }
 
     // static std::map<std::string, FirstOrderXPBDSolveMode>& SOLVE_MODE_OPTIONS() 
     // {
@@ -73,18 +73,18 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
     // Getters
     // std::optional<unsigned> numSolverIters() const { return _num_solver_iters.value; }
     // std::optional<FirstOrderXPBDSolveMode> solveMode() const { return _solve_mode.value; }
-    // std::optional<double> dampingStiffness() const { return _damping_stiffness.value; }
+    // std::optional<Real> dampingStiffness() const { return _damping_stiffness.value; }
     // std::optional<FirstOrderXPBDResidualPolicy> residualPolicy() const { return _residual_policy.value; }
-    std::optional<double> dampingMultiplier() const { return _damping_multiplier.value; }
-    // std::optional<double> gScaling() const { return _g_scaling.value; }
+    std::optional<Real> dampingMultiplier() const { return _damping_multiplier.value; }
+    // std::optional<Real> gScaling() const { return _g_scaling.value; }
 
     protected:
     // Parameters
     // ConfigParameter<unsigned> _num_solver_iters;
     // ConfigParameter<FirstOrderXPBDSolveMode> _solve_mode;
-    // ConfigParameter<double> _damping_stiffness;
+    // ConfigParameter<Real> _damping_stiffness;
     // ConfigParameter<FirstOrderXPBDResidualPolicy> _residual_policy;
-    ConfigParameter<double> _damping_multiplier;
+    ConfigParameter<Real> _damping_multiplier;
 };
 
 #endif // __FIRST_ORDER_XPBD_MESH_OBJECT_CONFIG_HPP

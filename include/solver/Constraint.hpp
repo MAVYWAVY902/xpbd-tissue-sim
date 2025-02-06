@@ -2,7 +2,7 @@
 #define __CONSTRAINT_HPP
 
 #include <vector>
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 #include "simobject/XPBDMeshObject.hpp"
 
@@ -18,10 +18,10 @@ struct PositionReference
 {
     const Sim::XPBDMeshObject* obj;        // pointer to the MeshObject the position belongs to
     int index;             // the index of this position in the array of vertices
-    double* position_ptr;       // a direct pointer to the position - points to a data block owned by obj's vertices matrix
-    double* prev_position_ptr;  // a direct pointer to the previous position - points to a data block owned by obj's previous positions matrix
-    double inv_mass;            // store the inverse mass for quick lookup
-    double num_constraints;     // number of constraints affect this position - stored here for quick lookup
+    Real* position_ptr;       // a direct pointer to the position - points to a data block owned by obj's vertices matrix
+    Real* prev_position_ptr;  // a direct pointer to the previous position - points to a data block owned by obj's previous positions matrix
+    Real inv_mass;            // store the inverse mass for quick lookup
+    Real num_constraints;     // number of constraints affect this position - stored here for quick lookup
 
     /** Default constructor */
     PositionReference()
@@ -69,10 +69,10 @@ class Constraint
 {
     public:
 
-    typedef std::pair<double, Eigen::VectorXd> ValueAndGradient;
+    typedef std::pair<Real, VecXr> ValueAndGradient;
 
     /** Create a constraint from PositionReferences and an associated compliance (which is by default 0, indicating a hard constraint). */
-    Constraint(const std::vector<PositionReference>& positions, const double alpha = 0)
+    Constraint(const std::vector<PositionReference>& positions, const Real alpha = 0)
         : _alpha(alpha), _positions(positions)
     {
         // default information about how the gradient vector should be formatted (see variables for more description)
@@ -87,12 +87,12 @@ class Constraint
     /** Evaluates the current value of this constraint.
      * i.e. returns C(x)
      */
-    inline virtual double evaluate() const = 0;
+    inline virtual Real evaluate() const = 0;
 
     /** Returns the gradient of this constraint in vector form.
      * i.e. returns delC(x)
      */
-    inline virtual Eigen::VectorXd gradient() const = 0;
+    inline virtual VecXr gradient() const = 0;
 
     /** Returns the value and gradient of this constraint.
      * i.e. returns C(x) and delC(x) together.
@@ -107,7 +107,7 @@ class Constraint
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      */
-    inline virtual void evaluate(double* C) const = 0;
+    inline virtual void evaluate(Real* C) const = 0;
 
 
     /** Computes the gradient of this constraint in vector form with pre-allocated memory.
@@ -115,7 +115,7 @@ class Constraint
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    inline virtual void gradient(double* grad) const = 0;
+    inline virtual void gradient(Real* grad) const = 0;
 
 
     /** Computes the value and gradient of this constraint with pre-allocated memory.
@@ -126,7 +126,7 @@ class Constraint
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    inline virtual void evaluateWithGradient(double* C, double* grad) const = 0;
+    inline virtual void evaluateWithGradient(Real* C, Real* grad) const = 0;
 
 
     /** Returns the number of distinct positions needed by this constraint. */
@@ -139,7 +139,7 @@ class Constraint
     // inline virtual size_t memoryNeeded() const = 0;
     
     /** Returns the compliance for this constraint. */
-    double alpha() const { return _alpha; }
+    Real alpha() const { return _alpha; }
 
     /** Returns true if this constraints is an inequality, false otherwise.
      * Usually, this constraints are equalities, i.e. C(x) = 0, so by default it returns false.
@@ -160,7 +160,7 @@ class Constraint
     void setGradientVectorIndex(const int coord_index, const int gradient_index) { _gradient_vector_index[coord_index] = gradient_index; }
 
     protected:
-    double _alpha;      // Compliance for this constraint
+    Real _alpha;      // Compliance for this constraint
 
     /** Size of the gradient vector.
      * By default, the size of the gradient vector is simply the number of coordinates affected by this constraint.

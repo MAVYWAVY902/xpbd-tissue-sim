@@ -5,7 +5,7 @@
 #include "geometry/Mesh.hpp"
 #include "config/MeshObjectConfig.hpp"
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 namespace Graphics
 {
@@ -56,7 +56,7 @@ class MeshGraphicsObject : public GraphicsObject
     /** For now, mesh has a constant coloring
      * Use a 4-vector, RGBA format
      */
-    Eigen::Vector4d _color;
+    Vec4r _color;
 };
 
 } // namespace Graphics

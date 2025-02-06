@@ -28,15 +28,15 @@ class ConstraintProjector
      */
     struct ConstraintProjectorState
     {
-        double _dt;         // the size of the time step used during constraint projection
-        std::vector<double> _lambda;            // Lagrange multipliers for this constraint
+        Real _dt;         // the size of the time step used during constraint projection
+        std::vector<Real> _lambda;            // Lagrange multipliers for this constraint
         std::vector<Constraint*> _constraints;  // constraint(s) to be projected simultaneously
         std::vector<PositionReference> _positions; // position(s) associated with the constraints
     };
 
     public:
 
-    explicit ConstraintProjector(std::vector<Constraint*> constraints, const double dt)
+    explicit ConstraintProjector(std::vector<Constraint*> constraints, const Real dt)
         : _state(std::make_shared<ConstraintProjectorState>()) 
         
     {
@@ -119,19 +119,19 @@ class ConstraintProjector
      * @param data_ptr - a pointer to a block of pre-allocated data, assumed to be at least as large as that given by memoryNeeded(). Used to store results from computations, but not necessarily to be used as an output parameter.
      * @param coordinate_updates_ptr (OUTPUT) - a pointer to an array of "coordinate updates" with structure [Delta x1, Delta y1, Delta z1, Delta x2, Delta y2, Delta z2, etc.). Assumed to be at least numCoordintes() x 1. 
      */
-    inline void project(double* data_ptr, double* coordinate_updates_ptr)
+    inline void project(Real* data_ptr, Real* coordinate_updates_ptr)
     {
         // point the data member variable to point to the pre-allocated data block
         _data = data_ptr;
 
         // extract pointers to the individual vectors/matrices to be stored in the pre-allocated data block
-        double* C_ptr = _C_ptr();
-        double* delC_ptr = _delC_ptr();
-        double* M_inv_ptr = _M_inv_ptr();
-        double* alpha_tilde_ptr = _alpha_tilde_ptr();
-        double* lhs_ptr = _LHS_ptr();
-        double* rhs_ptr = _RHS_ptr();
-        double* dlam_ptr = _dlam_ptr();
+        Real* C_ptr = _C_ptr();
+        Real* delC_ptr = _delC_ptr();
+        Real* M_inv_ptr = _M_inv_ptr();
+        Real* alpha_tilde_ptr = _alpha_tilde_ptr();
+        Real* lhs_ptr = _LHS_ptr();
+        Real* rhs_ptr = _RHS_ptr();
+        Real* dlam_ptr = _dlam_ptr();
 
         // evaluate constraints and their gradients
         _evaluateConstraintsAndGradients(C_ptr, delC_ptr);
@@ -167,7 +167,7 @@ class ConstraintProjector
         else if (numConstraints() == 2)
         {
             // use an analytical system solve if it is 2x2 - this should be faster than using Eigen
-            const double det = lhs_ptr[0]*lhs_ptr[3] - lhs_ptr[1]*lhs_ptr[2];
+            const Real det = lhs_ptr[0]*lhs_ptr[3] - lhs_ptr[1]*lhs_ptr[2];
 
             dlam_ptr[0] = (rhs_ptr[0]*lhs_ptr[3] - rhs_ptr[1]*lhs_ptr[2]) / det;
             dlam_ptr[1] = (rhs_ptr[1]*lhs_ptr[0] - rhs_ptr[0]*lhs_ptr[1]) / det;
@@ -175,9 +175,9 @@ class ConstraintProjector
         else
         {
             // if system is larger than 2x2, use Eigen direct solver - probably slow
-            Eigen::Map<Eigen::MatrixXd> lhs_mat(lhs_ptr, numConstraints(), numConstraints());
-            Eigen::Map<Eigen::VectorXd> dlam_vec(dlam_ptr, numConstraints());
-            Eigen::Map<Eigen::VectorXd> rhs_vec(rhs_ptr, numConstraints());
+            Eigen::Map<MatXr> lhs_mat(lhs_ptr, numConstraints(), numConstraints());
+            Eigen::Map<VecXr> dlam_vec(dlam_ptr, numConstraints());
+            Eigen::Map<VecXr> rhs_vec(rhs_ptr, numConstraints());
 
             dlam_vec = lhs_mat.ldlt().solve(rhs_vec);
         }
@@ -206,14 +206,14 @@ class ConstraintProjector
      * @param data_ptr - a pointer to a block of pre-allocated data, assumed to be at least as large as the size given by memoryNeeded().
      * @param result (OUTPUT) - a pointer to the first element of the result vector that will store the constraint residual vector. Expects it to be numConstraints x 1.
      */
-    inline void constraintEquation(double* data_ptr, double* result)
+    inline void constraintEquation(Real* data_ptr, Real* result)
     {
         // point the data member variable to point to the pre-allocated data block
         _data = data_ptr;
 
-        double* C_ptr = _C_ptr();
-        double* delC_ptr = _delC_ptr();
-        double* alpha_tilde_ptr = _alpha_tilde_ptr();
+        Real* C_ptr = _C_ptr();
+        Real* delC_ptr = _delC_ptr();
+        Real* alpha_tilde_ptr = _alpha_tilde_ptr();
 
         // evaluate constraints and their gradients
         _evaluateConstraintsAndGradients(C_ptr, delC_ptr);
@@ -236,13 +236,13 @@ class ConstraintProjector
     inline int memoryNeeded() const
     {
         int num_bytes = 0;
-        num_bytes += numCoordinates() * numConstraints() * sizeof(double); // size of the gradient matrix
-        num_bytes += numConstraints() * sizeof(double); // size of constraint vector
-        num_bytes += numPositions() * sizeof(double); // size needed for M^-1
-        num_bytes += numConstraints() * sizeof(double); // size needed for alpha_tilde
-        num_bytes += numConstraints() * numConstraints() * sizeof(double); // size needed for LHS matrix
-        num_bytes += numConstraints()* sizeof(double); // size needed for RHS vector
-        num_bytes += numConstraints()* sizeof(double); // size needed for dlam vector
+        num_bytes += numCoordinates() * numConstraints() * sizeof(Real); // size of the gradient matrix
+        num_bytes += numConstraints() * sizeof(Real); // size of constraint vector
+        num_bytes += numPositions() * sizeof(Real); // size needed for M^-1
+        num_bytes += numConstraints() * sizeof(Real); // size needed for alpha_tilde
+        num_bytes += numConstraints() * numConstraints() * sizeof(Real); // size needed for LHS matrix
+        num_bytes += numConstraints()* sizeof(Real); // size needed for RHS vector
+        num_bytes += numConstraints()* sizeof(Real); // size needed for dlam vector
 
         return num_bytes;
     }
@@ -254,12 +254,12 @@ class ConstraintProjector
     inline const std::vector<PositionReference>& positions() const { return _state->_positions; }
 
     /** Returns the vector of the Lagrange multipliers associated with the constraints projected by this ConstraintProjector. */
-    inline const std::vector<double>& lambda() const { return _state->_lambda; }
+    inline const std::vector<Real>& lambda() const { return _state->_lambda; }
 
     /** Computes the alpha tilde matrix.
      * @param alpha_tilde_ptr (OUTPUT) - the pointer to the (currently empty) alpha tilde "matrix". The diagonal matrix is represented as a vector that is numConstraints x 1.
      */
-    virtual void alphaTilde(double* alpha_tilde_ptr) const
+    virtual void alphaTilde(Real* alpha_tilde_ptr) const
     {
         for (int i = 0; i < numConstraints(); i++)
         {
@@ -270,7 +270,7 @@ class ConstraintProjector
     /** Computes the inverse mass matrix (i.e. M^-1).
      * @param inv_M_ptr (OUTPUT) - the pointer to the (currently empty) mass "matrix". The diagonal matrix is represented as a vector that is numPositions x 1. 
      */
-    void MInv(double* inv_M_ptr) const
+    void MInv(Real* inv_M_ptr) const
     {
         for (int i = 0; i < numPositions(); i++)
         {
@@ -282,7 +282,7 @@ class ConstraintProjector
      * @param index - the constraint index
      * @param val - the new Lagrange multiplier
      */
-    virtual void setLambda(const int index, const double val) { _state->_lambda[index] = val; }
+    virtual void setLambda(const int index, const Real val) { _state->_lambda[index] = val; }
 
     /** Whether or not this constraint needs the primary residual to do its constraint projection.
      * By default, this is false, but can be overridden by derived classes to be true if a constraint needs the primary residual.
@@ -302,7 +302,7 @@ class ConstraintProjector
      * @param C_ptr - the pointer to the constraint vector. Expects it to be numConstraints x 1.
      * @param delC_ptr - the pointer to the delC matrix. Expects it to be row-major and numConstraints x numCoordinates.
     */
-    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr)
+    inline virtual void _evaluateConstraintsAndGradients(Real* C_ptr, Real* delC_ptr)
     {
         for (int ci = 0; ci < numConstraints(); ci++)
         {
@@ -318,7 +318,7 @@ class ConstraintProjector
      * @param alpha_tilde_ptr - the pointer to the alpha_tilde "matrix". Expects it to be a vector and numConstraints x 1.
      * @param lhs_ptr (OUTPUT) - the pointer to the (currently empty) LHS matrix. Expects it to be column-major and numConstraints x numConstraints.
      */
-    inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr)
+    inline virtual void _LHS(const Real* delC_ptr, const Real* M_inv_ptr, const Real* alpha_tilde_ptr, Real* lhs_ptr)
     {
         // set LHS matrix to 0 with alpha_tilde along the diagonal
         for (int ci = 0; ci < numConstraints(); ci++)
@@ -341,13 +341,13 @@ class ConstraintProjector
         // add up contributions from delC*M^-1*delC^T
         for (int ci = 0; ci < numConstraints(); ci++)
         {
-            const double* delC_i = delC_ptr + numCoordinates()*ci;        // pointer to the delC vector of the ith constraint (1 x numCoordinates)
+            const Real* delC_i = delC_ptr + numCoordinates()*ci;        // pointer to the delC vector of the ith constraint (1 x numCoordinates)
             for (int cj = ci; cj < numConstraints(); cj++)     // delC*M^-1*delC^T is symmetric, so we only need to iterate the upper triangle
             {
-                const double* delC_j = delC_ptr + numCoordinates()*cj;    // pointer to the delC vector of the jth constraint (1 x numCoordinates)
+                const Real* delC_j = delC_ptr + numCoordinates()*cj;    // pointer to the delC vector of the jth constraint (1 x numCoordinates)
                 for (int pi = 0; pi < numPositions(); pi++)    
                 {
-                    const double inv_m = M_inv_ptr[pi];
+                    const Real inv_m = M_inv_ptr[pi];
                     // add the contribution for each position (inv_m times the dot product of the constraint gradient vectors)
                     lhs_ptr[cj*numConstraints() + ci] += inv_m * (delC_i[3*pi]*delC_j[3*pi] + delC_i[3*pi+1]*delC_j[3*pi+1] + delC_i[3*pi+2]*delC_j[3*pi+2]);
                 }
@@ -364,7 +364,7 @@ class ConstraintProjector
      * @param alpha_tilde_ptr - the pointer to the alpha_tilde "matrix". Expects it to be a vector and numConstraints x 1.
      * @param rhs_ptr (OUTPUT) - the pointer to the (currently empty) RHS vector. Expects it to be numConstraints x 1.
      */
-    inline virtual void _RHS(const double* C_ptr, const double* /* delC_ptr */, const double* alpha_tilde_ptr, double* rhs_ptr)
+    inline virtual void _RHS(const Real* C_ptr, const Real* /* delC_ptr */, const Real* alpha_tilde_ptr, Real* rhs_ptr)
     {
         for (int ci = 0; ci < numConstraints(); ci++)
         {
@@ -381,7 +381,7 @@ class ConstraintProjector
      * @param dlam_ptr - the pointer to the Delta lambda vector. Expects it to be numConstraints x 1.
      * @param pos_update_ptr (OUTPUT) - the pointer to the (currently empty) position update vector. Expects it to be a 3-vector.
      */
-    inline virtual void _getPositionUpdate(const int position_index, const double* delC_ptr, const double inv_m, const double* dlam_ptr, double* pos_update_ptr) const
+    inline virtual void _getPositionUpdate(const int position_index, const Real* delC_ptr, const Real inv_m, const Real* dlam_ptr, Real* pos_update_ptr) const
     {
         pos_update_ptr[0] = 0;
         pos_update_ptr[1] = 0;
@@ -401,7 +401,7 @@ class ConstraintProjector
     /** Returns a pointer to the start of the constraint evaluations (i.e. the C(x) vector).
      * This vector has size numConstraints (i.e. a single Real for each constraint)
      */
-    inline double* _C_ptr() const { return _data; }
+    inline Real* _C_ptr() const { return _data; }
 
     /** Returns a pointer to the start of the constraint gradient matrix (i.e. delC(x) matrix).
      * The constraint gradient is represented in memory as a flat vector - the first numCooordinates values are the gradient of the first constraint,
@@ -409,33 +409,33 @@ class ConstraintProjector
      * 
      * The gradient matrix has size numConstraints x numCoordinates.
      */
-    inline double* _delC_ptr() const { return _C_ptr() + numConstraints(); }
+    inline Real* _delC_ptr() const { return _C_ptr() + numConstraints(); }
 
     /** Returns a pointer to the start of the inverse mass matrix (i.e. M^-1 matrix).
      * The inverse mass matrix is diagonal and has duplicate information so it is represented by a vector that is numPositions long
      *  (i.e. each position has a unique mass)
      */
-    inline double* _M_inv_ptr() const { return _delC_ptr() + numConstraints()*numCoordinates(); }
+    inline Real* _M_inv_ptr() const { return _delC_ptr() + numConstraints()*numCoordinates(); }
 
     /** Returns a pointer to the start of the alpha_tilde matrix.
      * The alpha_tilde matrix is diagonal so it is represented by a vector that is numConstraints long.
      */
-    inline double* _alpha_tilde_ptr() const { return _M_inv_ptr() + numPositions(); }
+    inline Real* _alpha_tilde_ptr() const { return _M_inv_ptr() + numPositions(); }
 
     /** Returns a pointer to the start of the LHS matrix (i.e. delC * M^-1 * delC + alpha_tilde).
      * The LHS matrix has size numConstraints x numConstraints.
      */
-    inline double* _LHS_ptr() const { return _alpha_tilde_ptr() + numConstraints(); }
+    inline Real* _LHS_ptr() const { return _alpha_tilde_ptr() + numConstraints(); }
 
     /** Returns a pointer to the start of the RHS vector (i.e. -C - alpha_tilde * lambda).
      * The RHS matrix has length of numConstraints.
      */
-    inline double* _RHS_ptr() const { return _LHS_ptr() + numConstraints() * numConstraints(); }
+    inline Real* _RHS_ptr() const { return _LHS_ptr() + numConstraints() * numConstraints(); }
 
     /** Retruns a pointer to the start of the delta_lambda vector.
      * The delta_lambda vector has length numConstraints.
      */
-    inline double* _dlam_ptr() const { return _RHS_ptr() + numConstraints(); }
+    inline Real* _dlam_ptr() const { return _RHS_ptr() + numConstraints(); }
 
     protected:
 
@@ -451,7 +451,7 @@ class ConstraintProjector
     /* a generic data pointer with space to perform computations efficiently
         - trying to avoid dynamically allocating data inside the loop
     */
-    double* _data;
+    Real* _data;
 };
 
 

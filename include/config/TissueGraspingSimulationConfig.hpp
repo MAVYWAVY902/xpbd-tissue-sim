@@ -12,9 +12,9 @@ enum SimulationInputDevice
 class TissueGraspingSimulationConfig : public OutputSimulationConfig
 {
     /** Static predefined default for simulation time step */
-    static std::optional<double>& DEFAULT_GRASP_SIZE() { static std::optional<double> grasp_size(0.001); return grasp_size; }
+    static std::optional<Real>& DEFAULT_GRASP_SIZE() { static std::optional<Real> grasp_size(0.001); return grasp_size; }
     /** Static predefined efault for stretch time */
-    static std::optional<double>& DEFAULT_Z_SCALING() { static std::optional<double> z_scaling(0.001); return z_scaling; }
+    static std::optional<Real>& DEFAULT_Z_SCALING() { static std::optional<Real> z_scaling(0.001); return z_scaling; }
     /** Predefined default for input device */
     static std::optional<SimulationInputDevice>& DEFAULT_INPUT_DEVICE() { static std::optional<SimulationInputDevice> input_device(SimulationInputDevice::MOUSE); return input_device; }
 
@@ -36,14 +36,14 @@ class TissueGraspingSimulationConfig : public OutputSimulationConfig
         _extractParameter("fixed-faces-filename", node, _fixed_faces_filename);
     }
 
-    std::optional<double> graspSize() const { return _grasp_size.value; }
-    std::optional<double> zScaling() const { return _z_scaling.value; }
+    std::optional<Real> graspSize() const { return _grasp_size.value; }
+    std::optional<Real> zScaling() const { return _z_scaling.value; }
     std::optional<SimulationInputDevice> inputDevice() const { return _input_device.value; }
     std::optional<std::string> fixedFacesFilename() const { return _fixed_faces_filename.value; }
 
     protected:
-    ConfigParameter<double> _grasp_size; // in m
-    ConfigParameter<double> _z_scaling;
+    ConfigParameter<Real> _grasp_size; // in m
+    ConfigParameter<Real> _z_scaling;
     ConfigParameter<SimulationInputDevice> _input_device;
     ConfigParameter<std::string> _fixed_faces_filename;
 };

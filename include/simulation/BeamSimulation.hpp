@@ -2,7 +2,7 @@
 #define __BEAM_SIMULATION_HPP
 
 #include "OutputSimulation.hpp"
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 namespace Sim
 {
@@ -20,7 +20,7 @@ class BeamSimulation : public OutputSimulation
     virtual void printInfo() const;
 
     std::vector<unsigned> _beams_tip_vertex;
-    std::vector<Eigen::Vector3d> _beams_tip_start;
+    std::vector<Vec3r> _beams_tip_start;
 };
 
 } // namespace Sim

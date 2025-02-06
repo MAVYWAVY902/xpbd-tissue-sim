@@ -31,12 +31,12 @@ class ElementConstraint : public Constraint
         // so we can calculate Q and volume
 
         // calculate Q
-        const Eigen::Vector3d& X0 = Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr);
-        const Eigen::Vector3d& X1 = Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr);
-        const Eigen::Vector3d& X2 = Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr);
-        const Eigen::Vector3d& X3 = Eigen::Map<Eigen::Vector3d>(_positions[3].position_ptr);
+        const Vec3r& X0 = Eigen::Map<Vec3r>(_positions[0].position_ptr);
+        const Vec3r& X1 = Eigen::Map<Vec3r>(_positions[1].position_ptr);
+        const Vec3r& X2 = Eigen::Map<Vec3r>(_positions[2].position_ptr);
+        const Vec3r& X3 = Eigen::Map<Vec3r>(_positions[3].position_ptr);
 
-        Eigen::Matrix3d X;
+        Mat3r X;
         X.col(0) = (X0 - X3);
         X.col(1) = (X1 - X3);
         X.col(2) = (X2 - X3);
@@ -51,14 +51,14 @@ class ElementConstraint : public Constraint
 
     /** Compute the deformation gradient and return it, using the 4 positions referenced by this constraint.
      */
-    inline Eigen::Matrix3d _computeF() const
+    inline Mat3r _computeF() const
     {
-        Eigen::Matrix3d X;
-        const Eigen::Vector3d& X3 = Eigen::Map<Eigen::Vector3d>(_positions[3].position_ptr);
+        Mat3r X;
+        const Vec3r& X3 = Eigen::Map<Vec3r>(_positions[3].position_ptr);
         // create the deformed shape matrix from current deformed vertex positions
-        X.col(0) = Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) - X3;
-        X.col(1) = Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) - X3;
-        X.col(2) = Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr) - X3;
+        X.col(0) = Eigen::Map<Vec3r>(_positions[0].position_ptr) - X3;
+        X.col(1) = Eigen::Map<Vec3r>(_positions[1].position_ptr) - X3;
+        X.col(2) = Eigen::Map<Vec3r>(_positions[2].position_ptr) - X3;
 
         // compute and return F
         return X * _Q;
@@ -68,30 +68,30 @@ class ElementConstraint : public Constraint
      * @param F (OUTPUT) - the pointer to the (currently empty) 3x3 deformation gradient matrix. Expects that F is COLUMN-MAJOR and 3x3.
      * @param X (OUTPUT) - the pointer to the (currently empty) 3x3 deformed state matrix. Expects that X is COLUMN-MAJOR and 3x3.
      */
-    inline void _computeF(double* F, double* X) const
+    inline void _computeF(Real* F, Real* X) const
     {
-        // Eigen::Map<Eigen::Matrix3d> X_mat(X);
-        // Eigen::Map<Eigen::Matrix3d> F_mat(F);
-        const double* X0 = _positions[0].position_ptr;
-        const double* X1 = _positions[1].position_ptr;
-        const double* X2 = _positions[2].position_ptr;
-        const double* X3 = _positions[3].position_ptr;
+        // Eigen::Map<Mat3r> X_mat(X);
+        // Eigen::Map<Mat3r> F_mat(F);
+        const Real* X0 = _positions[0].position_ptr;
+        const Real* X1 = _positions[1].position_ptr;
+        const Real* X2 = _positions[2].position_ptr;
+        const Real* X3 = _positions[3].position_ptr;
         // create the deformed shape matrix from current deformed vertex positions
         // X_mat.col(0) = _positions[0].position() - X3;
         // X_mat.col(1) = _positions[1].position() - X3;
         // X_mat.col(2) = _positions[2].position() - X3;
 
-        // const Eigen::Vector3d X3 = Eigen::Map<Eigen::Vector3d>(_positions[3].position_ptr);
+        // const Vec3r X3 = Eigen::Map<Vec3r>(_positions[3].position_ptr);
         // create the deformed shape matrix from current deformed vertex positions
-        // X_mat.col(0) = Eigen::Map<Eigen::Vector3d>(_positions[0].position_ptr) - X3;
-        // X_mat.col(1) = Eigen::Map<Eigen::Vector3d>(_positions[1].position_ptr) - X3;
-        // X_mat.col(2) = Eigen::Map<Eigen::Vector3d>(_positions[2].position_ptr) - X3;
+        // X_mat.col(0) = Eigen::Map<Vec3r>(_positions[0].position_ptr) - X3;
+        // X_mat.col(1) = Eigen::Map<Vec3r>(_positions[1].position_ptr) - X3;
+        // X_mat.col(2) = Eigen::Map<Vec3r>(_positions[2].position_ptr) - X3;
 
         X[0] = X0[0]-X3[0]; X[1] = X0[1]-X3[1]; X[2] = X0[2]-X3[2];
         X[3] = X1[0]-X3[0]; X[4] = X1[1]-X3[1]; X[5] = X1[2]-X3[2];
         X[6] = X2[0]-X3[0]; X[7] = X2[1]-X3[1]; X[8] = X2[2]-X3[2];
         
-        // X_mat = Eigen::Matrix3d::Identity();
+        // X_mat = Mat3r::Identity();
         // compute F with Eigen matrix multiplication
         // this should modify the data pointed to by F
         // F_mat = X_mat * _Q;
@@ -112,8 +112,8 @@ class ElementConstraint : public Constraint
     }
 
     protected:
-    Eigen::Matrix3d _Q;
-    double _volume;
+    Mat3r _Q;
+    Real _volume;
 
 };
 

@@ -13,7 +13,7 @@ enum class DeformationType
 class InitialDeformationSimulationConfig : public OutputSimulationConfig
 {
     /** Static predefined default for deformation factor */
-    static std::optional<double>& DEFAULT_DEFORMATION_FACTOR() { static std::optional<double> deformation_size(1); return deformation_size; }
+    static std::optional<Real>& DEFAULT_DEFORMATION_FACTOR() { static std::optional<Real> deformation_size(1); return deformation_size; }
     /** Static predefined default for stretch time */
     static std::optional<DeformationType>& DEFAULT_DEFORMATION_TYPE() { static std::optional<DeformationType> deformation_type(DeformationType::VOLUMETRIC_EXPANSION); return deformation_type; }
 
@@ -36,14 +36,14 @@ class InitialDeformationSimulationConfig : public OutputSimulationConfig
     }
 
     // getters
-    std::optional<double> deformationFactor() const { return _deformation_factor.value; }
+    std::optional<Real> deformationFactor() const { return _deformation_factor.value; }
     std::optional<DeformationType> deformationType() const { return _deformation_type.value; }
 
     protected:
     /** The scale factor of the initial deformation.
      * I.e. for a deformation type of "volumetric-expansion" and a deformation size of 2, this means a volumetric expansion to two times the volume.
      */
-    ConfigParameter<double> _deformation_factor;
+    ConfigParameter<Real> _deformation_factor;
 
     /** The type of initial deformation to perform. */
     ConfigParameter<DeformationType> _deformation_type;

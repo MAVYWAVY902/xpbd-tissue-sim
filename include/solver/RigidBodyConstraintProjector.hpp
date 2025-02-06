@@ -19,7 +19,7 @@ class RigidBodyConstraintProjector : public ConstraintProjector
 {
 
     public:
-    explicit RigidBodyConstraintProjector(Constraint* constraint, const double dt)
+    explicit RigidBodyConstraintProjector(Constraint* constraint, const Real dt)
         : ConstraintProjector(std::vector<Constraint*>({constraint}), dt), rb_constraint(dynamic_cast<RigidBodyConstraint*>(constraint))
     {
         // make sure the constraint that was passed into the constructor is a RigidBodyConstraint
@@ -33,7 +33,7 @@ class RigidBodyConstraintProjector : public ConstraintProjector
      * @param coordinate_updates_ptr (OUTPUT) - a pointer to an array of "coordinate updates" with structure [Delta x1, Delta y1, Delta z1, Delta x2, Delta y2, Delta z2, etc.). Assumed to be at least numCoordintes() x 1.
      * @param rigid_body_updates_ptr (OUTPUT) - a pointer to an array of rigid body updates with structure [Delta position 1, Delta orientation 1, Delta position 2, Delta orientation 2, etc.]. Assumed to be at least 7 x numRigidBodies().
      */
-    inline void project(double* data_ptr, double* coordinate_updates_ptr, double* rigid_body_updates_ptr)
+    inline void project(Real* data_ptr, Real* coordinate_updates_ptr, Real* rigid_body_updates_ptr)
     {
         // project the constraint as normal
         ConstraintProjector::project(data_ptr, coordinate_updates_ptr);
@@ -48,7 +48,7 @@ class RigidBodyConstraintProjector : public ConstraintProjector
             return;
         }
 
-        const double dlam = _dlam_ptr()[0];
+        const Real dlam = _dlam_ptr()[0];
         // compute the update for each rigid body using the corresponding RigidBodyXPBDHelper object
         for (int ri = 0; ri < numRigidBodies(); ri++)
         {
@@ -66,12 +66,12 @@ class RigidBodyConstraintProjector : public ConstraintProjector
      * @param alpha_tilde_ptr - the pointer to the alpha_tilde "matrix". Expects it to be a vector and numConstraints x 1.
      * @param lhs_ptr (OUTPUT) - the pointer to the (currently empty) LHS matrix. Expects it to be column-major and numConstraints x numConstraints.
      */
-    inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr) override
+    inline virtual void _LHS(const Real* delC_ptr, const Real* M_inv_ptr, const Real* alpha_tilde_ptr, Real* lhs_ptr) override
     {
         lhs_ptr[0] = alpha_tilde_ptr[0];
         for (int pi = 0; pi < numPositions(); pi++)    
         {
-            const double inv_m = M_inv_ptr[pi];
+            const Real inv_m = M_inv_ptr[pi];
             // add the contribution for each position (inv_m times the dot product of the constraint gradient vectors)
             lhs_ptr[0] += inv_m * (delC_ptr[3*pi]*delC_ptr[3*pi] + delC_ptr[3*pi+1]*delC_ptr[3*pi+1] + delC_ptr[3*pi+2]*delC_ptr[3*pi+2]);
         }

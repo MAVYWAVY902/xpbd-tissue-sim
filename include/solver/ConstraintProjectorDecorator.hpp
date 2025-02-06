@@ -32,20 +32,20 @@ class ConstraintProjectorDecorator : public ConstraintProjector
 
     inline virtual void initialize() override { _component->initialize(); }
 
-    inline virtual void alphaTilde(double* alpha_tilde_ptr) const override { _component->alphaTilde(alpha_tilde_ptr); }
+    inline virtual void alphaTilde(Real* alpha_tilde_ptr) const override { _component->alphaTilde(alpha_tilde_ptr); }
 
     inline virtual bool usesPrimaryResidual() const override { return _component->usesPrimaryResidual(); }
 
     inline virtual bool usesDamping() const override { return _component->usesDamping(); }
 
     protected:
-    inline virtual void _evaluateConstraintsAndGradients(double* C_ptr, double* delC_ptr) override { _component->_evaluateConstraintsAndGradients(C_ptr, delC_ptr); }
+    inline virtual void _evaluateConstraintsAndGradients(Real* C_ptr, Real* delC_ptr) override { _component->_evaluateConstraintsAndGradients(C_ptr, delC_ptr); }
 
-    inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr) override { _component->_LHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr); }
+    inline virtual void _LHS(const Real* delC_ptr, const Real* M_inv_ptr, const Real* alpha_tilde_ptr, Real* lhs_ptr) override { _component->_LHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr); }
 
-    inline virtual void _RHS(const double* C_ptr, const double* delC_ptr, const double* alpha_tilde_ptr, double* rhs_ptr) override { _component->_RHS(C_ptr, delC_ptr, alpha_tilde_ptr, rhs_ptr); }
+    inline virtual void _RHS(const Real* C_ptr, const Real* delC_ptr, const Real* alpha_tilde_ptr, Real* rhs_ptr) override { _component->_RHS(C_ptr, delC_ptr, alpha_tilde_ptr, rhs_ptr); }
 
-    inline virtual void _getPositionUpdate(const int position_index, const double* delC_ptr, const double inv_m, const double* dlam_ptr, double* pos_update_ptr) const override
+    inline virtual void _getPositionUpdate(const int position_index, const Real* delC_ptr, const Real inv_m, const Real* dlam_ptr, Real* pos_update_ptr) const override
     {
         _component->_getPositionUpdate(position_index, delC_ptr, inv_m, dlam_ptr, pos_update_ptr);
     }
@@ -53,19 +53,19 @@ class ConstraintProjectorDecorator : public ConstraintProjector
 
     protected:
     /** Give access to the component's _LHS() method. Normally this is a protected helper method but ConstraintProjectorDecorator is a friend of ConstraintProjector. */
-    void _componentLHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr) const
+    void _componentLHS(const Real* delC_ptr, const Real* M_inv_ptr, const Real* alpha_tilde_ptr, Real* lhs_ptr) const
     {
         return _component->_LHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr);
     }
 
     /** Give access to the component's _RHS() method. Normally this is a protected helper method but ConstraintProjectorDecorator is a friend of ConstraintProjector. */
-    void _componentRHS(const double* C_ptr, const double* delC_ptr, const double* alpha_tilde_ptr, double* rhs_ptr) const
+    void _componentRHS(const Real* C_ptr, const Real* delC_ptr, const Real* alpha_tilde_ptr, Real* rhs_ptr) const
     {
         return _component->_RHS(C_ptr, delC_ptr, alpha_tilde_ptr, rhs_ptr);
     }
 
     /** Give access to the component's _getPositionUpdate method. Normally this is a protected helper method but ConstraintProjectorDecorator is a friend of ConstraintProjector. */
-    void _componentGetPositionUpdate(const int position_index, const double* delC_ptr, const double inv_m, const double* dlam_ptr, double* pos_update_ptr) const
+    void _componentGetPositionUpdate(const int position_index, const Real* delC_ptr, const Real inv_m, const Real* dlam_ptr, Real* pos_update_ptr) const
     {
         return _component->_getPositionUpdate(position_index, delC_ptr, inv_m, dlam_ptr, pos_update_ptr);
     }
@@ -84,7 +84,7 @@ class WithDamping : public ConstraintProjectorDecorator
 { 
     public:
     /** The additional parameter gamma is the gamma for damping that appears in Equation (26) in the XPBD paper. */
-    WithDamping(std::unique_ptr<ConstraintProjector> component, double gamma)
+    WithDamping(std::unique_ptr<ConstraintProjector> component, Real gamma)
         : ConstraintProjectorDecorator(std::move(component)), _damping_gamma(gamma)
     {
     }
@@ -95,7 +95,7 @@ class WithDamping : public ConstraintProjectorDecorator
     /** Override the _LHS method to include damping in the system matrix (i.e. as in the LHS of Equation (25) in the XPBD paper).
      * This involves each term in the already computed LHS matrix by a factor (1 + gamma).
      */
-    inline virtual void _LHS(const double* delC_ptr, const double* M_inv_ptr, const double* alpha_tilde_ptr, double* lhs_ptr) override
+    inline virtual void _LHS(const Real* delC_ptr, const Real* M_inv_ptr, const Real* alpha_tilde_ptr, Real* lhs_ptr) override
     {
         // first, compute the LHS matrix using the wrapped component's method
         _componentLHS(delC_ptr, M_inv_ptr, alpha_tilde_ptr, lhs_ptr);
@@ -106,7 +106,7 @@ class WithDamping : public ConstraintProjectorDecorator
             for (int cj = 0; cj < numConstraints(); cj++)      // cj is column index
             {
                 // if gammas are different for each constraint, this will be the damping gamma for constraint ci (gammas are the same across a row of LHS)
-                const double gamma = _damping_gamma;    // right now, gamma is the same for all constraints
+                const Real gamma = _damping_gamma;    // right now, gamma is the same for all constraints
                 if (ci == cj)
                 {
                     // if on the diagonal, we need to subtract alpha_tilde here and add it back outside of the multiplication
@@ -123,7 +123,7 @@ class WithDamping : public ConstraintProjectorDecorator
     /** Override the _RHS method to include damping (i.e. as in the RHS of Equation (25) in the XPBD paper).
      * This involves subtracting an additional term that depends on gamma, delC, and the previous positions. 
      */
-    inline virtual void _RHS(const double* C_ptr, const double* delC_ptr, const double* alpha_tilde_ptr, double* rhs_ptr) override
+    inline virtual void _RHS(const Real* C_ptr, const Real* delC_ptr, const Real* alpha_tilde_ptr, Real* rhs_ptr) override
     {
         // first, compute the RHS vector using the wrapped component's method
         _componentRHS(C_ptr, delC_ptr, alpha_tilde_ptr, rhs_ptr);
@@ -131,12 +131,12 @@ class WithDamping : public ConstraintProjectorDecorator
         // now, compute the additional term to be subtracted - i.e. gamma * delC * (x - x_prev)
         for (int ci = 0; ci < numConstraints(); ci++)
         {
-            double delC_x_prev = 0;                                     // accumulate contributions from delC * (x - x_prev)
-            const double* delC_i = delC_ptr + numCoordinates()*ci;      // pointer to constraint gradient of the ci'th constraint
+            Real delC_x_prev = 0;                                     // accumulate contributions from delC * (x - x_prev)
+            const Real* delC_i = delC_ptr + numCoordinates()*ci;      // pointer to constraint gradient of the ci'th constraint
             for (int pi = 0; pi < numPositions(); pi++)
             {
-                const double* pos = _state->_positions[pi].position_ptr;            // current position
-                const double* prev_pos = _state->_positions[pi].prev_position_ptr;  // previous position
+                const Real* pos = _state->_positions[pi].position_ptr;            // current position
+                const Real* prev_pos = _state->_positions[pi].prev_position_ptr;  // previous position
                 delC_x_prev += delC_i[3*pi]*(pos[0] - prev_pos[0]) + delC_i[3*pi+1]*(pos[1] - prev_pos[1]) + delC_i[3*pi+2]*(pos[2] - prev_pos[2]);      // delC_i * (x_i - x_prev_i)
             }
 
@@ -145,7 +145,7 @@ class WithDamping : public ConstraintProjectorDecorator
     }
 
     private:
-    double _damping_gamma;      // the amount of damping, same gamma as in Equation (26) of XPBD paper
+    Real _damping_gamma;      // the amount of damping, same gamma as in Equation (26) of XPBD paper
 };
 
 
@@ -166,7 +166,7 @@ class WithDistributedPrimaryResidual : public ConstraintProjectorDecorator
     }
 
     /** Sets the pointer to the primary residual vector. */
-    void setPrimaryResidual(const double* res_ptr) { _res_ptr = res_ptr; }
+    void setPrimaryResidual(const Real* res_ptr) { _res_ptr = res_ptr; }
 
     /** Indicates that this ConstraintProjector uses the primary residual in its update, which tells the XPBDSolver that it needs to compute the primary residual every iteration. */
     virtual bool usesPrimaryResidual() const override { return true; }
@@ -175,7 +175,7 @@ class WithDistributedPrimaryResidual : public ConstraintProjectorDecorator
     /** Override the _RHS method to include the distributed primary residual.
      * This involves adding an additional term (i.e. delC * M^-1 *  scaled_g).
      */
-    inline virtual void _RHS(const double* C_ptr, const double* delC_ptr, const double* alpha_tilde_ptr, double* rhs_ptr) override
+    inline virtual void _RHS(const Real* C_ptr, const Real* delC_ptr, const Real* alpha_tilde_ptr, Real* rhs_ptr) override
     {
         // first, compute the RHS vector using the wrapped component's method
         _componentRHS(C_ptr, delC_ptr, alpha_tilde_ptr, rhs_ptr);
@@ -185,9 +185,9 @@ class WithDistributedPrimaryResidual : public ConstraintProjectorDecorator
         {
             for (int pi = 0; pi < numPositions(); pi++)
             {
-                const double inv_m = _state->_positions[pi].inv_mass;               // inverse mass of pi'th position
+                const Real inv_m = _state->_positions[pi].inv_mass;               // inverse mass of pi'th position
                 const int index = _state->_positions[pi].index;                // vertex index of pi'th position - used to index the primary residual vector
-                const double g_scaling = static_cast<double>(_state->_positions[pi].num_constraints);   // divisor for the primary residual for the pi'th position
+                const Real g_scaling = static_cast<Real>(_state->_positions[pi].num_constraints);   // divisor for the primary residual for the pi'th position
                 rhs_ptr[ci] += inv_m * (delC_ptr[3*pi]*_res_ptr[3*index]/g_scaling + delC_ptr[3*pi+1]*_res_ptr[3*index+1]/g_scaling + delC_ptr[3*pi+2]*_res_ptr[3*index+2]/g_scaling);
             }
         }
@@ -196,14 +196,14 @@ class WithDistributedPrimaryResidual : public ConstraintProjectorDecorator
     /** Override the _getPositionUpdate method to include the distributed primary residual.
      * This involves subtracting an additional term from the position update (i.e. M^-1 * scaled_g)
      */
-    inline virtual void _getPositionUpdate(const int position_index, const double* delC_ptr, const double inv_m, const double* dlam_ptr, double* pos_update_ptr) const override
+    inline virtual void _getPositionUpdate(const int position_index, const Real* delC_ptr, const Real inv_m, const Real* dlam_ptr, Real* pos_update_ptr) const override
     {
         // first, compute the position update using the wrapped component's method
         _componentGetPositionUpdate(position_index, delC_ptr, inv_m, dlam_ptr, pos_update_ptr);
 
 
         const int index = _state->_positions[position_index].index;    // vertex index of this position - used to index the primary residual vector
-        const double g_scaling = static_cast<double>(_state->_positions[position_index].num_constraints);   // divisor for the primary residual for this position
+        const Real g_scaling = static_cast<Real>(_state->_positions[position_index].num_constraints);   // divisor for the primary residual for this position
 
         // subtract M^-1 * scaled_g
         pos_update_ptr[0] -= inv_m * _res_ptr[3*index]/g_scaling;
@@ -218,7 +218,7 @@ class WithDistributedPrimaryResidual : public ConstraintProjectorDecorator
      * The setPrimaryResidual() method is used to point this ConstraintProjector to where the primary residual vector is.
      * It is assumed that the primary residual is up to date when the constraint projection occurs.
      */
-    const double* _res_ptr;
+    const Real* _res_ptr;
 };
 
 
@@ -252,7 +252,7 @@ class FirstOrder : public ConstraintProjectorDecorator
     }
 
     /** Override the alphaTilde to use alpha_tilde = alpha / dt instead of alpha_tilde = alpha / dt^2. */
-    inline virtual void alphaTilde(double* alpha_tilde_ptr) const override
+    inline virtual void alphaTilde(Real* alpha_tilde_ptr) const override
     {
         for (int i = 0; i < numConstraints(); i++)
         {

@@ -2,7 +2,7 @@
 #define __BEAM_STRETCH_SIMULATION_HPP
 
 #include "simulation/OutputSimulation.hpp"
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 namespace Sim
 {
@@ -20,8 +20,8 @@ class BeamStretchSimulation : public OutputSimulation
 
     virtual void printInfo() const override;
 
-    double _stretch_velocity;
-    double _stretch_time;
+    Real _stretch_velocity;
+    Real _stretch_time;
 };
 
 } // namespace Sim

@@ -34,9 +34,9 @@ class BoxSDFGPUResource : public HostReadableGPUResource
     virtual void copyToDevice() const override
     {
         GPUBoxSDF gpu_sdf;
-        const Eigen::Vector3d& pos = _sdf->box()->position();
-        const Eigen::Vector4d& ori = _sdf->box()->orientation();
-        const Eigen::Vector3d& sz = _sdf->box()->size();
+        const Vec3r& pos = _sdf->box()->position();
+        const Vec4r& ori = _sdf->box()->orientation();
+        const Vec3r& sz = _sdf->box()->size();
         gpu_sdf.position = make_float3(pos[0], pos[1], pos[2]);
         gpu_sdf.orientation = make_float4(ori[0], ori[1], ori[2], ori[3]);
         gpu_sdf.size = make_float3(sz[0], sz[1], sz[2]);

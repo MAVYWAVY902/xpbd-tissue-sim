@@ -71,9 +71,9 @@ add_library(SimObject)
 add_subdirectory("src/simobject")
 
 # link in necessary libraries
-target_link_libraries(Collision Eigen3::Eigen mesh2sdf)
+target_link_libraries(Collision Eigen3::Eigen mesh2sdf Geometry GeometryUtils)
 target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
-target_link_libraries(Geometry Eigen3::Eigen mesh2sdf)
+target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
 target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Solver Geometry)   # link MeshUtils and Solver libraries
 target_link_libraries(Solver Eigen3::Eigen SimObject)         # link SimObject library
@@ -117,7 +117,15 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(ResidualSimulation GPU)
 
     target_compile_definitions(Collision PRIVATE HAVE_CUDA)
+    target_compile_definitions(Graphics PRIVATE HAVE_CUDA)
+    target_compile_definitions(Geometry PRIVATE HAVE_CUDA)
+    target_compile_definitions(GeometryUtils PRIVATE HAVE_CUDA)
+    target_compile_definitions(MeshUtils PRIVATE HAVE_CUDA)
+    target_compile_definitions(Haptics PRIVATE HAVE_CUDA)
+    target_compile_definitions(SimObject PRIVATE HAVE_CUDA)
+    target_compile_definitions(Solver PRIVATE HAVE_CUDA)
     target_compile_definitions(ResidualSimulation PRIVATE HAVE_CUDA)
+    target_compile_definitions(BeamSimulation PRIVATE HAVE_CUDA)
 
     add_executable(CudaTest src/exec/cuda_test.cu)
     target_link_libraries(CudaTest Eigen3::Eigen)

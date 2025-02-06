@@ -56,7 +56,7 @@ class CollisionScene
      * @param p3 - 3rd tringle vertex
      * @returns the closest point on the triangle to the boundary of the SDF - if at this closest point the SDF evaluates to negative, we have a collision!
     */
-    Eigen::Vector3d _frankWolfe(const Geometry::SDF* sdf, const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3) const;
+    Vec3r _frankWolfe(const Geometry::SDF* sdf, const Vec3r& p1, const Vec3r& p2, const Vec3r& p3) const;
 
     protected:
     /** Non-owning pointer to the Simulation object that this CollisionScene belongs to */

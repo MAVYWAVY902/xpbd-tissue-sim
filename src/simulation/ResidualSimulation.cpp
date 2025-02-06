@@ -50,15 +50,15 @@ void ResidualSimulation::printInfo() const
     _out_file << _time;
     for (size_t i = 0; i < _objects.size(); i++) {
 
-        double dynamics_residual = 0;
-        double primary_residual = 0;
-        double constraint_residual = 0;
-        double volume_ratio = 1;
+        Real dynamics_residual = 0;
+        Real primary_residual = 0;
+        Real constraint_residual = 0;
+        Real volume_ratio = 1;
         if (XPBDMeshObject* xpbd = dynamic_cast<XPBDMeshObject*>(_objects[i].get()))
         {
-            Eigen::VectorXd pres_vec = xpbd->solver()->primaryResidual();
+            VecXr pres_vec = xpbd->solver()->primaryResidual();
             primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
-            Eigen::VectorXd cres_vec = xpbd->solver()->constraintResidual();
+            VecXr cres_vec = xpbd->solver()->constraintResidual();
             constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
             // constraint_residual = elastic_mesh_object->constraintResidual();
             // dynamics_residual = elastic_mesh_object->dynamicsResidual();

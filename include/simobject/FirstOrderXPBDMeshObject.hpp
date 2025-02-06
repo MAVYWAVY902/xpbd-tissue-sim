@@ -17,9 +17,9 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
 
     virtual void setup() override;
 
-    double vertexDamping(const unsigned index) const { return 1.0/_inv_B[index]; }
+    Real vertexDamping(const unsigned index) const { return 1.0/_inv_B[index]; }
 
-    double vertexInvDamping(const unsigned index) const { return _inv_B[index]; }
+    Real vertexInvDamping(const unsigned index) const { return _inv_B[index]; }
 
     protected:
     /** Moves the vertices in the absence of constraints.
@@ -31,9 +31,9 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
     virtual void _calculatePerVertexQuantities() override;
 
     protected:
-    double _damping_multiplier;
+    Real _damping_multiplier;
 
-    std::vector<double> _inv_B;
+    std::vector<Real> _inv_B;
 
 };
 

@@ -13,7 +13,7 @@ namespace Solver
 class CollisionConstraint : public Constraint
 {
     public:
-    CollisionConstraint(const std::vector<PositionReference>& positions, const Eigen::Vector3d& collision_normal)
+    CollisionConstraint(const std::vector<PositionReference>& positions, const Vec3r& collision_normal)
         : Constraint(positions, 0), _collision_normal(collision_normal)
     {}
 
@@ -22,10 +22,10 @@ class CollisionConstraint : public Constraint
      * @param mu_s - the coefficient of static friction between the two bodies
      * @param mu_k - the coefficient of kinetic friction between the two bodies
      */
-    inline virtual void applyFriction(double lam, double mu_s, double mu_k) const = 0;
+    inline virtual void applyFriction(Real lam, Real mu_s, Real mu_k) const = 0;
 
     protected:
-    Eigen::Vector3d _collision_normal;  // the normal of the collision plane - also usually taken as the minimum separating vector
+    Vec3r _collision_normal;  // the normal of the collision plane - also usually taken as the minimum separating vector
 };
 
 } // namespace Solver

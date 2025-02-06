@@ -1,7 +1,7 @@
 #ifndef __AABB_HPP
 #define __AABB_HPP
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 namespace Geometry
 {
@@ -9,27 +9,27 @@ namespace Geometry
 /** An axis-aligned bounding box (AABB). */
 struct AABB
 {
-    Eigen::Vector3d min;    // the min coordinates of the bounding box
-    Eigen::Vector3d max;    // the max coordinates of the bounding box
+    Vec3r min;    // the min coordinates of the bounding box
+    Vec3r max;    // the max coordinates of the bounding box
 
     /** Initialization from vectors */
-    AABB(const Eigen::Vector3d& min_, const Eigen::Vector3d& max_)
+    AABB(const Vec3r& min_, const Vec3r& max_)
         : min(min_), max(max_)
     {}
 
     /** Initialization from individual coordinates */
-    AABB(const double min_x, const double min_y, const double min_z, const double max_x, const double max_y, const double max_z)
+    AABB(const Real min_x, const Real min_y, const Real min_z, const Real max_x, const Real max_y, const Real max_z)
         : min(min_x, min_y, min_z), max(max_x, max_y, max_z)
     {}
 
     /** Returns the center of the bounding box. */
-    Eigen::Vector3d center() const
+    Vec3r center() const
     {
         return min + 0.5*(max - min);
     }
 
     /** Returns the size of the bounding box. */
-    Eigen::Vector3d size() const
+    Vec3r size() const
     {
         return max - min;
     }

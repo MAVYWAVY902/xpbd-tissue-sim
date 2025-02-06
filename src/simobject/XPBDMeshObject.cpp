@@ -76,8 +76,8 @@ int XPBDMeshObject::numConstraintsForPosition(const int index) const
     }
 }
 
-void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
-                                    const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
+void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
+                                    const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w)
 {
     std::unique_ptr<Solver::StaticDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, obj, v1, v2, v3, u, v, w);
     std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
@@ -93,8 +93,8 @@ void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, cons
     _collision_constraints.push_back(std::move(xpbd_collision_constraint));
 }
 
-void XPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal,
-                                       const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const double u, const double v, const double w)
+void XPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+                                       const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w)
 {
     std::unique_ptr<Solver::RigidDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, deformable_obj, v1, v2, v3, u, v, w);
     std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::RigidBodyConstraintProjector>(collision_constraint.get(), _sim->dt());
@@ -142,11 +142,11 @@ void XPBDMeshObject::_calculatePerVertexQuantities()
     {
         const Eigen::Vector4i& element = tetMesh()->element(i);
         // compute volume from X
-        const double volume = tetMesh()->elementVolume(i);
+        const Real volume = tetMesh()->elementVolume(i);
         // _vols(i) = vol;
 
         // compute mass of element
-        const double element_mass = volume * _material.density();
+        const Real element_mass = volume * _material.density();
         // add mass contribution of element to each of its vertices
         _vertex_masses[element[0]] += element_mass/4.0;
         _vertex_masses[element[1]] += element_mass/4.0;
@@ -272,13 +272,13 @@ void XPBDMeshObject::update()
 
 void XPBDMeshObject::_movePositionsInertially()
 {
-    const double dt = _sim->dt();
+    const Real dt = _sim->dt();
     // move vertices according to their velocity
     _mesh->moveSeparate(dt*_vertex_velocities);
     // external forces (right now just gravity, which acts in -z direction)
     for (int i = 0; i < _mesh->numVertices(); i++)
     {
-        const double dz = -_sim->gAccel() * dt * dt;
+        const Real dz = -_sim->gAccel() * dt * dt;
         _mesh->displaceVertex(i, 0, 0, dz);
     }
 }
@@ -308,7 +308,7 @@ void XPBDMeshObject::velocityUpdate()
     // we do this in the velocity update (i.e. after update() is finished) to ensure that all objects have had their constraints projected already
     for (const auto& c : _collision_constraints)
     {
-        const double lam = _solver->constraintProjectors()[c.projector_index]->lambda()[0];
+        const Real lam = _solver->constraintProjectors()[c.projector_index]->lambda()[0];
         // only apply friction forces for this constraint if it was active (i.e. lambda > 0)
         // if it was "inactive", there was no penetration and thus no contact and thus no friction
         if (lam > 0)

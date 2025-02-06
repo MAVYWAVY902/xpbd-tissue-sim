@@ -18,7 +18,7 @@ XPBDSolver::XPBDSolver(const Sim::XPBDMeshObject* obj, int num_iter, XPBDResidua
 int XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> projector)
 {
     // amount of pre-allocated memory required to perform the constraint(s) projection
-    size_t required_array_size = projector->memoryNeeded() / sizeof(double);
+    size_t required_array_size = projector->memoryNeeded() / sizeof(Real);
     // make sure that the data buffer of the _data vector is large enough to accomodate the new projector
     if (required_array_size > _data.size())
     {
@@ -101,7 +101,7 @@ void XPBDSolver::_calculatePrimaryResidual()
     // add Mx
     for (int i = 0; i < _obj->mesh()->numVertices(); i++)
     {
-        Eigen::Map<Eigen::Vector3d> Mx(_primary_residual.data() + 3*i);
+        Eigen::Map<Vec3r> Mx(_primary_residual.data() + 3*i);
 
         // I don't like this - is there some way to not have to explicitly check for FirstOrder?
         if (fo_obj)
@@ -123,10 +123,10 @@ void XPBDSolver::_calculatePrimaryResidual()
 
         const std::vector<PositionReference>& positions = proj->positions();
         const std::vector<Constraint*>& constraints = proj->constraints();
-        const std::vector<double>& lambda = proj->lambda();
+        const std::vector<Real>& lambda = proj->lambda();
         for (size_t ci = 0; ci < constraints.size(); ci++)
         {
-            double* delC = _data.data();
+            Real* delC = _data.data();
             constraints[ci]->gradient(delC);
             for (size_t pi = 0; pi < positions.size(); pi++)
             {

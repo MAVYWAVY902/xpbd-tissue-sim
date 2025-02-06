@@ -36,12 +36,12 @@ class XPBDSolver
     /** Returns the current primary residual (Equation (8) from XPBD paper).
      * Does NOT recalculate if stale.
      */
-    const Eigen::VectorXd primaryResidual() const { return Eigen::Map<const Eigen::VectorXd>(_primary_residual.data(), _primary_residual.size()); };
+    const VecXr primaryResidual() const { return Eigen::Map<const VecXr>(_primary_residual.data(), _primary_residual.size()); };
 
     /** Returns the current constraint residual (Equation (9) from XPBD paper).
      * Does NOT recalculate if stale.
      */
-    const Eigen::VectorXd constraintResidual() const { return Eigen::Map<const Eigen::VectorXd>(_constraint_residual.data(), _constraint_residual.size()); };
+    const VecXr constraintResidual() const { return Eigen::Map<const VecXr>(_constraint_residual.data(), _constraint_residual.size()); };
 
     /** Returns the number of solver iterations. */
     int numIterations() const { return _num_iter; }
@@ -65,7 +65,7 @@ class XPBDSolver
      * This method is pure virtual because its implementation depends on the solver type (Gauss-Seidel, Jacobi, etc.) to know what to do with the position updates given by the ConstraintProjectors.
      * @param data - the pre-allocated data block to use for evaluating the constraints and their gradients. Assumes that it is large enough to accomodate the ConstraintProjector with the largest memory requirement.
      */
-    virtual void _solveConstraints(double* data) = 0;
+    virtual void _solveConstraints(Real* data) = 0;
     
     /** Calculates the primary residual (Equation (8) from XPBD paper). */
     void _calculatePrimaryResidual();
@@ -88,12 +88,12 @@ class XPBDSolver
 
     int _num_constraints;                                  // total number of constraints projected (note this may be different from number of ConstraintProjectors if some constraints are solved simultaneously)
 
-    std::vector<double> _primary_residual;                      // primary residual vector
-    std::vector<double> _constraint_residual;                   // constraint residual vector - use std::vector instead of Eigen::VectorXd to minimize dynamic reallocations as number of constraints change
+    std::vector<Real> _primary_residual;                      // primary residual vector
+    std::vector<Real> _constraint_residual;                   // constraint residual vector - use std::vector instead of VecXr to minimize dynamic reallocations as number of constraints change
 
-    mutable std::vector<double> _data;                          // the vector class is used to pre-allocate data for the solver loop
-    std::vector<double> _coordinate_updates;                    // stores updates to the coordinates determined by the constraint projections - also pre-allocated. Needs to be have a size >= the max number of positions affected by a single constraint projection.
-    std::vector<double> _rigid_body_updates;                    // stores updates to any rigid bodies involved in the constraint projections - also pre-allocated. Each rigid body update consists of a position update and an orientation update, which is 7 doubles.
+    mutable std::vector<Real> _data;                          // the vector class is used to pre-allocate data for the solver loop
+    std::vector<Real> _coordinate_updates;                    // stores updates to the coordinates determined by the constraint projections - also pre-allocated. Needs to be have a size >= the max number of positions affected by a single constraint projection.
+    std::vector<Real> _rigid_body_updates;                    // stores updates to any rigid bodies involved in the constraint projections - also pre-allocated. Each rigid body update consists of a position update and an orientation update, which is 7 doubles.
 };
 
 } // namespace Solver

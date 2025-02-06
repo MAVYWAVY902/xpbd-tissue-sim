@@ -1,17 +1,17 @@
 #ifndef __GEOMETRY_UTILS_HPP
 #define __GEOMETRY_UTILS_HPP
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 namespace GeometryUtils
 {
 
-std::tuple<double,double,double> barycentricCoords(const Eigen::Vector3d& p, const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c);
-Eigen::Matrix3d quatToMat(const Eigen::Vector4d& quat);
-Eigen::Vector4d quatMult(const Eigen::Vector4d& a, const Eigen::Vector4d& b);
-Eigen::Vector3d rotateVectorByQuat(const Eigen::Vector3d& v, const Eigen::Vector4d& quat);
-Eigen::Vector4d inverseQuat(const Eigen::Vector4d& quat);
-Eigen::Vector4d eulXYZ2Quat(const double x, const double y, const double z);
+std::tuple<Real,Real,Real> barycentricCoords(const Vec3r& p, const Vec3r& a, const Vec3r& b, const Vec3r& c);
+Mat3r quatToMat(const Vec4r& quat);
+Vec4r quatMult(const Vec4r& a, const Vec4r& b);
+Vec3r rotateVectorByQuat(const Vec3r& v, const Vec4r& quat);
+Vec4r inverseQuat(const Vec4r& quat);
+Vec4r eulXYZ2Quat(const Real x, const Real y, const Real z);
 
 }
 

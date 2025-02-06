@@ -6,7 +6,7 @@
 
 #include "utils/CudaHelperMath.h"
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 struct DeviceSphereSDF
 {

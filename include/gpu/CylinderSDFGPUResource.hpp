@@ -34,8 +34,8 @@ class CylinderSDFGPUResource : public HostReadableGPUResource
     virtual void copyToDevice() const override
     {
         GPUCylinderSDF gpu_sdf;
-        const Eigen::Vector3d& pos = _sdf->cylinder()->position();
-        const Eigen::Vector4d& ori = _sdf->cylinder()->orientation();
+        const Vec3r& pos = _sdf->cylinder()->position();
+        const Vec4r& ori = _sdf->cylinder()->orientation();
         gpu_sdf.position = make_float3(pos[0], pos[1], pos[2]);
         gpu_sdf.orientation = make_float4(ori[0], ori[1], ori[2], ori[3]);
         gpu_sdf.radius = _sdf->cylinder()->radius();

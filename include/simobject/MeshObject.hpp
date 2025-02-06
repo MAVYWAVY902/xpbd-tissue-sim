@@ -42,7 +42,7 @@ class MeshObject
             _mesh->resize(_initial_size.value());
         }
 
-        const Eigen::Vector3d center_of_mass = _mesh->massCenter();
+        const Vec3r center_of_mass = _mesh->massCenter();
 
         // move center of mass of the mesh to the specified initial position
         _mesh->moveTogether(-center_of_mass + _initial_position);
@@ -68,10 +68,10 @@ class MeshObject
 
     private:
     std::string _filename;
-    Eigen::Vector3d _initial_position;
-    Eigen::Vector3d _initial_rotation;
-    std::optional<Eigen::Vector3d> _initial_size;
-    std::optional<double> _max_size;
+    Vec3r _initial_position;
+    Vec3r _initial_rotation;
+    std::optional<Vec3r> _initial_size;
+    std::optional<Real> _max_size;
     
 
 };

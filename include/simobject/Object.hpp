@@ -3,8 +3,11 @@
 
 #include <string>
 
+#include "common/types.hpp"
+
 #include "geometry/AABB.hpp"
 #include "config/ObjectConfig.hpp"
+
 
 namespace Sim
 {

@@ -14,7 +14,7 @@ class RigidMeshObject : public RigidObject, public MeshObject
     public:
     RigidMeshObject(const Simulation* sim, const RigidMeshObjectConfig* config);
 
-    // RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density);
+    // RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const Real density);
 
     virtual std::string type() const override { return "RigidMeshObject"; }
 
@@ -27,7 +27,7 @@ class RigidMeshObject : public RigidObject, public MeshObject
     virtual void update() override;
 
     protected:
-    double _density;
+    Real _density;
     std::unique_ptr<Geometry::Mesh> _initial_mesh;
 };
 

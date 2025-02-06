@@ -3,7 +3,7 @@
 
 #include "yaml-cpp/yaml.h"
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 #include <optional>
 #include <iostream>
@@ -149,13 +149,13 @@ class Config
         }
     }
 
-    /** Extracts a 3-vector from YAML node as an Eigen::Vector3d
+    /** Extracts a 3-vector from YAML node as an Vec3r
      * If the parameter doesn't exist, the ConfigParameter value is a null optional.
      * @param param_name : the name of the 3-Vector parameter to get from the YAML file
      * @param yaml_node : the YAML node to extract information from
      * @param param : (output) the ConfigParameter, which gets set by the function
      */
-    static void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector3d>& param, const std::optional<Eigen::Vector3d>& default_value = std::nullopt)
+    static void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Vec3r>& param, const std::optional<Vec3r>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;
@@ -168,9 +168,9 @@ class Config
                 {
                     // if we get here, the parameter exists and it is not null
                     // so, set the value of the ConfigParameter
-                    param.value = Eigen::Vector3d({ yaml_node[param_name][0].as<double>(), 
-                                                    yaml_node[param_name][1].as<double>(),
-                                                    yaml_node[param_name][2].as<double>() });
+                    param.value = Vec3r({ yaml_node[param_name][0].as<Real>(), 
+                                                    yaml_node[param_name][1].as<Real>(),
+                                                    yaml_node[param_name][2].as<Real>() });
                     return;
                 }
                 else
@@ -201,13 +201,13 @@ class Config
         
     }
 
-    /** Extracts a 4-vector from YAML node as an Eigen::Vector4d 
+    /** Extracts a 4-vector from YAML node as an Vec4r 
      * If the parameter doesn't exist, the ConfigParameter value is a null optional.
      * @param param_name : the name of the 4-vector parameter to get from the YAML file
      * @param yaml_node : the YAML node to extract information from
      * @param param : (output) the ConfigParameter, which gets set by the function
     */
-    static void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Eigen::Vector4d>& param, const std::optional<Eigen::Vector4d>& default_value = std::nullopt)
+    static void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<Vec4r>& param, const std::optional<Vec4r>& default_value = std::nullopt)
     {
         // set the name field of the ConfigParameter
         param.name = param_name;
@@ -220,10 +220,10 @@ class Config
                 {
                     // if we get here, the parameter exists and it is not null
                     // so, set the value of the ConfigParameter
-                    param.value = Eigen::Vector4d({ yaml_node[param_name][0].as<double>(), 
-                                                    yaml_node[param_name][1].as<double>(),
-                                                    yaml_node[param_name][2].as<double>(),
-                                                    yaml_node[param_name][3].as<double>() });
+                    param.value = Vec4r({ yaml_node[param_name][0].as<Real>(), 
+                                                    yaml_node[param_name][1].as<Real>(),
+                                                    yaml_node[param_name][2].as<Real>(),
+                                                    yaml_node[param_name][3].as<Real>() });
                     return;
                 }
                 else

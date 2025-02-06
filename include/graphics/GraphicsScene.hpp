@@ -10,7 +10,7 @@
 #include "graphics/Viewer.hpp"
 #include "graphics/GraphicsObject.hpp"
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 namespace Sim
 {
@@ -66,19 +66,19 @@ class GraphicsScene
 
 
     /** Gets the camera view direction. */
-    virtual Eigen::Vector3d cameraViewDirection() const = 0;
+    virtual Vec3r cameraViewDirection() const = 0;
     /** Sets the camera view direction */
-    virtual void setCameraViewDirection(const Eigen::Vector3d& view_dir) = 0;
+    virtual void setCameraViewDirection(const Vec3r& view_dir) = 0;
 
     /** Gets the camera up direction. */
-    virtual Eigen::Vector3d cameraUpDirection() const = 0;
+    virtual Vec3r cameraUpDirection() const = 0;
     /** Gets the camera right direction. */
-    virtual Eigen::Vector3d cameraRightDirection() const = 0;
+    virtual Vec3r cameraRightDirection() const = 0;
 
     /** Gets the camera position. */
-    virtual Eigen::Vector3d cameraPosition() const = 0;
+    virtual Vec3r cameraPosition() const = 0;
     /** Sets the camera position. */
-    virtual void setCameraPosition(const Eigen::Vector3d& position) = 0;
+    virtual void setCameraPosition(const Vec3r& position) = 0;
 
 
     /** Gets a GraphicsObject according to index. (i.e. the index returned by addMeshObject)

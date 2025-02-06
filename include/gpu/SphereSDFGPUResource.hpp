@@ -33,7 +33,7 @@ class SphereSDFGPUResource : public HostReadableGPUResource
     virtual void copyToDevice() const override
     {
         GPUSphereSDF gpu_sdf;
-        const Eigen::Vector3d& pos = _sdf->sphere()->position();
+        const Vec3r& pos = _sdf->sphere()->position();
         gpu_sdf.position = make_float3(pos[0], pos[1], pos[2]);
         gpu_sdf.radius = _sdf->sphere()->radius();
 

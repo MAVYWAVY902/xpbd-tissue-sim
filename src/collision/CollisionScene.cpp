@@ -178,20 +178,20 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
     const Geometry::Mesh::FacesMat& faces = mesh->faces();
     for (const auto& f : faces.colwise())
     {
-        const Eigen::Vector3d& p1 = mesh->vertex(f[0]);
-        const Eigen::Vector3d& p2 = mesh->vertex(f[1]);
-        const Eigen::Vector3d& p3 = mesh->vertex(f[2]);
+        const Vec3r& p1 = mesh->vertex(f[0]);
+        const Vec3r& p2 = mesh->vertex(f[1]);
+        const Vec3r& p3 = mesh->vertex(f[2]);
         // std::cout << "v1: " << p1[0] << ", " << p1[1] << ", " << p1[2] << "\tdist: " << sdf->evaluate(p1) << std::endl;
         // std::cout << "v2: " << p2[0] << ", " << p2[1] << ", " << p2[2] << "\tdist: " << sdf->evaluate(p2) << std::endl;
         // std::cout << "v3: " << p3[0] << ", " << p3[1] << ", " << p3[2] << "\tdist: " << sdf->evaluate(p3) << std::endl;
-        const Eigen::Vector3d x = _frankWolfe(sdf, p1, p2, p3);
+        const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
         if (distance <= 1e-4)
         {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
             // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
             const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
-            const Eigen::Vector3d grad = sdf->gradient(x);
-            const Eigen::Vector3d surface_x = x - grad*distance;
+            const Vec3r grad = sdf->gradient(x);
+            const Vec3r surface_x = x - grad*distance;
             // std::cout << "COLLISION!" << std::endl;
             // std::cout << "u: " << u << ", v: " << v << ", w: " << w << std::endl;
             // std::cout << "position: " << x[0] << ", " << x[1] << ", " << x[2] << "\tnormal: " << grad[0] << ", " << grad[1] << ", " << grad[2] << std::endl;
@@ -214,7 +214,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
 
 }
 
-Eigen::Vector3d CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3) const
+Vec3r CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Vec3r& p1, const Vec3r& p2, const Vec3r& p3) const
 {
     // find starting iterate - the triangle vertex with the smallest value of SDF
     const double d_p1 = sdf->evaluate(p1);
@@ -246,16 +246,16 @@ Eigen::Vector3d CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Eige
     //     return 0.5*p1 + 0.5*p3;
     // }
 
-    Eigen::Vector3d x;
+    Vec3r x;
     if (d_p1 <= d_p2 && d_p1 <= d_p3)       x = p1;
     else if (d_p2 <= d_p1 && d_p2 <= d_p3)  x = p2;
     else                                    x = p3;
 
-    Eigen::Vector3d s;
+    Vec3r s;
     for (int i = 0; i < 32; i++)
     {
         const double alpha = 2.0/(i+3);
-        const Eigen::Vector3d& gradient = sdf->gradient(x);
+        const Vec3r& gradient = sdf->gradient(x);
         // std::cout << "x: " << x[0] << ", " << x[1] << ", " << x[2] << std::endl;
         // std::cout << "gradient: " << gradient[0] << ", " << gradient[1] << ", " << gradient[2] << std::endl;
         const double sg1 = p1.dot(gradient);

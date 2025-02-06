@@ -19,7 +19,7 @@ class XPBDGaussSeidelSolver : public XPBDSolver
     /** Implements a Gauss-Seidel update strategy for constraint projection.
      * @param data - the pre-allocated data block to use for evaluating the constraints and their gradients. Assumes that it is large enough to accomodate the ConstraintProjector with the largest memory requirement.
      */
-    virtual void _solveConstraints(double* data) override;
+    virtual void _solveConstraints(Real* data) override;
 };
 
 } // namespace Solver

@@ -29,12 +29,12 @@ class TetMesh : public Mesh
     Eigen::Vector4i element(const int index) const { return _elements.col(index); }
 
     /** Returns the volume of the specified element. */
-    double elementVolume(const int index) const;
+    Real elementVolume(const int index) const;
 
     /** Returns the number of edges along with the average edge length in the tetrahedra of the mesh.
      * Note that this is different from averageFaceEdgeLength, which only returns the average edge length in the faces (i.e. the surface) of the mesh.
      */
-    std::pair<int, double> averageTetEdgeLength() const;
+    std::pair<int, Real> averageTetEdgeLength() const;
 
     protected:
     ElementsMat _elements;  // the matrix of tetrahedral elements

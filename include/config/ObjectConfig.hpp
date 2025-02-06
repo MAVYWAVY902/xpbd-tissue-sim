@@ -9,9 +9,9 @@ class ObjectConfig : public Config
 {
     public:
 
-    static std::optional<Eigen::Vector3d>& DEFAULT_POSITION() { static std::optional<Eigen::Vector3d> pos({0,0,0}); return pos; }
-    static std::optional<Eigen::Vector3d>& DEFAULT_VELOCITY() { static std::optional<Eigen::Vector3d> vel({0,0,0}); return vel; }
-    static std::optional<Eigen::Vector3d>& DEFAULT_ROTATION() { static std::optional<Eigen::Vector3d> rot({0,0,0}); return rot; }
+    static std::optional<Vec3r>& DEFAULT_POSITION() { static std::optional<Vec3r> pos({0,0,0}); return pos; }
+    static std::optional<Vec3r>& DEFAULT_VELOCITY() { static std::optional<Vec3r> vel({0,0,0}); return vel; }
+    static std::optional<Vec3r>& DEFAULT_ROTATION() { static std::optional<Vec3r> rot({0,0,0}); return rot; }
     static std::optional<bool>& DEFAULT_COLLISIONS() { static std::optional<bool> collisions(false); return collisions; }
 
 
@@ -26,17 +26,17 @@ class ObjectConfig : public Config
     }
     
     bool collisions() const { return _collisions.value.value(); }
-    Eigen::Vector3d initialPosition() const { return _initial_position.value.value(); }
-    Eigen::Vector3d initialVelocity() const { return _initial_velocity.value.value(); }
-    Eigen::Vector3d initialRotation() const { return _initial_rotation.value.value(); }
+    Vec3r initialPosition() const { return _initial_position.value.value(); }
+    Vec3r initialVelocity() const { return _initial_velocity.value.value(); }
+    Vec3r initialRotation() const { return _initial_rotation.value.value(); }
 
     protected:
 
     ConfigParameter<bool> _collisions;
 
-    ConfigParameter<Eigen::Vector3d> _initial_position;
-    ConfigParameter<Eigen::Vector3d> _initial_velocity;
-    ConfigParameter<Eigen::Vector3d> _initial_rotation;
+    ConfigParameter<Vec3r> _initial_position;
+    ConfigParameter<Vec3r> _initial_velocity;
+    ConfigParameter<Vec3r> _initial_rotation;
 
     const Simulation* _sim;
 

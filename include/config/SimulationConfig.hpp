@@ -29,20 +29,20 @@ enum class Visualization
 class SimulationConfig : public Config
 {
     /** Static predefined default for simulation time step */
-    static std::optional<double>& DEFAULT_TIME_STEP() { static std::optional<double> time_step(1e-3); return time_step; }
+    static std::optional<Real>& DEFAULT_TIME_STEP() { static std::optional<Real> time_step(1e-3); return time_step; }
     /** Static predefined default for simulation end time */
-    static std::optional<double>& DEFAULT_END_TIME() { static std::optional<double> end_time(10); return end_time; }
+    static std::optional<Real>& DEFAULT_END_TIME() { static std::optional<Real> end_time(10); return end_time; }
     /** Static predefined default for simulation mode */
     static std::optional<SimulationMode>& DEFAULT_SIM_MODE() { static std::optional<SimulationMode> sim_mode(SimulationMode::VISUALIZATION); return sim_mode; }
     static std::optional<Visualization>& DEFAULT_VISUALIZATION() { static std::optional<Visualization> visualization(Visualization::EASY3D); return visualization; }
     /** Static predefined default for acceleration due to gravity */
-    static std::optional<double>& DEFAULT_G_ACCEL() { static std::optional<double> g_accel(9.81); return g_accel; }
+    static std::optional<Real>& DEFAULT_G_ACCEL() { static std::optional<Real> g_accel(9.81); return g_accel; }
     /** Static predefined default for simulation description */
     static std::optional<std::string>& DEFAULT_DESCRIPTION() { static std::optional<std::string> description(""); return description; }
     /** Static predefined default for simulation FPS */
-    static std::optional<double>& DEFAULT_FPS() { static std::optional<double> fps(30.0); return fps; }
+    static std::optional<Real>& DEFAULT_FPS() { static std::optional<Real> fps(30.0); return fps; }
 
-    static std::optional<double>& DEFAULT_COLLISION_RATE() { static std::optional<double> collision_rate(100); return collision_rate; }
+    static std::optional<Real>& DEFAULT_COLLISION_RATE() { static std::optional<Real> collision_rate(100); return collision_rate; }
     /** Static predifined options for the simulation mode. Maps strings to the Simulation mode enum. */
     static std::map<std::string, SimulationMode> SIM_MODE_OPTIONS()
     {
@@ -134,28 +134,28 @@ class SimulationConfig : public Config
     }
 
     // Getters
-    std::optional<double> timeStep() const { return _time_step.value; }
-    std::optional<double> endTime() const { return _end_time.value; }
+    std::optional<Real> timeStep() const { return _time_step.value; }
+    std::optional<Real> endTime() const { return _end_time.value; }
     std::optional<SimulationMode> simMode() const { return _sim_mode.value; }
     std::optional<Visualization> visualization() const { return _visualization.value; }
-    std::optional<double> gAccel() const { return _g_accel.value; }
+    std::optional<Real> gAccel() const { return _g_accel.value; }
     std::optional<std::string> description() const { return _description.value; }
-    std::optional<double> fps() const { return _fps.value; }
-    std::optional<double> collisionRate() const { return _collision_rate.value; }
+    std::optional<Real> fps() const { return _fps.value; }
+    std::optional<Real> collisionRate() const { return _collision_rate.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const std::vector<std::unique_ptr<ObjectConfig> >& objectConfigs() const { return _object_configs; }
 
     protected:
     // Parameters
-    ConfigParameter<double> _time_step;
-    ConfigParameter<double> _end_time;
+    ConfigParameter<Real> _time_step;
+    ConfigParameter<Real> _end_time;
     ConfigParameter<SimulationMode> _sim_mode; 
     ConfigParameter<Visualization> _visualization;
-    ConfigParameter<double> _g_accel;
+    ConfigParameter<Real> _g_accel;
     ConfigParameter<std::string> _description;
-    ConfigParameter<double> _fps;
-    ConfigParameter<double> _collision_rate;
+    ConfigParameter<Real> _fps;
+    ConfigParameter<Real> _collision_rate;
 
     /** List of MeshObject configs for each object in the Simulation */
     std::vector<std::unique_ptr<ObjectConfig>> _object_configs;

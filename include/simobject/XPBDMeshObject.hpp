@@ -58,21 +58,21 @@ class XPBDMeshObject : public Object, public TetMeshObject
     int numConstraints() const { return _elastic_constraints.size() + _collision_constraints.size(); }
     const std::vector<std::unique_ptr<Solver::Constraint>>& elasticConstraints() const { return _elastic_constraints; }
 
-    double* vertexPreviousPositionPointer(const int index) const { return const_cast<double*>(_previous_vertices.col(index).data()); }
+    Real* vertexPreviousPositionPointer(const int index) const { return const_cast<Real*>(_previous_vertices.col(index).data()); }
 
     void fixVertex(int index) { _is_fixed_vertex[index] = true; }
 
     bool vertexFixed(int index) const { return _is_fixed_vertex[index]; }
 
-    double vertexMass(int index) const { return _vertex_masses[index]; }
+    Real vertexMass(int index) const { return _vertex_masses[index]; }
 
-    double vertexInvMass(int index) const { return _vertex_inv_masses[index]; }
+    Real vertexInvMass(int index) const { return _vertex_inv_masses[index]; }
 
     int vertexAttachedElements(int index) const { return _vertex_attached_elements[index]; }
 
-    Eigen::Vector3d vertexVelocity(int index) const { return _vertex_velocities.col(index); }
+    Vec3r vertexVelocity(int index) const { return _vertex_velocities.col(index); }
 
-    Eigen::Vector3d vertexPreviousPosition(int index) const { return _previous_vertices.col(index); }
+    Vec3r vertexPreviousPosition(int index) const { return _previous_vertices.col(index); }
 
     /** Performs any one-time setup that needs to be done outside the constructor. */
     virtual void setup() override;
@@ -90,11 +90,11 @@ class XPBDMeshObject : public Object, public TetMeshObject
      */
     int numConstraintsForPosition(const int index) const;
 
-    void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
-                                    const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const double u, const double v, const double w);
+    void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
+                                    const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w);
 
-    void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal,
-                                       const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const double u, const double v, const double w);
+    void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+                                       const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w);
 
     void clearCollisionConstraints();
 
@@ -146,13 +146,13 @@ class XPBDMeshObject : public Object, public TetMeshObject
     Geometry::Mesh::VerticesMat _previous_vertices;
     Geometry::Mesh::VerticesMat _vertex_velocities;
 
-    Eigen::Vector3d _initial_velocity;
+    Vec3r _initial_velocity;
 
     ElasticMaterial _material;
 
-    std::vector<double> _vertex_masses;
-    std::vector<double> _vertex_inv_masses;
-    std::vector<double> _vertex_volumes;
+    std::vector<Real> _vertex_masses;
+    std::vector<Real> _vertex_inv_masses;
+    std::vector<Real> _vertex_volumes;
     std::vector<int> _vertex_attached_elements;
     std::vector<bool> _is_fixed_vertex;
 
@@ -160,7 +160,7 @@ class XPBDMeshObject : public Object, public TetMeshObject
     XPBDResidualPolicy _residual_policy;    // how often the solver should compute the residuals - set by the Config object
     int _num_solver_iters;             // number of iterations the solver should have - set by the Config object
 
-    double _damping_gamma;                  // the amount of damping per constraint. gamma = alpha_tilde * beta_tilde / dt (see Equation (26) in the XPBD paper for more details.)
+    Real _damping_gamma;                  // the amount of damping per constraint. gamma = alpha_tilde * beta_tilde / dt (see Equation (26) in the XPBD paper for more details.)
     
     XPBDConstraintType _constraint_type;    // the type of constraints to create - set by the Config object
     bool _constraints_with_residual;        // whether or not the constraints should include the primary residual in their update - set by the Config object

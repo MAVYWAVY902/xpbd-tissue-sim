@@ -39,7 +39,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     static std::optional<bool>& DEFAULT_WITH_DAMPING() { static std::optional<bool> with_damping(false); return with_damping; }
 
     /** Static predefined default for damping stiffness */
-    static std::optional<double>& DEFAULT_DAMPING_GAMMA() { static std::optional<double> damping_stiffness(0); return damping_stiffness; }
+    static std::optional<Real>& DEFAULT_DAMPING_GAMMA() { static std::optional<Real> damping_stiffness(0); return damping_stiffness; }
     /** Static predefined default for residual policy */
     static std::optional<XPBDResidualPolicy>& DEFAULT_RESIDUAL_POLICY() { static std::optional<XPBDResidualPolicy> residual_policy(XPBDResidualPolicy::EVERY_SUBSTEP); return residual_policy; }
 
@@ -99,7 +99,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     std::optional<XPBDConstraintType> constraintType() const { return _constraint_type.value; }
     std::optional<bool> withResidual() const { return _with_residual.value; }
     std::optional<bool> withDamping() const { return _with_damping.value; }
-    std::optional<double> dampingGamma() const { return _damping_gamma.value; }
+    std::optional<Real> dampingGamma() const { return _damping_gamma.value; }
     std::optional<XPBDResidualPolicy> residualPolicy() const { return _residual_policy.value; }
 
     ElasticMaterialConfig* materialConfig() const { return _material_config.get(); }
@@ -111,7 +111,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     ConfigParameter<XPBDConstraintType> _constraint_type;
     ConfigParameter<bool> _with_residual;
     ConfigParameter<bool> _with_damping;
-    ConfigParameter<double> _damping_gamma;
+    ConfigParameter<Real> _damping_gamma;
     ConfigParameter<XPBDResidualPolicy> _residual_policy;
 
     std::unique_ptr<ElasticMaterialConfig> _material_config;

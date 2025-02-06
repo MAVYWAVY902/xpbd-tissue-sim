@@ -9,7 +9,7 @@
 #include <iostream>
 #include <cassert>
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 struct HapticDeviceData
 {
@@ -28,8 +28,8 @@ class HapticDeviceManager
 
     ~HapticDeviceManager();
 
-    Eigen::Vector3d position();
-    Eigen::Matrix3d orientation();
+    Vec3r position();
+    Mat3r orientation();
     bool button1Pressed();
     bool button2Pressed();
 
@@ -39,7 +39,7 @@ class HapticDeviceManager
     static HDCallbackCode HDCALLBACK _updateCallback(void *data);
     static HDCallbackCode HDCALLBACK _copyCallback(void *data);
 
-    // void setPosition(const Eigen::Vector3d& new_position) { _position = new_position; }
+    // void setPosition(const Vec3r& new_position) { _position = new_position; }
     // void setButtonPressed(const bool pressed) { _button_pressed = pressed; }
     void copyState();
     void setStale(const bool stale) { _stale = stale; }
@@ -47,10 +47,10 @@ class HapticDeviceManager
 
     HHD _hHD;
     HapticDeviceData _device_data;
-    Eigen::Vector3d _position;
+    Vec3r _position;
     bool _button1_pressed;
     bool _button2_pressed;
-    Eigen::Matrix3d _orientation;
+    Mat3r _orientation;
     bool _stale;
 };
 

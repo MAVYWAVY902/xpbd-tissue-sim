@@ -35,7 +35,7 @@ class ElasticMaterial
      * @param E : the elastic modulus of the material
      * @param nu : the Poisson's ratio of the material
     */
-    explicit ElasticMaterial(const std::string& name, const double density, const double E, const double nu, const double mu_s, const double mu_k)
+    explicit ElasticMaterial(const std::string& name, const Real density, const Real E, const Real nu, const Real mu_s, const Real mu_k)
         : _name(name), _density(density), _E(E), _nu(nu), _mu_s(mu_s), _mu_k(mu_k)
     {
         // calculate Lame parameters
@@ -51,32 +51,32 @@ class ElasticMaterial
         return "Elastic Material '" + name() + "':\n\tDensity: " + std::to_string(density()) + "\n\tE: " + std::to_string(E()) + 
         "\n\tnu: " + std::to_string(nu()) + "\n\tmu: " + std::to_string(mu()) + "\n\tlambda: " + std::to_string(lambda());
     }
-    double density() const { return _density; }
-    double E() const { return _E; }
-    double nu() const { return _nu; }
-    double mu() const { return _mu; }
-    double lambda() const { return _lambda; }
-    double muS() const { return _mu_s; }
-    double muK() const { return _mu_k; }
+    Real density() const { return _density; }
+    Real E() const { return _E; }
+    Real nu() const { return _nu; }
+    Real mu() const { return _mu; }
+    Real lambda() const { return _lambda; }
+    Real muS() const { return _mu_s; }
+    Real muK() const { return _mu_k; }
 
     protected:
     /** Name of the material */
     std::string _name;
     /** Density of the material */
-    double _density;
+    Real _density;
     /** Elastic modulus of the material */
-    double _E;
+    Real _E;
     /** Poisson's ratio of the material */
-    double _nu;
+    Real _nu;
     /** Lame's first parameter */
-    double _lambda;
+    Real _lambda;
     /**  Lame's second parameter */
-    double _mu;
+    Real _mu;
 
     /** Coefficient of static friction */
-    double _mu_s;
+    Real _mu_s;
     /** Coefficient of kinetic friction */
-    double _mu_k;
+    Real _mu_k;
 
 };
 

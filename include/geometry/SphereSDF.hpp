@@ -19,7 +19,7 @@ class SphereSDF : public SDF
      * @param x - the point at which to evaluate the SDF
      * @returns the distance from x to the shape boundary ( F(x) )
     */
-    virtual double evaluate(const Eigen::Vector3d& x) const override
+    virtual Real evaluate(const Vec3r& x) const override
     {
         // the distance from any point the surface of the sphere is simply the distance of the point to the sphere center minus the radius
         return (x - _sphere->position()).norm() - _sphere->radius();
@@ -29,7 +29,7 @@ class SphereSDF : public SDF
      * @param x - the point at which to evaluate the graient of the SDF
      * @returns the gradient of the SDF at x.
      */
-    virtual Eigen::Vector3d gradient(const Eigen::Vector3d& x) const override
+    virtual Vec3r gradient(const Vec3r& x) const override
     {
         // the gradient simply is a normalized vector pointing out from the sphere center in the direction of x
         return (x - _sphere->position()).normalized();
