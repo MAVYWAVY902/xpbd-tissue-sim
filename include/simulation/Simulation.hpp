@@ -9,6 +9,10 @@
 #include "collision/CollisionScene.hpp"
 #include "graphics/GraphicsScene.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/GPUResourceManager.hpp"
+#endif
+
 #include <yaml-cpp/yaml.h>
 
 #include <thread>
@@ -48,6 +52,10 @@ class Simulation
         double dt() const { return _time_step; }
         
         double gAccel() const { return _g_accel; }
+
+        #ifdef HAVE_CUDA
+        GPUResourceManager* gpuResourceManager() const { return _gpu_resource_manager.get(); }
+        #endif
 
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
@@ -118,6 +126,10 @@ class Simulation
         std::unique_ptr<CollisionScene> _collision_scene;
 
         std::unique_ptr<Graphics::GraphicsScene> _graphics_scene;
+
+        #ifdef HAVE_CUDA
+        std::unique_ptr<GPUResourceManager> _gpu_resource_manager;
+        #endif
 };
 
 } // namespace Sim

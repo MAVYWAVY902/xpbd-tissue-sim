@@ -35,6 +35,8 @@ class SphereSDF : public SDF
         return (x - _sphere->position()).normalized();
     }
 
+    const Sim::RigidSphere* sphere() const { return _sphere; }
+
     protected:
     /** Pointer to sphere needed for sphere's current position and radius. */
     const Sim::RigidSphere* _sphere;

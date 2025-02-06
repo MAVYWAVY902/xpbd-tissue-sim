@@ -4,15 +4,16 @@
 #include "gpu/GPUResource.hpp"
 #include "geometry/Mesh.hpp"
 
+#include <iostream>
 
 namespace Sim
 {
 
-class MeshGPUResource : GPUResource
+class MeshGPUResource : public HostReadableGPUResource
 {
     public:
     explicit MeshGPUResource(const Geometry::Mesh* mesh)
-        : GPUResource(), _mesh(mesh)
+        : _mesh(mesh)
     {
     }
 
@@ -24,29 +25,31 @@ class MeshGPUResource : GPUResource
 
     virtual void allocate() override
     {
-        vertices_size = _mesh->numVertices() * 3 * sizeof(float);
-        faces_size = _mesh->numFaces() * 3 * sizeof(int);
-        cudaMalloc((void**)&_d_vertices, vertices_size);
-        cudaMalloc((void**)&_d_faces, faces_size);
+        _vertices_size = _mesh->numVertices() * 3 * sizeof(float);
+        _faces_size = _mesh->numFaces() * 3 * sizeof(int);
+        cudaMalloc((void**)&_d_vertices, _vertices_size);
+        cudaMalloc((void**)&_d_faces, _faces_size);
     }
 
     virtual void copyToDevice() const override
     {
-        cudaMemcpy(_d_vertices, _mesh->vertices().data(), vertices_size, cudaMemcpyHostToDevice);
-        cudaMemcpy(_d_faces, _mesh->faces().data(), vertices_size, cudaMemcpyHostToDevice);
+        cudaMemcpy(_d_vertices, _mesh->vertices().data(), _vertices_size, cudaMemcpyHostToDevice);
+        cudaMemcpy(_d_faces, _mesh->faces().data(), _faces_size, cudaMemcpyHostToDevice);
     }
 
-    virtual void copyFromDevice() const override
+    void copyVerticesToDevice() const
     {
-        // not implemented - mesh should not be being edited on the GPU
-        assert(0);
+        cudaMemcpy(_d_vertices, _mesh->vertices().data(), _vertices_size, cudaMemcpyHostToDevice);
     }
+
+    float* gpuVertices() const { return _d_vertices; }
+    int* gpuFaces() const { return _d_faces; }
 
     private:
     const Geometry::Mesh* _mesh;
 
-    size_t vertices_size;
-    size_t faces_size;
+    size_t _vertices_size;
+    size_t _faces_size;
     float* _d_vertices;
     int* _d_faces;
 };

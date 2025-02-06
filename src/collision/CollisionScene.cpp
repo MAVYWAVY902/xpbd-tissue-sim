@@ -10,6 +10,12 @@
 #include "geometry/Mesh.hpp"
 #include "utils/GeometryUtils.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/GPUResource.hpp"
+#include "gpu/MeshGPUResource.hpp"
+#include "gpu/Collision.cuh"
+#endif
+
 // namespace Collision
 // {
 
@@ -22,25 +28,56 @@ CollisionScene::CollisionScene(const Sim::Simulation* sim)
 void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
 {
     // create a SDF for the new object, if applicable
-    std::unique_ptr<Geometry::SDF> sdf = nullptr;
+    std::unique_ptr<const Geometry::SDF> sdf = nullptr;
     if (Sim::RigidSphere* sphere = dynamic_cast<Sim::RigidSphere*>(new_obj))
     {
-        sdf = std::make_unique<Geometry::SphereSDF>(sphere);
+        sdf = std::make_unique<const Geometry::SphereSDF>(sphere);
     }
     else if (Sim::RigidBox* box = dynamic_cast<Sim::RigidBox*>(new_obj))
     {
-        sdf = std::make_unique<Geometry::BoxSDF>(box);
+        sdf = std::make_unique<const Geometry::BoxSDF>(box);
     }
     else if (Sim::RigidCylinder* cyl = dynamic_cast<Sim::RigidCylinder*>(new_obj))
     {
-        sdf = std::make_unique<Geometry::CylinderSDF>(cyl);
+        sdf = std::make_unique<const Geometry::CylinderSDF>(cyl);
     }
     else if (Sim::RigidMeshObject* mesh_obj = dynamic_cast<Sim::RigidMeshObject*>(new_obj))
     {
         const RigidMeshObjectConfig* obj_config = dynamic_cast<const RigidMeshObjectConfig*>(config);
         assert(obj_config);
-        sdf = std::make_unique<Geometry::MeshSDF>(mesh_obj, obj_config);
+        sdf = std::make_unique<const Geometry::MeshSDF>(mesh_obj, obj_config);
     }
+
+ #ifdef HAVE_CUDA
+    if (sdf)
+    {
+        _sim->gpuResourceManager()->createManagedResource(sdf.get());
+    }
+
+    if (Sim::MeshObject* mesh_obj = dynamic_cast<Sim::MeshObject*>(new_obj))
+    {
+        // create a managed resource for the mesh
+        _sim->gpuResourceManager()->createManagedResource(mesh_obj->mesh());
+    
+        // create a block of data of GPUCollision structs that will be populated during collision detection
+        // at most, we will have one collision per face in the mesh, so to be safe this is the amount of memory we allocate
+        std::vector<Sim::GPUCollision> collisions_vec(mesh_obj->mesh()->numFaces());
+
+        // initialize the time for each collision slot to some negative number so that we can distinguish when there is an active collision
+        for (auto& gc : collisions_vec)
+        {
+            gc.time = -1;
+        }
+
+        // create the GPUResource for the array of collision structs
+        _sim->gpuResourceManager()->createManagedResource(collisions_vec.data(), collisions_vec.size());
+
+        assert(_gpu_collisions.count(new_obj) == 0);
+
+        // move the vector into the member map
+        _gpu_collisions[new_obj] = std::move(collisions_vec);
+    }
+ #endif
 
     // create a new collision object
     CollisionObject c_obj;
@@ -64,20 +101,20 @@ void CollisionScene::collideObjects()
 
 void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject& c_obj2)
 {
-    std::cout << "Colliding " << c_obj1.obj->name() << " and " << c_obj2.obj->name() << std::endl;
+    // std::cout << "Colliding " << c_obj1.obj->name() << " and " << c_obj2.obj->name() << std::endl;
     const Geometry::SDF* sdf;
     const Geometry::Mesh* mesh;
     Sim::XPBDMeshObject* xpbd_obj;
     Sim::RigidObject* rigid_obj;
     if (c_obj1.sdf && c_obj2.sdf)
     {
-        std::cout << "Can't collide 2 SDFs (yet)!" << std::endl;
+        // std::cout << "Can't collide 2 SDFs (yet)!" << std::endl;
         return;
     }
 
     if (!c_obj1.sdf && !c_obj2.sdf)
     {
-        std::cout << "At least one object must have an SDF!" << std::endl;
+        // std::cout << "At least one object must have an SDF!" << std::endl;
         return;
     }
 
@@ -104,6 +141,21 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         assert(xpbd_obj);
     }
 
+
+ #ifdef HAVE_CUDA
+    std::cout << "GPU!" << std::endl;
+    // get GPU resources associated with object
+    const Sim::MeshGPUResource* mesh_resource = dynamic_cast<Sim::MeshGPUResource*>(_sim->gpuResourceManager()->getResource(mesh));
+    assert(mesh_resource);
+    const Sim::HostReadableGPUResource* sdf_resource = _sim->gpuResourceManager()->getResource(sdf);
+    // copy over memory so that they are up to date
+    // TODO: do this asynchronously
+    mesh_resource->copyVerticesToDevice();
+    sdf_resource->copyToDevice();
+
+    launchCollisionKernel(sdf_resource, mesh_resource, mesh->numVertices(), mesh->numFaces());
+
+ #else
     // iterate through faces of mesh
     const Geometry::Mesh::FacesMat& faces = mesh->faces();
     for (const auto& f : faces.colwise())
@@ -139,6 +191,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
             
         }
     }
+ #endif
 
 
 }

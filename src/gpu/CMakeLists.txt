@@ -8,6 +8,8 @@ target_sources(GPU
     PRIVATE
         ${GPU_INCLUDE_DIR}/GPUResource.hpp
         ${GPU_INCLUDE_DIR}/MeshGPUResource.hpp
+        ${GPU_INCLUDE_DIR}/TetMeshGPUResource.hpp
         ${GPU_INCLUDE_DIR}/GPUResourceManager.hpp
         ${GPU_SRC_DIR}/GPUResourceManager.cpp
+        ${GPU_SRC_DIR}/Collision.cu
 )

@@ -1,7 +1,21 @@
 cmake_minimum_required(VERSION 3.13)
-set(CMAKE_CUDA_ARCHITECTURES "native")
-set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
-project(MyProject LANGUAGES CXX CUDA)
+
+if(EXISTS /usr/local/cuda)
+    set(HAVE_CUDA true)
+else()
+    set(HAVE_CUDA false)
+endif()
+
+if (HAVE_CUDA AND NOT NO_GPU)
+    message("\n-- WE HAVE CUDA! -- \n")
+    set(CMAKE_CUDA_ARCHITECTURES "native")
+    set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
+    project(MyProject LANGUAGES CXX CUDA)
+else ()
+    project(MyProject LANGUAGES CXX)
+endif()
+
+
 set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
@@ -13,7 +27,10 @@ find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 find_package(Eigen3 3.3 REQUIRED)   # find Eigen
 
 include_directories("./include")
-include_directories("/usr/local/cuda/include")
+
+if (HAVE_CUDA AND NOT NO_GPU)
+    include_directories("/usr/local/cuda/include")
+endif()
 
 add_library(MeshUtils include/utils/MeshUtils.hpp src/utils/MeshUtils.cpp) # create MeshUtils library
 set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX) # make sure the linker knows it's C++
@@ -35,8 +52,10 @@ add_library(Geometry)
 add_subdirectory("src/geometry")
 
 # GPU library
-add_library(GPU)
-add_subdirectory("src/gpu")
+if (HAVE_CUDA AND NOT NO_GPU)
+    add_library(GPU)
+    add_subdirectory("src/gpu")
+endif()
 
 # Haptics library
 add_library(Haptics)
@@ -55,7 +74,6 @@ add_subdirectory("src/simobject")
 target_link_libraries(Collision Eigen3::Eigen mesh2sdf)
 target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
 target_link_libraries(Geometry Eigen3::Eigen mesh2sdf)
-target_link_libraries(GPU Geometry SimObject)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
 target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Solver Geometry)   # link MeshUtils and Solver libraries
 target_link_libraries(Solver Eigen3::Eigen SimObject)         # link SimObject library
@@ -93,5 +111,16 @@ target_link_libraries(BeamTest BeamSimulation)
 # add_executable(StaticLoadingTest src/exec/static_loading_test_main.cpp)
 # target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
 
-add_executable(CudaTest src/exec/cuda_test.cu)
-target_link_libraries(CudaTest Eigen3::Eigen)
+if (HAVE_CUDA AND NOT NO_GPU)
+    target_link_libraries(GPU Geometry SimObject)
+    target_link_libraries(Collision GPU)
+    target_link_libraries(ResidualSimulation GPU)
+
+    target_compile_definitions(Collision PRIVATE HAVE_CUDA)
+    target_compile_definitions(ResidualSimulation PRIVATE HAVE_CUDA)
+
+    add_executable(CudaTest src/exec/cuda_test.cu)
+    target_link_libraries(CudaTest Eigen3::Eigen)
+endif()
+
+

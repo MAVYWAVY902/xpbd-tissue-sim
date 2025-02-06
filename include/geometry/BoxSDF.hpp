@@ -91,6 +91,8 @@ class BoxSDF : public SDF
         return GeometryUtils::rotateVectorByQuat(grad, _box->orientation());
     }
 
+    const Sim::RigidBox* box() const { return _box; }
+
     protected:
     /** Pointer to box needed for box's current position, orientation and size */
     const Sim::RigidBox* _box;

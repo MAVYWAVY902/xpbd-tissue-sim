@@ -5,6 +5,10 @@
 #include "simobject/Object.hpp"
 #include "geometry/SDF.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/GPUStructs.hpp"
+#endif
+
 namespace Sim
 {
     class Simulation;
@@ -14,7 +18,7 @@ namespace Sim
 struct CollisionObject
 {
     Sim::Object* obj;
-    std::unique_ptr<Geometry::SDF> sdf;
+    std::unique_ptr<const Geometry::SDF> sdf;
 };
 
 /** Responsible for determining collisions between objects in the simulation.
@@ -60,6 +64,10 @@ class CollisionScene
 
     /** Stores the mesh objects in the scene. */
     std::vector<CollisionObject> _collision_objects;
+
+    #ifdef HAVE_CUDA
+    std::map<Sim::Object*, std::vector<Sim::GPUCollision> > _gpu_collisions;
+    #endif
 
 
 };

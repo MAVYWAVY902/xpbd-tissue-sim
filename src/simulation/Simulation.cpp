@@ -49,6 +49,11 @@ void Simulation::_init()
     // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
     _collision_scene = std::make_unique<CollisionScene>(this);
     _last_collision_detection_time = 0;
+
+    #ifdef HAVE_CUDA
+    std::cout << "\n\n\nSIMULATION WITH GPU!\n\n\n" << std::endl;
+    _gpu_resource_manager = std::make_unique<GPUResourceManager>();
+    #endif
 }
 
 Simulation::Simulation(const std::string& config_filename)
@@ -195,7 +200,7 @@ void Simulation::_timeStep()
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
         // run collision detection
-        // auto t1 = std::chrono::steady_clock::now();
+        auto t1 = std::chrono::steady_clock::now();
         for (auto& obj : _objects)
         {
             if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
@@ -203,8 +208,8 @@ void Simulation::_timeStep()
         }
         
         _collision_scene->collideObjects();
-        // auto t2 = std::chrono::steady_clock::now();
-        // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+        auto t2 = std::chrono::steady_clock::now();
+        std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
         
     }

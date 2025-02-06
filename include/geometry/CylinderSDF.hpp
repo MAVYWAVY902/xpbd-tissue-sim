@@ -81,6 +81,8 @@ class CylinderSDF : public SDF
 
     }
 
+    const Sim::RigidCylinder* cylinder() const { return _cyl; }
+
     protected:
     /** Pointer to cylinder for the cylinder's current position, orientation, radius and height. */
     const Sim::RigidCylinder* _cyl;
