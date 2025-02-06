@@ -1,10 +1,13 @@
 #include "gpu/Collision.cuh"
 
+#include "gpu/ArrayGPUResource.hpp"
 #include "gpu/SphereSDFGPUResource.hpp"
 #include "gpu/BoxSDFGPUResource.hpp"
 #include "gpu/CylinderSDFGPUResource.hpp"
 
-__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces)
+#include "utils/CudaHelperMath.h"
+
+__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::ArrayGPUResource<Sim::GPUCollision>* collision_resource)
 {
     const int block_size = 256;
     const int num_blocks = (num_faces + block_size - 1) / block_size;
@@ -12,11 +15,16 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
     // spawn GPU kernel depending on the type of SDF being collided with
     if (const Sim::SphereSDFGPUResource* sphere_sdf_resource = dynamic_cast<const Sim::SphereSDFGPUResource*>(sdf_resource))
     {
-        sphereMeshCollisionDetection<<<num_blocks, block_size>>>(sphere_sdf_resource->gpuSDF(),
+        std::cout << "Launching kernel..." << std::endl;
+        sphereMeshCollisionDetection<<<1, 1>>>(sphere_sdf_resource->gpuSDF(),
                                                                  mesh_resource->gpuVertices(),
                                                                  num_vertices,
                                                                  mesh_resource->gpuFaces(),
-                                                                 num_faces);
+                                                                 num_faces,
+                                                                 collision_resource->gpuArr());
+        gpuErrchk(cudaPeekAtLastError());
+        // remove later, but here for testing
+        gpuErrchk(cudaDeviceSynchronize());
     }
     else if (const Sim::BoxSDFGPUResource* box_sdf_resource = dynamic_cast<const Sim::BoxSDFGPUResource*>(sdf_resource))
     {
@@ -26,30 +34,43 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
     {
 
     }
+
+    
 }
 
-__device__ float sphere_sdf_distance(const Sim::GPUSphereSDF* sphere_sdf, const float* x)
+__device__ float sphere_sdf_distance(const Sim::GPUSphereSDF* sphere_sdf, const float3& x)
 {
-    const float lx = x[0] - sphere_sdf->position.x;
-    const float ly = x[1] - sphere_sdf->position.y;
-    const float lz = x[2] - sphere_sdf->position.z;
-    return sqrt(lx*lx + ly*ly + lz*lz) - sphere_sdf->radius;
+    return length(x - sphere_sdf->position) - sphere_sdf->radius;
 }
 
-__global__ void sphereMeshCollisionDetection(const Sim::GPUSphereSDF* sphere_sdf, const float* vertices, int num_vertices, const int* faces, int num_faces)
+__device__ float3 sphere_sdf_gradient(const Sim::GPUSphereSDF* sphere_sdf, const float3& x)
+{
+    return normalize(x - sphere_sdf->position);
+}
+
+__global__ void sphereMeshCollisionDetection(const Sim::GPUSphereSDF* sphere_sdf, const float* vertices, int num_vertices, const int* faces, int num_faces, Sim::GPUCollision* collisions)
 {
     int face_index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (face_index >= num_faces)    return;
+    printf("%i\n", face_index);
     const int* face = faces + 3*face_index;
-    float x1[3], x2[3], x3[3];
-    x1[0] = (vertices + 3*face[0])[0];  x1[1] = (vertices + 3*face[0])[1]; x1[2] = (vertices + 3*face[0])[2];
-    x2[0] = (vertices + 3*face[1])[0];  x2[1] = (vertices + 3*face[1])[1]; x2[2] = (vertices + 3*face[1])[2];
-    x3[0] = (vertices + 3*face[2])[0];  x3[1] = (vertices + 3*face[2])[1]; x3[2] = (vertices + 3*face[2])[2];
+    float3 x1, x2, x3;
+    x1.x = (vertices + 3*face[0])[0];  x1.y = (vertices + 3*face[0])[1]; x1.z = (vertices + 3*face[0])[2];
+    x2.x = (vertices + 3*face[1])[0];  x2.y = (vertices + 3*face[1])[1]; x2.z = (vertices + 3*face[1])[2];
+    x3.x = (vertices + 3*face[2])[0];  x3.y = (vertices + 3*face[2])[1]; x3.z = (vertices + 3*face[2])[2];
 
-    float min_p[3];
-    min_p[0] = x1[0]; min_p[1] = x1[1]; min_p[2] = x1[2];
+    printf("f: %i, %i, %i\n", faces[0], faces[1], faces[2]);
+    // printf("x1: %f, %f, %f\n", x1.x, x1.y, x1.z);
+    // printf("x2: %f, %f, %f\n", x2.x, x2.y, x2.z);
+    // printf("x3: %f, %f, %f\n", x3.x, x3.y, x3.z);
+    printf("x1: %f, %f, %f\n", vertices[0], vertices[1], vertices[2]);
+    printf("x2: %f, %f, %f\n", vertices[3], vertices[4], vertices[5]);
+    printf("x3: %f, %f, %f\n", vertices[6], vertices[7], vertices[8]);
+
+    float3 min_p = x1;
     float min_dist = 1000;
 
-    const int num_samples = 21;
+    const int num_samples = 16;
     for (int i = 0; i <= num_samples; i++)
     {
         for (int j = 0; j <= num_samples - i; j++)
@@ -57,49 +78,54 @@ __global__ void sphereMeshCollisionDetection(const Sim::GPUSphereSDF* sphere_sdf
             const float u = (float)i / num_samples;
             const float v = (float)j / num_samples;
             const float w = 1 - u - v;
-            float p[3];
-            p[0] = u*x1[0] + v*x2[0] + w*x3[0];
-            p[1] = u*x1[1] + v*x2[1] + w*x3[1];
-            p[2] = u*x2[2] + v*x2[2] + w*x3[2];
+            float3 p = u*x1 + v*x2 + w*x3;
+            // printf("u: %f, v: %f, w: %f ", u, v, w);
+            // printf("p: %f,%f,%f\n", p.x, p.y, p.z);
             const float dist = sphere_sdf_distance(sphere_sdf, p);
 
             if (dist < min_dist)
             {
                 min_dist = dist;
-                min_p[0] = p[0]; min_p[1] = p[1]; min_p[2] = p[2];
+                min_p = p;
             }
         }
     }
+
+    printf("d: %f\n", min_dist);
+
+    // TODO: stream compaction
+    collisions[face_index].penetration_dist = min_dist;     // accessing global memory slows us down by 20 us
+    collisions[face_index].normal = sphere_sdf_gradient(sphere_sdf, min_p);
 }
 
-__global__ void sphereMeshCollisionDetectionParallel(const Sim::GPUSphereSDF* sphere_sdf, const float* vertices, int num_vertices, const int* faces, int num_faces)
-{
-    int face_index = blockIdx.x;
-    const int* face = faces + 3*face_index;
+// __global__ void sphereMeshCollisionDetectionParallel(const Sim::GPUSphereSDF* sphere_sdf, const float* vertices, int num_vertices, const int* faces, int num_faces)
+// {
+//     int face_index = blockIdx.x;
+//     const int* face = faces + 3*face_index;
 
-    __shared__ float x1[3], x2[3], x3[3];
-    x1[0] = (vertices + 3*face[0])[0];  x1[1] = (vertices + 3*face[0])[1]; x1[2] = (vertices + 3*face[0])[2];
-    x2[0] = (vertices + 3*face[1])[0];  x2[1] = (vertices + 3*face[1])[1]; x2[2] = (vertices + 3*face[1])[2];
-    x3[0] = (vertices + 3*face[2])[0];  x3[1] = (vertices + 3*face[2])[1]; x3[2] = (vertices + 3*face[2])[2];
-    // const float* x1 = vertices + 3*face[0];
-    // const float* x2 = vertices + 3*face[1];
-    // const float* x3 = vertices + 3*face[2];
+//     __shared__ float x1[3], x2[3], x3[3];
+//     x1[0] = (vertices + 3*face[0])[0];  x1[1] = (vertices + 3*face[0])[1]; x1[2] = (vertices + 3*face[0])[2];
+//     x2[0] = (vertices + 3*face[1])[0];  x2[1] = (vertices + 3*face[1])[1]; x2[2] = (vertices + 3*face[1])[2];
+//     x3[0] = (vertices + 3*face[2])[0];  x3[1] = (vertices + 3*face[2])[1]; x3[2] = (vertices + 3*face[2])[2];
+//     // const float* x1 = vertices + 3*face[0];
+//     // const float* x2 = vertices + 3*face[1];
+//     // const float* x3 = vertices + 3*face[2];
 
-    // map thread index to iteration
-    const int N = 22;
-    const int n = ceilf(0.5 * (2*N + 1) - sqrtf( (2*N + 1)*(2*N + 1) - 8*(threadIdx.x + 1)));
-    const int i = min(n - 1, N - 1);    // clamp i to be still in the triangle
-    const int j = threadIdx.x - (2*N - i + 1) * i / 2;
+//     // map thread index to iteration
+//     const int N = 22;
+//     const int n = ceilf(0.5 * (2*N + 1) - sqrtf( (2*N + 1)*(2*N + 1) - 8*(threadIdx.x + 1)));
+//     const int i = min(n - 1, N - 1);    // clamp i to be still in the triangle
+//     const int j = threadIdx.x - (2*N - i + 1) * i / 2;
 
-    // calculate barycentric coords u,v,w
-    const float u = (float)i / (N - 1);
-    const float v = (float)j / (N - 1);
-    const float w = 1 - u - v;
+//     // calculate barycentric coords u,v,w
+//     const float u = (float)i / (N - 1);
+//     const float v = (float)j / (N - 1);
+//     const float w = 1 - u - v;
 
-    // find the distance
-    float p[3];
-    p[0] = u*x1[0] + v*x2[0] + w*x3[0];
-    p[1] = u*x1[1] + v*x2[1] + w*x3[1];
-    p[2] = u*x2[2] + v*x2[2] + w*x3[2];
-    const float dist = sphere_sdf_distance(sphere_sdf, p);
-}
+//     // find the distance
+//     float p[3];
+//     p[0] = u*x1[0] + v*x2[0] + w*x3[0];
+//     p[1] = u*x1[1] + v*x2[1] + w*x3[1];
+//     p[2] = u*x2[2] + v*x2[2] + w*x3[2];
+//     const float dist = sphere_sdf_distance(sphere_sdf, p);
+// }

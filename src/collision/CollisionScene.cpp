@@ -58,6 +58,7 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
     {
         // create a managed resource for the mesh
         _sim->gpuResourceManager()->createManagedResource(mesh_obj->mesh());
+        _sim->gpuResourceManager()->getResource(mesh_obj->mesh())->copyToDevice();
     
         // create a block of data of GPUCollision structs that will be populated during collision detection
         // at most, we will have one collision per face in the mesh, so to be safe this is the amount of memory we allocate
@@ -67,6 +68,7 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
         for (auto& gc : collisions_vec)
         {
             gc.time = -1;
+            gc.penetration_dist = 100;
         }
 
         // create the GPUResource for the array of collision structs
@@ -148,12 +150,28 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
     const Sim::MeshGPUResource* mesh_resource = dynamic_cast<Sim::MeshGPUResource*>(_sim->gpuResourceManager()->getResource(mesh));
     assert(mesh_resource);
     const Sim::HostReadableGPUResource* sdf_resource = _sim->gpuResourceManager()->getResource(sdf);
+    // const std::vector<Sim::GPUCollision>& collisions = _gpu_collisions[xpbd_obj];
+    Sim::ArrayGPUResource<Sim::GPUCollision>* arr_resource = dynamic_cast<Sim::ArrayGPUResource<Sim::GPUCollision>*>(_sim->gpuResourceManager()->getResource(_gpu_collisions[xpbd_obj].data()));
     // copy over memory so that they are up to date
     // TODO: do this asynchronously
     mesh_resource->copyVerticesToDevice();
     sdf_resource->copyToDevice();
 
-    launchCollisionKernel(sdf_resource, mesh_resource, mesh->numVertices(), mesh->numFaces());
+    launchCollisionKernel(sdf_resource, mesh_resource, mesh->numVertices(), mesh->numFaces(), arr_resource);
+
+    arr_resource->copyFromDevice();
+
+    Sim::GPUCollision* arr = arr_resource->arr();
+
+    for (int i = 0; i < mesh->numFaces(); i++)
+    {
+        std::cout << arr[i].penetration_dist << std::endl;
+        if (arr[i].penetration_dist < 0)
+        {
+            std::cout << "COLLISION!" << std::endl;
+            assert(0);
+        }
+    }
 
  #else
     // iterate through faces of mesh

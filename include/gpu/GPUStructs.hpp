@@ -10,7 +10,7 @@ namespace Sim
 
 struct GPUCollision
 {
-    double time;
+    float time;
     float penetration_dist;
     float3 normal;
     float3 bary_coords;

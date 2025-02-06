@@ -27,19 +27,19 @@ class MeshGPUResource : public HostReadableGPUResource
     {
         _vertices_size = _mesh->numVertices() * 3 * sizeof(float);
         _faces_size = _mesh->numFaces() * 3 * sizeof(int);
-        cudaMalloc((void**)&_d_vertices, _vertices_size);
-        cudaMalloc((void**)&_d_faces, _faces_size);
+        gpuErrchk(cudaMalloc((void**)&_d_vertices, _vertices_size));
+        gpuErrchk(cudaMalloc((void**)&_d_faces, _faces_size));
     }
 
     virtual void copyToDevice() const override
     {
-        cudaMemcpy(_d_vertices, _mesh->vertices().data(), _vertices_size, cudaMemcpyHostToDevice);
-        cudaMemcpy(_d_faces, _mesh->faces().data(), _faces_size, cudaMemcpyHostToDevice);
+        gpuErrchk(cudaMemcpy(_d_vertices, _mesh->vertices().data(), _vertices_size, cudaMemcpyHostToDevice));
+        gpuErrchk(cudaMemcpy(_d_faces, _mesh->faces().data(), _faces_size, cudaMemcpyHostToDevice));
     }
 
     void copyVerticesToDevice() const
     {
-        cudaMemcpy(_d_vertices, _mesh->vertices().data(), _vertices_size, cudaMemcpyHostToDevice);
+        gpuErrchk(cudaMemcpy(_d_vertices, _mesh->vertices().data(), _vertices_size, cudaMemcpyHostToDevice));
     }
 
     float* gpuVertices() const { return _d_vertices; }

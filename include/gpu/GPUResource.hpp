@@ -2,6 +2,18 @@
 #define __GPU_RESOURCE_HPP
 
 #include <cuda_runtime_api.h>
+#include <stdio.h>
+#include <cassert>
+
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess)
+   {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      assert(0);
+   }
+}
 
 namespace Sim
 {

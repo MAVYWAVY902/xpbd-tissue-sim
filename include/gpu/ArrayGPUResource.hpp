@@ -3,6 +3,8 @@
 
 #include "gpu/GPUResource.hpp"
 
+#include <iostream>
+
 namespace Sim
 {
 
@@ -34,7 +36,13 @@ class ArrayGPUResource : public HostReadableGPUResource, public HostWritableGPUR
     virtual void copyFromDevice() override
     {
         cudaMemcpy(_arr, _d_arr, _arr_size, cudaMemcpyDeviceToHost);
+        std::cout <<"copyFromDevice[0]: " << _arr[0].penetration_dist << std::endl;
     }
+
+    T* gpuArr() { return _d_arr; }
+
+    // TODO: remove this - not needed since we should keep track of host memory already
+    T* arr() { return _arr; }
 
     private:
     T* _arr;
