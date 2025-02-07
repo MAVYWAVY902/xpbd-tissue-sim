@@ -21,6 +21,10 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
 
     Real vertexInvDamping(const unsigned index) const { return _inv_B[index]; }
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
+
     protected:
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the forces applied to them

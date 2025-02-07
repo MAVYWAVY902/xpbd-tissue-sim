@@ -26,6 +26,10 @@ class RigidSphere : public RigidObject
 
     virtual Geometry::AABB boundingBox() const override;
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
+
     protected:
     Real _radius;
 
@@ -53,7 +57,11 @@ class RigidBox : public RigidObject
     virtual void setup() override;
 
     virtual Geometry::AABB boundingBox() const override;
-    
+
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif  
+
     protected:
     Vec3r _size;
     Eigen::Matrix<Real, 3, 8> _origin_bbox_points;
@@ -82,6 +90,10 @@ class RigidCylinder : public RigidObject
     virtual void setup() override;
 
     virtual Geometry::AABB boundingBox() const override;
+
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
 
     protected:
     Real _radius;

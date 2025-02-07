@@ -19,6 +19,10 @@ class TetMesh : public Mesh
      */
     TetMesh(const VerticesMat& vertices, const FacesMat& faces, const ElementsMat& elements);
 
+    TetMesh(const TetMesh& other);
+
+    TetMesh(TetMesh&& other);
+
     /** Returns a const-reference to the elements of the mesh. */
     const ElementsMat& elements() const { return _elements; }
 
@@ -35,6 +39,10 @@ class TetMesh : public Mesh
      * Note that this is different from averageFaceEdgeLength, which only returns the average edge length in the faces (i.e. the surface) of the mesh.
      */
     std::pair<int, Real> averageTetEdgeLength() const;
+
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override;
+ #endif
 
     protected:
     ElementsMat _elements;  // the matrix of tetrahedral elements

@@ -4,6 +4,11 @@
 #include "geometry/AABB.hpp"
 #include "common/types.hpp"
 
+#ifdef HAVE_CUDA
+#include <memory>
+#include "gpu/GPUResource.hpp"
+#endif
+
 namespace Geometry
 {
 
@@ -26,6 +31,10 @@ class Mesh
      * This is usually done using helper methods in the MeshUtils library.
     */
     Mesh(const VerticesMat& vertices, const FacesMat& faces);
+
+    Mesh(const Mesh& other);
+
+    Mesh(Mesh&& other);
 
     virtual ~Mesh() = default;
 
@@ -136,12 +145,22 @@ class Mesh
     */
     Vec3r massCenter() const;
     
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource();
+    virtual const Sim::HostReadableGPUResource* gpuResource() const { assert(_gpu_resource); return _gpu_resource.get(); }
+ #endif
+
     protected:
 
     VerticesMat _vertices;  // the vertices of the mesh
     FacesMat _faces;    // the faces of the mesh
 
     Vec3r _unrotated_size_xyz; // the size of the mesh in each dimension in its unrotated state
+
+ #ifdef HAVE_CUDA
+    std::unique_ptr<Sim::HostReadableGPUResource> _gpu_resource;
+ #endif
+
 };
 
 } // namespace Geometry

@@ -26,6 +26,10 @@ class RigidMeshObject : public RigidObject, public MeshObject
 
     virtual void update() override;
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
+
     protected:
     Real _density;
     std::unique_ptr<Geometry::Mesh> _initial_mesh;

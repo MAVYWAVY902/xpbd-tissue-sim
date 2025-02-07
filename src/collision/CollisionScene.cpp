@@ -28,40 +28,38 @@ CollisionScene::CollisionScene(const Sim::Simulation* sim)
 void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
 {
     // create a SDF for the new object, if applicable
-    std::unique_ptr<const Geometry::SDF> sdf = nullptr;
+    std::unique_ptr<Geometry::SDF> sdf = nullptr;
     if (Sim::RigidSphere* sphere = dynamic_cast<Sim::RigidSphere*>(new_obj))
     {
-        sdf = std::make_unique<const Geometry::SphereSDF>(sphere);
+        sdf = std::make_unique<Geometry::SphereSDF>(sphere);
     }
     else if (Sim::RigidBox* box = dynamic_cast<Sim::RigidBox*>(new_obj))
     {
-        sdf = std::make_unique<const Geometry::BoxSDF>(box);
+        sdf = std::make_unique<Geometry::BoxSDF>(box);
     }
     else if (Sim::RigidCylinder* cyl = dynamic_cast<Sim::RigidCylinder*>(new_obj))
     {
-        sdf = std::make_unique<const Geometry::CylinderSDF>(cyl);
+        sdf = std::make_unique<Geometry::CylinderSDF>(cyl);
     }
     else if (Sim::RigidMeshObject* mesh_obj = dynamic_cast<Sim::RigidMeshObject*>(new_obj))
     {
         const RigidMeshObjectConfig* obj_config = dynamic_cast<const RigidMeshObjectConfig*>(config);
         assert(obj_config);
-        sdf = std::make_unique<const Geometry::MeshSDF>(mesh_obj, obj_config);
+        sdf = std::make_unique<Geometry::MeshSDF>(mesh_obj, obj_config);
     }
 
  #ifdef HAVE_CUDA
     if (sdf)
     {
-        _sim->gpuResourceManager()->createManagedResource(sdf.get());
+        sdf->createGPUResource();
     }
 
     if (Sim::MeshObject* mesh_obj = dynamic_cast<Sim::MeshObject*>(new_obj))
     {
         // create a managed resource for the mesh
-        const Geometry::Mesh* mesh_ptr = mesh_obj->mesh();
-        _sim->gpuResourceManager()->createManagedResource(mesh_ptr);
-        Sim::HostReadableGPUResource* mesh_resource = _sim->gpuResourceManager()->getResource(mesh_ptr);
-        assert(mesh_resource);
-        mesh_resource->copyToDevice();
+        Geometry::Mesh* mesh_ptr = mesh_obj->mesh();
+        mesh_ptr->createGPUResource();
+        mesh_ptr->gpuResource()->copyToDevice();
     
         // create a block of data of GPUCollision structs that will be populated during collision detection
         // at most, we will have one collision per face in the mesh, so to be safe this is the amount of memory we allocate
@@ -75,12 +73,15 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
         }
 
         // create the GPUResource for the array of collision structs
-        _sim->gpuResourceManager()->createManagedResource(collisions_vec.data(), collisions_vec.size());
+        std::unique_ptr<Sim::ArrayGPUResource<Sim::GPUCollision>> arr_resource = 
+            std::make_unique<Sim::ArrayGPUResource<Sim::GPUCollision>>(collisions_vec.data(), mesh_obj->mesh()->numFaces());
+        arr_resource->allocate();
 
         assert(_gpu_collisions.count(new_obj) == 0);
 
         // move the vector into the member map
         _gpu_collisions[new_obj] = std::move(collisions_vec);
+        _gpu_collision_resources[new_obj] = std::move(arr_resource);
     }
  #endif
 
@@ -150,11 +151,11 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
  #ifdef HAVE_CUDA
     std::cout << "GPU!" << std::endl;
     // get GPU resources associated with object
-    const Sim::MeshGPUResource* mesh_resource = dynamic_cast<Sim::MeshGPUResource*>(_sim->gpuResourceManager()->getResource(mesh));
+    const Sim::MeshGPUResource* mesh_resource = dynamic_cast<const Sim::MeshGPUResource*>(mesh->gpuResource());
     assert(mesh_resource);
-    const Sim::HostReadableGPUResource* sdf_resource = _sim->gpuResourceManager()->getResource(sdf);
+    const Sim::HostReadableGPUResource* sdf_resource = sdf->gpuResource();
     // const std::vector<Sim::GPUCollision>& collisions = _gpu_collisions[xpbd_obj];
-    Sim::ArrayGPUResource<Sim::GPUCollision>* arr_resource = dynamic_cast<Sim::ArrayGPUResource<Sim::GPUCollision>*>(_sim->gpuResourceManager()->getResource(_gpu_collisions[xpbd_obj].data()));
+    Sim::ArrayGPUResource<Sim::GPUCollision>* arr_resource = _gpu_collision_resources[xpbd_obj].get();
     // copy over memory so that they are up to date
     // TODO: do this asynchronously
     mesh_resource->copyVerticesToDevice();
@@ -164,7 +165,8 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
 
     arr_resource->copyFromDevice();
 
-    Sim::GPUCollision* arr = arr_resource->arr();
+    // Sim::GPUCollision* arr = arr_resource->arr();
+    const std::vector<Sim::GPUCollision>& arr = _gpu_collisions[xpbd_obj];
 
     for (int i = 0; i < mesh->numFaces(); i++)
     {

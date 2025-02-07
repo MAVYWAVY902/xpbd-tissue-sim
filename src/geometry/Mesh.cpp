@@ -3,6 +3,10 @@
 #include <set>
 #include <iostream>
 
+#ifdef HAVE_CUDA
+#include "gpu/MeshGPUResource.hpp"
+#endif
+
 namespace Geometry
 {
 
@@ -11,6 +15,27 @@ Mesh::Mesh(const VerticesMat& vertices, const FacesMat& faces)
 {
     AABB bbox = boundingBox();
     _unrotated_size_xyz = bbox.size();
+}
+
+Mesh::Mesh(const Mesh& other)
+{
+    _vertices = other._vertices;
+    _faces = other._faces;
+    _unrotated_size_xyz = other._unrotated_size_xyz;
+
+    // NOTE: we do NOT do anything with the GPU resource - if we are copying this mesh, we don't want to just automatically create a new GPU resource if we don't need to
+    // (we can't copy the GPU resource since it's a unique_ptr)
+}
+
+Mesh::Mesh(Mesh&& other)
+{
+    _vertices = std::move(other._vertices);
+    _faces = std::move(other._faces);
+    _unrotated_size_xyz = std::move(other._unrotated_size_xyz);
+
+ #ifdef HAVE_CUDA
+    _gpu_resource = std::move(other._gpu_resource);
+ #endif
 }
 
 Real* Mesh::vertexPointer(const int index) const
@@ -294,5 +319,13 @@ Vec3r Mesh::massCenter() const
 
     return center_of_mass;
 }
+
+#ifdef HAVE_CUDA
+void Mesh::createGPUResource()
+{
+    _gpu_resource = std::make_unique<Sim::MeshGPUResource>(this);
+    _gpu_resource->allocate();
+}
+#endif
 
 } // namespace Geometry

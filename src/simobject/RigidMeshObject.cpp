@@ -57,18 +57,19 @@ void RigidMeshObject::update()
 
     // TODO: make this work without the need for _initial_mesh
     // move the mesh accordingly
-    // const Vec4r dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q_prev), _q);
-    // const Mat3r rot_mat = GeometryUtils::quatToMat(dq);
-    // const Vec3r dx = _p - _p_prev;
+    // THIS IS WRONG! (for some reason)
+    const Vec4r dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q_prev), _q);
+    const Mat3r rot_mat = GeometryUtils::quatToMat(dq);
+    const Vec3r dx = _p - _p_prev;
 
-    // _mesh->moveTogether(dx);
-    // _mesh->rotateAbout(_p, rot_mat);
+    _mesh->moveTogether(dx);
+    _mesh->rotateAbout(_p, rot_mat);
 
-    // THIS SUCKS! have to copy the initial mesh every time
-    *_mesh = *_initial_mesh;
-    const Mat3r rot_mat = GeometryUtils::quatToMat(_q);
-    _mesh->rotateAbout(Vec3r::Zero(), rot_mat);
-    _mesh->moveTogether(_p);
+    // THIS SUCKS! have to copy the initial mesh every time - but it's right
+    // *_mesh = *_initial_mesh;
+    // const Mat3r rot_mat = GeometryUtils::quatToMat(_q);
+    // _mesh->rotateAbout(Vec3r::Zero(), rot_mat);
+    // _mesh->moveTogether(_p);
 
 }
 

@@ -2,12 +2,28 @@
 
 #include <set>
 
+#ifdef HAVE_CUDA
+#include "gpu/TetMeshGPUResource.hpp"
+#endif
+
 namespace Geometry
 {
 
 TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const ElementsMat& elements)
     : Mesh(vertices, faces), _elements(elements)
 {}
+
+TetMesh::TetMesh(const TetMesh& other)
+    : Mesh(other)
+{
+    _elements = other._elements;
+}
+
+TetMesh::TetMesh(TetMesh&& other)
+    : Mesh(other)
+{
+    _elements = std::move(other._elements);
+}
 
 Real TetMesh::elementVolume(const int index) const
 {
@@ -87,5 +103,13 @@ std::pair<int, Real> TetMesh::averageTetEdgeLength() const
 
     return std::pair<int,Real>(edges.size(), total_length/edges.size());
 }
+
+#ifdef HAVE_CUDA
+void TetMesh::createGPUResource()
+{
+    _gpu_resource = std::make_unique<Sim::TetMeshGPUResource>(this);
+    _gpu_resource->allocate();
+}
+#endif
 
 } // namespace Geometry

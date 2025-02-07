@@ -8,6 +8,9 @@
 #include "geometry/AABB.hpp"
 #include "config/ObjectConfig.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/GPUResource.hpp"
+#endif
 
 namespace Sim
 {
@@ -58,6 +61,11 @@ class Object
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const = 0;
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() = 0;
+    virtual const HostReadableGPUResource* gpuResource() const { assert(_gpu_resource); return _gpu_resource.get(); }
+ #endif
+
     protected:
     /** Name of the object */
     std::string _name;
@@ -66,6 +74,10 @@ class Object
      * Usefule for querying things like current sim time or time step or acceleration due to gravity.
     */
     const Simulation* _sim;
+
+#ifdef HAVE_CUDA
+    std::unique_ptr<HostReadableGPUResource> _gpu_resource;
+#endif
 };
 
 } // namespace Simulation

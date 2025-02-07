@@ -3,6 +3,11 @@
 
 #include "common/types.hpp"
 
+#ifdef HAVE_CUDA
+#include <memory>
+#include "gpu/GPUResource.hpp"
+#endif
+
 namespace Geometry
 {
 
@@ -29,6 +34,15 @@ class SDF
      */
     virtual Vec3r gradient(const Vec3r& x) const = 0;
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() = 0;
+    virtual const Sim::HostReadableGPUResource* gpuResource() const { assert(_gpu_resource); return _gpu_resource.get(); }
+ #endif
+
+    protected:
+ #ifdef HAVE_CUDA
+    std::unique_ptr<Sim::HostReadableGPUResource> _gpu_resource;
+ #endif
 };
 
 } // namespace Geometry

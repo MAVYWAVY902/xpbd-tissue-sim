@@ -11,31 +11,25 @@ namespace Geometry
 class SphereSDF : public SDF
 {
     public:
-    SphereSDF(const Sim::RigidSphere* sphere)
-        : SDF(), _sphere(sphere)
-    {}
+    SphereSDF(const Sim::RigidSphere* sphere);
 
     /** Evaluates F(x) for a sphere.
      * @param x - the point at which to evaluate the SDF
      * @returns the distance from x to the shape boundary ( F(x) )
     */
-    virtual Real evaluate(const Vec3r& x) const override
-    {
-        // the distance from any point the surface of the sphere is simply the distance of the point to the sphere center minus the radius
-        return (x - _sphere->position()).norm() - _sphere->radius();
-    }
+    virtual Real evaluate(const Vec3r& x) const override;
 
     /** Evaluates the gradient of F at x.
      * @param x - the point at which to evaluate the graient of the SDF
      * @returns the gradient of the SDF at x.
      */
-    virtual Vec3r gradient(const Vec3r& x) const override
-    {
-        // the gradient simply is a normalized vector pointing out from the sphere center in the direction of x
-        return (x - _sphere->position()).normalized();
-    }
+    virtual Vec3r gradient(const Vec3r& x) const override;
 
     const Sim::RigidSphere* sphere() const { return _sphere; }
+
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override;
+ #endif
 
     protected:
     /** Pointer to sphere needed for sphere's current position and radius. */

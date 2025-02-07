@@ -100,6 +100,10 @@ class XPBDMeshObject : public Object, public TetMeshObject
 
     void removeOldCollisionConstraints(const int threshold);
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
+
     protected:
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the external forces applied to them

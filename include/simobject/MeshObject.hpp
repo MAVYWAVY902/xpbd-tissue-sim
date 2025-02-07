@@ -25,6 +25,8 @@ class MeshObject
 
     const Geometry::Mesh* mesh() const { return _mesh.get(); }
 
+    Geometry::Mesh* mesh() { return _mesh.get(); }
+
     protected:
     void _loadAndConfigureMesh()
     {
