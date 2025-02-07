@@ -57,8 +57,11 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
     if (Sim::MeshObject* mesh_obj = dynamic_cast<Sim::MeshObject*>(new_obj))
     {
         // create a managed resource for the mesh
-        _sim->gpuResourceManager()->createManagedResource(mesh_obj->mesh());
-        _sim->gpuResourceManager()->getResource(mesh_obj->mesh())->copyToDevice();
+        const Geometry::Mesh* mesh_ptr = mesh_obj->mesh();
+        _sim->gpuResourceManager()->createManagedResource(mesh_ptr);
+        Sim::HostReadableGPUResource* mesh_resource = _sim->gpuResourceManager()->getResource(mesh_ptr);
+        assert(mesh_resource);
+        mesh_resource->copyToDevice();
     
         // create a block of data of GPUCollision structs that will be populated during collision detection
         // at most, we will have one collision per face in the mesh, so to be safe this is the amount of memory we allocate
@@ -165,11 +168,22 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
 
     for (int i = 0; i < mesh->numFaces(); i++)
     {
-        std::cout << arr[i].penetration_dist << std::endl;
+        // std::cout << arr[i].penetration_dist << std::endl;
         if (arr[i].penetration_dist < 0)
         {
-            std::cout << "COLLISION!" << std::endl;
-            assert(0);
+            const Vec3r surface_point(arr[i].surface_point.x, arr[i].surface_point.y, arr[i].surface_point.z);
+            const Vec3r normal(arr[i].normal.x, arr[i].normal.y, arr[i].normal.z);
+            // std::cout << "normal: " << normal[0] << ", " << normal[1] << ", " << normal[2] << std::endl;
+            // std::cout << "surface point: " << surface_point[0] << ", " << surface_point[1] << ", " << surface_point[2] << std::endl;
+            const Eigen::Vector3i face = mesh->face(i);
+            if (rigid_obj->isFixed())
+            {
+                xpbd_obj->addStaticCollisionConstraint(sdf, surface_point, normal, xpbd_obj, face[0], face[1], face[2], arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
+            }
+            else
+            {
+                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_point, normal, xpbd_obj, face[0], face[1], face[2], arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
+            }
         }
     }
 

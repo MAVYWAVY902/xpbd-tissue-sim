@@ -14,7 +14,7 @@ struct GPUCollision
     float penetration_dist;
     float3 normal;
     float3 bary_coords;
-    int face_ind;
+    float3 surface_point;
 };
 
 struct GPUSphereSDF

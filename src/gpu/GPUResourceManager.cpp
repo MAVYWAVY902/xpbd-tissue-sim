@@ -54,7 +54,7 @@ void GPUResourceManager::createManagedResource(const Geometry::Mesh* mesh_ptr)
 {
     const std::uintptr_t key = reinterpret_cast<std::uintptr_t>(mesh_ptr);
 
-    if (const Geometry::TetMesh* m = reinterpret_cast<const Geometry::TetMesh*>(mesh_ptr))
+    if (const Geometry::TetMesh* m = dynamic_cast<const Geometry::TetMesh*>(mesh_ptr))
     {
         _resources[key] = std::make_unique<TetMeshGPUResource>(m);
     }
@@ -70,11 +70,11 @@ void GPUResourceManager::createManagedResource(const Geometry::SDF* sdf_ptr)
 {
     const std::uintptr_t key = reinterpret_cast<std::uintptr_t>(sdf_ptr);
 
-    if (const Geometry::SphereSDF* sdf = reinterpret_cast<const Geometry::SphereSDF*>(sdf_ptr))
+    if (const Geometry::SphereSDF* sdf = dynamic_cast<const Geometry::SphereSDF*>(sdf_ptr))
         _resources[key] = std::make_unique<SphereSDFGPUResource>(sdf);
-    else if (const Geometry::BoxSDF* sdf = reinterpret_cast<const Geometry::BoxSDF*>(sdf_ptr))
+    else if (const Geometry::BoxSDF* sdf = dynamic_cast<const Geometry::BoxSDF*>(sdf_ptr))
         _resources[key] = std::make_unique<BoxSDFGPUResource>(sdf);
-    else if (const Geometry::CylinderSDF* sdf = reinterpret_cast<const Geometry::CylinderSDF*>(sdf_ptr))
+    else if (const Geometry::CylinderSDF* sdf = dynamic_cast<const Geometry::CylinderSDF*>(sdf_ptr))
         _resources[key] = std::make_unique<CylinderSDFGPUResource>(sdf);
 
     _resources[key]->allocate();

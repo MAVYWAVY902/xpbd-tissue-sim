@@ -36,7 +36,6 @@ class ArrayGPUResource : public HostReadableGPUResource, public HostWritableGPUR
     virtual void copyFromDevice() override
     {
         cudaMemcpy(_arr, _d_arr, _arr_size, cudaMemcpyDeviceToHost);
-        std::cout <<"copyFromDevice[0]: " << _arr[0].penetration_dist << std::endl;
     }
 
     T* gpuArr() { return _d_arr; }
