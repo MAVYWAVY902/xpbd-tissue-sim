@@ -25,7 +25,9 @@ class ArrayGPUResource : public HostReadableGPUResource, public HostWritableGPUR
     virtual void allocate() override
     {
         _arr_size = _num_elements * sizeof(T);
-        cudaMalloc((void**)&_d_arr, _arr_size);
+        gpuErrchk(cudaHostRegister(_arr, _arr_size, cudaHostRegisterMapped));
+        gpuErrchk(cudaHostGetDevicePointer((void**)&_d_arr, _arr, 0));
+        // cudaMalloc((void**)&_d_arr, _arr_size);
     }
 
     virtual void copyToDevice() const override

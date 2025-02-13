@@ -68,9 +68,10 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
         // initialize the time for each collision slot to some negative number so that we can distinguish when there is an active collision
         for (auto& gc : collisions_vec)
         {
-            gc.time = -1;
             gc.penetration_dist = 100;
         }
+
+        // gpuErrchk(cudaHostRegister(collisions_vec.data(), collisions_vec.size()*sizeof(Sim::GPUCollision), cudaHostRegisterDefault));
 
         // create the GPUResource for the array of collision structs
         std::unique_ptr<Sim::ArrayGPUResource<Sim::GPUCollision>> arr_resource = 
@@ -149,7 +150,6 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
 
 
  #ifdef HAVE_CUDA
-    std::cout << "GPU!" << std::endl;
     // get GPU resources associated with object
     const Sim::MeshGPUResource* mesh_resource = dynamic_cast<const Sim::MeshGPUResource*>(mesh->gpuResource());
     assert(mesh_resource);
@@ -173,18 +173,21 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         // std::cout << arr[i].penetration_dist << std::endl;
         if (arr[i].penetration_dist < 0)
         {
-            const Vec3r surface_point(arr[i].surface_point.x, arr[i].surface_point.y, arr[i].surface_point.z);
-            const Vec3r normal(arr[i].normal.x, arr[i].normal.y, arr[i].normal.z);
+            const Vec3i f = mesh->face(i);
+            const Vec3r p = mesh->vertex(f[0])*arr[i].bary_coords.x + mesh->vertex(f[1])*arr[i].bary_coords.y + mesh->vertex(f[2])*arr[i].bary_coords.z;
+            const Vec3r normal = sdf->gradient(p);
+            const Vec3r surface_point = p - normal * arr[i].penetration_dist;
+            // const Vec3r surface_point(arr[i].surface_point.x, arr[i].surface_point.y, arr[i].surface_point.z);
+            // const Vec3r normal(arr[i].normal.x, arr[i].normal.y, arr[i].normal.z);
             // std::cout << "normal: " << normal[0] << ", " << normal[1] << ", " << normal[2] << std::endl;
             // std::cout << "surface point: " << surface_point[0] << ", " << surface_point[1] << ", " << surface_point[2] << std::endl;
-            const Eigen::Vector3i face = mesh->face(i);
             if (rigid_obj->isFixed())
             {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_point, normal, xpbd_obj, face[0], face[1], face[2], arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
+                xpbd_obj->addStaticCollisionConstraint(sdf, surface_point, normal, xpbd_obj, f[0], f[1], f[2], arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
             }
             else
             {
-                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_point, normal, xpbd_obj, face[0], face[1], face[2], arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
+                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_point, normal, xpbd_obj, f[0], f[1], f[2], arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
             }
         }
     }

@@ -8,13 +8,19 @@
 namespace Sim
 {
 
+// struct GPUCollision
+// {
+//     float time;
+//     float penetration_dist;
+//     float3 normal;
+//     float3 bary_coords;
+//     float3 surface_point;
+// };
+
 struct GPUCollision
 {
-    float time;
     float penetration_dist;
-    float3 normal;
     float3 bary_coords;
-    float3 surface_point;
 };
 
 struct GPUSphereSDF

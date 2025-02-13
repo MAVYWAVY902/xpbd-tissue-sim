@@ -128,8 +128,14 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_compile_definitions(ResidualSimulation PRIVATE HAVE_CUDA)
     target_compile_definitions(BeamSimulation PRIVATE HAVE_CUDA)
 
+    # target_compile_options(GPU PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
+    #                    -G
+    #                    -g
+    #                    >)
+
     add_executable(CudaTest src/exec/cuda_test.cu)
-    target_link_libraries(CudaTest Eigen3::Eigen)
+    target_link_libraries(CudaTest Eigen3::Eigen Geometry SimObject)
+    target_compile_definitions(CudaTest PRIVATE HAVE_CUDA)
 endif()
 
 

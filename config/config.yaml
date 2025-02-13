@@ -7,7 +7,7 @@ sim-mode: "Visualization"
 time-step: 1e-3
 collision-rate: 1010
 fps: 30
-end-time: 100
+end-time: 10
 objects:
 
   -
@@ -18,8 +18,8 @@ objects:
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/general/stanford_bunny_medpoly.msh"
     # filename: "../resource/general/single.msh"
-    filename: "../resource/cube/cube8.msh"
-    # filename: "../resource/cube/cube16.msh"
+    # filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube16.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     material:
