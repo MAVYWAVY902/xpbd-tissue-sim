@@ -165,7 +165,7 @@ int main(void)
 {
     gmsh::initialize();
 
-    Geometry::TetMesh mesh = MeshUtils::loadTetMeshFromGmshFile("../resource/cube/cube16.msh");
+    Geometry::TetMesh mesh = MeshUtils::loadTetMeshFromGmshFile("../resource/cube/cube8.msh");
     mesh.resize(1.0);
     mesh.moveTogether(Vec3r(-0.5, -0.5, 0.499));
     // mesh.moveTogether(Vec3r(0, 0, 0.5));
@@ -192,18 +192,20 @@ int main(void)
 
     cudaDeviceSynchronize();
 
-    std::array<int, 100> nanosecs;
-    for (int i = 0; i < 100; i++)
+    std::array<int, 1000> nanosecs;
+    for (int i = 0; i < 1000; i++)
     {
+        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
         /////////////////////////////////////////////////////////////////////
         auto start2 = std::chrono::high_resolution_clock::now();
 
-        mesh_gpu_resource->copyVerticesToDevice();
         sdf.gpuResource()->copyToDevice();
+        mesh_gpu_resource->copyVerticesToDevice();
+        
 
         launchCollisionKernel(sdf.gpuResource(), mesh_gpu_resource, mesh.numVertices(), mesh.numFaces(), collisions_resource.get());
 
-        cudaDeviceSynchronize();
+        // cudaDeviceSynchronize();
 
         collisions_resource->copyFromDevice();
         

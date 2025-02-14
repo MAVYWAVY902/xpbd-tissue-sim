@@ -59,34 +59,35 @@ objects:
   #   fixed: false
   #   collisions: true
 
-  -
-    name: "sphere"
-    type: "RigidSphere"
-    radius: 0.5
-    density: 100
-    position: [0, 0, 0]
-    velocity: [0, 0, 0]
+  # -
+  #   name: "sphere"
+  #   type: "RigidSphere"
+  #   radius: 0.5
+  #   density: 100
+  #   position: [0, 0, 0]
+  #   velocity: [0, 0, 0]
+  #   fixed: true
+  #   collisions: true
+
+  # -
+  #   name: "box"
+  #   type: "RigidBox"
+  #   size: [2, 2, 0.5]
+  #   position: [0,0,0]
+  #   collisions: true
+  #   fixed: true
+
+
+  - name: "cylinder"
+    type: "RigidCylinder"
+    radius: 0.2
+    height: 1
+    density: 1000
+    position: [0, 0.0, 0.0]
+    rotation: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
     fixed: true
     collisions: true
-
-  # - name: "box2"
-  #   type: "RigidBox"
-  #   size: [0.5, 0.5, 0.5]
-  #   position: [0, 1.8, 0.5]
-  #   rotation: [0, 0, 0]
-  #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 3.1415]
-  #   collisions: true
-
-  # - name: "cylinder"
-  #   type: "RigidCylinder"
-  #   radius: 0.2
-  #   height: 1
-  #   density: 1000
-  #   position: [0, 0.0, 0.4]
-  #   rotation: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
-  #   collisions: true
 
   # - 
   #   name: "mesh_obj"

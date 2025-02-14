@@ -203,9 +203,7 @@ void Simulation::_timeStep()
             if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
                 xpbd_obj->clearCollisionConstraints();
         }
-        cudaProfilerStart();
         _collision_scene->collideObjects();
-        cudaProfilerStop();
         auto t2 = std::chrono::steady_clock::now();
         std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
 

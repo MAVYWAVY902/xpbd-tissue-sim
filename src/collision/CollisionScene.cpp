@@ -156,6 +156,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
     const Sim::HostReadableGPUResource* sdf_resource = sdf->gpuResource();
     // const std::vector<Sim::GPUCollision>& collisions = _gpu_collisions[xpbd_obj];
     Sim::ArrayGPUResource<Sim::GPUCollision>* arr_resource = _gpu_collision_resources[xpbd_obj].get();
+    auto t1 = std::chrono::high_resolution_clock::now();
     // copy over memory so that they are up to date
     // TODO: do this asynchronously
     mesh_resource->copyVerticesToDevice();
@@ -163,14 +164,19 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
 
     launchCollisionKernel(sdf_resource, mesh_resource, mesh->numVertices(), mesh->numFaces(), arr_resource);
 
+    cudaDeviceSynchronize();
+
     arr_resource->copyFromDevice();
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "GPU part took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
 
     // Sim::GPUCollision* arr = arr_resource->arr();
     const std::vector<Sim::GPUCollision>& arr = _gpu_collisions[xpbd_obj];
 
     for (int i = 0; i < mesh->numFaces(); i++)
     {
-        // std::cout << arr[i].penetration_dist << std::endl;
+        // std::cout << arr[i].penetration_dist << "\n";
         if (arr[i].penetration_dist < 0)
         {
             const Vec3i f = mesh->face(i);
