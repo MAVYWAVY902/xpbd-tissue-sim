@@ -24,6 +24,8 @@
 
 #include "config/RigidMeshObjectConfig.hpp"
 
+#include <Mesh2SDF/array3.hpp>
+
 struct GPUCollision
 {
     float penetration_dist;
@@ -165,6 +167,23 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
     
 }
 
+__global__ void testMeshSDF(const cudaPitchedPtr d_dist_grid, int width, int height, int depth)
+{
+    char* devPtr = (char*)d_dist_grid.ptr;
+    size_t pitch = d_dist_grid.pitch;
+    size_t slicePitch = pitch * height;
+    
+    int x = 20;
+    int y = 33;
+    int z = 50;
+
+    char* slice = devPtr + z * slicePitch;
+    float* row = (float*)(slice + y * pitch);
+    float element = row[x];
+
+    printf("dist at (%i, %i, %i): %f\n", x, y, z, element);
+}
+
 int main(void)
 {
     gmsh::initialize();
@@ -186,7 +205,7 @@ int main(void)
 
     Geometry::MeshSDF rigid_mesh_sdf(&rigid_mesh_obj, &rigid_mesh_obj_config);
     rigid_mesh_sdf.createGPUResource();
-    
+
     const Sim::MeshSDFGPUResource* mesh_sdf_gpu_resource = dynamic_cast<const Sim::MeshSDFGPUResource*>(rigid_mesh_sdf.gpuResource());
     mesh_sdf_gpu_resource->copyToDevice();
 
@@ -198,7 +217,13 @@ int main(void)
     int block_size = 256;
     int num_blocks;
     num_blocks = (mesh.numFaces() + block_size - 1) / block_size;
+
+    testMeshSDF<<<1,1>>>(mesh_sdf_gpu_resource->devDistGrid(), 128, 128, 128);
     
+    cudaDeviceSynchronize();
+
+    const mesh2sdf::Array3<float>& dist_grid = rigid_mesh_sdf.distanceGrid();
+    std::cout << "dist at (20, 33, 50): " << dist_grid(20,33,50) << std::endl;
 
     return 0;
 }
