@@ -23,6 +23,9 @@ class MeshSDF : public SDF
 
     virtual Vec3r gradient(const Vec3r& x) const override;
 
+    const mesh2sdf::Array3<Real>& distanceGrid() const { return _sdf.distanceGrid(); }
+    const mesh2sdf::Array3<Vec3r>& gradientGrid() const { return _sdf.gradientGrid(); }
+
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override;
  #endif

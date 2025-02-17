@@ -1,12 +1,16 @@
 #include "geometry/MeshSDF.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/MeshSDFGPUResource.hpp"
+#endif
+
 namespace Geometry
 {
 
 MeshSDF::MeshSDF(const Sim::RigidMeshObject* mesh_obj, const RigidMeshObjectConfig* config)
     : SDF(), _mesh_obj(mesh_obj)
 {
-    if (config->sdfFilename().has_value())
+    if (config && config->sdfFilename().has_value())
     {
         _from_file = true;
         // load SDF from file
@@ -76,13 +80,12 @@ inline Vec3r MeshSDF::gradient(const Vec3r& x) const
     return GeometryUtils::rotateVectorByQuat(grad, _mesh_obj->orientation());
 }
 
-#ifdef HAVE_CUDA
+ #ifdef HAVE_CUDA
 inline void MeshSDF::createGPUResource() 
 {
-    assert(0); // no MeshSDFGPUResource class yet
-    // _gpu_resource = std::make_unique<Sim::BoxSDFGPUResource>(this);
-    // _gpu_resource->allocate();
+    _gpu_resource = std::make_unique<Sim::MeshSDFGPUResource>(this);
+    _gpu_resource->allocate();
 }
-#endif
+ #endif
 
 } // namespace Geometry
