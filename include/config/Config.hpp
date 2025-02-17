@@ -48,6 +48,12 @@ class Config
         std::cout << "\nExtracting parameters for object with name " << BOLD << name() << RST << "..." << std::endl;
     }
 
+    /** "Explicit" constructor that does not use a YAML node to set up the Config */
+    explicit Config(const std::string& name)
+    {
+        _name.value = name;
+    }
+
     /** Declare virtual destructor for polymorphism */
     virtual ~Config() = default;
 

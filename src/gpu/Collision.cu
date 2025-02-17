@@ -30,9 +30,9 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
         //                                                          mesh_resource->gpuFaces(),
         //                                                          num_faces,
         //                                                          collision_resource->gpuArr());
-        gpuErrchk(cudaPeekAtLastError());
+        CHECK_CUDA_ERROR(cudaPeekAtLastError());
         // remove later, but here for testing
-        // gpuErrchk(cudaDeviceSynchronize());
+        // CHECK_CUDA_ERROR(cudaDeviceSynchronize());
     }
     else if (const Sim::BoxSDFGPUResource* box_sdf_resource = dynamic_cast<const Sim::BoxSDFGPUResource*>(sdf_resource))
     {
@@ -42,7 +42,7 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
                                                                  mesh_resource->gpuFaces(),
                                                                  num_faces,
                                                                  collision_resource->gpuArr());
-        gpuErrchk(cudaPeekAtLastError());
+        CHECK_CUDA_ERROR(cudaPeekAtLastError());
     }
     else if (const Sim::CylinderSDFGPUResource* cyl_sdf_resource = dynamic_cast<const Sim::CylinderSDFGPUResource*>(sdf_resource))
     {
@@ -52,7 +52,7 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
                                                                  mesh_resource->gpuFaces(),
                                                                  num_faces,
                                                                  collision_resource->gpuArr());
-        gpuErrchk(cudaPeekAtLastError());
+        CHECK_CUDA_ERROR(cudaPeekAtLastError());
     }
 
     

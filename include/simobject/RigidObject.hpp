@@ -14,12 +14,6 @@ class RigidObject : public Object
     public:
     RigidObject(const Simulation* sim, const RigidObjectConfig* config);
 
-    RigidObject(const Simulation* sim, const std::string& name);
-
-    RigidObject(const Simulation* sim, const std::string& name, const Vec3r& position, const Vec4r& orientation);
-
-    RigidObject(const Simulation* sim, const std::string& name, const Vec3r& position, const Vec4r& orientation, const Real mass, const Mat3r& inertia_mat);
-
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
     */

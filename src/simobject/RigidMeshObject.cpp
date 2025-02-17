@@ -11,12 +11,6 @@ RigidMeshObject::RigidMeshObject(const Simulation* sim, const RigidMeshObjectCon
     _density = config->density();
 }
 
-// RigidMeshObject::RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const Real density)
-//     : RigidObject(sim, name), _density(density)
-// {
-//     _mesh = MeshUtils::loadTetMeshFromGmshFile(filename);
-// }
-
 std::string RigidMeshObject::toString(const int indent) const
 {
     std::string indent_str(indent, '\t');

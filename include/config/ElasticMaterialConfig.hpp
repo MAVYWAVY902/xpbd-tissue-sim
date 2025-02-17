@@ -31,6 +31,15 @@ class ElasticMaterialConfig : public Config
         _extractParameter("mu-k", node, _mu_k, DEFAULT_MU_K());
     }
 
+    explicit ElasticMaterialConfig(Real density, Real E, Real nu, Real mu_s, Real mu_k)
+    {
+        _density.value = density;
+        _E.value = E;
+        _nu.value = nu;
+        _mu_s.value = mu_s;
+        _mu_k.value = mu_k;
+    }
+
     // Getters
     Real density() const { return _density.value.value(); }
     Real E() const { return _E.value.value(); }

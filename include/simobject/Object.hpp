@@ -24,11 +24,6 @@ class Object
         : _name(config->name()), _sim(sim)
     {}
 
-    Object(const Simulation* sim, const std::string& name)
-        : _name(name), _sim(sim)
-    {
-    }
-
     virtual ~Object() = default;
 
     /** Returns a string with all relevant information about this object. 

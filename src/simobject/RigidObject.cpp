@@ -20,18 +20,6 @@ RigidObject::RigidObject(const Simulation* sim, const RigidObjectConfig* config)
     _fixed = config->fixed();
 }
 
-RigidObject::RigidObject(const Simulation* sim, const std::string& name)
-    : Object(sim, name), _p({0,0,0}), _q({0,0,0,1}), _m(0), _I(Mat3r::Zero()), _v({0,0,0}), _w({0,0,0})
-{}
-
-RigidObject::RigidObject(const Simulation* sim, const std::string& name, const Vec3r& position, const Vec4r& orientation)
-    : Object(sim, name), _p(position), _q(orientation), _m(0), _I(Mat3r::Zero()), _v({0,0,0}), _w({0,0,0})
-{}
-
-RigidObject::RigidObject(const Simulation* sim, const std::string& name, const Vec3r& position, const Vec4r& orientation, const Real mass, const Mat3r& inertia_mat)
-    : Object(sim, name), _p(position), _q(orientation), _m(mass), _I(inertia_mat), _v({0,0,0}), _w({0,0,0})
-{}
-
 std::string RigidObject::toString(const int indent) const
 {
     const std::string indent_str(indent, '\t');

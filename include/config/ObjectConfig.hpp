@@ -24,6 +24,16 @@ class ObjectConfig : public Config
         _extractParameter("velocity", node, _initial_velocity, DEFAULT_VELOCITY());
         _extractParameter("rotation", node, _initial_rotation, DEFAULT_ROTATION());
     }
+
+    explicit ObjectConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
+                          const Vec3r& initial_velocity, bool collisions)
+        : Config(name)
+    {
+        _initial_position.value = initial_position;
+        _initial_rotation.value = initial_rotation;
+        _initial_velocity.value = initial_velocity;
+        _collisions.value = collisions;
+    }
     
     bool collisions() const { return _collisions.value.value(); }
     Vec3r initialPosition() const { return _initial_position.value.value(); }

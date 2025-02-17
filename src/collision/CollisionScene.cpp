@@ -71,7 +71,7 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
             gc.penetration_dist = 100;
         }
 
-        // gpuErrchk(cudaHostRegister(collisions_vec.data(), collisions_vec.size()*sizeof(Sim::GPUCollision), cudaHostRegisterDefault));
+        // CHECK_CUDA_ERROR(cudaHostRegister(collisions_vec.data(), collisions_vec.size()*sizeof(Sim::GPUCollision), cudaHostRegisterDefault));
 
         // create the GPUResource for the array of collision structs
         std::unique_ptr<Sim::ArrayGPUResource<Sim::GPUCollision>> arr_resource = 

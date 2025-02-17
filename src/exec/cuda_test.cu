@@ -20,6 +20,8 @@
 #include "gpu/CylinderSDFGPUResource.hpp"
 #include "gpu/ArrayGPUResource.hpp"
 
+#include "config/RigidPrimitiveConfigs.hpp"
+
 struct GPUCollision
 {
     float penetration_dist;
@@ -145,9 +147,9 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
         //                                                          mesh_resource->gpuFaces(),
         //                                                          num_faces,
         //                                                          collision_resource->gpuArr());
-        gpuErrchk(cudaPeekAtLastError());
+        CHECK_CUDA_ERROR(cudaPeekAtLastError());
         // remove later, but here for testing
-        // gpuErrchk(cudaDeviceSynchronize());
+        // CHECK_CUDA_ERROR(cudaDeviceSynchronize());
     }
     else if (const Sim::BoxSDFGPUResource* box_sdf_resource = dynamic_cast<const Sim::BoxSDFGPUResource*>(sdf_resource))
     {
@@ -173,7 +175,8 @@ int main(void)
     const Sim::MeshGPUResource* mesh_gpu_resource = dynamic_cast<const Sim::MeshGPUResource*>(mesh.gpuResource());
     mesh_gpu_resource->copyToDevice();
 
-    Sim::RigidSphere sphere(nullptr, "sphere1", Vec3r(0,0,0), Vec4r(0,0,0,1), 0.5, 100);
+    RigidSphereConfig sphere_config("sphere1", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), 100, 0.5, true, true);
+    Sim::RigidSphere sphere(nullptr, &sphere_config);
     Geometry::SphereSDF sdf(&sphere);
     sdf.createGPUResource();
     sdf.gpuResource()->copyToDevice();

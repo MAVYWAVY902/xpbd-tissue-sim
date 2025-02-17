@@ -23,19 +23,6 @@ RigidSphere::RigidSphere(const Simulation* sim, const RigidSphereConfig* config)
     _I_inv = _I.inverse();
 }
 
-RigidSphere::RigidSphere(const Simulation* sim, const std::string& name, const Vec3r& position, const Vec4r& orientation, double radius, double density)
-    : RigidObject(sim, name, position, orientation), _radius(radius)
-{
-    _m = 4.0/3.0 * 3.1415 * _radius * _radius * _radius * density;
-
-    // moment of inertia of sphere about axis through its center is 2/5 * m * r^2
-    _I(0,0) = 2.0/5.0 * _m * _radius * _radius;
-    _I(1,1) = 2.0/5.0 * _m * _radius * _radius;
-    _I(2,2) = 2.0/5.0 * _m * _radius * _radius;
-
-    _I_inv = _I.inverse();
-}
-
 std::string RigidSphere::toString(const int indent) const
 {
     // TODO: better toString

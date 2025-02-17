@@ -24,6 +24,18 @@ class MeshObjectConfig
         Config::_extractParameter("size", node, _size);
     }
 
+    explicit MeshObjectConfig(const std::string& filename, const std::optional<Real>& max_size, const std::optional<Vec3r>& size,
+                             bool draw_points, bool draw_edges, bool draw_faces, const Vec4r& color)
+    {
+        _filename.value = filename;
+        _max_size.value = max_size;
+        _size.value = size;
+        _draw_points.value = draw_points;
+        _draw_edges.value = draw_edges;
+        _draw_faces.value = draw_faces;
+        _color.value = color;
+    }
+
     std::string filename() const { return _filename.value.value(); }
     bool drawPoints() const { return _draw_points.value.value(); }
     bool drawEdges() const { return _draw_edges.value.value(); }

@@ -15,6 +15,14 @@ class RigidSphereConfig : public RigidObjectConfig
         _extractParameter("radius", node, _radius, DEFAULT_RADIUS());
     }
 
+    explicit RigidSphereConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
+        const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, Real radius,
+        bool collisions, bool fixed)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, fixed)
+    {
+        _radius.value = radius;
+    }
+
     Real radius() const { return _radius.value.value(); }
 
     protected:
@@ -34,6 +42,14 @@ class RigidBoxConfig : public RigidObjectConfig
         : RigidObjectConfig(node)
     {
         _extractParameter("size", node, _size, DEFAULT_SIZE());
+    }
+
+    explicit RigidBoxConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
+        const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, const Vec3r& size,
+        bool collisions, bool fixed)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, fixed)
+    {
+        _size.value = size;
     }
 
     Vec3r size() const { return _size.value.value(); }
@@ -56,6 +72,15 @@ class RigidCylinderConfig : public RigidObjectConfig
     {
         _extractParameter("radius", node, _radius, DEFAULT_RADIUS());
         _extractParameter("height", node, _height, DEFAULT_HEIGHT());
+    }
+
+    explicit RigidCylinderConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
+        const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, Real radius, Real height,
+        bool collisions, bool fixed)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, fixed)
+    {
+        _radius.value = radius;
+        _height.value = height;
     }
 
     Real radius() const { return _radius.value.value(); }

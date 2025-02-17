@@ -2,17 +2,20 @@
 #define __GPU_RESOURCE_HPP
 
 #include <cuda_runtime_api.h>
-#include <stdio.h>
+#include <iostream>
 #include <cassert>
 
-#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, char *file, int line)
+#define CHECK_CUDA_ERROR(val) checkCudaError((val), #val, __FILE__, __LINE__)
+inline void checkCudaError(cudaError_t err, const char* const func, const char* const file,
+           const int line)
 {
-   if (code != cudaSuccess)
-   {
-      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-      assert(0);
-   }
+    if (err != cudaSuccess)
+    {
+        std::cerr << "CUDA Runtime Error at: " << file << ":" << line
+                  << std::endl;
+        std::cerr << cudaGetErrorString(err) << " " << func << std::endl;
+        assert(0);
+    }
 }
 
 namespace Sim
