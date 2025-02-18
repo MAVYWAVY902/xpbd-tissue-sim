@@ -52,9 +52,10 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
     if (sdf)
     {
         sdf->createGPUResource();
+        sdf->gpuResource()->fullCopyToDevice();
     }
 
-    if (Sim::MeshObject* mesh_obj = dynamic_cast<Sim::MeshObject*>(new_obj))
+    if (Sim::XPBDMeshObject* mesh_obj = dynamic_cast<Sim::XPBDMeshObject*>(new_obj))
     {
         // create a managed resource for the mesh
         Geometry::Mesh* mesh_ptr = mesh_obj->mesh();

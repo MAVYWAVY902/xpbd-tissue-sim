@@ -4,6 +4,7 @@
 #include "gpu/SphereSDFGPUResource.hpp"
 #include "gpu/BoxSDFGPUResource.hpp"
 #include "gpu/CylinderSDFGPUResource.hpp"
+#include "gpu/MeshSDFGPUResource.hpp"
 
 #include "utils/CudaHelperMath.h"
 
@@ -54,14 +55,25 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
                                                                  collision_resource->gpuArr());
         CHECK_CUDA_ERROR(cudaPeekAtLastError());
     }
+    else if (const Sim::MeshSDFGPUResource* mesh_sdf_resource = dynamic_cast<const Sim::MeshSDFGPUResource*>(sdf_resource))
+    {
+        meshMeshCollisionDetection<<<num_blocks, block_size>>>(mesh_sdf_resource->gpuSDF(),
+                                                                 mesh_resource->gpuVertices(),
+                                                                 num_vertices,
+                                                                 mesh_resource->gpuFaces(),
+                                                                 num_faces,
+                                                                 collision_resource->gpuArr());
+        CHECK_CUDA_ERROR(cudaPeekAtLastError());
+    }
 
     
 }
 
 __device__ void global_to_body(const float3& x, const float3& body_position, const float4& body_orientation, float3& x_body)
 {
+    const float3 diff = x - body_position;
     const float3 neg_quat3 = make_float3(-body_orientation.x, -body_orientation.y, -body_orientation.z);
-    x_body = 2*dot(x,neg_quat3)*neg_quat3 + (2*body_orientation.w*body_orientation.w - 1)*x + 2*body_orientation.w*cross(neg_quat3, x);
+    x_body = 2*dot(diff,neg_quat3)*neg_quat3 + (2*body_orientation.w*body_orientation.w - 1)*diff + 2*body_orientation.w*cross(neg_quat3, diff);
 }
 
 __device__ float sphere_sdf_distance(const Sim::GPUSphereSDF* sphere_sdf, const float3& x)
@@ -72,8 +84,6 @@ __device__ float sphere_sdf_distance(const Sim::GPUSphereSDF* sphere_sdf, const 
 __device__ float3 sphere_sdf_gradient(const Sim::GPUSphereSDF* sphere_sdf, const float3& x)
 {
     float3 grad =  normalize(x - sphere_sdf->position);
-    // printf("x: %f, %f, %f\n", x.x, x.y, x.z);
-    // printf("grad: %f, %f, %f\n", grad.x, grad.y, grad.z);
     return grad;
 }
 
@@ -110,6 +120,58 @@ __device__ float cyl_sdf_distance(const Sim::GPUCylinderSDF* cyl_sdf, const floa
     const float dist_when_inside = fminf(fmaxf(xy_dist, z_dist), 0.0);
 
     return dist_when_inside + dist_when_outside;
+}
+
+__device__ float mesh_sdf_distance(const Sim::GPUMeshSDF* mesh_sdf, const float3& x)
+{
+    float3 x_body;
+    global_to_body(x, mesh_sdf->position, mesh_sdf->orientation, x_body);
+
+    const float3 grid_ijk = (x_body - mesh_sdf->grid_bbox_min) / mesh_sdf->grid_cell_size;
+    int3 ijk0 = make_int3(floorf(grid_ijk));
+    int3 ijk1 = ijk0 + 1;
+    const float3 ijkd = grid_ijk - make_float3(ijk0);
+
+    // clamp to the grid border
+    ijk0.x = clamp(ijk0.x, 0, mesh_sdf->grid_dims.x-1);
+    ijk0.y = clamp(ijk0.y, 0, mesh_sdf->grid_dims.y-1);
+    ijk0.z = clamp(ijk0.z, 0, mesh_sdf->grid_dims.z-1);
+
+    ijk1.x = clamp(ijk1.x, 0, mesh_sdf->grid_dims.x-1);
+    ijk1.y = clamp(ijk1.y, 0, mesh_sdf->grid_dims.y-1);
+    ijk1.z = clamp(ijk1.z, 0, mesh_sdf->grid_dims.z-1);
+
+    // get distance from trilinear interpolation
+    const char* devPtr = (const char*)mesh_sdf->dev_dist_grid_ptr.ptr;
+    size_t pitch = mesh_sdf->dev_dist_grid_ptr.pitch;
+    size_t slice_pitch = pitch * mesh_sdf->grid_dims.z;
+
+    const char* slice = devPtr + ijk0.z * slice_pitch;
+    const float* row = (const float*)(slice + ijk0.y * pitch);
+    const float c000 = row[ijk0.x];
+    const float c100 = row[ijk1.x];
+
+    row = (const float*)(slice + ijk1.y * pitch);
+    const float c010 = row[ijk0.x];
+    const float c110 = row[ijk1.x];
+
+    slice = devPtr + ijk1.z * slice_pitch;
+    row = (const float*)(slice + ijk0.y * pitch);
+    const float c001 = row[ijk0.x];
+    const float c101 = row[ijk1.x];
+    
+    row = (const float*)(slice + ijk1.y * pitch);
+    const float c011 = row[ijk0.x];
+    const float c111 = row[ijk1.x];
+
+    const float c00 = c000*(1-ijkd.x) + c100*ijkd.x;
+    const float c01 = c001*(1-ijkd.x) + c101*ijkd.x;
+    const float c10 = c010*(1-ijkd.x) + c110*ijkd.x;
+    const float c11 = c011*(1-ijkd.x) + c111*ijkd.x;
+    const float c0 = c00*(1-ijkd.y) + c10*ijkd.y;
+    const float c1 = c01*(1-ijkd.y) + c11*ijkd.y;
+    const float c = c0*(1-ijkd.z) + c1*ijkd.z;
+    return c;
 }
 
 __global__ void sphereMeshCollisionDetection(const Sim::GPUSphereSDF* sphere_sdf, const float* vertices, int num_vertices, const int* faces, int num_faces, Sim::GPUCollision* collisions)
@@ -268,6 +330,46 @@ __global__ void cylinderMeshCollisionDetection(const Sim::GPUCylinderSDF* cyl_sd
     }
 
     // TODO: stream compaction
+    collisions[face_index].penetration_dist = min_dist;
+    collisions[face_index].bary_coords = min_bary_coords;
+}
+
+__global__ void meshMeshCollisionDetection(const Sim::GPUMeshSDF* mesh_sdf, const float* vertices, int num_vertices, const int* faces, int num_faces, Sim::GPUCollision* collisions)
+{
+    int face_index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (face_index >= num_faces)    return;
+    const int* face = faces + 3*face_index;
+    float3 x1, x2, x3;
+    x1.x = (vertices + 3*face[0])[0];  x1.y = (vertices + 3*face[0])[1]; x1.z = (vertices + 3*face[0])[2];
+    x2.x = (vertices + 3*face[1])[0];  x2.y = (vertices + 3*face[1])[1]; x2.z = (vertices + 3*face[1])[2];
+    x3.x = (vertices + 3*face[2])[0];  x3.y = (vertices + 3*face[2])[1]; x3.z = (vertices + 3*face[2])[2];
+
+    float3 min_p = x1;
+    float3 min_bary_coords = make_float3(1.0, 0.0, 0.0);
+    float min_dist = 1000;
+
+    const int num_samples = 8;
+    for (int i = 0; i <= num_samples; i++)
+    {
+        for (int j = 0; j <= num_samples - i; j++)
+        {
+            const float u = (float)i / num_samples;
+            const float v = (float)j / num_samples;
+            const float w = 1 - u - v;
+            float3 p = u*x1 + v*x2 + w*x3;
+            // printf("u: %f, v: %f, w: %f ", u, v, w);
+            // printf("p: %f,%f,%f\n", p.x, p.y, p.z);
+            const float dist = mesh_sdf_distance(mesh_sdf, p);
+
+            if (dist < min_dist)
+            {
+                min_dist = dist;
+                min_p = p;
+                min_bary_coords = make_float3(u, v, w);
+            }
+        }
+    }
+
     collisions[face_index].penetration_dist = min_dist;
     collisions[face_index].bary_coords = min_bary_coords;
 }
