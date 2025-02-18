@@ -8,7 +8,7 @@
 namespace Solver
 {
 
-XPBDSolver::XPBDSolver(const Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+XPBDSolver::XPBDSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
     : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)
 {
     _primary_residual.resize(3*_obj->mesh()->numVertices());

@@ -1,7 +1,9 @@
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/RigidObject.hpp"
 #include "simulation/Simulation.hpp"
+
 #include "solver/XPBDGaussSeidelSolver.hpp"
+#include "solver/XPBDJacobiSolver.hpp"
 #include "solver/StaticDeformableCollisionConstraint.hpp"
 #include "solver/RigidDeformableCollisionConstraint.hpp"
 #include "solver/RigidBodyConstraintProjector.hpp"
@@ -250,8 +252,7 @@ void XPBDMeshObject::_createSolver(XPBDSolverType solver_type, int num_solver_it
     }
     else if (solver_type == XPBDSolverType::JACOBI)
     {
-        std::cout << "\nJacobi solver not implemented yet!" << std::endl;
-        assert(0);
+        _solver = std::make_unique<Solver::XPBDJacobiSolver>(this, num_solver_iters, residual_policy);
     }
 }
 
@@ -279,7 +280,7 @@ void XPBDMeshObject::_movePositionsInertially()
     for (int i = 0; i < _mesh->numVertices(); i++)
     {
         const Real dz = -_sim->gAccel() * dt * dt;
-        _mesh->displaceVertex(i, 0, 0, dz);
+        _mesh->displaceVertex(i, Vec3r(0, 0, dz));
     }
 }
 
@@ -297,6 +298,16 @@ void XPBDMeshObject::_projectConstraints()
         else
         {
             c.num_steps_unused++;
+        }
+    }
+
+    // TODO: remove
+    for (int i = 0; i < _mesh->numVertices(); i++)
+    {
+        const Vec3r& v = _mesh->vertex(i);
+        if (v[2] < 0)
+        {
+            _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
         }
     }
 

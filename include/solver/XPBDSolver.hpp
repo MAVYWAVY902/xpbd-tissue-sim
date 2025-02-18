@@ -24,7 +24,7 @@ class XPBDSolver
      * @param num_iter - number of solver loop iterations
      * @param residual_policy - how often to compute the residual
      */
-    explicit XPBDSolver(const Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy);
+    explicit XPBDSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy);
 
     virtual ~XPBDSolver() = default;
 
@@ -78,7 +78,7 @@ class XPBDSolver
     std::vector<std::unique_ptr<ConstraintProjector>> _constraint_projectors;       // constraint projectors that will be used to project constraints to get position updates
     std::vector<int> _empty_indices;                       // indices in the _constraint_projectors vector that are empty (the ConstraintProjector they used to have got removed)
 
-    const Sim::XPBDMeshObject* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
+    Sim::XPBDMeshObject* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
     int _num_iter;                                         // number of solver iterations per solve() call
     Geometry::Mesh::VerticesMat _inertial_positions;                // stores the positions after the inertial update - useful for primary residual calculation
 

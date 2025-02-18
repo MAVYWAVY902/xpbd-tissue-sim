@@ -59,13 +59,15 @@ class Mesh
     /** Sets the vertex at the specified to a new position. */
     void setVertex(const int index, const Vec3r& new_pos) { _vertices.col(index) = new_pos; }
     
+   void displaceVertex(const int index, const Vec3r& offset) { _vertices.col(index) += offset; }
+
     /** Displaces the vertex at the specified index by a certain amount. */
-    void displaceVertex(const int index, const Real dx, const Real dy, const Real dz)
-    {
-        _vertices(0, index) += dx;
-        _vertices(1, index) += dy;
-        _vertices(2, index) += dz;
-    }
+   //  void displaceVertex(const int index, const Real dx, const Real dy, const Real dz)
+   //  {
+   //      _vertices(0, index) += dx;
+   //      _vertices(1, index) += dy;
+   //      _vertices(2, index) += dz;
+   //  }
 
     /** Returns a single face as an Eigen 3-vector, given the vertex index. */
     Eigen::Vector3i face(const int index) const { return _faces.col(index); }

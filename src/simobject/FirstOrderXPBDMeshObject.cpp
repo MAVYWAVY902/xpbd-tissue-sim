@@ -50,7 +50,7 @@ void FirstOrderXPBDMeshObject::_movePositionsInertially()
 {
     for (int i = 0; i < _mesh->numVertices(); i++)
     {
-        _mesh->displaceVertex(i, 0, 0, -_sim->gAccel() * _vertex_masses[i] * _sim->dt() * _inv_B[i]);
+        _mesh->displaceVertex(i, Vec3r(0, 0, -_sim->gAccel() * _vertex_masses[i] * _sim->dt() * _inv_B[i]));
     }   
 }
 

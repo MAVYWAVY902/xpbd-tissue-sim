@@ -1,20 +1,20 @@
-#include "solver/XPBDGaussSeidelSolver.hpp"
+#include "solver/XPBDJacobiSolver.hpp"
 #include "solver/Constraint.hpp"
 #include "solver/ConstraintProjector.hpp"
 #include "solver/RigidBodyConstraintProjector.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 
-#include <chrono>
-
 namespace Solver
 {
-
-XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+XPBDJacobiSolver::XPBDJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
     : XPBDSolver(obj, num_iter, residual_policy)
-{}
-
-void XPBDGaussSeidelSolver::_solveConstraints(Real* data)
 {
+    _position_updates.conservativeResize(3, obj->mesh()->numVertices());
+}
+
+void XPBDJacobiSolver::_solveConstraints(Real* data)
+{
+    _position_updates = Geometry::Mesh::VerticesMat::Zero(3, _obj->mesh()->numVertices());
     for (const auto& proj : _constraint_projectors)
     {
         if (!proj)
@@ -41,17 +41,27 @@ void XPBDGaussSeidelSolver::_solveConstraints(Real* data)
             proj->project(data, _coordinate_updates.data());
         }
 
-        // apply the deformable position updates
+        // store the deformable position updates
         const std::vector<PositionReference>& positions = proj->positions();
         for (int i = 0; i < proj->numPositions(); i++)
         {
             const PositionReference& p_ref = positions[i];
 
-            p_ref.position_ptr[0] += _coordinate_updates[3*i];
-            p_ref.position_ptr[1] += _coordinate_updates[3*i+1];
-            p_ref.position_ptr[2] += _coordinate_updates[3*i+2];
+            _position_updates.col(p_ref.index) += Eigen::Map<Vec3r>(_coordinate_updates.data() + 3*i);
+
+            // p_ref.position_ptr[0] += _coordinate_updates[3*i];
+            // p_ref.position_ptr[1] += _coordinate_updates[3*i+1];
+            // p_ref.position_ptr[2] += _coordinate_updates[3*i+2];
         }
     }
+
+    // apply position updates after projecting all constraints
+    for (int i = 0; i < _obj->mesh()->numVertices(); i++)
+    {
+        const Vec3r& pos_update = _position_updates.col(i);
+        _obj->mesh()->displaceVertex(i, pos_update);
+    }
 }
+
 
 } // namespace Solver
