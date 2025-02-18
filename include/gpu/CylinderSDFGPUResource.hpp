@@ -31,7 +31,7 @@ class CylinderSDFGPUResource : public HostReadableGPUResource
         cudaMalloc((void**)&_d_sdf, sizeof(GPUCylinderSDF));
     }
 
-    virtual void copyToDevice() const override
+    virtual void fullCopyToDevice() const override
     {
         GPUCylinderSDF gpu_sdf;
         const Vec3r& pos = _sdf->cylinder()->position();
@@ -42,6 +42,11 @@ class CylinderSDFGPUResource : public HostReadableGPUResource
         gpu_sdf.height = _sdf->cylinder()->height();
 
         cudaMemcpy(_d_sdf, &gpu_sdf, sizeof(GPUCylinderSDF), cudaMemcpyHostToDevice);
+    }
+
+    virtual void partialCopyToDevice() const override
+    {
+        fullCopyToDevice();
     }
 
     GPUCylinderSDF* gpuSDF() const { return _d_sdf; }

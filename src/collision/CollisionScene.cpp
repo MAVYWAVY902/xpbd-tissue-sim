@@ -59,7 +59,7 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
         // create a managed resource for the mesh
         Geometry::Mesh* mesh_ptr = mesh_obj->mesh();
         mesh_ptr->createGPUResource();
-        mesh_ptr->gpuResource()->copyToDevice();
+        mesh_ptr->gpuResource()->fullCopyToDevice();
     
         // create a block of data of GPUCollision structs that will be populated during collision detection
         // at most, we will have one collision per face in the mesh, so to be safe this is the amount of memory we allocate
@@ -159,8 +159,8 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
     auto t1 = std::chrono::high_resolution_clock::now();
     // copy over memory so that they are up to date
     // TODO: do this asynchronously
-    mesh_resource->copyVerticesToDevice();
-    sdf_resource->copyToDevice();
+    mesh_resource->partialCopyToDevice();
+    sdf_resource->partialCopyToDevice();
 
     launchCollisionKernel(sdf_resource, mesh_resource, mesh->numVertices(), mesh->numFaces(), arr_resource);
 

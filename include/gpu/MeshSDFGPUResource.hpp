@@ -15,6 +15,13 @@ namespace Sim
 
 class MeshSDFGPUResource : public HostReadableGPUResource
 {
+    private:
+    struct _DynamicMeshSDFData
+    {
+        float3 position;
+        float4 orientation;
+    };
+
     public:
     explicit MeshSDFGPUResource(const Geometry::MeshSDF* mesh_sdf)
         : _sdf(mesh_sdf)
@@ -38,7 +45,7 @@ class MeshSDFGPUResource : public HostReadableGPUResource
         CHECK_CUDA_ERROR(cudaMalloc3D(&_d_dist_grid_ptr, dist_grid_extent));
     }
 
-    virtual void copyToDevice() const override
+    virtual void fullCopyToDevice() const override
     {
         const mesh2sdf::Array3<Real>& distance_grid = _sdf->distanceGrid();
         cudaExtent dist_grid_extent = make_cudaExtent(distance_grid.ni * sizeof(float), distance_grid.nj, distance_grid.nk);
@@ -67,8 +74,19 @@ class MeshSDFGPUResource : public HostReadableGPUResource
         cudaMemcpy(_d_sdf, &gpu_sdf, sizeof(GPUMeshSDF), cudaMemcpyHostToDevice);
     }
 
+    virtual void partialCopyToDevice() const override
+    {
+        const Vec3r& pos = _sdf->meshObj()->position();
+        const Vec4r& ori = _sdf->meshObj()->orientation();
+
+        _DynamicMeshSDFData data;
+        data.position = make_float3(pos[0], pos[1], pos[2]);
+        data.orientation = make_float4(ori[0], ori[1], ori[2], ori[3]);
+
+        cudaMemcpy(_d_sdf, &data, sizeof(_DynamicMeshSDFData), cudaMemcpyHostToDevice);
+    }
+
     GPUMeshSDF* gpuSDF() const { return _d_sdf; }
-    cudaPitchedPtr devDistGrid() const { return _d_dist_grid_ptr; }
 
     private:
     const Geometry::MeshSDF* _sdf;

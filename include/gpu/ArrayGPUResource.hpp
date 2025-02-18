@@ -30,9 +30,14 @@ class ArrayGPUResource : public HostReadableGPUResource, public HostWritableGPUR
         // cudaMalloc((void**)&_d_arr, _arr_size);
     }
 
-    virtual void copyToDevice() const override
+    virtual void fullCopyToDevice() const override
     {
         cudaMemcpy(_d_arr, _arr, _arr_size, cudaMemcpyHostToDevice);
+    }
+
+    virtual void partialCopyToDevice() const override
+    {
+        fullCopyToDevice();
     }
 
     virtual void copyFromDevice() override

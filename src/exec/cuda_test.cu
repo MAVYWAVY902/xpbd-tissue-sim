@@ -173,13 +173,13 @@ int main(void)
     // mesh.moveTogether(Vec3r(0, 0, 0.5));
     mesh.createGPUResource();
     const Sim::MeshGPUResource* mesh_gpu_resource = dynamic_cast<const Sim::MeshGPUResource*>(mesh.gpuResource());
-    mesh_gpu_resource->copyToDevice();
+    mesh_gpu_resource->fullCopyToDevice();
 
     RigidSphereConfig sphere_config("sphere1", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), 100, 0.5, true, true);
     Sim::RigidSphere sphere(nullptr, &sphere_config);
     Geometry::SphereSDF sdf(&sphere);
     sdf.createGPUResource();
-    sdf.gpuResource()->copyToDevice();
+    sdf.gpuResource()->fullCopyToDevice();
 
     GPUCollision* collisions = new GPUCollision[mesh.numFaces()];
     std::unique_ptr<Sim::ArrayGPUResource<GPUCollision>> collisions_resource = std::make_unique<Sim::ArrayGPUResource<GPUCollision>>(collisions, mesh.numFaces());
@@ -202,8 +202,8 @@ int main(void)
         /////////////////////////////////////////////////////////////////////
         auto start2 = std::chrono::high_resolution_clock::now();
 
-        sdf.gpuResource()->copyToDevice();
-        mesh_gpu_resource->copyVerticesToDevice();
+        sdf.gpuResource()->partialCopyToDevice();
+        mesh_gpu_resource->partialCopyToDevice();
         
 
         launchCollisionKernel(sdf.gpuResource(), mesh_gpu_resource, mesh.numVertices(), mesh.numFaces(), collisions_resource.get());

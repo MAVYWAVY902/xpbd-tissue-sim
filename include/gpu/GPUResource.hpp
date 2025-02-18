@@ -45,7 +45,18 @@ class HostReadableGPUResource
     public:
     virtual void allocate() = 0;
 
-    virtual void copyToDevice() const = 0;
+    /** Copies all pieces of data (i.e. the entire struct) over to the GPU.
+     * This is usually done once after initializing and allocating the GPUResource.
+     * For data that is constant throughout the simulation, we do not need to do this more than once.
+    */
+    virtual void fullCopyToDevice() const = 0;
+
+    /** Copies only "dynamic" pieces of data (i.e. quantities that change throughout the course of the sim) over to the GPU.
+     * This is avoids unnecessary memory copy overhead for copying data that is constant throughout the sim.
+    */
+    virtual void partialCopyToDevice() const = 0;
+
+    // virtual void copyToDevice() const = 0;
 };
 
 class HostWritableGPUResource

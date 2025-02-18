@@ -28,9 +28,9 @@ class TetMeshGPUResource : public MeshGPUResource
         cudaMalloc((void**)&_d_elements, _elements_size);
     }
 
-    virtual void copyToDevice() const override
+    virtual void fullCopyToDevice() const override
     {
-        MeshGPUResource::copyToDevice();
+        MeshGPUResource::fullCopyToDevice();
 
         cudaMemcpy(_d_elements, _tet_mesh->elements().data(), _elements_size, cudaMemcpyHostToDevice);
     }

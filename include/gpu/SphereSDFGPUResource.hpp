@@ -30,7 +30,7 @@ class SphereSDFGPUResource : public HostReadableGPUResource
         cudaMalloc((void**)&_d_sdf, sizeof(GPUSphereSDF));
     }
 
-    virtual void copyToDevice() const override
+    virtual void fullCopyToDevice() const override
     {
         GPUSphereSDF gpu_sdf;
         const Vec3r& pos = _sdf->sphere()->position();
@@ -38,6 +38,11 @@ class SphereSDFGPUResource : public HostReadableGPUResource
         gpu_sdf.radius = _sdf->sphere()->radius();
 
         cudaMemcpy(_d_sdf, &gpu_sdf, sizeof(GPUSphereSDF), cudaMemcpyHostToDevice);
+    }
+
+    virtual void partialCopyToDevice() const override
+    {
+        fullCopyToDevice();
     }
 
     GPUSphereSDF* gpuSDF() const { return _d_sdf; }

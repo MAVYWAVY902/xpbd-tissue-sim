@@ -38,14 +38,15 @@ class MeshGPUResource : public HostReadableGPUResource
         CHECK_CUDA_ERROR(cudaHostGetDevicePointer((void**)&_d_faces, fp, 0));
     }
 
-    virtual void copyToDevice() const override
+    virtual void fullCopyToDevice() const override
     {
         CHECK_CUDA_ERROR(cudaMemcpy(_d_vertices, _mesh->vertices().data(), _vertices_size, cudaMemcpyHostToDevice));
         CHECK_CUDA_ERROR(cudaMemcpy(_d_faces, _mesh->faces().data(), _faces_size, cudaMemcpyHostToDevice));
     }
 
-    void copyVerticesToDevice() const
+    void partialCopyToDevice() const override
     {
+        // only the vertices change throughout the course of the simulation - faces stay constant
         CHECK_CUDA_ERROR(cudaMemcpy(_d_vertices, _mesh->vertices().data(), _vertices_size, cudaMemcpyHostToDevice));
     }
 

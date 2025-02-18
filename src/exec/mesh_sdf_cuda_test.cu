@@ -254,7 +254,7 @@ int main(void)
     // mesh.moveTogether(Vec3r(0, 0, 0.5));
     mesh.createGPUResource();
     const Sim::MeshGPUResource* mesh_gpu_resource = dynamic_cast<const Sim::MeshGPUResource*>(mesh.gpuResource());
-    mesh_gpu_resource->copyToDevice();
+    mesh_gpu_resource->fullCopyToDevice();
 
     // TODO: fix whatever is going on here
     RigidMeshObjectConfig rigid_mesh_obj_config("rigid_mesh_obj", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), 100, true, true,
@@ -267,7 +267,7 @@ int main(void)
     rigid_mesh_sdf.createGPUResource();
 
     const Sim::MeshSDFGPUResource* mesh_sdf_gpu_resource = dynamic_cast<const Sim::MeshSDFGPUResource*>(rigid_mesh_sdf.gpuResource());
-    mesh_sdf_gpu_resource->copyToDevice();
+    mesh_sdf_gpu_resource->fullCopyToDevice();
 
     GPUCollision* collisions = new GPUCollision[mesh.numFaces()];
     std::unique_ptr<Sim::ArrayGPUResource<GPUCollision>> collisions_resource = std::make_unique<Sim::ArrayGPUResource<GPUCollision>>(collisions, mesh.numFaces());
@@ -290,8 +290,8 @@ int main(void)
         /////////////////////////////////////////////////////////////////////
         auto start2 = std::chrono::high_resolution_clock::now();
 
-        // sdf.gpuResource()->copyToDevice();
-        mesh_gpu_resource->copyVerticesToDevice();
+        mesh_sdf_gpu_resource->partialCopyToDevice();
+        mesh_gpu_resource->partialCopyToDevice();
         
 
         meshMeshCollisionDetection<<<num_blocks,block_size>>>(mesh_sdf_gpu_resource->gpuSDF(), mesh_gpu_resource->gpuVertices(), mesh.numVertices(), mesh_gpu_resource->gpuFaces(), mesh.numFaces(), collisions_resource->gpuArr());

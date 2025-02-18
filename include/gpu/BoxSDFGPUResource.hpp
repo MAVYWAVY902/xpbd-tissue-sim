@@ -13,8 +13,14 @@ namespace Sim
 
 class BoxSDFGPUResource : public HostReadableGPUResource
 {
+    private:
+    struct _DynamicBoxSDFData
+    {
+        float3 position;
+        float4 orientation;
+    };
 
-     public:
+    public:
     explicit BoxSDFGPUResource(const Geometry::BoxSDF* box_sdf)
         : _sdf(box_sdf)
     {
@@ -31,7 +37,7 @@ class BoxSDFGPUResource : public HostReadableGPUResource
         cudaMalloc((void**)&_d_sdf, sizeof(GPUBoxSDF));
     }
 
-    virtual void copyToDevice() const override
+    virtual void fullCopyToDevice() const override
     {
         GPUBoxSDF gpu_sdf;
         const Vec3r& pos = _sdf->box()->position();
@@ -41,7 +47,19 @@ class BoxSDFGPUResource : public HostReadableGPUResource
         gpu_sdf.orientation = make_float4(ori[0], ori[1], ori[2], ori[3]);
         gpu_sdf.size = make_float3(sz[0], sz[1], sz[2]);
 
-        cudaMemcpy(_d_sdf, &gpu_sdf, sizeof(GPUBoxSDF), cudaMemcpyHostToDevice);
+        cudaMemcpy(_d_sdf, &gpu_sdf, sizeof(_DynamicBoxSDFData), cudaMemcpyHostToDevice);
+
+    }
+
+    virtual void partialCopyToDevice() const override
+    {
+        _DynamicBoxSDFData data;
+        const Vec3r& pos = _sdf->box()->position();
+        const Vec4r& ori = _sdf->box()->orientation();
+        data.position = make_float3(pos[0], pos[1], pos[2]);
+        data.orientation = make_float4(ori[0], ori[1], ori[2], ori[3]);
+
+        cudaMemcpy(_d_sdf, &data, sizeof(_DynamicBoxSDFData), cudaMemcpyHostToDevice);
     }
 
     GPUBoxSDF* gpuSDF() const { return _d_sdf; }
