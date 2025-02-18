@@ -48,8 +48,11 @@ struct GPUMeshSDF
 {
     float3 position;
     float4 orientation;
-    cudaPitchedPtr dist_grid;
-    cudaPitchedPtr grad_grid;
+    float3 grid_cell_size;
+    float3 grid_bbox_min;
+    int3 grid_dims;
+    cudaPitchedPtr dev_dist_grid_ptr;
+    // cudaPitchedPtr grad_grid_ptr;
 };
 
 } // namespace Sim

@@ -23,9 +23,12 @@ class MeshSDF : public SDF
 
     virtual Vec3r gradient(const Vec3r& x) const override;
 
+    const Vec3r& gridCellSize() const { return _sdf.gridCellSize(); }
+    AABB gridBoundingBox() const { const mesh2sdf::BoundingBox bbox = _sdf.gridBoundingBox(); return AABB(bbox.first, bbox.second); }
     const mesh2sdf::Array3<Real>& distanceGrid() const { return _sdf.distanceGrid(); }
     const mesh2sdf::Array3<Vec3r>& gradientGrid() const { return _sdf.gradientGrid(); }
 
+    const Sim::RigidMeshObject* meshObj() const { return _mesh_obj; }
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override;
  #endif
