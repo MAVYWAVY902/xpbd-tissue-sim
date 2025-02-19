@@ -4,10 +4,10 @@
 #include "gpu/GPUStructs.hpp"
 
 #include "gpu/GPUResource.hpp"
-#include "gpu/ArrayGPUResource.hpp"
+#include "gpu/WritableArrayGPUResource.hpp"
 #include "gpu/MeshGPUResource.hpp"
 
-__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::ArrayGPUResource<Sim::GPUCollision>* collision_resource);
+__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::WritableArrayGPUResource<Sim::GPUCollision>* collision_resource);
 
 __device__ void global_to_body(const float3& x, const float3& body_position, const float4& body_orientation);
 

@@ -75,8 +75,8 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
         // CHECK_CUDA_ERROR(cudaHostRegister(collisions_vec.data(), collisions_vec.size()*sizeof(Sim::GPUCollision), cudaHostRegisterDefault));
 
         // create the GPUResource for the array of collision structs
-        std::unique_ptr<Sim::ArrayGPUResource<Sim::GPUCollision>> arr_resource = 
-            std::make_unique<Sim::ArrayGPUResource<Sim::GPUCollision>>(collisions_vec.data(), mesh_obj->mesh()->numFaces());
+        std::unique_ptr<Sim::WritableArrayGPUResource<Sim::GPUCollision>> arr_resource = 
+            std::make_unique<Sim::WritableArrayGPUResource<Sim::GPUCollision>>(collisions_vec.data(), mesh_obj->mesh()->numFaces());
         arr_resource->allocate();
 
         assert(_gpu_collisions.count(new_obj) == 0);
@@ -156,7 +156,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
     assert(mesh_resource);
     const Sim::HostReadableGPUResource* sdf_resource = sdf->gpuResource();
     // const std::vector<Sim::GPUCollision>& collisions = _gpu_collisions[xpbd_obj];
-    Sim::ArrayGPUResource<Sim::GPUCollision>* arr_resource = _gpu_collision_resources[xpbd_obj].get();
+    Sim::WritableArrayGPUResource<Sim::GPUCollision>* arr_resource = _gpu_collision_resources[xpbd_obj].get();
     auto t1 = std::chrono::high_resolution_clock::now();
     // copy over memory so that they are up to date
     // TODO: do this asynchronously

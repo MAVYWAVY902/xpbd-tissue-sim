@@ -140,6 +140,10 @@ if (HAVE_CUDA AND NOT NO_GPU)
     add_executable(MeshSDFCudaTest src/exec/mesh_sdf_cuda_test.cu)
     target_link_libraries(MeshSDFCudaTest Eigen3::Eigen Geometry SimObject)
     target_compile_definitions(MeshSDFCudaTest PRIVATE HAVE_CUDA)
+
+    add_executable(XPBDCudaTest src/exec/xpbd_cuda_test.cu)
+    target_link_libraries(XPBDCudaTest Eigen3::Eigen Geometry SimObject)
+    target_compile_definitions(XPBDCudaTest PRIVATE HAVE_CUDA)
 endif()
 
 

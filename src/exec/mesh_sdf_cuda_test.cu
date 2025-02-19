@@ -19,7 +19,7 @@
 #include "gpu/BoxSDFGPUResource.hpp"
 #include "gpu/MeshGPUResource.hpp"
 #include "gpu/CylinderSDFGPUResource.hpp"
-#include "gpu/ArrayGPUResource.hpp"
+#include "gpu/WritableArrayGPUResource.hpp"
 #include "gpu/MeshSDFGPUResource.hpp"
 
 #include "config/RigidMeshObjectConfig.hpp"
@@ -207,7 +207,7 @@ __global__ void meshMeshCollisionDetection(const Sim::GPUMeshSDF* mesh_sdf, cons
 }
 
 
-__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::ArrayGPUResource<GPUCollision>* collisions_resource)
+__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::WritableArrayGPUResource<GPUCollision>* collisions_resource)
 {
     const int block_size = 256;
     // const int num_blocks = (num_faces + block_size - 1) / block_size;
@@ -270,7 +270,7 @@ int main(void)
     mesh_sdf_gpu_resource->fullCopyToDevice();
 
     GPUCollision* collisions = new GPUCollision[mesh.numFaces()];
-    std::unique_ptr<Sim::ArrayGPUResource<GPUCollision>> collisions_resource = std::make_unique<Sim::ArrayGPUResource<GPUCollision>>(collisions, mesh.numFaces());
+    std::unique_ptr<Sim::WritableArrayGPUResource<GPUCollision>> collisions_resource = std::make_unique<Sim::WritableArrayGPUResource<GPUCollision>>(collisions, mesh.numFaces());
     collisions_resource->allocate();
 
     // allocate SDF on device

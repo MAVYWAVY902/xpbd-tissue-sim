@@ -9,10 +9,10 @@ namespace Sim
 {
 
 template <typename T>
-class ArrayGPUResource : public HostReadableGPUResource, public HostWritableGPUResource
+class ArrayGPUResource : public HostReadableGPUResource
 {
     public:
-    explicit ArrayGPUResource(T* arr, int num_elements)
+    explicit ArrayGPUResource(const T* arr, int num_elements)
         : _arr(arr), _num_elements(num_elements)
     {
     }
@@ -25,9 +25,9 @@ class ArrayGPUResource : public HostReadableGPUResource, public HostWritableGPUR
     virtual void allocate() override
     {
         _arr_size = _num_elements * sizeof(T);
-        CHECK_CUDA_ERROR(cudaHostRegister(_arr, _arr_size, cudaHostRegisterMapped));
-        CHECK_CUDA_ERROR(cudaHostGetDevicePointer((void**)&_d_arr, _arr, 0));
-        // cudaMalloc((void**)&_d_arr, _arr_size);
+        // CHECK_CUDA_ERROR(cudaHostRegister(const_cast<T*>(_arr), _arr_size, cudaHostRegisterMapped));
+        // CHECK_CUDA_ERROR(cudaHostGetDevicePointer((void**)&_d_arr, const_cast<T*>(_arr), 0));
+        cudaMalloc((void**)&_d_arr, _arr_size);
     }
 
     virtual void fullCopyToDevice() const override
@@ -40,18 +40,10 @@ class ArrayGPUResource : public HostReadableGPUResource, public HostWritableGPUR
         fullCopyToDevice();
     }
 
-    virtual void copyFromDevice() override
-    {
-        cudaMemcpy(_arr, _d_arr, _arr_size, cudaMemcpyDeviceToHost);
-    }
-
     T* gpuArr() { return _d_arr; }
 
-    // TODO: remove this - not needed since we should keep track of host memory already
-    T* arr() { return _arr; }
-
     private:
-    T* _arr;
+    const T* _arr;
     int _num_elements;
     size_t _arr_size;
 

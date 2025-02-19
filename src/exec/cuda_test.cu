@@ -18,7 +18,7 @@
 #include "gpu/BoxSDFGPUResource.hpp"
 #include "gpu/MeshGPUResource.hpp"
 #include "gpu/CylinderSDFGPUResource.hpp"
-#include "gpu/ArrayGPUResource.hpp"
+#include "gpu/WritableArrayGPUResource.hpp"
 
 #include "config/RigidPrimitiveConfigs.hpp"
 
@@ -126,7 +126,7 @@ __global__ void sphereMeshCollisionDetectionParallel(const Sim::GPUSphereSDF* sp
 }
 
 
-__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::ArrayGPUResource<GPUCollision>* collisions_resource)
+__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::WritableArrayGPUResource<GPUCollision>* collisions_resource)
 {
     const int block_size = 256;
     // const int num_blocks = (num_faces + block_size - 1) / block_size;
@@ -167,7 +167,7 @@ int main(void)
 {
     gmsh::initialize();
 
-    Geometry::TetMesh mesh = MeshUtils::loadTetMeshFromGmshFile("../resource/cube/cube8.msh");
+    Geometry::TetMesh mesh = MeshUtils::loadTetMeshFromGmshFile("../resource/cube/cube32.msh");
     mesh.resize(1.0);
     mesh.moveTogether(Vec3r(-0.5, -0.5, 0.499));
     // mesh.moveTogether(Vec3r(0, 0, 0.5));
@@ -182,7 +182,7 @@ int main(void)
     sdf.gpuResource()->fullCopyToDevice();
 
     GPUCollision* collisions = new GPUCollision[mesh.numFaces()];
-    std::unique_ptr<Sim::ArrayGPUResource<GPUCollision>> collisions_resource = std::make_unique<Sim::ArrayGPUResource<GPUCollision>>(collisions, mesh.numFaces());
+    std::unique_ptr<Sim::WritableArrayGPUResource<GPUCollision>> collisions_resource = std::make_unique<Sim::WritableArrayGPUResource<GPUCollision>>(collisions, mesh.numFaces());
     collisions_resource->allocate();
 
     // allocate SDF on device
@@ -195,8 +195,8 @@ int main(void)
 
     cudaDeviceSynchronize();
 
-    std::array<int, 1000> nanosecs;
-    for (int i = 0; i < 1000; i++)
+    std::array<int, 100> nanosecs;
+    for (int i = 0; i < 100; i++)
     {
         // std::this_thread::sleep_for(std::chrono::milliseconds(100));
         /////////////////////////////////////////////////////////////////////

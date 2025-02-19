@@ -31,6 +31,7 @@ class MeshSDFGPUResource : public HostReadableGPUResource
 
     virtual ~MeshSDFGPUResource()
     {
+        cudaFree(_d_dist_grid_ptr.ptr);
         cudaFree(_d_sdf);
     }
 
@@ -39,7 +40,6 @@ class MeshSDFGPUResource : public HostReadableGPUResource
         CHECK_CUDA_ERROR(cudaMalloc((void**)&_d_sdf, sizeof(GPUMeshSDF)));
 
         const mesh2sdf::Array3<Real>& distance_grid = _sdf->distanceGrid();
-        const mesh2sdf::Array3<Vec3r>& gradient_grid = _sdf->gradientGrid();
 
         cudaExtent dist_grid_extent = make_cudaExtent(distance_grid.ni * sizeof(float), distance_grid.nj, distance_grid.nk);
         CHECK_CUDA_ERROR(cudaMalloc3D(&_d_dist_grid_ptr, dist_grid_extent));

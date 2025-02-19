@@ -1,6 +1,6 @@
 #include "gpu/Collision.cuh"
 
-#include "gpu/ArrayGPUResource.hpp"
+#include "gpu/WritableArrayGPUResource.hpp"
 #include "gpu/SphereSDFGPUResource.hpp"
 #include "gpu/BoxSDFGPUResource.hpp"
 #include "gpu/CylinderSDFGPUResource.hpp"
@@ -10,7 +10,7 @@
 
 #include <cuda_profiler_api.h>
 
-__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::ArrayGPUResource<Sim::GPUCollision>* collision_resource)
+__host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::WritableArrayGPUResource<Sim::GPUCollision>* collision_resource)
 {
     const int block_size = 256;
     const int num_blocks = (num_faces + block_size - 1) / block_size;

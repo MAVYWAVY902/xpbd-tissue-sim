@@ -6,7 +6,7 @@
 #include "geometry/SDF.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/ArrayGPUResource.hpp"
+#include "gpu/WritableArrayGPUResource.hpp"
 #include "gpu/GPUStructs.hpp"
 #endif
 
@@ -68,7 +68,7 @@ class CollisionScene
 
     #ifdef HAVE_CUDA
     std::map<Sim::Object*, std::vector<Sim::GPUCollision> > _gpu_collisions;
-    std::map<Sim::Object*, std::unique_ptr<Sim::ArrayGPUResource<Sim::GPUCollision> > > _gpu_collision_resources;
+    std::map<Sim::Object*, std::unique_ptr<Sim::WritableArrayGPUResource<Sim::GPUCollision> > > _gpu_collision_resources;
     #endif
 
 
