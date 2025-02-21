@@ -50,7 +50,7 @@ make -j 8
 This will create a `Test` binary that we can run with:
 
 ```
-./Test
+./Test ../config/config.yaml
 ```
 
 If all goes well, an Easy3D graphics window should pop up!
