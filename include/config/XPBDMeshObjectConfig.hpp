@@ -10,7 +10,8 @@
 enum class XPBDSolverType
 {
     GAUSS_SEIDEL,
-    JACOBI
+    JACOBI,
+    PARALLEL_JACOBI
 };
 
 enum class XPBDConstraintType
@@ -47,7 +48,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     {
         static std::map<std::string, XPBDSolverType> solver_type_options{
             {"Gauss-Seidel", XPBDSolverType::GAUSS_SEIDEL},
-            {"Jacobi", XPBDSolverType::JACOBI}
+            {"Jacobi", XPBDSolverType::JACOBI},
+            {"Parallel-Jacobi", XPBDSolverType::PARALLEL_JACOBI}
         };
         return solver_type_options;
     }

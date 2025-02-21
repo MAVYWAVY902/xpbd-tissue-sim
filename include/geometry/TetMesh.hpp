@@ -26,6 +26,9 @@ class TetMesh : public Mesh
     /** Returns a const-reference to the elements of the mesh. */
     const ElementsMat& elements() const { return _elements; }
 
+    /** Returns a non-const-reference to the elements of the mesh. */
+    ElementsMat& elements() { return _elements; }
+
     /** Returns the number of elements in the mesh. */
     int numElements() const { return _elements.cols(); }
 

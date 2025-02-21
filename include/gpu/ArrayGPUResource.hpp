@@ -40,7 +40,7 @@ class ArrayGPUResource : public HostReadableGPUResource
         fullCopyToDevice();
     }
 
-    T* gpuArr() { return _d_arr; }
+    T* gpuArr() const { return _d_arr; }
 
     private:
     const T* _arr;

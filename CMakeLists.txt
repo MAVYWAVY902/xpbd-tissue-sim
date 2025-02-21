@@ -115,6 +115,7 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject)
     target_link_libraries(Collision GPU)
     target_link_libraries(ResidualSimulation GPU)
+    target_link_libraries(Solver GPU)
 
     target_compile_definitions(Collision PRIVATE HAVE_CUDA)
     target_compile_definitions(Graphics PRIVATE HAVE_CUDA)
@@ -144,6 +145,7 @@ if (HAVE_CUDA AND NOT NO_GPU)
     add_executable(XPBDCudaTest src/exec/xpbd_cuda_test.cu)
     target_link_libraries(XPBDCudaTest Eigen3::Eigen Geometry SimObject)
     target_compile_definitions(XPBDCudaTest PRIVATE HAVE_CUDA)
+    target_compile_options(XPBDCudaTest PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--keep>)
 endif()
 
 

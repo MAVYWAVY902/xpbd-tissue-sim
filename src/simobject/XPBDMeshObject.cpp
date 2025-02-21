@@ -4,6 +4,7 @@
 
 #include "solver/XPBDGaussSeidelSolver.hpp"
 #include "solver/XPBDJacobiSolver.hpp"
+#include "solver/XPBDParallelJacobiSolver.hpp"
 #include "solver/StaticDeformableCollisionConstraint.hpp"
 #include "solver/RigidDeformableCollisionConstraint.hpp"
 #include "solver/RigidBodyConstraintProjector.hpp"
@@ -12,6 +13,10 @@
 #include "solver/ConstraintProjectorDecorator.hpp"
 #include "solver/CombinedNeohookeanConstraintProjector.hpp"
 #include "utils/MeshUtils.hpp"
+
+#ifdef HAVE_CUDA
+#include "gpu/XPBDMeshObjectGPUResource.hpp"
+#endif
 
 namespace Sim
 {
@@ -254,6 +259,10 @@ void XPBDMeshObject::_createSolver(XPBDSolverType solver_type, int num_solver_it
     {
         _solver = std::make_unique<Solver::XPBDJacobiSolver>(this, num_solver_iters, residual_policy);
     }
+    else if (solver_type == XPBDSolverType::PARALLEL_JACOBI)
+    {
+        _solver = std::make_unique<Solver::XPBDParallelJacobiSolver>(this, num_solver_iters, residual_policy);
+    }
 }
 
 std::string XPBDMeshObject::toString(const int indent) const
@@ -331,8 +340,14 @@ void XPBDMeshObject::velocityUpdate()
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
-
-    // std::cout << "Vertex velocities:\n" << _vertex_velocities << std::endl;
 }
+
+#ifdef HAVE_CUDA
+void XPBDMeshObject::createGPUResource()
+{
+    _gpu_resource = std::make_unique<Sim::XPBDMeshObjectGPUResource>(this);
+    _gpu_resource->allocate();
+}
+#endif
 
 } // namespace Sim

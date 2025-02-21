@@ -10,7 +10,7 @@ namespace Sim
 class TetMeshGPUResource : public MeshGPUResource
 {
     public:
-    explicit TetMeshGPUResource(const Geometry::TetMesh* tet_mesh)
+    explicit TetMeshGPUResource(Geometry::TetMesh* tet_mesh)
         : MeshGPUResource(tet_mesh), _tet_mesh(tet_mesh)
     {
     }
@@ -38,7 +38,7 @@ class TetMeshGPUResource : public MeshGPUResource
     int* gpuElements() const { return _d_elements; }
 
     private:
-    const Geometry::TetMesh* _tet_mesh;
+    Geometry::TetMesh* _tet_mesh;
 
     size_t _elements_size;
     int* _d_elements;

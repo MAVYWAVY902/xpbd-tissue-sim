@@ -182,6 +182,8 @@ class HydrostaticConstraint : public virtual ElementConstraint
         grad[_gradient_vector_index[9]]  = -grad[_gradient_vector_index[0]] - grad[_gradient_vector_index[3]] - grad[_gradient_vector_index[6]];
         grad[_gradient_vector_index[10]] = -grad[_gradient_vector_index[1]] - grad[_gradient_vector_index[4]] - grad[_gradient_vector_index[7]];
         grad[_gradient_vector_index[11]] = -grad[_gradient_vector_index[2]] - grad[_gradient_vector_index[5]] - grad[_gradient_vector_index[8]];
+
+        // std::cout << "Ch_grad: " << grad[0] << ", " << grad[1] << ", " << grad[2] << ", " << grad[3] << ", " << grad[4] << ", " << grad[5] << ", " << grad[6] << ", " << grad[7] << ", " << grad[8] << ", " << grad[9] << ", " << grad[10] << ", " << grad[11] << std::endl;
     }
 
     /** Helper method for cross product between two 3-vectors v1 and v2, store the result in v3 */

@@ -5,6 +5,7 @@
 
 #ifdef HAVE_CUDA
 typedef float Real;
+#define CUDA_BLOCK_SIZE 256
 #else
 typedef double Real;
 #endif

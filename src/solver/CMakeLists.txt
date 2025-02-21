@@ -16,7 +16,9 @@ target_sources(Solver
         ${SOLVER_INCLUDE_DIR}/XPBDSolver.hpp
         ${SOLVER_INCLUDE_DIR}/XPBDGaussSeidelSolver.hpp
         ${SOLVER_INCLUDE_DIR}/XPBDJacobiSolver.hpp
+        ${SOLVER_INCLUDE_DIR}/XPBDParallelJacobiSolver.hpp
         ${SOLVER_SRC_DIR}/XPBDSolver.cpp
         ${SOLVER_SRC_DIR}/XPBDGaussSeidelSolver.cpp
         ${SOLVER_SRC_DIR}/XPBDJacobiSolver.cpp
+        ${SOLVER_SRC_DIR}/XPBDParallelJacobiSolver.cpp
 )

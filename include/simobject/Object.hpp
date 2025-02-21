@@ -40,6 +40,9 @@ class Object
     /** Returns the name of this object. */
     std::string name() const { return _name; }
 
+    /** The simulation that this object belongs to. */
+    const Simulation* sim() const { return _sim; }
+
     /** Performs any necessary setup for this object.
      * Called after instantiation (i.e. outside the constructor) and before update() is called for the first time.
      */
@@ -59,6 +62,7 @@ class Object
  #ifdef HAVE_CUDA
     virtual void createGPUResource() = 0;
     virtual const HostReadableGPUResource* gpuResource() const { assert(_gpu_resource); return _gpu_resource.get(); }
+    virtual HostReadableGPUResource* gpuResource() { assert(_gpu_resource); return _gpu_resource.get(); }
  #endif
 
     protected:

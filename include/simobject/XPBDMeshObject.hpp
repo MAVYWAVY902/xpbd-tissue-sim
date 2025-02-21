@@ -27,6 +27,10 @@ namespace Sim
 
 class RigidObject;
 
+#ifdef HAVE_CUDA
+class XPBDMeshObjectGPUResource;
+#endif
+
 struct XPBDCollisionConstraint
 {
     std::unique_ptr<Solver::CollisionConstraint> constraint;
@@ -40,6 +44,10 @@ struct XPBDCollisionConstraint
  */
 class XPBDMeshObject : public Object, public TetMeshObject
 {
+   #ifdef HAVE_CUDA
+    friend class XPBDMeshObjectGPUResource;
+   #endif
+
     public:
     /** Creates a new XPBDMeshObject from a YAML config node
      * @param name : the name of the new XPBDMeshObject
@@ -101,7 +109,7 @@ class XPBDMeshObject : public Object, public TetMeshObject
     void removeOldCollisionConstraints(const int threshold);
 
  #ifdef HAVE_CUDA
-    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+    virtual void createGPUResource() override;
  #endif
 
     protected:

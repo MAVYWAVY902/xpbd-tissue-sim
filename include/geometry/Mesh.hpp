@@ -43,6 +43,11 @@ class Mesh
     /** Returns a const-reference to the faces of the mesh. */
     const FacesMat& faces() const { return _faces; }
 
+    /** Returns a non-const-reference to the vertices of the mesh. */
+    VerticesMat& vertices() { return _vertices; }
+    /** Returns a non-const-reference to the faces of the mesh. */
+    FacesMat& faces() { return _faces; }
+
     /** Number of verticees in the mesh. */
     int numVertices() const { return _vertices.cols(); }
     /** Number of faces in the mesh. */

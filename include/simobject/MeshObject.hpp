@@ -94,6 +94,7 @@ class TetMeshObject : public MeshObject
     }
 
     const Geometry::TetMesh* tetMesh() const { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
+    Geometry::TetMesh* tetMesh() { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
 
     protected:
     virtual void _loadMeshFromFile(const std::string& fname)

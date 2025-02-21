@@ -10,4 +10,5 @@ target_sources(GPU
         ${GPU_INCLUDE_DIR}/MeshGPUResource.hpp
         ${GPU_INCLUDE_DIR}/TetMeshGPUResource.hpp
         ${GPU_SRC_DIR}/Collision.cu
+        ${GPU_SRC_DIR}/XPBDSolver.cu
 )
