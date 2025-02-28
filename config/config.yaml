@@ -1,6 +1,6 @@
 name: "blah"
-visualization: "Easy3D"
-# visualization: "None"
+# visualization: "Easy3D"
+visualization: "None"
 g-accel: 9.81 # m/s2
 # sim-mode: "Frame-by-frame"
 sim-mode: "Visualization"
@@ -8,7 +8,7 @@ sim-mode: "Visualization"
 time-step: 5e-4
 collision-rate: 10100
 fps: 30
-end-time: 10
+end-time: 1
 objects:
 
   -
@@ -81,16 +81,16 @@ objects:
   #   fixed: true
 
 
-  # - name: "cylinder"
-  #   type: "RigidCylinder"
-  #   radius: 0.2
-  #   height: 1
-  #   density: 1000
-  #   position: [0, 0.0, 0.0]
-  #   rotation: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
-  #   fixed: true
-  #   collisions: true
+  - name: "cylinder"
+    type: "RigidCylinder"
+    radius: 0.2
+    height: 1
+    density: 1000
+    position: [0, 0.0, 0.0]
+    rotation: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    fixed: true
+    collisions: true
 
   # - 
   #   name: "mesh_obj"

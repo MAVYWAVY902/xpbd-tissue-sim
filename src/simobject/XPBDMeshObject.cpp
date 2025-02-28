@@ -348,6 +348,20 @@ void XPBDMeshObject::createGPUResource()
     _gpu_resource = std::make_unique<Sim::XPBDMeshObjectGPUResource>(this);
     _gpu_resource->allocate();
 }
+
+XPBDMeshObjectGPUResource* XPBDMeshObject::gpuResource()
+{
+    assert(_gpu_resource);
+    // TODO: see if we can remove this dynamic_cast somehow
+    return dynamic_cast<XPBDMeshObjectGPUResource*>(_gpu_resource.get());
+}
+
+const XPBDMeshObjectGPUResource* XPBDMeshObject::gpuResource() const
+{
+    assert(_gpu_resource);
+    // TODO: see if we can remove this dynamic_cast somehow
+    return dynamic_cast<const XPBDMeshObjectGPUResource*>(_gpu_resource.get());
+}
 #endif
 
 } // namespace Sim

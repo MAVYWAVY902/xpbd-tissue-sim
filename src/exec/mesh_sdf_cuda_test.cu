@@ -210,8 +210,8 @@ __global__ void meshMeshCollisionDetection(const Sim::GPUMeshSDF* mesh_sdf, cons
 __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::WritableArrayGPUResource<GPUCollision>* collisions_resource)
 {
     const int block_size = 256;
-    // const int num_blocks = (num_faces + block_size - 1) / block_size;
-    const int num_blocks = num_faces;
+    const int num_blocks = (num_faces + block_size - 1) / block_size;
+    // const int num_blocks = num_faces;
 
     // spawn GPU kernel depending on the type of SDF being collided with
     if (const Sim::SphereSDFGPUResource* sphere_sdf_resource = dynamic_cast<const Sim::SphereSDFGPUResource*>(sdf_resource))
@@ -248,7 +248,7 @@ int main(void)
 {
     gmsh::initialize();
 
-    Geometry::TetMesh mesh = MeshUtils::loadTetMeshFromGmshFile("../resource/cube/cube16.msh");
+    Geometry::TetMesh mesh = MeshUtils::loadTetMeshFromGmshFile("../resource/cube/cube32.msh");
     mesh.resize(1.0);
     mesh.moveTogether(Vec3r(-0.5, -0.5, 0.499));
     // mesh.moveTogether(Vec3r(0, 0, 0.5));
@@ -351,7 +351,7 @@ int main(void)
     }
     auto end3 = std::chrono::high_resolution_clock::now();
     auto nanosec3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end3 - start3);
-    std::cout << "Elapsed time on CPU: " << nanosec3.count()/1000000 << " ms" << std::endl;
+    std::cout << "Elapsed time on CPU: " << nanosec3.count()/1000 << " ms" << std::endl;
 
     return 0;
 }

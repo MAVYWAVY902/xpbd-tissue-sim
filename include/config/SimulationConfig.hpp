@@ -133,6 +133,25 @@ class SimulationConfig : public Config
         }
     }
 
+    explicit SimulationConfig(const std::string& name, const std::string& description,
+                             Real time_step, Real end_time, Real g_accel,
+                             SimulationMode sim_mode, Visualization visualization, Real fps,
+                             Real collision_rate)
+        : Config(name)
+    {
+        _description.value = description;
+        _time_step.value = time_step;
+        _end_time.value = end_time;
+        _g_accel.value = g_accel;
+        _sim_mode.value = sim_mode;
+        _visualization.value = visualization;
+        _fps.value = fps;
+        _collision_rate.value = collision_rate;
+    }
+    
+    SimulationConfig(const SimulationConfig& other) = delete;
+    SimulationConfig(SimulationConfig&& other) = default;
+
     // Getters
     std::optional<Real> timeStep() const { return _time_step.value; }
     std::optional<Real> endTime() const { return _end_time.value; }

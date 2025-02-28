@@ -108,7 +108,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         : ObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions),
           MeshObjectConfig(filename, max_size, size, draw_points, draw_edges, draw_faces, color)
     {
-        _material_config = std::make_unique<ElasticMaterialConfig>(density, E, nu, mu_s, mu_k);
+        _material_config = std::make_unique<ElasticMaterialConfig>(name + "_material", density, E, nu, mu_s, mu_k);
 
         _num_solver_iters.value = num_solver_iters;
         _solve_type.value = solver_type;

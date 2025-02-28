@@ -5,6 +5,10 @@
 #include "simobject/Object.hpp"
 #include "simobject/MeshObject.hpp"
 #include "simobject/ElasticMaterial.hpp"
+
+#ifdef HAVE_CUDA
+#include "gpu/XPBDMeshObjectGPUResource.hpp"
+#endif
 // #include "solver/XPBDSolver.hpp"
 // #include "solver/Constraint.hpp"
 
@@ -26,10 +30,6 @@ namespace Sim
 {
 
 class RigidObject;
-
-#ifdef HAVE_CUDA
-class XPBDMeshObjectGPUResource;
-#endif
 
 struct XPBDCollisionConstraint
 {
@@ -110,6 +110,8 @@ class XPBDMeshObject : public Object, public TetMeshObject
 
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override;
+    virtual XPBDMeshObjectGPUResource* gpuResource() override;
+    virtual const XPBDMeshObjectGPUResource* gpuResource() const override;
  #endif
 
     protected:

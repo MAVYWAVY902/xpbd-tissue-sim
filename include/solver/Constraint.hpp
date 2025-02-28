@@ -84,6 +84,8 @@ class Constraint
         }
     }
 
+    virtual ~Constraint() = default;
+
     /** Evaluates the current value of this constraint.
      * i.e. returns C(x)
      */

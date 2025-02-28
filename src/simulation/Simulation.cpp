@@ -59,6 +59,12 @@ Simulation::Simulation(const std::string& config_filename)
     _init();
 }
 
+Simulation::Simulation(SimulationConfig&& config)
+{
+    _config = std::make_unique<SimulationConfig>(std::move(config));
+    _init();
+}
+
 Simulation::Simulation()
 {
 

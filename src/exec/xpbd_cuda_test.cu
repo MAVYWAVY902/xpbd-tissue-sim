@@ -484,13 +484,13 @@ int main(void)
 
         mesh_gpu_resource->partialCopyToDevice();
         
-        for(int i = 0; i < 4; i++)
+        for(int gi = 0; gi < 4; gi++)
         {
             XPBDJacobiSolve<<<num_blocks, block_size>>>(mesh_gpu_resource->gpuElements(), mesh.numElements(), mesh_gpu_resource->gpuVertices(),
                                                         masses_resource.gpuArr(), volumes_resource.gpuArr(), Qs_resource.gpuArr(),
                                                         lambda, mu, 1e-3,
                                                         new_vertices_resource.gpuArr());
-            CopyVertices<<<num_vertex_blocks, block_size>>>(new_vertices_resource.gpuArr(), mesh_gpu_resource->gpuVertices(), mesh.numVertices());
+            // CopyVertices<<<num_vertex_blocks, block_size>>>(new_vertices_resource.gpuArr(), mesh_gpu_resource->gpuVertices(), mesh.numVertices());
         }
         CHECK_CUDA_ERROR(cudaPeekAtLastError());
 
@@ -520,7 +520,7 @@ int main(void)
     }
     auto end3 = std::chrono::high_resolution_clock::now();
     auto nanosec3 = std::chrono::duration_cast<std::chrono::nanoseconds>(end3 - start3);
-    std::cout << "Elapsed time on CPU: " << nanosec3.count()/1000000 << " ms" << std::endl;
+    std::cout << "Elapsed time on CPU: " << nanosec3.count()/1000 << " us" << std::endl;
 
     ///////////////////////////////////////////////////////////////////
     

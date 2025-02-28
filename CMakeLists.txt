@@ -18,7 +18,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
-
+set(CMAKE_BUILD_TYPE Debug)
 
 list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build")
 
@@ -145,7 +145,11 @@ if (HAVE_CUDA AND NOT NO_GPU)
     add_executable(XPBDCudaTest src/exec/xpbd_cuda_test.cu)
     target_link_libraries(XPBDCudaTest Eigen3::Eigen Geometry SimObject)
     target_compile_definitions(XPBDCudaTest PRIVATE HAVE_CUDA)
-    target_compile_options(XPBDCudaTest PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--keep>)
+    # target_compile_options(XPBDCudaTest PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--keep>)
+
+    add_executable(XPBDConstraintCudaTest src/exec/constraints_cuda_test.cu)
+    target_link_libraries(XPBDConstraintCudaTest Eigen3::Eigen Geometry Solver SimObject GPU ResidualSimulation)
+    target_compile_definitions(XPBDConstraintCudaTest PRIVATE HAVE_CUDA)
 endif()
 
 
