@@ -17,6 +17,8 @@
 #include "gpu/GPUStructs.hpp"
 #include "gpu/ArrayGPUResource.hpp"
 
+#define BLOCK_SIZE 64
+
 //////////////////////////////////////////////////////////////////////////////
 // Helper functions
 //////////////////////////////////////////////////////////////////////////////
@@ -66,7 +68,7 @@ __host__ __device__ void MyVec3Cross(const float* v1, const float* v2, float* v3
 
 struct GPUPositionReference
 {
-    float* ptr; // pointer to the vertex in GPU memory
+    // float* ptr; // pointer to the vertex in GPU memory
     float inv_mass; // inverse mass of the vertex
     int index; // vertex index
 };
@@ -101,51 +103,60 @@ struct GPUHydrostaticConstraint
 {
     GPUPositionReference positions[4];
     float Q[9];
-    float rest_volume;
     float alpha;
     float gamma;
 
     __host__ GPUHydrostaticConstraint(Sim::XPBDMeshObject* xpbd_obj, int v0, int v1, int v2, int v3)
     {
         float* gpu_vertices = xpbd_obj->gpuResource()->meshGpuResource().gpuVertices();
-        positions[0].ptr = gpu_vertices + v0*3;
+        // positions[0].ptr = gpu_vertices + v0*3;
         positions[0].inv_mass = 1 / xpbd_obj->vertexMass(v0);
         positions[0].index = v0;
 
-        positions[1].ptr = gpu_vertices + v1*3;
+        // positions[1].ptr = gpu_vertices + v1*3;
         positions[1].inv_mass = 1 / xpbd_obj->vertexMass(v1);
         positions[1].index = v1;
 
-        positions[2].ptr = gpu_vertices + v2*3;
+        // positions[2].ptr = gpu_vertices + v2*3;
         positions[2].inv_mass = 1 / xpbd_obj->vertexMass(v2);
         positions[2].index = v2;
 
-        positions[3].ptr = gpu_vertices + v3*3;
+        // positions[3].ptr = gpu_vertices + v3*3;
         positions[3].inv_mass = 1 / xpbd_obj->vertexMass(v3);
         positions[3].index = v3;
 
         // compute Q and rest volume
         const Geometry::Mesh* mesh = xpbd_obj->mesh();
+        float rest_volume;
         GPUElementConstraint::computeQandVolume(mesh->vertex(v0), mesh->vertex(v1), mesh->vertex(v2), mesh->vertex(v3), Q, &rest_volume);
 
         alpha = 1/(xpbd_obj->material().lambda() * rest_volume);            // set alpha after the ElementConstraint constructor because we need the element volume
         gamma = xpbd_obj->material().mu() / xpbd_obj->material().lambda(); 
     }
 
+    __device__ GPUHydrostaticConstraint() {}
+
     constexpr __host__ __device__ static int numPositions() { return 4; }
 
-    __device__ void _loadVertices(float* x)
+    // __device__ void _loadVertices(float* x)
+    // {
+    //     x[0] = positions[0].ptr[0];  x[1] = positions[0].ptr[1];  x[2] = positions[0].ptr[2];
+    //     x[3] = positions[1].ptr[0];  x[4] = positions[1].ptr[1];  x[5] = positions[1].ptr[2];
+    //     x[6] = positions[2].ptr[0];  x[7] = positions[2].ptr[1];  x[8] = positions[2].ptr[2];
+    //     x[9] = positions[3].ptr[0];  x[10] = positions[3].ptr[1]; x[11] = positions[3].ptr[2];
+    // }
+    __device__ void _loadVertices(const float* vertices, float* x)
     {
-        x[0] = positions[0].ptr[0];  x[1] = positions[0].ptr[1];  x[2] = positions[0].ptr[2];
-        x[3] = positions[1].ptr[0];  x[4] = positions[1].ptr[1];  x[5] = positions[1].ptr[2];
-        x[6] = positions[2].ptr[0];  x[7] = positions[2].ptr[1];  x[8] = positions[2].ptr[2];
-        x[9] = positions[3].ptr[0];  x[10] = positions[3].ptr[1]; x[11] = positions[3].ptr[2];
+        *reinterpret_cast<float3*>(x)   = *reinterpret_cast<const float3*>(vertices + 3*positions[0].index);
+        *reinterpret_cast<float3*>(x+3) = *reinterpret_cast<const float3*>(vertices + 3*positions[1].index);
+        *reinterpret_cast<float3*>(x+6) = *reinterpret_cast<const float3*>(vertices + 3*positions[2].index);
+        *reinterpret_cast<float3*>(x+9) = *reinterpret_cast<const float3*>(vertices + 3*positions[3].index);
     }
 
-    __device__ void evaluate(float* C)
+    __device__ void evaluate(const float* vertices, float* C)
     {
         float x[12];
-        _loadVertices(x);
+        _loadVertices(vertices, x);
 
         float F[9];
         GPUElementConstraint::computeF(x, Q, F);
@@ -159,10 +170,10 @@ struct GPUHydrostaticConstraint
         *C = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2] - (1+gamma);
     }
 
-    __device__ void gradient(float* delC)
+    __device__ void gradient(const float* vertices, float* delC)
     {
         float x[12];
-        _loadVertices(x);
+        _loadVertices(vertices, x);
 
         float F[9];
         GPUElementConstraint::computeF(x, Q, F);
@@ -183,10 +194,10 @@ struct GPUHydrostaticConstraint
         delC[11] = -delC[2] - delC[5] - delC[8];
     }
 
-    __device__ void evaluateWithGradient(float* C, float* delC)
+    __device__ void evaluateWithGradient(const float* vertices, float* C, float* delC)
     {
         float x[12];
-        _loadVertices(x);
+        _loadVertices(vertices, x);
 
         float F[9];
         GPUElementConstraint::computeF(x, Q, F);
@@ -200,51 +211,58 @@ struct GPUDeviatoricConstraint
 {
     GPUPositionReference positions[4];
     float Q[9];
-    float rest_volume;
     float alpha;
 
     __host__ GPUDeviatoricConstraint(Sim::XPBDMeshObject* xpbd_obj, int v0, int v1, int v2, int v3)
     {
         float* gpu_vertices = xpbd_obj->gpuResource()->meshGpuResource().gpuVertices();
-        positions[0].ptr = gpu_vertices + v0*3;
+        // positions[0].ptr = gpu_vertices + v0*3;
         positions[0].inv_mass = 1 / xpbd_obj->vertexMass(v0);
         positions[0].index = v0;
 
-        positions[1].ptr = gpu_vertices + v1*3;
+        // positions[1].ptr = gpu_vertices + v1*3;
         positions[1].inv_mass = 1 / xpbd_obj->vertexMass(v1);
         positions[1].index = v1;
 
-        positions[2].ptr = gpu_vertices + v2*3;
+        // positions[2].ptr = gpu_vertices + v2*3;
         positions[2].inv_mass = 1 / xpbd_obj->vertexMass(v2);
         positions[2].index = v2;
 
-        positions[3].ptr = gpu_vertices + v3*3;
+        // positions[3].ptr = gpu_vertices + v3*3;
         positions[3].inv_mass = 1 / xpbd_obj->vertexMass(v3);
         positions[3].index = v3;
 
         // compute Q and rest volume
         const Geometry::Mesh* mesh = xpbd_obj->mesh();
-        float Q[9];
         float rest_volume;
         GPUElementConstraint::computeQandVolume(mesh->vertex(v0), mesh->vertex(v1), mesh->vertex(v2), mesh->vertex(v3), Q, &rest_volume);
 
         alpha = 1/(xpbd_obj->material().mu() * rest_volume);
     }
 
+    __device__ GPUDeviatoricConstraint() {}
+
     constexpr __host__ __device__ static int numPositions() { return 4; } 
 
-    __device__ void _loadVertices(float* x)
+    // __device__ void _loadVertices(float* x)
+    // {
+    //     x[0] = positions[0].ptr[0];  x[1] = positions[0].ptr[1];  x[2] = positions[0].ptr[2];
+    //     x[3] = positions[1].ptr[0];  x[4] = positions[1].ptr[1];  x[5] = positions[1].ptr[2];
+    //     x[6] = positions[2].ptr[0];  x[7] = positions[2].ptr[1];  x[8] = positions[2].ptr[2];
+    //     x[9] = positions[3].ptr[0];  x[10] = positions[3].ptr[1]; x[11] = positions[3].ptr[2];
+    // }
+    __device__ void _loadVertices(const float* vertices, float* x)
     {
-        x[0] = positions[0].ptr[0];  x[1] = positions[0].ptr[1];  x[2] = positions[0].ptr[2];
-        x[3] = positions[1].ptr[0];  x[4] = positions[1].ptr[1];  x[5] = positions[1].ptr[2];
-        x[6] = positions[2].ptr[0];  x[7] = positions[2].ptr[1];  x[8] = positions[2].ptr[2];
-        x[9] = positions[3].ptr[0];  x[10] = positions[3].ptr[1]; x[11] = positions[3].ptr[2];
+        *reinterpret_cast<float3*>(x)   = *reinterpret_cast<const float3*>(vertices + 3*positions[0].index);
+        *reinterpret_cast<float3*>(x+3) = *reinterpret_cast<const float3*>(vertices + 3*positions[1].index);
+        *reinterpret_cast<float3*>(x+6) = *reinterpret_cast<const float3*>(vertices + 3*positions[2].index);
+        *reinterpret_cast<float3*>(x+9) = *reinterpret_cast<const float3*>(vertices + 3*positions[3].index);
     }
 
-    __device__ void evaluate(float* C)
+    __device__ void evaluate(const float* vertices, float* C)
     {
         float x[12];
-        _loadVertices(x);
+        _loadVertices(vertices, x);
 
         float F[9];
         GPUElementConstraint::computeF(x, Q, F);
@@ -257,10 +275,10 @@ struct GPUDeviatoricConstraint
         *C = sqrtf(F[0]*F[0] + F[1]*F[1] + F[2]*F[2] + F[3]*F[3] + F[4]*F[4] + F[5]*F[5] + F[6]*F[6] + F[7]*F[7] + F[8]*F[8]);
     }
 
-    __device__ void gradient(float* delC)
+    __device__ void gradient(const float* vertices, float* delC)
     {
         float x[12];
-        _loadVertices(x);
+        _loadVertices(vertices, x);
 
         float F[9];
         GPUElementConstraint::computeF(x, Q, F);
@@ -281,10 +299,10 @@ struct GPUDeviatoricConstraint
         delC[11] = -delC[2] - delC[5] - delC[8];
     }
 
-    __device__ void evaluateWithGradient(float* C, float* delC)
+    __device__ void evaluateWithGradient(const float* vertices, float* C, float* delC)
     {
         float x[12];
-        _loadVertices(x);
+        _loadVertices(vertices, x);
 
         float F[9];
         GPUElementConstraint::computeF(x, Q, F);
@@ -369,7 +387,12 @@ struct GPUCombinedConstraintProjector
         : constraint1(std::move(constraint1_)), constraint2(std::move(constraint2_)), dt(dt_)
     {
 
-    } 
+    }
+    
+    __device__ GPUCombinedConstraintProjector()
+    {
+
+    }
 
     __device__ void initialize()
     {
@@ -377,14 +400,14 @@ struct GPUCombinedConstraintProjector
         lambda[1] = 0;
     }
 
-    __device__ void project(float* new_vertices)
+    __device__ void project(const float* vertices, float* new_vertices)
     {
         float C[2];
         float delC[2*(Constraint1::numPositions()*3)];  // FOR NOW: we assume that both constraints share the same exact positions
 
         // evaluate constraint and its gradient
-        constraint1.evaluateWithGradient(C, delC);
-        constraint2.evaluateWithGradient(C + 1, delC + constraint1.numPositions()*3);
+        constraint1.evaluateWithGradient(vertices, C, delC);
+        constraint2.evaluateWithGradient(vertices, C + 1, delC + constraint1.numPositions()*3);
 
         float alpha_tilde[2] = {constraint1.alpha / (dt*dt), constraint2.alpha / (dt*dt)};
 
@@ -447,34 +470,38 @@ struct GPUCombinedConstraintProjector
     }
 };
 
-template <> void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::project(float* new_vertices)
+template <> void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::project(const float* vertices, float* new_vertices)
 {
-    GPUHydrostaticConstraint l_hyd = constraint1;
-    GPUDeviatoricConstraint l_dev = constraint2;
+    // GPUHydrostaticConstraint constraint1 = constraint1;
+    // GPUDeviatoricConstraint constraint2 = constraint2;
 
+    // printf("alpha:%f\n", constraint1.alpha);
     float C[2];
     float delC[24];  // FOR NOW: we assume that both constraints share the same exact positions
 
     // evaluate constraint and its gradient
     float x[12];
-    l_hyd._loadVertices(x);
+    // printf("loading vertices...\n");
+    constraint1._loadVertices(vertices, x);
+
+    // printf("loaded vertices\n");
     // for (int i = 0; i < 12; i++) {x[i] = 0;}
 
-    float Q[9];
-    for (int i = 0; i < 9; i++) { Q[i] = l_hyd.Q[i]; }
+    // float Q[9];
+    // for (int i = 0; i < 9; i++) { Q[i] = constraint1.Q[i]; }
 
-    float inv_m[4];
-    for (int i = 0; i < 4; i++) { inv_m[i] = l_hyd.positions[i].inv_mass; }
+    // float inv_m[4];
+    // for (int i = 0; i < 4; i++) { inv_m[i] = constraint1.positions[i].inv_mass; }
 
-    float alpha_tilde[2] = {l_hyd.alpha / (dt*dt), l_dev.alpha / (dt*dt)};
+    float alpha_tilde[2] = {constraint1.alpha / (dt*dt), constraint2.alpha / (dt*dt)};
 
     float F[9];
-    GPUElementConstraint::computeF(x, Q, F);
+    GPUElementConstraint::computeF(x, constraint1.Q, F);
 
-    l_hyd._evaluate(C, F);
-    l_hyd._gradient(delC, F);
-    l_dev._evaluate(C+1, F);
-    l_dev._gradient(delC + 12, C+1, F);
+    constraint1._evaluate(C, F);
+    constraint1._gradient(delC, F);
+    constraint2._evaluate(C+1, F);
+    constraint2._gradient(delC + 12, C+1, F);
 
     // compute LHS of lambda upate - delC^T * M^-1 * delC
     float LHS[4];
@@ -497,7 +524,7 @@ template <> void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDev
 
             for (int i = 0; i < 4; i++)
             {
-                LHS[cj*2 + ci] += inv_m[i] * (delC_i[3*i]*delC_j[3*i] + delC_i[3*i+1]*delC_j[3*i+1] + delC_i[3*i+2]*delC_j[3*i+2]);
+                LHS[cj*2 + ci] += constraint1.positions[i].inv_mass * (delC_i[3*i]*delC_j[3*i] + delC_i[3*i+1]*delC_j[3*i+1] + delC_i[3*i+2]*delC_j[3*i+2]);
             }
 
             LHS[ci*2 + cj] = LHS[cj*2 + ci];
@@ -525,24 +552,85 @@ template <> void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDev
 
     // update positions
     float* delC_c2 = delC + 12;
+
+    // printf("computing updates...");
+    // float updates[12];
+    // for (int i = 0; i < 4; i++)
+    // {
+    //     updates[3*i] = constraint1.positions[i].inv_mass * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]);
+    //     updates[3*i+1] = constraint1.positions[i].inv_mass * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]);
+    //     updates[3*i+2] = constraint1.positions[i].inv_mass * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]);
+    // }
+
+    // printf("computed updates\n");
     for (int i = 0; i < 4; i++)
     {
-        float* v_ptr = new_vertices + l_hyd.positions[i].index;
-        atomicAdd(v_ptr,     inv_m[i] * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]));
-        atomicAdd(v_ptr + 1, inv_m[i] * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]));
-        atomicAdd(v_ptr + 2, inv_m[i] * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]));
+        float* v_ptr = new_vertices + constraint1.positions[i].index;
+        // atomicAdd(v_ptr,     inv_m[i] * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]));
+        // atomicAdd(v_ptr + 1, inv_m[i] * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]));
+        // atomicAdd(v_ptr + 2, inv_m[i] * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]));
+        atomicAdd(v_ptr,     constraint1.positions[i].inv_mass * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]));
+        atomicAdd(v_ptr + 1, constraint1.positions[i].inv_mass * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]));
+        atomicAdd(v_ptr + 2, constraint1.positions[i].inv_mass * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]));
     }
 }
 
 
 template<class ConstraintProjector>
-__global__ void ProjectConstraints(ConstraintProjector* projectors, int num_projectors, float* new_vertices)
+__global__ void ProjectConstraints(ConstraintProjector* projectors, int num_projectors, const float* vertices, float* new_vertices)
 {
     int proj_index = blockIdx.x * blockDim.x + threadIdx.x;
     if (proj_index >= num_projectors)   return;
 
+    // load ConstraintProjectors into shared mem using coalesced global memory accesses
+    int proj_size_float = sizeof(ConstraintProjector) / sizeof(float);
+    double proj_size_float_dbl = (1.0 * sizeof(ConstraintProjector)) / sizeof(float);
+    int proj_global_start = proj_size_float * BLOCK_SIZE * blockIdx.x;
+
+    __shared__ ConstraintProjector proj_smem[BLOCK_SIZE];
+
+    float* proj_smem_float = reinterpret_cast<float*>(proj_smem);
+    float* proj_gmem_float = reinterpret_cast<float*>(projectors + BLOCK_SIZE * blockIdx.x);
+    int skip = min(num_projectors - blockIdx.x * BLOCK_SIZE, BLOCK_SIZE);
+    for (int i = 0; i < sizeof(ConstraintProjector)/sizeof(float); i++)
+    {
+        proj_smem_float[threadIdx.x + skip*i] = proj_gmem_float[threadIdx.x + skip*i];
+        // proj_smem_float[i] = proj_gmem_float[i];
+    }
+    // proj_smem[threadIdx.x] = projectors[proj_index];
+    __syncthreads();
+
+    // ConstraintProjector good_proj = projectors[proj_index];
+    // ConstraintProjector bad_proj = proj_smem[threadIdx.x];
+    ConstraintProjector* bad_proj = proj_smem + threadIdx.x;
+
+
+    // printf("good_proj:%i, %i, %i, %i\n bad_proj:%i, %i, %i, %i\n\n", good_proj.constraint1.positions[0].index,
+    //     good_proj.constraint1.positions[1].index, good_proj.constraint1.positions[2].index, good_proj.constraint1.positions[3].index,
+    //     bad_proj.constraint1.positions[0].index, bad_proj.constraint1.positions[1].index, bad_proj.constraint1.positions[2].index, bad_proj.constraint1.positions[3].index);
+    // printf("good_proj:%p, %p, %p, %p\n bad_proj:%p, %p, %p, %p\n\n", good_proj.constraint1.positions[0].ptr,
+    //     good_proj.constraint1.positions[1].ptr, good_proj.constraint1.positions[2].ptr, good_proj.constraint1.positions[3].ptr,
+    //     bad_proj.constraint1.positions[0].ptr, bad_proj.constraint1.positions[1].ptr, bad_proj.constraint1.positions[2].ptr, bad_proj.constraint1.positions[3].ptr);
+
+    // bool ptrs_equal = (good_proj.constraint1.positions[0].ptr == bad_proj.constraint1.positions[0].ptr) &&
+    // (good_proj.constraint1.positions[1].ptr == bad_proj.constraint1.positions[1].ptr) &&
+    // (good_proj.constraint1.positions[2].ptr == bad_proj.constraint1.positions[2].ptr) &&
+    // (good_proj.constraint1.positions[3].ptr == bad_proj.constraint1.positions[3].ptr);
+
+    // if (!ptrs_equal)
+    // { 
+    //     printf("PTRS NOT EQUAL! Blockidx: %i, Threadidx: %i, Projidx: %i\n", blockIdx.x, threadIdx.x, proj_index);
+    //     printf("good_proj:%p, %p, %p, %p\n bad_proj:%p, %p, %p, %p\n\n", good_proj.constraint1.positions[0].ptr,
+    //     good_proj.constraint1.positions[1].ptr, good_proj.constraint1.positions[2].ptr, good_proj.constraint1.positions[3].ptr,
+    //     bad_proj.constraint1.positions[0].ptr, bad_proj.constraint1.positions[1].ptr, bad_proj.constraint1.positions[2].ptr, bad_proj.constraint1.positions[3].ptr);
+    // }
+    // printf("dt:%f", proj_smem[0].dt);
+    
+    bad_proj->initialize();
+    bad_proj->project(vertices, new_vertices);
+
     // projectors[proj_index].initialize();
-    projectors[proj_index].project(new_vertices);
+    // proj.project(new_vertices);
 }
 
 __global__ void MyCopyVertices(const float* src_vertices, float* dst_vertices, int num_vertices)
@@ -575,6 +663,8 @@ int main(void)
     xpbd_obj.setup();
     xpbd_obj.createGPUResource();
 
+    std::cout << "Number of elements in mesh: " << xpbd_obj.tetMesh()->numElements() << std::endl;
+
     // create GPU constraints for each element
     typedef GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint> Projector;
     std::vector<Projector> projectors;
@@ -599,11 +689,12 @@ int main(void)
     new_vertices_resource.allocate();
     new_vertices_resource.fullCopyToDevice();
 
+    const Sim::TetMeshGPUResource& mesh_gpu_resource = xpbd_obj.gpuResource()->meshGpuResource();
+
     // launch kernels
-    int block_size = 256;
-    int num_blocks = (projectors.size() + block_size - 1) / block_size;
-    int num_vertex_blocks = (xpbd_obj.mesh()->numVertices()*3 + block_size - 1) / block_size;
-    ProjectConstraints<<<num_blocks, block_size>>>(projectors_resource.gpuArr(), projectors.size(), new_vertices_resource.gpuArr());
+    int num_blocks = (projectors.size() + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int num_vertex_blocks = (xpbd_obj.mesh()->numVertices()*3 + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    ProjectConstraints<<<num_blocks, BLOCK_SIZE>>>(projectors_resource.gpuArr(), projectors.size(), mesh_gpu_resource.gpuVertices(), new_vertices_resource.gpuArr());
 
     CHECK_CUDA_ERROR(cudaPeekAtLastError());
 
@@ -612,7 +703,7 @@ int main(void)
 
 
 
-    const Sim::TetMeshGPUResource& mesh_gpu_resource = xpbd_obj.gpuResource()->meshGpuResource();
+    
     std::array<int, 100> nanosecs;
     for (int i = 0; i < 100; i++)
     {
@@ -623,8 +714,9 @@ int main(void)
 
         for(int gi = 0; gi < 4; gi++)
         {
-            ProjectConstraints<<<num_blocks, block_size>>>(projectors_resource.gpuArr(), projectors.size(), new_vertices_resource.gpuArr());
+            ProjectConstraints<<<num_blocks, BLOCK_SIZE>>>(projectors_resource.gpuArr(), projectors.size(), mesh_gpu_resource.gpuVertices(), new_vertices_resource.gpuArr());
             // MyCopyVertices<<<num_vertex_blocks, block_size>>>(new_vertices_resource.gpuArr(), mesh_gpu_resource.gpuVertices(), xpbd_obj.mesh()->numVertices());
+            cudaMemcpy(mesh_gpu_resource.gpuVertices(), new_vertices_resource.gpuArr(), sizeof(float)*xpbd_obj.mesh()->numVertices()*3, cudaMemcpyDeviceToDevice);
         }
         CHECK_CUDA_ERROR(cudaPeekAtLastError());
 

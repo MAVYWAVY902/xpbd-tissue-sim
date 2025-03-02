@@ -18,7 +18,11 @@
 #include "gpu/GPUResource.hpp"
 #include "gpu/TetMeshGPUResource.hpp"
 #include "gpu/ArrayGPUResource.hpp"
+
 #include "gpu/WritableArrayGPUResource.hpp"
+
+
+#define BLOCK_SIZE 256
 
 // computes A * B^T and stores result in C
 __host__ __device__ void Mat3MulTranspose(const float* A, const float* B, float* C)
@@ -181,23 +185,44 @@ __device__ void ElementJacobiSolve(int elem_index, const int* elements, int num_
 {
     // extract quantities for element
     int elem[4];
-    for (int i = 0; i < 4; i++) { elem[i] = elements[4*elem_index + i]; }
+    *reinterpret_cast<int4*>(elem) = *reinterpret_cast<const int4*>(elements + 4*elem_index);
+    // for (int i = 0; i < 4; i++) { elem[i] = elements[4*elem_index + i]; }
 
     const float* elem0_ptr = vertices + 3*elem[0];
     const float* elem1_ptr = vertices + 3*elem[1];
     const float* elem2_ptr = vertices + 3*elem[2];
     const float* elem3_ptr = vertices + 3*elem[3];
     float x[12];
-    x[0] = elem0_ptr[0];  x[1] = elem0_ptr[1];  x[2] = elem0_ptr[2];
-    x[3] = elem1_ptr[0];  x[4] = elem1_ptr[1];  x[5] = elem1_ptr[2];
-    x[6] = elem2_ptr[0];  x[7] = elem2_ptr[1];  x[8] = elem2_ptr[2];
-    x[9] = elem3_ptr[0];  x[10] = elem3_ptr[1]; x[11] = elem3_ptr[2];
+    *reinterpret_cast<float3*>(x) = *reinterpret_cast<const float3*>(elem0_ptr);
+    *reinterpret_cast<float3*>(x+3) = *reinterpret_cast<const float3*>(elem1_ptr);
+    *reinterpret_cast<float3*>(x+6) = *reinterpret_cast<const float3*>(elem2_ptr);
+    *reinterpret_cast<float3*>(x+9) = *reinterpret_cast<const float3*>(elem3_ptr);
+    // x[0] = elem0_ptr[0];  x[1] = elem0_ptr[1];  x[2] = elem0_ptr[2];
+    // x[3] = elem1_ptr[0];  x[4] = elem1_ptr[1];  x[5] = elem1_ptr[2];
+    // x[6] = elem2_ptr[0];  x[7] = elem2_ptr[1];  x[8] = elem2_ptr[2];
+    // x[9] = elem3_ptr[0];  x[10] = elem3_ptr[1]; x[11] = elem3_ptr[2];
+    // for (int i = 6; i < 12; i++) { x[i] = 0.5; }
 
+    // copy to shared memory with coalesced access from entire block
+    __shared__ float Qs_smem[9*BLOCK_SIZE];
+    int Qs_global_start = 9*BLOCK_SIZE*blockIdx.x;
+    int Qs_smem_ind = 9*threadIdx.x;
+    int Qs_glob_ind = 9*elem_index;
+    for (int i = 0; i < 9; i++)
+    {
+        Qs_smem[threadIdx.x + BLOCK_SIZE*i] = Qs[Qs_global_start + threadIdx.x + BLOCK_SIZE*i];
+    }
+    __syncthreads();
+
+    // copy from shared mem to local mem
     float Q[9];
-    for (int i = 0; i < 9; i++) { Q[i] = Qs[9*elem_index+i]; }
+    for (int i = 0; i < 9; i++) { Q[i] = Qs_smem[threadIdx.x*9 + i]; }
+    // for (int i = 0; i < 9; i++) { Q[i] = 10; }
 
     float inv_m[4];
+    // *reinterpret_cast<float4*>(inv_m) = *reinterpret_cast<const float4*>(masses + )
     for (int i = 0; i < 4; i++) { inv_m[i] = 1.0/masses[elem[i]]; }
+    // for (int i = 0; i < 4; i++) { inv_m[i] = 2; }
     
     
     const float gamma = mu / lambda;
@@ -275,16 +300,24 @@ __device__ void ElementJacobiSolve(int elem_index, const int* elements, int num_
     // const float dlam_d = 0;
 
     // // compute the coordinate updates
+    float updates[12];
+    for (int i = 0; i < 4; i++)
+    {
+        updates[3*i] = inv_m[i] * (C_h_grad[3*i]   * dlam_h + C_d_grad[3*i]   * dlam_d);
+        updates[3*i+1] = inv_m[i] * (C_h_grad[3*i+1] * dlam_h + C_d_grad[3*i+1] * dlam_d);
+        updates[3*i+2] = inv_m[i] * (C_h_grad[3*i+2] * dlam_h + C_d_grad[3*i+2] * dlam_d);
+    }
     for (int i = 0; i < 4; i++)
     {
         float* v_ptr = new_vertices + 3*elem[i];
-        atomicAdd(v_ptr,     inv_m[i] * (C_h_grad[3*i]   * dlam_h + C_d_grad[3*i]   * dlam_d));
-        atomicAdd(v_ptr + 1, inv_m[i] * (C_h_grad[3*i+1] * dlam_h + C_d_grad[3*i+1] * dlam_d));
-        atomicAdd(v_ptr + 2, inv_m[i] * (C_h_grad[3*i+2] * dlam_h + C_d_grad[3*i+2] * dlam_d));
+        atomicAdd(v_ptr,     updates[3*i]);
+        atomicAdd(v_ptr + 1, updates[3*i+1]);
+        atomicAdd(v_ptr + 2, updates[3*i+2]);
         // coord_updates[12*elem_index + 3*i] =   inv_m[i] * (C_h_grad[3*i] * dlam_h + C_d_grad[3*i] * dlam_d);
         // coord_updates[12*elem_index + 3*i+1] = inv_m[i] * (C_h_grad[3*i+1] * dlam_h + C_d_grad[3*i+1] * dlam_d);
         // coord_updates[12*elem_index + 3*i+2] = inv_m[i] * (C_h_grad[3*i+2] * dlam_h + C_d_grad[3*i+2] * dlam_d);
     }
+    // atomicAdd(new_vertices + elem_index, updates[0]);
 }
 
 __host__ void ElementJacobiSolveHost(int elem_index, const int* elements, int num_elements, const float* vertices, const float* masses, const float* volumes, const float* Qs, float lambda, float mu, float dt, float* new_vertices)
@@ -408,6 +441,17 @@ __global__ void CopyVertices(const float* src_vertices, float* dst_vertices, int
     dst_vertices[vert_index] = src_vertices[vert_index];
 }
 
+__global__ void CopyVertices2(float* src_vertices, float* dst_vertices, int num_vertices)
+{
+    const int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    const int numThreads = blockDim.x * gridDim.x;
+
+    for (int pos = tid; pos < num_vertices; pos += numThreads)
+    {
+        dst_vertices[pos] = src_vertices[pos];
+    }
+}
+
 int main(void)
 {
     gmsh::initialize();
@@ -473,7 +517,7 @@ int main(void)
     int num_blocks;
     num_blocks = (mesh.numElements() + block_size - 1) / block_size;
 
-    int num_vertex_blocks = (mesh.numVertices() + block_size - 1) / block_size;
+    int num_vertex_blocks = (mesh.numVertices()*3 + block_size - 1) / block_size;
 
     std::array<int, 100> nanosecs;
     for (int i = 0; i < 100; i++)
@@ -491,6 +535,8 @@ int main(void)
                                                         lambda, mu, 1e-3,
                                                         new_vertices_resource.gpuArr());
             // CopyVertices<<<num_vertex_blocks, block_size>>>(new_vertices_resource.gpuArr(), mesh_gpu_resource->gpuVertices(), mesh.numVertices());
+            // CopyVertices2<<<64, 256>>>(new_vertices_resource.gpuArr(), mesh_gpu_resource->gpuVertices(), mesh.numVertices()*3);
+            cudaMemcpy(mesh_gpu_resource->gpuVertices(), new_vertices_resource.gpuArr(), sizeof(float)*mesh.numVertices()*3, cudaMemcpyDeviceToDevice);
         }
         CHECK_CUDA_ERROR(cudaPeekAtLastError());
 
