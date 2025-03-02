@@ -15,47 +15,41 @@ XPBDSolver::XPBDSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolic
     _rigid_body_updates.resize(14); // 14 doubles is enough to store 2 rigid body updates (no more than 2 rigid bodies will be involved in a single constraint projection)
 }
 
-int XPBDSolver::addConstraintProjector(std::unique_ptr<ConstraintProjector> projector)
+/** Overload ConstraintProjector creation explicitly for the combination of a Deviatoric and Hydrostatic constraint.
+ * The CombinedNeohookeanConstraintProjector is specifically optimized for this combination.
+ */
+template <>
+std::unique_ptr<ConstraintProjector> XPBDSolver::_createConstraintProjector<DeviatoricConstraint, HydrostaticConstraint>(Real dt, const ConstraintProjectorOptions& options, 
+                                                                                                                        DeviatoricConstraint* dev_constraint, HydrostaticConstraint* hyd_constraint)
 {
-    // amount of pre-allocated memory required to perform the constraint(s) projection
-    size_t required_array_size = projector->memoryNeeded() / sizeof(Real);
-    // make sure that the data buffer of the _data vector is large enough to accomodate the new projector
-    if (required_array_size > _data.size())
+    std::vector<Constraint*> constraints_vec(2);
+    constraints_vec[0] = dev_constraint;
+    constraints_vec[1] = hyd_constraint;
+    std::unique_ptr<CombinedNeohookeanConstraintProjector> projector = std::make_unique<CombinedNeohookeanConstraintProjector>(std::move(constraints_vec), dt);
+
+    std::unique_ptr<ConstraintProjector> decorated_projector = _decorateConstraintProjector(std::move(projector), options);
+
+    return decorated_projector;
+}
+
+std::unique_ptr<ConstraintProjector> XPBDSolver::_decorateConstraintProjector(std::unique_ptr<ConstraintProjector> projector, const ConstraintProjectorOptions& options)
+{
+    if (options.with_damping)
     {
-        _data.resize(required_array_size);
+        projector = std::make_unique<WithDamping>(std::move(projector), options.damping_gamma);        // wrap the ConstraintProjector with the WithDamping decorator
     }
 
-    // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
-    if (static_cast<unsigned>(projector->numCoordinates()) > _coordinate_updates.size())
+    if (options.first_order)
     {
-        _coordinate_updates.resize(projector->numCoordinates());
+        projector = std::make_unique<FirstOrder>(std::move(projector));                         // wrap the ConstraintProjector with the FirstOrder decorator
     }
 
-    // increase the total number of constraints (needed for the constraint residual size)
-    _num_constraints += projector->numConstraints();
+    if (options.with_residual)
+    {
+        projector = std::make_unique<WithDistributedPrimaryResidual>(std::move(projector));     // wrap the ConstraintProjector with the WithDistributedPRimaryResidual decorator
+    }
 
-    // check if primary residual is needed for constraint projection
-    if (projector->usesPrimaryResidual())
-    {
-        _constraints_using_primary_residual = true;
-        if (WithDistributedPrimaryResidual* wpr = dynamic_cast<WithDistributedPrimaryResidual*>(projector.get()))
-        {
-            wpr->setPrimaryResidual(_primary_residual.data());
-        }
-    }
-        
-    if (_empty_indices.empty())
-    {
-        _constraint_projectors.push_back(std::move(projector));
-        return _constraint_projectors.size() - 1;
-    }
-    else
-    {
-        const int empty_index = _empty_indices.back();
-        _constraint_projectors.at(empty_index) = std::move(projector);
-        _empty_indices.pop_back();
-        return empty_index;
-    }
+    return projector;
 }
 
 void XPBDSolver::removeConstraintProjector(const int index)

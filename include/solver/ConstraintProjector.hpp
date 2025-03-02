@@ -6,6 +6,18 @@
 namespace Solver
 {
 
+struct ConstraintProjectorOptions
+{
+    bool with_residual;
+    bool with_damping;
+    bool first_order;
+    Real damping_gamma;
+
+    ConstraintProjectorOptions()
+        : with_residual(false), with_damping(false), first_order(false), damping_gamma(0)
+    {}
+};
+
 /** Responsible for projecting constraint(s) according to the XPBD algorithm.
  * Multiple constraints can be projected and solved for simultaneously.
  * 

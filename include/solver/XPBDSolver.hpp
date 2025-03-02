@@ -5,6 +5,16 @@
 #include "simobject/XPBDMeshObject.hpp"
 #include "config/XPBDMeshObjectConfig.hpp"
 
+#include "solver/Constraint.hpp"
+#include "solver/DeviatoricConstraint.hpp"
+#include "solver/HydrostaticConstraint.hpp"
+#include "solver/StaticDeformableCollisionConstraint.hpp"
+#include "solver/RigidDeformableCollisionConstraint.hpp"
+#include "solver/ConstraintProjector.hpp"
+#include "solver/ConstraintProjectorDecorator.hpp"
+#include "solver/CombinedNeohookeanConstraintProjector.hpp"
+
+
 #include <memory>
 
 namespace Solver
@@ -55,12 +65,58 @@ class XPBDSolver
      * 
      * Returns the index of the constraint projector in the member list, which can be used to remove it later. We do this frequently with collision constraints and attachment constraints.
      */
-    int addConstraintProjector(std::unique_ptr<ConstraintProjector> projector); 
+    // int addConstraintProjector(std::unique_ptr<ConstraintProjector> projector); 
 
+    template<class... Constraints>
+    int addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraints* ... constraints)
+    {
+        std::unique_ptr<ConstraintProjector> projector = _createConstraintProjector(dt, options, constraints...);
+    
+        // amount of pre-allocated memory required to perform the constraint(s) projection
+        size_t required_array_size = projector->memoryNeeded() / sizeof(Real);
+        // make sure that the data buffer of the _data vector is large enough to accomodate the new projector
+        if (required_array_size > _data.size())
+        {
+            _data.resize(required_array_size);
+        }
+    
+        // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
+        if (static_cast<unsigned>(projector->numCoordinates()) > _coordinate_updates.size())
+        {
+            _coordinate_updates.resize(projector->numCoordinates());
+        }
+    
+        // increase the total number of constraints (needed for the constraint residual size)
+        _num_constraints += projector->numConstraints();
+    
+        // check if primary residual is needed for constraint projection
+        if (options.with_residual)
+        {
+            _constraints_using_primary_residual = true;
+            if (WithDistributedPrimaryResidual* wpr = dynamic_cast<WithDistributedPrimaryResidual*>(projector.get()))
+            {
+                wpr->setPrimaryResidual(_primary_residual.data());
+            }
+        }
+            
+        if (_empty_indices.empty())
+        {
+            _constraint_projectors.push_back(std::move(projector));
+            return _constraint_projectors.size() - 1;
+        }
+        else
+        {
+            const int empty_index = _empty_indices.back();
+            _constraint_projectors.at(empty_index) = std::move(projector);
+            _empty_indices.pop_back();
+            return empty_index;
+        }
+    }
 
     void removeConstraintProjector(const int index);
 
     protected:
+
     /** Helper function that will perform 1 iteration of the solver. 
      * This method is pure virtual because its implementation depends on the solver type (Gauss-Seidel, Jacobi, etc.) to know what to do with the position updates given by the ConstraintProjectors.
      * @param data - the pre-allocated data block to use for evaluating the constraints and their gradients. Assumes that it is large enough to accomodate the ConstraintProjector with the largest memory requirement.
@@ -72,6 +128,32 @@ class XPBDSolver
 
     /** Calculates the constraint residual (Equation (9) from XPBD paper). */
     void _calculateConstraintResidual();
+
+    private:
+    template <class... Constraints>
+    std::unique_ptr<ConstraintProjector> _createConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraints* ... constraints)
+    {
+        // assemble constraints into a vector
+        std::vector<Constraint*> constraints_vec;
+    
+        // lambda to add a single constraint to the vector
+        auto add_constraint_to_vec = [&](auto& constraint)
+        {
+            constraints_vec.push_back(constraint);
+        };
+    
+        // unpack parameter pack and add each constraint to vector
+        (add_constraint_to_vec(constraints), ...);
+    
+        // create base constraint projector
+        std::unique_ptr<ConstraintProjector> projector = std::make_unique<ConstraintProjector>(std::move(constraints_vec), dt);
+    
+        projector = _decorateConstraintProjector(std::move(projector), options);
+
+        return projector;
+    }
+
+    std::unique_ptr<ConstraintProjector> _decorateConstraintProjector(std::unique_ptr<ConstraintProjector> projector, const ConstraintProjectorOptions& options);
 
 
     protected:

@@ -18,7 +18,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
-# set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 
 list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build")
 

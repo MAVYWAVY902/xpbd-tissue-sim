@@ -87,10 +87,12 @@ void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, cons
                                     const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w)
 {
     std::unique_ptr<Solver::StaticDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, obj, v1, v2, v3, u, v, w);
-    std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
-    std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _sim->dt());
+    // std::vector<Solver::Constraint*> collision_vec; collision_vec.push_back(collision_constraint.get());
+    // std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::ConstraintProjector>(collision_vec, _sim->dt());
 
-    int index = _solver->addConstraintProjector(std::move(collision_projector));
+    // int index = _solver->addConstraintProjector(std::move(collision_projector));
+    Solver::ConstraintProjectorOptions options;
+    int index = _solver->addConstraintProjector(_sim->dt(), options, collision_constraint.get()); // TODO: accomodate for first-order method
 
     XPBDCollisionConstraint xpbd_collision_constraint;
     xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -104,9 +106,11 @@ void XPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* 
                                        const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w)
 {
     std::unique_ptr<Solver::RigidDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, deformable_obj, v1, v2, v3, u, v, w);
-    std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::RigidBodyConstraintProjector>(collision_constraint.get(), _sim->dt());
+    // std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::RigidBodyConstraintProjector>(collision_constraint.get(), _sim->dt());
 
-    int index = _solver->addConstraintProjector(std::move(collision_projector));
+    // int index = _solver->addConstraintProjector(std::move(collision_projector));
+    Solver::ConstraintProjectorOptions options;
+    int index = _solver->addConstraintProjector(_sim->dt(), options, collision_constraint.get()); // TODO: accomodate for first-order method
 
     XPBDCollisionConstraint xpbd_collision_constraint;
     xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -182,6 +186,12 @@ void XPBDMeshObject::_calculatePerVertexQuantities()
 
 void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping, bool first_order)
 {
+    Solver::ConstraintProjectorOptions projector_options;
+    projector_options.with_residual = with_residual;
+    projector_options.with_damping = with_damping;
+    projector_options.first_order = first_order;
+    projector_options.damping_gamma = _damping_gamma;
+
     // create constraint(s) for each element
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
@@ -192,35 +202,37 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
         const int v3 = element[3];
         if (constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN)
         {
-            std::unique_ptr<Solver::Constraint> hyd_constraint, dev_constraint;
-            hyd_constraint = std::make_unique<Solver::HydrostaticConstraint>(this, v0, v1, v2, v3);
-            dev_constraint = std::make_unique<Solver::DeviatoricConstraint>(this, v0, v1, v2, v3);
+            std::unique_ptr<Solver::HydrostaticConstraint> hyd_constraint = std::make_unique<Solver::HydrostaticConstraint>(this, v0, v1, v2, v3);
+            std::unique_ptr<Solver::DeviatoricConstraint> dev_constraint = std::make_unique<Solver::DeviatoricConstraint>(this, v0, v1, v2, v3);
 
-            std::vector<Solver::Constraint*> hyd_vec; hyd_vec.push_back(hyd_constraint.get());
-            std::unique_ptr<Solver::ConstraintProjector> hyd_projector = std::make_unique<Solver::ConstraintProjector>(hyd_vec, _sim->dt());
-            std::vector<Solver::Constraint*> dev_vec; dev_vec.push_back(dev_constraint.get());
-            std::unique_ptr<Solver::ConstraintProjector> dev_projector = std::make_unique<Solver::ConstraintProjector>(dev_vec, _sim->dt());
+            // std::vector<Solver::Constraint*> hyd_vec; hyd_vec.push_back(hyd_constraint.get());
+            // std::unique_ptr<Solver::ConstraintProjector> hyd_projector = std::make_unique<Solver::ConstraintProjector>(hyd_vec, _sim->dt());
+            // std::vector<Solver::Constraint*> dev_vec; dev_vec.push_back(dev_constraint.get());
+            // std::unique_ptr<Solver::ConstraintProjector> dev_projector = std::make_unique<Solver::ConstraintProjector>(dev_vec, _sim->dt());
+            
+            _solver->addConstraintProjector(_sim->dt(), projector_options, hyd_constraint.get());
+            _solver->addConstraintProjector(_sim->dt(), projector_options, dev_constraint.get());
 
             _elastic_constraints.push_back(std::move(dev_constraint));
             _elastic_constraints.push_back(std::move(hyd_constraint));
 
-            _solver->addConstraintProjector(_decorateConstraintProjector(std::move(dev_projector), with_residual, with_damping, first_order));
-            _solver->addConstraintProjector(_decorateConstraintProjector(std::move(hyd_projector), with_residual, with_damping, first_order));
+            // _solver->addConstraintProjector(_decorateConstraintProjector(std::move(dev_projector), with_residual, with_damping, first_order));
+            // _solver->addConstraintProjector(_decorateConstraintProjector(std::move(hyd_projector), with_residual, with_damping, first_order));
             
         }
         else if (constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED)
         {
-            std::unique_ptr<Solver::Constraint> hyd_constraint, dev_constraint;
-            hyd_constraint = std::make_unique<Solver::HydrostaticConstraint>(this, v0, v1, v2, v3);
-            dev_constraint = std::make_unique<Solver::DeviatoricConstraint>(this, v0, v1, v2, v3);
-            
-            std::vector<Solver::Constraint*> vec; vec.push_back(dev_constraint.get()); vec.push_back(hyd_constraint.get());
-            std::unique_ptr<Solver::CombinedNeohookeanConstraintProjector> projector = std::make_unique<Solver::CombinedNeohookeanConstraintProjector>(vec, _sim->dt());
+            std::unique_ptr<Solver::HydrostaticConstraint> hyd_constraint = std::make_unique<Solver::HydrostaticConstraint>(this, v0, v1, v2, v3);
+            std::unique_ptr<Solver::DeviatoricConstraint> dev_constraint = std::make_unique<Solver::DeviatoricConstraint>(this, v0, v1, v2, v3);
+            // std::vector<Solver::Constraint*> vec; vec.push_back(dev_constraint.get()); vec.push_back(hyd_constraint.get());
+            // std::unique_ptr<Solver::CombinedNeohookeanConstraintProjector> projector = std::make_unique<Solver::CombinedNeohookeanConstraintProjector>(vec, _sim->dt());
+
+            _solver->addConstraintProjector(_sim->dt(), projector_options, dev_constraint.get(), hyd_constraint.get());
 
             _elastic_constraints.push_back(std::move(dev_constraint));
             _elastic_constraints.push_back(std::move(hyd_constraint));
             
-            _solver->addConstraintProjector( _decorateConstraintProjector(std::move(projector), with_residual, with_damping, first_order));
+            // _solver->addConstraintProjector( _decorateConstraintProjector(std::move(projector), with_residual, with_damping, first_order));
         }
     }
 }
