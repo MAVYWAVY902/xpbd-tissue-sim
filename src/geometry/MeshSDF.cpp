@@ -1,7 +1,7 @@
 #include "geometry/MeshSDF.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/MeshSDFGPUResource.hpp"
+#include "gpu/resource/MeshSDFGPUResource.hpp"
 #endif
 
 namespace Geometry

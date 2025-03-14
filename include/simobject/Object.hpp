@@ -9,7 +9,7 @@
 #include "config/ObjectConfig.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/GPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
 #endif
 
 namespace Sim

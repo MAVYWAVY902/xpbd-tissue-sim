@@ -1,7 +1,7 @@
 #ifndef __BOX_SDF_GPU_RESOURCE_HPP
 #define __BOX_SDF_GPU_RESOURCE_HPP
 
-#include "gpu/GPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
 #include "gpu/GPUStructs.hpp"
 
 #include "geometry/BoxSDF.hpp"

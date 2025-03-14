@@ -3,7 +3,7 @@
 
 
 #ifdef HAVE_CUDA
-#include "gpu/CylinderSDFGPUResource.hpp"
+#include "gpu/resource/CylinderSDFGPUResource.hpp"
 #endif
 
 namespace Geometry

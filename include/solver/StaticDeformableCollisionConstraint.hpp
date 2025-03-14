@@ -4,6 +4,10 @@
 #include "solver/CollisionConstraint.hpp"
 #include "geometry/SDF.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/constraint/GPUStaticDeformableCollisionConstraint.cuh"
+#endif
+
 namespace Solver
 {
 
@@ -96,6 +100,19 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
         evaluate(C);
         gradient(grad);
     }
+
+    #ifdef HAVE_CUDA
+    typedef GPUStaticDeformableCollisionConstraint GPUConstraintType;
+    GPUConstraintType createGPUConstraint() const
+    {
+        GPUConstraintType gpu_constraint = GPUConstraintType(_positions[0].index, _positions[0].inv_mass,
+                                                             _positions[1].index, _positions[1].inv_mass,
+                                                             _positions[2].index, _positions[2].inv_mass,
+                                                             _u, _v, _w,
+                                                             _p, _collision_normal);
+        return gpu_constraint;
+    }
+    #endif
 
     /** Collision constraints should be implemented as inequalities, i.e. as C(x) >= 0. */
     inline virtual bool isInequality() const override { return true; }

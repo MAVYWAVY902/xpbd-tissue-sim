@@ -3,6 +3,10 @@
 
 #include "solver/ElementConstraint.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/constraint/GPUDeviatoricConstraint.cuh"
+#endif
+
 namespace Solver
 {
 
@@ -97,6 +101,19 @@ class DeviatoricConstraint : public ElementConstraint
         _evaluate(C, F);
         _gradient(grad, C, F);
     }
+
+    #ifdef HAVE_CUDA
+    typedef GPUDeviatoricConstraint GPUConstraintType;
+    GPUConstraintType createGPUConstraint() const
+    {
+        GPUConstraintType gpu_constraint = GPUConstraintType(_positions[0].index, _positions[0].inv_mass,
+                                                             _positions[1].index, _positions[1].inv_mass,
+                                                             _positions[2].index, _positions[2].inv_mass,
+                                                             _positions[3].index, _positions[3].inv_mass,
+                                                             _Q, _alpha);
+        return gpu_constraint;
+    }
+    #endif
 
     private:
 

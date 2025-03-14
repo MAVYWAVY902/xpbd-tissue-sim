@@ -11,8 +11,8 @@
 #include "utils/GeometryUtils.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/GPUResource.hpp"
-#include "gpu/MeshGPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
+#include "gpu/resource/MeshGPUResource.hpp"
 #include "gpu/Collision.cuh"
 #endif
 

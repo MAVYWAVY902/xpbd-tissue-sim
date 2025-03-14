@@ -7,7 +7,7 @@
 #include "simobject/ElasticMaterial.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/XPBDMeshObjectGPUResource.hpp"
+#include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #endif
 // #include "solver/XPBDSolver.hpp"
 // #include "solver/Constraint.hpp"

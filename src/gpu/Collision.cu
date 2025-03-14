@@ -1,10 +1,10 @@
 #include "gpu/Collision.cuh"
 
-#include "gpu/WritableArrayGPUResource.hpp"
-#include "gpu/SphereSDFGPUResource.hpp"
-#include "gpu/BoxSDFGPUResource.hpp"
-#include "gpu/CylinderSDFGPUResource.hpp"
-#include "gpu/MeshSDFGPUResource.hpp"
+#include "gpu/resource/WritableArrayGPUResource.hpp"
+#include "gpu/resource/SphereSDFGPUResource.hpp"
+#include "gpu/resource/BoxSDFGPUResource.hpp"
+#include "gpu/resource/CylinderSDFGPUResource.hpp"
+#include "gpu/resource/MeshSDFGPUResource.hpp"
 
 #include "utils/CudaHelperMath.h"
 

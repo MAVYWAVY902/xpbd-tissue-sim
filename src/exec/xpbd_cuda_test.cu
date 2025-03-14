@@ -15,11 +15,11 @@
 #include "config/XPBDMeshObjectConfig.hpp"
 
 #include "gpu/GPUStructs.hpp"
-#include "gpu/GPUResource.hpp"
-#include "gpu/TetMeshGPUResource.hpp"
-#include "gpu/ArrayGPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
+#include "gpu/resource/TetMeshGPUResource.hpp"
+#include "gpu/resource/ArrayGPUResource.hpp"
 
-#include "gpu/WritableArrayGPUResource.hpp"
+#include "gpu/resource/WritableArrayGPUResource.hpp"
 
 
 #define BLOCK_SIZE 256

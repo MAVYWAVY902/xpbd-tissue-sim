@@ -1,7 +1,7 @@
 #ifndef __ARRAY_GPU_RESOURCE_HPP
 #define __ARRAY_GPU_RESOURCE_HPP
 
-#include "gpu/GPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
 
 #include <iostream>
 
@@ -14,6 +14,11 @@ class ArrayGPUResource : public HostReadableGPUResource
     public:
     explicit ArrayGPUResource(const T* arr, int num_elements)
         : _arr(arr), _num_elements(num_elements)
+    {
+    }
+
+    ArrayGPUResource()
+        : _arr(nullptr), _num_elements(0)
     {
     }
 

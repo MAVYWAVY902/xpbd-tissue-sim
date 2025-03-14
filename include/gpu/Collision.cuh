@@ -3,9 +3,9 @@
 
 #include "gpu/GPUStructs.hpp"
 
-#include "gpu/GPUResource.hpp"
-#include "gpu/WritableArrayGPUResource.hpp"
-#include "gpu/MeshGPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
+#include "gpu/resource/WritableArrayGPUResource.hpp"
+#include "gpu/resource/MeshGPUResource.hpp"
 
 __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_resource, const Sim::MeshGPUResource* mesh_resource, int num_vertices, int num_faces, Sim::WritableArrayGPUResource<Sim::GPUCollision>* collision_resource);
 

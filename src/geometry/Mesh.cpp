@@ -4,7 +4,7 @@
 #include <iostream>
 
 #ifdef HAVE_CUDA
-#include "gpu/MeshGPUResource.hpp"
+#include "gpu/resource/MeshGPUResource.hpp"
 #endif
 
 namespace Geometry

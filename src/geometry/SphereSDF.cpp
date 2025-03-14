@@ -1,7 +1,7 @@
 #include "geometry/SphereSDF.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/SphereSDFGPUResource.hpp"
+#include "gpu/resource/SphereSDFGPUResource.hpp"
 #endif
 
 namespace Geometry

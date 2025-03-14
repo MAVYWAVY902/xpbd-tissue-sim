@@ -15,7 +15,7 @@
 #include "utils/MeshUtils.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/XPBDMeshObjectGPUResource.hpp"
+#include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #endif
 
 namespace Sim
@@ -273,7 +273,14 @@ void XPBDMeshObject::_createSolver(XPBDSolverType solver_type, int num_solver_it
     }
     else if (solver_type == XPBDSolverType::PARALLEL_JACOBI)
     {
-        _solver = std::make_unique<Solver::XPBDParallelJacobiSolver>(this, num_solver_iters, residual_policy);
+        typedef Solver::XPBDParallelJacobiSolver<
+            GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>,
+            GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>,
+            GPUConstraintProjector<GPURigidDeformableCollisionConstraint>
+        > SolverType;
+        _solver = std::make_unique<SolverType>(this, num_solver_iters, residual_policy);
+        
+        // _solver = std::make_unique<Solver::XPBDParallelJacobiSolver>(this, num_solver_iters, residual_policy);
     }
 }
 

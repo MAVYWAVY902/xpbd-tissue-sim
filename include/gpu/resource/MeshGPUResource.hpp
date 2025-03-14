@@ -1,7 +1,7 @@
 #ifndef __MESH_GPU_RESOURCE_HPP
 #define __MESH_GPU_RESOURCE_HPP
 
-#include "gpu/GPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
 #include "geometry/Mesh.hpp"
 
 #include <iostream>

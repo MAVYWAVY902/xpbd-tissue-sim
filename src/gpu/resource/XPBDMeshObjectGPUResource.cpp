@@ -1,4 +1,4 @@
-#include "gpu/XPBDMeshObjectGPUResource.hpp"
+#include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 
 #include "simobject/XPBDMeshObject.hpp"
 

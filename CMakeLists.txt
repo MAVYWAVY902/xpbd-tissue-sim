@@ -111,6 +111,8 @@ target_link_libraries(BeamTest BeamSimulation)
 # add_executable(StaticLoadingTest src/exec/static_loading_test_main.cpp)
 # target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
 
+add_executable(VariadicVectorContainerTest src/exec/test/variadic_vector_container_test.cpp)
+
 if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject)
     target_link_libraries(Collision GPU)

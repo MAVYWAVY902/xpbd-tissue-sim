@@ -6,7 +6,7 @@
 
 #ifdef HAVE_CUDA
 #include <memory>
-#include "gpu/GPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
 #endif
 
 namespace Geometry

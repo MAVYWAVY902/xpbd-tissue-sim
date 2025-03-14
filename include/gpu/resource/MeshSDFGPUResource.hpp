@@ -3,7 +3,7 @@
 
 #include <Mesh2SDF/array3.hpp>
 
-#include "gpu/GPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
 #include "gpu/GPUStructs.hpp"
 
 #include "geometry/MeshSDF.hpp"

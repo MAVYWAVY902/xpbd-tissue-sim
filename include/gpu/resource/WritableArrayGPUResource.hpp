@@ -1,7 +1,7 @@
 #ifndef __WRITABLE_ARRAY_GPU_RESOURCE_HPP
 #define __WRITABLE_ARRAY_GPU_RESOURCE_HPP
 
-#include "gpu/GPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
 
 #include <iostream>
 

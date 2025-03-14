@@ -14,12 +14,12 @@
 #include "geometry/CylinderSDF.hpp"
 #include "simobject/RigidPrimitives.hpp"
 #include "gpu/GPUStructs.hpp"
-#include "gpu/GPUResource.hpp"
-#include "gpu/SphereSDFGPUResource.hpp"
-#include "gpu/BoxSDFGPUResource.hpp"
-#include "gpu/MeshGPUResource.hpp"
-#include "gpu/CylinderSDFGPUResource.hpp"
-#include "gpu/WritableArrayGPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
+#include "gpu/resource/SphereSDFGPUResource.hpp"
+#include "gpu/resource/BoxSDFGPUResource.hpp"
+#include "gpu/resource/MeshGPUResource.hpp"
+#include "gpu/resource/CylinderSDFGPUResource.hpp"
+#include "gpu/resource/WritableArrayGPUResource.hpp"
 
 #include "config/RigidPrimitiveConfigs.hpp"
 

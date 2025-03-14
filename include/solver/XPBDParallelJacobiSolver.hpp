@@ -4,31 +4,94 @@
 #ifdef HAVE_CUDA
 
 #include "solver/XPBDSolver.hpp"
-#include "gpu/XPBDMeshObjectGPUResource.hpp"
-#include "gpu/ArrayGPUResource.hpp"
-#include "gpu/WritableArrayGPUResource.hpp"
+#include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
+#include "gpu/resource/ArrayGPUResource.hpp"
+#include "gpu/resource/VectorGPUResource.hpp"
+#include "gpu/resource/WritableArrayGPUResource.hpp"
+
+#include "gpu/projector/GPUConstraintProjector.cuh"
+#include "gpu/projector/GPUCombinedConstraintProjector.cuh"
+
+#include "common/VariadicContainer.hpp"
+#include "common/VariadicVectorContainer.hpp"
+
+#include <type_traits>
 
 namespace Solver
 {
 
+template<typename ...GPUConstraintProjectors>
 class XPBDParallelJacobiSolver : public XPBDSolver
 {
     public:
-    explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy);
+    explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+        : XPBDSolver(obj, num_iter, residual_policy)
+    {
+        // createGPUResource() will create the GPU resource for the XPBDMeshObject AND allocate memory for it
+        obj->createGPUResource();
+        _xpbd_obj_resource = dynamic_cast<Sim::XPBDMeshObjectGPUResource*>(obj->gpuResource());
 
-    virtual void solve() override;
+        // point the VectorGPUResources to their appropriate vectors of GPUConstraintProjectors
+        // using an ugly fold expression
+        ((_gpu_projector_resources.template get<Sim::VectorGPUResource<GPUConstraintProjectors>>()  // get the vector resource corresponding to the type
+            .setVecPtr(&_gpu_projectors.template get<GPUConstraintProjectors>()), ...));            // and point it to the vector corresponding to the type
+
+    }
+
+    template<class ProjectorType>
+    void setNumProjectorsOfType(int size)
+    {
+        _gpu_projectors.template resize<ProjectorType>(size);
+        // since the vector's size was changed we need to reallocate the corresponding GPU resource
+        _gpu_projector_resources.template get<ProjectorType>().allocate();
+        
+    }
+
+    virtual void solve() override
+    {
+        
+    }
 
     virtual void _solveConstraints(Real* /*data*/) override {}
 
+    template<class... Constraints>
+    int addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraints* ... constraints)
+    {
+        _addConstraintProjector(dt, options, constraints...);
+    }
+
+    protected:
+    template<class Constraint>
+    int _addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraint* constraint)
+    {
+        typename Constraint::GPUConstraintType gpu_constraint = constraint->createGPUConstraint();
+        typedef GPUConstraintProjector<typename Constraint::GPUConstraintType> ProjectorType;
+        ProjectorType projector(std::move(gpu_constraint), dt);
+        _gpu_projectors.template push_back<ProjectorType>(std::move(projector));
+    }
+
+    template<class Constraint1, class Constraint2>
+    int _addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraint1* constraint1, Constraint2* constraint2)
+    {
+        typename Constraint1::GPUConstraintType gpu_constraint1 = constraint1->createGPUConstraint();
+        typename Constraint2::GPUConstraintType gpu_constraint2 = constraint2->createGPUConstraint();
+        typedef GPUCombinedConstraintProjector<typename Constraint1::GPUConstraintType, typename Constraint2::GPUConstraintType> ProjectorType;
+        ProjectorType projector(std::move(gpu_constraint1), std::move(gpu_constraint2), dt);
+        _gpu_projectors.template push_back<ProjectorType>(std::move(projector));
+    }
+
     private:
-    std::vector<float> _element_Qs;
-    std::vector<float> _element_volumes;
-    std::vector<float> _temp_vertices;
+    VariadicVectorContainer<GPUConstraintProjectors...> _gpu_projectors;
+    VariadicContainer<Sim::VectorGPUResource<GPUConstraintProjectors>...> _gpu_projector_resources;
+
+    // std::vector<float> _element_Qs;
+    // std::vector<float> _element_volumes;
+    // std::vector<float> _temp_vertices;
 
     Sim::XPBDMeshObjectGPUResource* _xpbd_obj_resource;
-    Sim::ArrayGPUResource<float> _Qs_resource;
-    Sim::ArrayGPUResource<float> _volumes_resource;
-    Sim::ArrayGPUResource<float> _temp_vertices_resource;
+    // Sim::ArrayGPUResource<float> _Qs_resource;
+    // Sim::ArrayGPUResource<float> _volumes_resource;
+    // Sim::ArrayGPUResource<float> _temp_vertices_resource;
 };
 
 } // namespace Solver

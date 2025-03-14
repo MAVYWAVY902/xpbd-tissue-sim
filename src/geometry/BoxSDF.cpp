@@ -2,7 +2,7 @@
 #include "utils/GeometryUtils.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/BoxSDFGPUResource.hpp"
+#include "gpu/resource/BoxSDFGPUResource.hpp"
 #endif
 
 namespace Geometry

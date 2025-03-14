@@ -7,6 +7,10 @@
 #include "simobject/XPBDMeshObject.hpp"
 #include "geometry/SDF.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/constraint/GPURigidDeformableCollisionConstraint.cuh"
+#endif
+
 namespace Solver
 {
 
@@ -133,6 +137,19 @@ class RigidDeformableCollisionConstraint : public CollisionConstraint, public Ri
         evaluate(C);
         gradient(grad);
     }
+
+    #ifdef HAVE_CUDA
+    typedef GPURigidDeformableCollisionConstraint GPUConstraintType;
+    GPUConstraintType createGPUConstraint() const
+    {
+        GPUConstraintType gpu_constraint = GPUConstraintType(_positions[0].index, _positions[0].inv_mass,
+                                                             _positions[1].index, _positions[1].inv_mass,
+                                                             _positions[2].index, _positions[2].inv_mass,
+                                                             _u, _v, _w,
+                                                             _point_on_rigid_body, _collision_normal);
+        return gpu_constraint;
+    }
+    #endif
 
 
     /** Collision constraints should be implemented as inequalities, i.e. as C(x) >= 0. */

@@ -3,7 +3,7 @@
 #include <set>
 
 #ifdef HAVE_CUDA
-#include "gpu/TetMeshGPUResource.hpp"
+#include "gpu/resource/TetMeshGPUResource.hpp"
 #endif
 
 namespace Geometry

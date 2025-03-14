@@ -6,7 +6,7 @@
 #include "geometry/SDF.hpp"
 
 #ifdef HAVE_CUDA
-#include "gpu/WritableArrayGPUResource.hpp"
+#include "gpu/resource/WritableArrayGPUResource.hpp"
 #include "gpu/GPUStructs.hpp"
 #endif
 

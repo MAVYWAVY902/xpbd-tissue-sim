@@ -6,9 +6,7 @@ set(GPU_SRC_DIR "./")
 
 target_sources(GPU
     PRIVATE
-        ${GPU_INCLUDE_DIR}/GPUResource.hpp
-        ${GPU_INCLUDE_DIR}/MeshGPUResource.hpp
-        ${GPU_INCLUDE_DIR}/TetMeshGPUResource.hpp
+        ${GPU_SRC_DIR}/common/helper.cu
         ${GPU_SRC_DIR}/Collision.cu
         ${GPU_SRC_DIR}/XPBDSolver.cu
         ${GPU_SRC_DIR}/resource/XPBDMeshObjectGPUResource.cpp

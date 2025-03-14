@@ -15,7 +15,7 @@
 #include "simobject/XPBDMeshObject.hpp"
 
 #include "gpu/GPUStructs.hpp"
-#include "gpu/ArrayGPUResource.hpp"
+#include "gpu/resource/ArrayGPUResource.hpp"
 
 #define BLOCK_SIZE 64
 

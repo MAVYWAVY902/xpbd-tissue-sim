@@ -1,7 +1,7 @@
 #ifndef __TET_MESH_GPU_RESOURCE_HPP
 #define __TET_MESH_GPU_RESOURCE_HPP
 
-#include "gpu/MeshGPUResource.hpp"
+#include "gpu/resource/MeshGPUResource.hpp"
 #include "geometry/TetMesh.hpp"
 
 namespace Sim

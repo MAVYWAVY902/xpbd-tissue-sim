@@ -1,10 +1,10 @@
 #ifndef __XPBD_MESH_OBJECT_GPU_RESOURCE_HPP
 #define __XPBD_MESH_OBJECT_GPU_RESOURCE_HPP
 
-#include "gpu/GPUResource.hpp"
-#include "gpu/ArrayGPUResource.hpp"
-#include "gpu/WritableArrayGPUResource.hpp"
-#include "gpu/TetMeshGPUResource.hpp"
+#include "gpu/resource/GPUResource.hpp"
+#include "gpu/resource/ArrayGPUResource.hpp"
+#include "gpu/resource/WritableArrayGPUResource.hpp"
+#include "gpu/resource/TetMeshGPUResource.hpp"
 
 // #include "simobject/XPBDMeshObject.hpp"
 
