@@ -122,12 +122,19 @@ struct GPUDeviatoricConstraint
         delC[9] =  -delC[0] - delC[3] - delC[6];
         delC[10] = -delC[1] - delC[4] - delC[7];
         delC[11] = -delC[2] - delC[5] - delC[8];
+
+        // printf("delC: %f, %f, %f\n\t%f, %f, %f\n\t%f, %f, %f\n", delC[0], delC[1], delC[2], delC[3], delC[4], delC[5], delC[6], delC[7], delC[8]);
     }
 
     __device__ void evaluateWithGradient(const float* vertices, float* C, float* delC)
     {
         float x[12];
         _loadVertices(vertices, x);
+
+        // printf("x0: %f, %f, %f\n", x[0], x[1], x[2]);
+        // printf("x1: %f, %f, %f\n", x[3], x[4], x[5]);
+        // printf("x2: %f, %f, %f\n", x[6], x[7], x[8]);
+        // printf("x3: %f, %f, %f\n", x[9], x[10], x[11]);
 
         float F[9];
         computeF(x, Q, F);

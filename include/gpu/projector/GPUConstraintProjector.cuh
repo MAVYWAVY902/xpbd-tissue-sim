@@ -20,26 +20,31 @@ struct GPUConstraintProjector
     {
     }
 
+    __device__ GPUConstraintProjector()
+    {
+        
+    }
+
     __device__ void initialize()
     {
         lambda = 0;
     }
 
-    __device__ void project(float* new_vertices)
+    __device__ void project(const float* vertices, float* new_vertices)
     {
         float C;
         float delC[Constraint::numPositions()*3];
 
         // evaluate constraint and its gradient
-        constraint->evaluateWithGradient(&C, delC);
+        constraint.evaluateWithGradient(vertices, &C, delC);
 
-        float alpha_tilde = constraint->alpha / (dt*dt);
+        float alpha_tilde = constraint.alpha / (dt*dt);
 
         // compute LHS of lambda upate - delC^T * M^-1 * delC
         float LHS = alpha_tilde;
-        for (int i = 0; i < constraint->numPositions(); i++)
+        for (int i = 0; i < constraint.numPositions(); i++)
         {
-            LHS += constraint->positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
+            LHS += constraint.positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
         }
 
         // compute RHS of lambda update - -C - alpha_tilde * lambda
@@ -52,10 +57,10 @@ struct GPUConstraintProjector
         // update positions
         for (int i = 0; i < 4; i++)
         {
-            float* v_ptr = new_vertices + constraint->positions[i].index;
-            atomicAdd(v_ptr,     constraint->positions[i].inv_mass * delC[3*i] * dlam);
-            atomicAdd(v_ptr + 1, constraint->positions[i].inv_mass * delC[3*i+1] * dlam);
-            atomicAdd(v_ptr + 2, constraint->positions[i].inv_mass * delC[3*i+2] * dlam);
+            float* v_ptr = new_vertices + constraint.positions[i].index;
+            atomicAdd(v_ptr,     constraint.positions[i].inv_mass * delC[3*i] * dlam);
+            atomicAdd(v_ptr + 1, constraint.positions[i].inv_mass * delC[3*i+1] * dlam);
+            atomicAdd(v_ptr + 2, constraint.positions[i].inv_mass * delC[3*i+2] * dlam);
         }
     }
 };

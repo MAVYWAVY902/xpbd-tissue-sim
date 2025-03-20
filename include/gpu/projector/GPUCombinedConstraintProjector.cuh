@@ -88,6 +88,10 @@ struct GPUCombinedConstraintProjector
         dlam[0] = (RHS[0]*LHS[3] - RHS[1]*LHS[2]) / det;
         dlam[1] = (RHS[1]*LHS[0] - RHS[0]*LHS[1]) / det;
 
+        // printf("RHS[0]: %f, RHS[1]: %f\n", RHS[0], RHS[1]);
+        // printf("LHS(0,0): %f, LHS(1,0): %f, LHS(0,1): %f, LHS(1,1): %f\n", LHS[0], LHS[1], LHS[2], LHS[3] );
+        // printf("dlam[0]: %f, dlam[1]: %f\n", dlam[0], dlam[1]);
+
         // update lambda
         lambda[0] += dlam[0];
         lambda[1] += dlam[1];
@@ -96,11 +100,21 @@ struct GPUCombinedConstraintProjector
         float* delC_c2 = delC + constraint1.numPositions()*3;
         for (int i = 0; i < 4; i++)
         {
-            float* v_ptr = new_vertices + constraint1.positions[i].index;
+            float* v_ptr = new_vertices + 3*constraint1.positions[i].index;
+            // const float pos_update1 = constraint1.positions[i].inv_mass * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]);
+            // const float pos_update2 = constraint1.positions[i].inv_mass * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]);
+            // const float pos_update3 = constraint1.positions[i].inv_mass * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]);
             atomicAdd(v_ptr,     constraint1.positions[i].inv_mass * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]));
             atomicAdd(v_ptr + 1, constraint1.positions[i].inv_mass * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]));
             atomicAdd(v_ptr + 2, constraint1.positions[i].inv_mass * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]));
+
+            // printf("update: (%f, %f, %f)\n", pos_update1, pos_update2, pos_update3);
         }
+
+        // printf("new_vertices0: %f, %f, %f\n", new_vertices[0], new_vertices[1], new_vertices[2]);
+        // printf("new_vertices1: %f, %f, %f\n", new_vertices[3], new_vertices[4], new_vertices[5]);
+        // printf("new_vertices2: %f, %f, %f\n", new_vertices[6], new_vertices[7], new_vertices[8]);
+        // printf("new_vertices3: %f, %f, %f\n", new_vertices[9], new_vertices[10], new_vertices[11]);
     }
 };
 

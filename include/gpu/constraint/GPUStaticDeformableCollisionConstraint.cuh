@@ -14,6 +14,7 @@ struct GPUStaticDeformableCollisionConstraint
     float bary_coords[3];
     float p[3];
     float n[3];
+    float alpha;
     
     __host__ GPUStaticDeformableCollisionConstraint(Sim::XPBDMeshObject* xpbd_obj, int v0, int v1, int v2,
                                                     float u, float v, float w,
@@ -39,6 +40,8 @@ struct GPUStaticDeformableCollisionConstraint
         n[0] = collision_normal[0];
         n[1] = collision_normal[1];
         n[2] = collision_normal[2];
+
+        alpha = 0;
     }
 
     __host__ GPUStaticDeformableCollisionConstraint(int v0_ind, float inv_m0,
@@ -94,7 +97,7 @@ struct GPUStaticDeformableCollisionConstraint
         *C = Vec3Dot(n, diff);
     }
 
-    __device__ void gradient(const float* vertices, float* delC)
+    __device__ void gradient(const float* /* vertices */, float* delC)
     {
         delC[0] = bary_coords[0] * n[0];    delC[1] = bary_coords[0] * n[1];    delC[2] = bary_coords[0] * n[2];
         delC[3] = bary_coords[1] * n[0];    delC[4] = bary_coords[1] * n[1];    delC[5] = bary_coords[1] * n[2];

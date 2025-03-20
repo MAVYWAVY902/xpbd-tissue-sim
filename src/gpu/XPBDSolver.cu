@@ -1,43 +1,15 @@
 #include "gpu/XPBDSolver.cuh"
 
-// computes A * B^T and stores result in C
-__host__ __device__ void Mat3MulTranspose(const float* A, const float* B, float* C)
-{
-    C[0] = A[0]*B[0] + A[3]*B[3] + A[6]*B[6];
-    C[1] = A[1]*B[0] + A[4]*B[3] + A[7]*B[6];
-    C[2] = A[2]*B[0] + A[5]*B[3] + A[8]*B[6];
+// #include "gpu/common/helper.cuh"
+#include "../src/gpu/common/helper.cu"
 
-    C[3] = A[0]*B[1] + A[3]*B[4] + A[6]*B[7];
-    C[4] = A[1]*B[1] + A[4]*B[4] + A[7]*B[7];
-    C[5] = A[2]*B[1] + A[5]*B[4] + A[8]*B[7];
+#include "gpu/constraint/GPUHydrostaticConstraint.cuh"
+#include "gpu/constraint/GPUDeviatoricConstraint.cuh"
+#include "gpu/constraint/GPUStaticDeformableCollisionConstraint.cuh"
+#include "gpu/constraint/GPURigidDeformableCollisionConstraint.cuh"
 
-    C[6] = A[0]*B[2] + A[3]*B[5] + A[6]*B[8];
-    C[7] = A[1]*B[2] + A[4]*B[5] + A[7]*B[8];
-    C[8] = A[2]*B[2] + A[5]*B[5] + A[8]*B[8];
-}
-
-// computes A * B and stores result in C
-__host__ __device__ void Mat3Mul(const float* A, const float* B, float* C)
-{
-    C[0] = A[0]*B[0] + A[3]*B[1] + A[6]*B[2];
-    C[1] = A[1]*B[0] + A[4]*B[1] + A[7]*B[2];
-    C[2] = A[2]*B[0] + A[5]*B[1] + A[8]*B[2];
-
-    C[3] = A[0]*B[3] + A[3]*B[4] + A[6]*B[5];
-    C[4] = A[1]*B[3] + A[4]*B[4] + A[7]*B[5];
-    C[5] = A[2]*B[3] + A[5]*B[4] + A[8]*B[5];
-
-    C[6] = A[0]*B[6] + A[3]*B[7] + A[6]*B[8];
-    C[7] = A[1]*B[6] + A[4]*B[7] + A[7]*B[8];
-    C[8] = A[2]*B[6] + A[5]*B[7] + A[8]*B[8];
-}
-
-__host__ __device__ void Vec3Cross(const float* v1, const float* v2, float* v3)
-{
-    v3[0] = v1[1]*v2[2] - v1[2]*v2[1];
-    v3[1] = v1[2]*v2[0] - v1[0]*v2[2];
-    v3[2] = v1[0]*v2[1] - v1[1]*v2[0];
-}
+#include "gpu/projector/GPUCombinedConstraintProjector.cuh"
+#include "gpu/projector/GPUConstraintProjector.cuh"
 
 __device__ void ElementJacobiSolve(int elem_index, const int* elements, int num_elements, const float* vertices, const float* masses, const float* volumes, const float* Qs, float lambda, float mu, float dt, float* new_vertices)
 {
@@ -181,10 +153,56 @@ __host__ void LaunchCopyVertices(const float* src_vertices, float* dst_vertices,
     CopyVertices<<<num_blocks, CUDA_BLOCK_SIZE>>>(src_vertices, dst_vertices, 3*num_vertices);
 }
 
+template<class ConstraintProjector>
+__global__ void ProjectConstraints(ConstraintProjector* projectors, int num_projectors, const float* vertices, float* new_vertices)
+{
+    int proj_index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (proj_index >= num_projectors)   return;
+
+    // load ConstraintProjectors into shared mem using coalesced global memory accesses
+    int proj_size_float = sizeof(ConstraintProjector) / sizeof(float);
+    double proj_size_float_dbl = (1.0 * sizeof(ConstraintProjector)) / sizeof(float);
+    int proj_global_start = proj_size_float * BLOCK_SIZE * blockIdx.x;
+
+    __shared__ ConstraintProjector proj_smem[BLOCK_SIZE];
+
+    float* proj_smem_float = reinterpret_cast<float*>(proj_smem);
+    float* proj_gmem_float = reinterpret_cast<float*>(projectors + BLOCK_SIZE * blockIdx.x);
+    int skip = min(num_projectors - blockIdx.x * BLOCK_SIZE, BLOCK_SIZE);
+    for (int i = 0; i < sizeof(ConstraintProjector)/sizeof(float); i++)
+    {
+        proj_smem_float[threadIdx.x + skip*i] = proj_gmem_float[threadIdx.x + skip*i];
+        // proj_smem_float[i] = proj_gmem_float[i];
+    }
+    __syncthreads();
+
+    ConstraintProjector* bad_proj = proj_smem + threadIdx.x;
+    
+    bad_proj->initialize();
+    bad_proj->project(vertices, new_vertices);
+}
+
+template<class ConstraintProjector>
+__host__ void LaunchProjectConstraints(ConstraintProjector* projectors, int num_projectors, const float* vertices, float* new_vertices)
+{
+    int num_blocks = (num_projectors + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    ProjectConstraints<ConstraintProjector><<<num_blocks, BLOCK_SIZE>>>(projectors, num_projectors, vertices, new_vertices);
+    CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+}
+
+template __host__ void LaunchProjectConstraints<GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>> (GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>> (GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPURigidDeformableCollisionConstraint>> (GPUConstraintProjector<GPURigidDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+
 __global__ void CopyVertices(const float* src_vertices, float* dst_vertices, int num_vertices)
 {
     int coord_index = blockIdx.x * blockDim.x + threadIdx.x;
     if (coord_index >= 3*num_vertices) return;
 
     dst_vertices[coord_index] = src_vertices[coord_index];
+}
+
+__host__ void CopyVerticesMemcpy(float* dst_vertices, const float* src_vertices, int num_vertices)
+{
+    CHECK_CUDA_ERROR(cudaMemcpy(dst_vertices, src_vertices, num_vertices*3*sizeof(float), cudaMemcpyDeviceToDevice));
 }

@@ -227,7 +227,19 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
             // std::vector<Solver::Constraint*> vec; vec.push_back(dev_constraint.get()); vec.push_back(hyd_constraint.get());
             // std::unique_ptr<Solver::CombinedNeohookeanConstraintProjector> projector = std::make_unique<Solver::CombinedNeohookeanConstraintProjector>(vec, _sim->dt());
 
-            _solver->addConstraintProjector(_sim->dt(), projector_options, dev_constraint.get(), hyd_constraint.get());
+            typedef Solver::XPBDParallelJacobiSolver<
+                GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>,
+                GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>,
+                GPUConstraintProjector<GPURigidDeformableCollisionConstraint>
+            > SolverType;
+            if (SolverType* j_solver = dynamic_cast<SolverType*>(_solver.get()))
+            {
+                j_solver->addConstraintProjector(_sim->dt(), projector_options, hyd_constraint.get(), dev_constraint.get());
+            }
+            else
+            {
+                _solver->addConstraintProjector(_sim->dt(), projector_options, dev_constraint.get(), hyd_constraint.get());
+            }
 
             _elastic_constraints.push_back(std::move(dev_constraint));
             _elastic_constraints.push_back(std::move(hyd_constraint));
@@ -279,7 +291,7 @@ void XPBDMeshObject::_createSolver(XPBDSolverType solver_type, int num_solver_it
             GPUConstraintProjector<GPURigidDeformableCollisionConstraint>
         > SolverType;
         _solver = std::make_unique<SolverType>(this, num_solver_iters, residual_policy);
-        
+
         // _solver = std::make_unique<Solver::XPBDParallelJacobiSolver>(this, num_solver_iters, residual_policy);
     }
 }

@@ -8,7 +8,7 @@ sim-mode: "AFAP"
 time-step: 5e-4
 collision-rate: 10100
 fps: 30
-end-time: 1
+end-time: 10
 objects:
 
   -
@@ -34,7 +34,7 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.5
-    position: [0, 0, 0.35]
+    position: [0, 0, 0.6]
     velocity: [0, 0, 0.0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
