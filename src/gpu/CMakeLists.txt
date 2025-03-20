@@ -10,4 +10,5 @@ target_sources(GPU
         ${GPU_SRC_DIR}/Collision.cu
         ${GPU_SRC_DIR}/XPBDSolver.cu
         ${GPU_SRC_DIR}/resource/XPBDMeshObjectGPUResource.cpp
+        # ${GPU_SRC_DIR}/projector/GPUNeohookeanCombinedConstraintProjector.cu
 )

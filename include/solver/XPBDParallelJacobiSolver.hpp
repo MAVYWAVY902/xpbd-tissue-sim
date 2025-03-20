@@ -11,6 +11,7 @@
 
 #include "gpu/projector/GPUConstraintProjector.cuh"
 #include "gpu/projector/GPUCombinedConstraintProjector.cuh"
+#include "gpu/projector/GPUNeohookeanCombinedConstraintProjector.cuh"
 
 #include "gpu/XPBDSolver.cuh"
 
@@ -90,7 +91,8 @@ class XPBDParallelJacobiSolver : public XPBDSolver
             ProjectorType* projectors = _gpu_projector_resources.template get<Sim::VectorGPUResource<ProjectorType>>().gpuArr();
             int num_projectors = _gpu_projectors.template get<ProjectorType>().size();
             // std::cout << "Num projectors: " << num_projectors << std::endl;
-            LaunchProjectConstraints<ProjectorType>(projectors, num_projectors, vertices, new_vertices);
+            if (num_projectors > 0)
+                LaunchProjectConstraints<ProjectorType>(projectors, num_projectors, vertices, new_vertices);
         };
 
         (launch_kernel(TypeIdentity<GPUConstraintProjectors>{}), ...);

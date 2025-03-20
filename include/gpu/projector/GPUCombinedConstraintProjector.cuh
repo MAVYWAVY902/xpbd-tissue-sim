@@ -12,15 +12,15 @@ struct GPUCombinedConstraintProjector
     Constraint2 constraint2;
 
     __host__ GPUCombinedConstraintProjector(const Constraint1& constraint1_, const Constraint2& constraint2_, float dt_)
-        : constraint1(constraint1_), constraint2(constraint2_), dt(dt_)
+        : dt(dt_), constraint1(constraint1_), constraint2(constraint2_)
     {
-
+        std::cout << "GPUCombinedConstraintProjector const& constructor!" << std::endl;
     }
     
     __host__ GPUCombinedConstraintProjector(Constraint1&& constraint1_, Constraint2&& constraint2_, float dt_)
-        : constraint1(std::move(constraint1_)), constraint2(std::move(constraint2_)), dt(dt_)
+        : dt(dt_), constraint1(std::move(constraint1_)), constraint2(std::move(constraint2_))
     {
-
+        std::cout << "GPUCombinedConstraintProjector && constructor!" << std::endl;
     }
     
     __device__ GPUCombinedConstraintProjector()

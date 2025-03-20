@@ -92,6 +92,7 @@ std::string Simulation::toString(const int indent) const
 
 void Simulation::setup()
 {   
+    cudaProfilerStart();
     for (const auto& obj_config : _config->objectConfigs())
     {
         std::unique_ptr<Object> new_obj;
@@ -299,7 +300,11 @@ int Simulation::run()
     // _viewer->fit_screen();
     // return _viewer->run();
     if (_graphics_scene)
-        return _graphics_scene->run();
+    {
+        _graphics_scene->run();
+        cudaProfilerStop();
+        return 0;
+    }
     else
     {
         update_thread.join();

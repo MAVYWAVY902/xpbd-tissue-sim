@@ -21,6 +21,7 @@ objects:
     # filename: "../resource/general/single.msh"
     # filename: "../resource/cube/cube8.msh"
     filename: "../resource/cube/cube16.msh"
+    # filename: "../resource/cube/cube32.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     material:
@@ -33,13 +34,13 @@ objects:
     color: [1.0, 0.5, 0.0, 1.0]
     draw-points: false
     draw-edges: true
-    max-size: 0.5
+    max-size: 1
     position: [0, 0, 0.6]
     velocity: [0, 0, 0.0]
     rotation: [0, 0, 0]
     num-solver-iters: 1
     damping-gamma: 2000
-    collisions: true
+    collisions: false
     damping-multiplier: 100000
     # solver-type: "Gauss-Seidel"
     # solver-type: "Jacobi"
