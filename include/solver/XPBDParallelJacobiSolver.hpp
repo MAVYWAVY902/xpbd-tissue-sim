@@ -7,6 +7,7 @@
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #include "gpu/resource/ArrayGPUResource.hpp"
 #include "gpu/resource/VectorGPUResource.hpp"
+#include "gpu/resource/MonitoredVectorGPUResource.hpp"
 #include "gpu/resource/WritableArrayGPUResource.hpp"
 
 #include "gpu/projector/GPUConstraintProjector.cuh"
@@ -17,6 +18,7 @@
 
 #include "common/VariadicContainer.hpp"
 #include "common/VariadicVectorContainer.hpp"
+#include "common/MonitoredVector.hpp"
 
 #include <type_traits>
 
@@ -48,11 +50,14 @@ class XPBDParallelJacobiSolver : public XPBDSolver
 
         // point the VectorGPUResources to their appropriate vectors of GPUConstraintProjectors
         // using an ugly fold expression
-        ((_gpu_projector_resources.template get<Sim::VectorGPUResource<GPUConstraintProjectors>>()  // get the vector resource corresponding to the type
-            .setVecPtr(&_gpu_projectors.template get<GPUConstraintProjectors>()), ...));            // and point it to the vector corresponding to the type
+        ((_gpu_projector_resources.template get<Sim::MonitoredVectorGPUResource<GPUConstraintProjectors>>()  // get the vector resource corresponding to the type
+            .setVecPtr(&_gpu_projectors.template get<MonitoredVector<GPUConstraintProjectors>>()), ...));            // and point it to the vector corresponding to the type
 
         // allocate memory for the temporary vertices on the GPU
         _temp_vertices_resource.allocate();
+
+        // TEMPORARY FIX: set to true once we've allocated space for the projectors
+        _allocated = false;
 
     }
 
@@ -70,9 +75,10 @@ class XPBDParallelJacobiSolver : public XPBDSolver
         auto copy_projectors = [&](auto dummy)
         {
             using ProjectorType = typename decltype(dummy)::type;
-            auto& projector_resource = _gpu_projector_resources.template get<Sim::VectorGPUResource<ProjectorType>>();
+            auto& projector_resource = _gpu_projector_resources.template get<Sim::MonitoredVectorGPUResource<ProjectorType>>();
             projector_resource.allocate();
             projector_resource.fullCopyToDevice();
+            _gpu_projectors.template get<MonitoredVector<ProjectorType>>().resetStateChanged();
         };
 
         (copy_projectors(TypeIdentity<GPUConstraintProjectors>{}), ...);
@@ -88,8 +94,8 @@ class XPBDParallelJacobiSolver : public XPBDSolver
         auto launch_kernel = [&](auto dummy)
         {
             using ProjectorType = typename decltype(dummy)::type;
-            ProjectorType* projectors = _gpu_projector_resources.template get<Sim::VectorGPUResource<ProjectorType>>().gpuArr();
-            int num_projectors = _gpu_projectors.template get<ProjectorType>().size();
+            ProjectorType* projectors = _gpu_projector_resources.template get<Sim::MonitoredVectorGPUResource<ProjectorType>>().gpuArr();
+            int num_projectors = _gpu_projectors.template get<MonitoredVector<ProjectorType>>().size();
             // std::cout << "Num projectors: " << num_projectors << std::endl;
             if (num_projectors > 0)
                 LaunchProjectConstraints<ProjectorType>(projectors, num_projectors, vertices, new_vertices);
@@ -107,7 +113,6 @@ class XPBDParallelJacobiSolver : public XPBDSolver
     template<class... Constraints>
     int addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraints* ... constraints)
     {
-        std::cout << "addConstraintProjector..." << std::endl;
         _addConstraintProjector(dt, options, constraints...);
         return 0;
     }
@@ -119,7 +124,7 @@ class XPBDParallelJacobiSolver : public XPBDSolver
         typename Constraint::GPUConstraintType gpu_constraint = constraint->createGPUConstraint();
         typedef GPUConstraintProjector<typename Constraint::GPUConstraintType> ProjectorType;
         ProjectorType projector(std::move(gpu_constraint), dt);
-        _gpu_projectors.template push_back<ProjectorType>(std::move(projector));
+        _gpu_projectors.template get<ProjectorType>().push_back(std::move(projector));
 
         return 0;
     }
@@ -127,19 +132,21 @@ class XPBDParallelJacobiSolver : public XPBDSolver
     template<class Constraint1, class Constraint2>
     int _addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraint1* constraint1, Constraint2* constraint2)
     {
-        std::cout << "_addConstraintProjector 2 constraints" << std::endl;
         typename Constraint1::GPUConstraintType gpu_constraint1 = constraint1->createGPUConstraint();
         typename Constraint2::GPUConstraintType gpu_constraint2 = constraint2->createGPUConstraint();
         typedef GPUCombinedConstraintProjector<typename Constraint1::GPUConstraintType, typename Constraint2::GPUConstraintType> ProjectorType;
         ProjectorType projector(std::move(gpu_constraint1), std::move(gpu_constraint2), dt);
-        _gpu_projectors.template push_back<ProjectorType>(std::move(projector));
+        _gpu_projectors.template get<MonitoredVector<ProjectorType>>().push_back(std::move(projector));
 
         return 0;
     }
 
     private:
-    VariadicVectorContainer<GPUConstraintProjectors...> _gpu_projectors;
-    VariadicContainer<Sim::VectorGPUResource<GPUConstraintProjectors>...> _gpu_projector_resources;
+    // VariadicVectorContainer<GPUConstraintProjectors...> _gpu_projectors;
+    // VariadicContainer<Sim::VectorGPUResource<GPUConstraintProjectors>...> _gpu_projector_resources;
+    VariadicContainer<MonitoredVector<GPUConstraintProjectors>...> _gpu_projectors;
+    VariadicContainer<Sim::MonitoredVectorGPUResource<GPUConstraintProjectors>...> _gpu_projector_resources;
+    
 
     // std::vector<float> _element_Qs;
     // std::vector<float> _element_volumes;
@@ -150,6 +157,9 @@ class XPBDParallelJacobiSolver : public XPBDSolver
 
     std::vector<float> _temp_vertices;
     Sim::ArrayGPUResource<float> _temp_vertices_resource;
+
+    // TEMPORARY: remove
+    bool _allocated;
     
 };
 

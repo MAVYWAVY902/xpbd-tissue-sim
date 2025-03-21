@@ -73,13 +73,13 @@ objects:
   #   fixed: true
   #   collisions: true
 
-  # -
-  #   name: "box"
-  #   type: "RigidBox"
-  #   size: [2, 2, 0.5]
-  #   position: [0,0,0]
-  #   collisions: true
-  #   fixed: true
+  -
+    name: "box"
+    type: "RigidBox"
+    size: [2, 2, 0.01]
+    position: [0,0,0]
+    collisions: false
+    fixed: true
 
 
   # - name: "cylinder"
@@ -155,15 +155,5 @@ objects:
   #   with-damping: false
   #   # residual-policy: "Every-Substep"
   #   residual-policy: "Never"
-
-
-  
-  # -
-  #   name: "Ground"
-  #   type: "RigidMeshObject"
-  #   primitive-type: "Plane"
-  #   size: [1, 1, 0]
-  #   position: [0, 0, 0]
-  #   color: [1.0, 1.0, 1.0, 1.0]
 
 

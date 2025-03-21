@@ -237,8 +237,6 @@ __host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricC
         positions[i].index = constraint1_.positions[i].index;
         positions[i].inv_mass = constraint1_.positions[i].inv_mass;
     }
-    std::cout << "GPUNeohookeanCombinedConstraintProjector && constructor!" << std::endl;
-    // printf("indices: %i, %i, %i, %i\n", positions[0].index, positions[1].index, positions[2].index, positions[3].index);
 
     for (int i = 0; i < 9; i++)
     {

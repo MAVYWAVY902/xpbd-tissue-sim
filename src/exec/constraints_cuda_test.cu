@@ -370,26 +370,26 @@ struct GPUConstraintProjector
 };
 
 template<class Constraint1, class Constraint2>
-struct GPUCombinedConstraintProjector
+struct MyGPUCombinedConstraintProjector
 {
     float dt;
     float lambda[2];
     Constraint1 constraint1;
     Constraint2 constraint2;
 
-    __host__ GPUCombinedConstraintProjector(const Constraint1& constraint1_, const Constraint2& constraint2_, float dt_)
+    __host__ MyGPUCombinedConstraintProjector(const Constraint1& constraint1_, const Constraint2& constraint2_, float dt_)
         : constraint1(constraint1_), constraint2(constraint2_), dt(dt_)
     {
 
     }
     
-    __host__ GPUCombinedConstraintProjector(Constraint1&& constraint1_, Constraint2&& constraint2_, float dt_)
+    __host__ MyGPUCombinedConstraintProjector(Constraint1&& constraint1_, Constraint2&& constraint2_, float dt_)
         : constraint1(std::move(constraint1_)), constraint2(std::move(constraint2_)), dt(dt_)
     {
 
     }
     
-    __device__ GPUCombinedConstraintProjector()
+    __device__ MyGPUCombinedConstraintProjector()
     {
 
     }
@@ -470,7 +470,7 @@ struct GPUCombinedConstraintProjector
     }
 };
 
-template <> void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::project(const float* vertices, float* new_vertices)
+template <> void MyGPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::project(const float* vertices, float* new_vertices)
 {
     // GPUHydrostaticConstraint constraint1 = constraint1;
     // GPUDeviatoricConstraint constraint2 = constraint2;
@@ -666,7 +666,7 @@ int main(void)
     std::cout << "Number of elements in mesh: " << xpbd_obj.tetMesh()->numElements() << std::endl;
 
     // create GPU constraints for each element
-    typedef GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint> Projector;
+    typedef MyGPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint> Projector;
     std::vector<Projector> projectors;
     for (int i = 0; i < xpbd_obj.tetMesh()->numElements(); i++)
     {
@@ -708,7 +708,7 @@ int main(void)
     for (int i = 0; i < 100; i++)
     {
         auto start2 = std::chrono::high_resolution_clock::now();
-
+        projectors_resource.fullCopyToDevice();
         mesh_gpu_resource.partialCopyToDevice();
         // CopyVertices<<<num_vertex_blocks, block_size>>>(new_vertices_resource.gpuArr(), mesh_gpu_resource->gpuVertices(), xpbd_obj->mesh()->numVertices());
 

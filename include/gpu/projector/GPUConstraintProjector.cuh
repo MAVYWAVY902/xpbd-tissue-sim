@@ -2,6 +2,7 @@
 #define __GPU_CONSTRAINT_PROJECTOR_CUH
 
 #include "utils/CudaHelperMath.h"
+#include "common/VariadicContainer.hpp"
 
 template<class Constraint>
 struct GPUConstraintProjector
