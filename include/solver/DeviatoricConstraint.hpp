@@ -17,6 +17,10 @@ class DeviatoricConstraint : public ElementConstraint
     friend class CombinedNeohookeanConstraintProjector;
     
     public:
+    constexpr static int NUM_POSITIONS = 4;
+    constexpr static int NUM_COORDINATES = 12;
+
+    public:
     /** Creates the deviatoric constraint from a MeshObject and the 4 vertices that make up the tetrahedral element. */
     DeviatoricConstraint(const Sim::XPBDMeshObject* obj, int v1, int v2, int v3, int v4)
         : ElementConstraint(obj, v1, v2, v3, v4)
@@ -24,37 +28,9 @@ class DeviatoricConstraint : public ElementConstraint
         _alpha = 1/(obj->material().mu() * _volume);
     }
 
-    /** Evaluates the current value of this constraint.
-     * i.e. returns C(x)
-     */
-    inline Real evaluate() const
-    {
-        return _evaluate(_computeF());
-    }
-
-    /** Returns the gradient of this constraint in vector form.
-     * i.e. returns delC(x)
-     */
-    inline VecXr gradient() const
-    {
-        const Mat3r F = _computeF();
-        const Real C = _evaluate(F);
-
-        return _gradient(F, C);
-        
-    }
-
-    /** Returns the value and gradient of this constraint.
-     * i.e. returns C(x) and delC(x) together.
-     * 
-     * This may be desirable when there would be duplicate work involved to evaluate constraint and its gradient separately.
-     */
-    inline Constraint::ValueAndGradient evaluateWithGradient() const
-    {
-        const Mat3r F = _computeF();
-        const Real C = _evaluate(F);
-        return ValueAndGradient(C, _gradient(F, C));
-    }
+    int numPositions() const override { return NUM_POSITIONS; }
+    int numCoordinates() const override { return NUM_COORDINATES; }
+    bool isInequality() const override { return false; }
 
 
     /** Evaluates the current value of this constraint with pre-allocated memory.
@@ -117,33 +93,6 @@ class DeviatoricConstraint : public ElementConstraint
 
     private:
 
-    /** Helper method to evaluate the constraint given the deformation gradient, F.
-     * Avoids the need to recompute F if we already have it.
-     */
-    inline Real _evaluate(const Mat3r& F) const
-    {
-        assert(0);
-        return std::sqrt(F.col(0).squaredNorm() + F.col(1).squaredNorm() + F.col(2).squaredNorm());
-    }
-
-    /** Helper method to evaluate the constraint gradient given the deformation gradient, F.
-     * Avoids the need to recompute F if we already have it.
-     */
-    inline VecXr _gradient(const Mat3r& F, const Real C) const
-    {
-        assert(0);
-
-        Mat3r prod = 1/C * F * _Q.transpose();
-
-        VecXr grad = VecXr::Zero(_gradient_vector_size);
-        grad(Eigen::seq(_gradient_vector_index[0],_gradient_vector_index[0]+2)) = prod.col(0);
-        grad(Eigen::seq(_gradient_vector_index[1],_gradient_vector_index[1]+2)) = prod.col(1);
-        grad(Eigen::seq(_gradient_vector_index[2],_gradient_vector_index[2]+2)) = prod.col(2);
-        grad(Eigen::seq(_gradient_vector_index[3],_gradient_vector_index[3]+2)) = -prod.col(0) - prod.col(1) - prod.col(2);
-
-        return grad;
-    }
-
     /** Helper method to evaluate the constraint given the deformation gradient, F, using pre-allocated memory.
      * Avoids the need to recompute F if we already have it.
      */
@@ -156,7 +105,7 @@ class DeviatoricConstraint : public ElementConstraint
     /** Helper method to evaluate the constraint gradient given the deformation gradient, F, useing pre-allocated memory.
      * Avoids the need to recompute F and C(x) if we already have it.
      */
-    inline void _gradient(Real* grad, Real* C, Real* F) const
+    inline void _gradient(Real* delC, Real* C, Real* F) const
     {
         // for A = 1/C * F * Q^T,
         // 1st column of A is delC wrt 1st position
@@ -169,24 +118,24 @@ class DeviatoricConstraint : public ElementConstraint
 
         // F is column major
         // calculation of delC wrt 1st position
-        grad[_gradient_vector_index[0]] = inv_C * (F[0]*_Q(0,0) + F[3]*_Q(0,1) + F[6]*_Q(0,2));
-        grad[_gradient_vector_index[1]] = inv_C * (F[1]*_Q(0,0) + F[4]*_Q(0,1) + F[7]*_Q(0,2));
-        grad[_gradient_vector_index[2]] = inv_C * (F[2]*_Q(0,0) + F[5]*_Q(0,1) + F[8]*_Q(0,2));
+        delC[0] = inv_C * (F[0]*_Q(0,0) + F[3]*_Q(0,1) + F[6]*_Q(0,2));
+        delC[1] = inv_C * (F[1]*_Q(0,0) + F[4]*_Q(0,1) + F[7]*_Q(0,2));
+        delC[2] = inv_C * (F[2]*_Q(0,0) + F[5]*_Q(0,1) + F[8]*_Q(0,2));
 
         // calculation of delC wrt 2nd position
-        grad[_gradient_vector_index[3]] = inv_C * (F[0]*_Q(1,0) + F[3]*_Q(1,1) + F[6]*_Q(1,2));
-        grad[_gradient_vector_index[4]] = inv_C * (F[1]*_Q(1,0) + F[4]*_Q(1,1) + F[7]*_Q(1,2));
-        grad[_gradient_vector_index[5]] = inv_C * (F[2]*_Q(1,0) + F[5]*_Q(1,1) + F[8]*_Q(1,2));
+        delC[3] = inv_C * (F[0]*_Q(1,0) + F[3]*_Q(1,1) + F[6]*_Q(1,2));
+        delC[4] = inv_C * (F[1]*_Q(1,0) + F[4]*_Q(1,1) + F[7]*_Q(1,2));
+        delC[5] = inv_C * (F[2]*_Q(1,0) + F[5]*_Q(1,1) + F[8]*_Q(1,2));
 
         // calculation of delC wrt 3rd position
-        grad[_gradient_vector_index[6]] = inv_C * (F[0]*_Q(2,0) + F[3]*_Q(2,1) + F[6]*_Q(2,2));
-        grad[_gradient_vector_index[7]] = inv_C * (F[1]*_Q(2,0) + F[4]*_Q(2,1) + F[7]*_Q(2,2));
-        grad[_gradient_vector_index[8]] = inv_C * (F[2]*_Q(2,0) + F[5]*_Q(2,1) + F[8]*_Q(2,2));
+        delC[6] = inv_C * (F[0]*_Q(2,0) + F[3]*_Q(2,1) + F[6]*_Q(2,2));
+        delC[7] = inv_C * (F[1]*_Q(2,0) + F[4]*_Q(2,1) + F[7]*_Q(2,2));
+        delC[8] = inv_C * (F[2]*_Q(2,0) + F[5]*_Q(2,1) + F[8]*_Q(2,2));
 
         // calculation of delC wrt 4th position
-        grad[_gradient_vector_index[9]]  = -grad[_gradient_vector_index[0]] - grad[_gradient_vector_index[3]] - grad[_gradient_vector_index[6]];
-        grad[_gradient_vector_index[10]] = -grad[_gradient_vector_index[1]] - grad[_gradient_vector_index[4]] - grad[_gradient_vector_index[7]];
-        grad[_gradient_vector_index[11]] = -grad[_gradient_vector_index[2]] - grad[_gradient_vector_index[5]] - grad[_gradient_vector_index[8]];
+        delC[9]  = -delC[0] - delC[3] - delC[6];
+        delC[10] = -delC[1] - delC[4] - delC[7];
+        delC[11] = -delC[2] - delC[5] - delC[8];
     }
 
 };

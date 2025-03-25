@@ -34,6 +34,10 @@ namespace Solver
 class RigidDeformableCollisionConstraint : public CollisionConstraint, public RigidBodyConstraint
 {
     public:
+    constexpr static int NUM_POSITIONS = 3;
+    constexpr static int NUM_COORDINATES = 9;
+
+    public:
     /** 
      * @param sdf : the SDF for the rigid object
      * @param rigid_obj : pointer to the rigid object
@@ -58,34 +62,8 @@ class RigidDeformableCollisionConstraint : public CollisionConstraint, public Ri
         _rigid_body_helpers.push_back(std::move(helper));
     }
 
-    /** Evaluates the current value of this constraint.
-     * i.e. returns C(x)
-     */
-    inline Real evaluate() const override
-    {
-        assert(0); // not implemented
-        return 0;
-    }
-
-    /** Returns the gradient of this constraint in vector form.
-     * i.e. returns delC(x)
-     */
-    inline VecXr gradient() const override
-    {
-        assert(0); // not implemented
-        return VecXr();
-    }
-
-    /** Returns the value and gradient of this constraint.
-     * i.e. returns C(x) and delC(x) together.
-     * 
-     * This may be desirable when there would be duplicate work involved to evaluate constraint and its gradient separately.
-     */
-    inline Constraint::ValueAndGradient evaluateWithGradient() const override
-    {
-        assert(0);  // not implemented
-        return ValueAndGradient(evaluate(), gradient());
-    }
+    int numPositions() const override { return NUM_POSITIONS; }
+    int numCoordinates() const override { return NUM_COORDINATES; }
 
     /** Evaluates the current value of this constraint with pre-allocated memory.
      * i.e. returns C(x)
@@ -106,21 +84,21 @@ class RigidDeformableCollisionConstraint : public CollisionConstraint, public Ri
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    inline void gradient(Real* grad) const override
+    inline void gradient(Real* delC) const override
     {
         // gradient w.r.t each deformable position involved is simply just the collision normal multiplied by the corresponding barycentric coordinate
         // i.e. C = (u*v1 + v*v2 + w*v3 - p1) * n ==> dC/dv1 = u*n, dC/dv2 = v*n, dC/dv3 = w*n
-        grad[_gradient_vector_index[0]] = _u*_collision_normal[0];
-        grad[_gradient_vector_index[1]] = _u*_collision_normal[1];
-        grad[_gradient_vector_index[2]] = _u*_collision_normal[2];
+        delC[0] = _u*_collision_normal[0];
+        delC[1] = _u*_collision_normal[1];
+        delC[2] = _u*_collision_normal[2];
 
-        grad[_gradient_vector_index[3]] = _v*_collision_normal[0];
-        grad[_gradient_vector_index[4]] = _v*_collision_normal[1];
-        grad[_gradient_vector_index[5]] = _v*_collision_normal[2];
+        delC[3] = _v*_collision_normal[0];
+        delC[4] = _v*_collision_normal[1];
+        delC[5] = _v*_collision_normal[2];
         
-        grad[_gradient_vector_index[6]] = _w*_collision_normal[0];
-        grad[_gradient_vector_index[7]] = _w*_collision_normal[1];
-        grad[_gradient_vector_index[8]] = _w*_collision_normal[2];
+        delC[6] = _w*_collision_normal[0];
+        delC[7] = _w*_collision_normal[1];
+        delC[8] = _w*_collision_normal[2];
     }
 
 

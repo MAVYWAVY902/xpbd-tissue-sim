@@ -47,9 +47,10 @@ class RigidBodyXPBDHelper
 
     /** Computes the rigid body update (position and orientation) given the delta lambda computed with the XPBD formula.
      * @param dlam : the delta lambda
-     * @param update_vec (OUTPUT) : a (currently empty) pointer to a 7x1 vector. The first 3 numbers are the position update, the next 4 are the orientation update (as a quaternion).
+     * @param position_update (OUTPUT) : a (currently empty) pointer to a 3x1 vector that corresponds to the position update for the rigid body
+     * @param orientation_update (OUTPUT) : a (currently empty) pointer to a 4x1 that corresponds to the orientation update (as a quaternion) for the rigid body
      */
-    virtual void update(Real dlam, Real* update_vec) const = 0;
+    virtual void update(Real dlam, Real* position_update, Real* orientation_update) const = 0;
 
     protected:
     const Sim::RigidObject* _rigid_obj;
@@ -100,9 +101,10 @@ class PositionalRigidBodyXPBDHelper : public RigidBodyXPBDHelper
      * in the rest state, n_body is the direction of the correction (in the body frame), and q is the current orientation of the body.
      * 
      * @param dlam : the delta lambda
-     * @param update_vec (OUTPUT) : a (currently empty) pointer to a 7x1 vector. The first 3 numbers are the position update, the next 4 are the orientation update (as a quaternion).
+     * @param position_update (OUTPUT) : a (currently empty) pointer to a 3x1 vector that corresponds to the position update for the rigid body
+     * @param orientation_update (OUTPUT) : a (currently empty) pointer to a 4x1 that corresponds to the orientation update (as a quaternion) for the rigid body
      */
-    virtual void update(Real dlam, Real* update_vec) const override
+    virtual void update(Real dlam, Real* position_update, Real* orientation_update) const override
     {
         // calculate the point on the rigid body in the body frame
         const Vec3r r_body = _rigid_obj->globalToBody(_point_on_body);
@@ -110,24 +112,24 @@ class PositionalRigidBodyXPBDHelper : public RigidBodyXPBDHelper
         const Vec3r n_body = GeometryUtils::rotateVectorByQuat(_direction, GeometryUtils::inverseQuat(_rigid_obj->orientation()));
         
         // compute the position update (in the global frame)
-        const Vec3r position_update = dlam * _direction / _rigid_obj->mass();
+        const Vec3r pos_update = dlam * _direction / _rigid_obj->mass();
 
         // compute the body angular velocity (with quantities in the body frame, since I is in the rest state i.e. body frame)
         const Vec3r omega_body = 0.5 * _rigid_obj->invI() * (r_body.cross(dlam * n_body));
         // convert body anuglar velocity to spatial angular velocity
         const Vec3r omega_spatial = GeometryUtils::rotateVectorByQuat(omega_body, _rigid_obj->orientation());
         // compute the orientation update (in the global frame)
-        const Vec4r orientation_update = GeometryUtils::quatMult(Vec4r(omega_spatial[0], omega_spatial[1], omega_spatial[2], 0), _rigid_obj->orientation());
+        const Vec4r or_update = GeometryUtils::quatMult(Vec4r(omega_spatial[0], omega_spatial[1], omega_spatial[2], 0), _rigid_obj->orientation());
     
-        // populate the update vector
-        update_vec[0] = position_update[0];
-        update_vec[1] = position_update[1];
-        update_vec[2] = position_update[2];
+        // populate the update vectors
+        position_update[0] = pos_update[0];
+        position_update[1] = pos_update[1];
+        position_update[2] = pos_update[2];
 
-        update_vec[3] = orientation_update[0];
-        update_vec[4] = orientation_update[1];
-        update_vec[5] = orientation_update[2];
-        update_vec[6] = orientation_update[3];
+        orientation_update[0] = or_update[0];
+        orientation_update[1] = or_update[1];
+        orientation_update[2] = or_update[2];
+        orientation_update[3] = or_update[3];
 
     }
 
@@ -176,9 +178,10 @@ class AngularRigidBodyXPBDHelper : public RigidBodyXPBDHelper
      * where n is the rotation axis (in the body frame), and I is the moment of inertia matrix in the rest state (i.e. body frame).
      * 
      * @param dlam : the delta lambda
-     * @param update_vec (OUTPUT) : a (currently empty) pointer to a 7x1 vector. The first 3 numbers are the position update, the next 4 are the orientation update (as a quaternion).
+     * @param position_update (OUTPUT) : a (currently empty) pointer to a 3x1 vector that corresponds to the position update for the rigid body
+     * @param orientation_update (OUTPUT) : a (currently empty) pointer to a 4x1 that corresponds to the orientation update (as a quaternion) for the rigid body
      */
-    virtual void update(Real dlam, Real* update_vec) const override
+    virtual void update(Real dlam, Real* position_update, Real* orientation_update) const override
     {
         // compute rotation axis in the body frame
         const Vec3r rot_axis_body = GeometryUtils::rotateVectorByQuat(_rot_axis, GeometryUtils::inverseQuat(_rigid_obj->orientation()));
@@ -187,17 +190,17 @@ class AngularRigidBodyXPBDHelper : public RigidBodyXPBDHelper
         // convert to global angular velocity of the body
         const Vec3r omega_spatial = GeometryUtils::rotateVectorByQuat(omega_body, _rigid_obj->orientation());
         // compute orientation update
-        const Vec4r orientation_update = GeometryUtils::quatMult(Vec4r(omega_spatial[0], omega_spatial[1], omega_spatial[2], 0), _rigid_obj->orientation());
+        const Vec4r or_update = GeometryUtils::quatMult(Vec4r(omega_spatial[0], omega_spatial[1], omega_spatial[2], 0), _rigid_obj->orientation());
 
-        // populate the vector (position update is 0)
-        update_vec[0] = 0;
-        update_vec[1] = 0;
-        update_vec[2] = 0;
+        // populate the update vectors (position update is 0)
+        position_update[0] = 0;
+        position_update[1] = 0;
+        position_update[2] = 0;
 
-        update_vec[3] = orientation_update[0];
-        update_vec[4] = orientation_update[1];
-        update_vec[5] = orientation_update[2];
-        update_vec[6] = orientation_update[3];
+        orientation_update[0] = or_update[0];
+        orientation_update[1] = or_update[1];
+        orientation_update[2] = or_update[2];
+        orientation_update[3] = or_update[3];
     }
 
     protected:
@@ -228,7 +231,15 @@ class RigidBodyConstraint
     {
     }
 
-    const std::vector<Sim::RigidObject*> rigidBodies() const { return _rigid_bodies; }
+    // Explicitly delete copy constructor/assignment
+    RigidBodyConstraint(const RigidBodyConstraint&) = delete;
+    RigidBodyConstraint& operator=(const RigidBodyConstraint&) = delete;
+
+    // Ensure move constructor/assignment are defined
+    RigidBodyConstraint(RigidBodyConstraint&&) noexcept = default;
+    RigidBodyConstraint& operator=(RigidBodyConstraint&&) noexcept = default;
+
+    const std::vector<Sim::RigidObject*>& rigidBodies() const { return _rigid_bodies; }
     int numRigidBodies() const { return _rigid_bodies.size(); }
 
     const std::vector<std::unique_ptr<RigidBodyXPBDHelper>>& rigidBodyHelpers() const { return _rigid_body_helpers; }

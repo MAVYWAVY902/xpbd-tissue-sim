@@ -14,6 +14,32 @@ enum class XPBDSolverType
     PARALLEL_JACOBI
 };
 
+// namespace Solver
+// {
+//     class HydrostaticConstraint;
+//     class DeviatoricConstraint;
+//     class StaticDeformableCollisionConstraint;
+//     class RigidDeformableCollisionConstraint;
+
+//     template<class T>
+//     class ConstraintProjector<T>;
+
+//     template <class T1, class T2>
+//     class CombinedConstraintProjector<T1, T2>;
+// }
+
+// template <typename ...Ts>
+// struct ParameterPack
+// {
+//     using type = Ts;
+// }
+
+// struct XPBDConstraintType_StableNeoHookean
+// {
+//     typedef ParameterPack<Solver::HydrostaticConstraint, Solver::DeviatoricConstraint> ConstraintTypes;
+//     typedef CombinedConstraintProjector<ConstraintTypes::type...> ProjectorType;
+// };
+
 enum class XPBDConstraintType
 {
     STABLE_NEOHOOKEAN,

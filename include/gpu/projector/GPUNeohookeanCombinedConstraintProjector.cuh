@@ -3,9 +3,11 @@
 
 #include "gpu/common/helper.cuh"
 #include "gpu/projector/GPUCombinedConstraintProjector.cuh"
+#include "gpu/constraint/GPUDeviatoricConstraint.cuh"
+#include "gpu/constraint/GPUHydrostaticConstraint.cuh"
 
 template <>
-struct GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>
+struct GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>
 {
     float dt;
     float lambda[2];
@@ -15,9 +17,9 @@ struct GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricCon
     float alpha_d;
     float gamma;
 
-    __host__ GPUCombinedConstraintProjector(const GPUHydrostaticConstraint& constraint1_, const GPUDeviatoricConstraint& constraint2_, float dt_);
+    __host__ GPUCombinedConstraintProjector(const GPUDeviatoricConstraint& constraint1_, const GPUHydrostaticConstraint& constraint2_, float dt_);
     
-    __host__ GPUCombinedConstraintProjector(GPUHydrostaticConstraint&& constraint1_, GPUDeviatoricConstraint&& constraint2_, float dt_);
+    __host__ GPUCombinedConstraintProjector(GPUDeviatoricConstraint&& constraint1_, GPUHydrostaticConstraint&& constraint2_, float dt_);
 
     __device__ GPUCombinedConstraintProjector();
 

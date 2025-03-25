@@ -12,9 +12,12 @@ namespace Solver
 
 /** Represents the hydrostatic constraint derived from the Stable Neo-hookean strain energy, proposed by Macklin et. al: https://mmacklin.com/neohookean.pdf
  */
-class HydrostaticConstraint : public virtual ElementConstraint
+class HydrostaticConstraint : public ElementConstraint
 {
     friend class CombinedNeohookeanConstraintProjector;
+    public:
+    constexpr static int NUM_POSITIONS = 4; 
+    constexpr static int NUM_COORDINATES = 12;
     
     public:
     /** Creates the hydrostatic constraint from a MeshObject and the 4 vertices that make up the tetrahedral element. */
@@ -25,33 +28,9 @@ class HydrostaticConstraint : public virtual ElementConstraint
         _gamma = obj->material().mu() / obj->material().lambda();  
     }
 
-    /** Evaluates the current value of this constraint.
-     * i.e. returns C(x)
-     */
-    inline Real evaluate() const override
-    {
-        return _evaluate(_computeF());
-    }
-
-    /** Returns the gradient of this constraint in vector form.
-     * i.e. returns delC(x)
-     */
-    inline VecXr gradient() const override
-    {
-        return _gradient(_computeF());
-        
-    }
-
-    /** Returns the value and gradient of this constraint.
-     * i.e. returns C(x) and delC(x) together.
-     * 
-     * This may be desirable when there would be duplicate work involved to evaluate constraint and its gradient separately.
-     */
-    inline Constraint::ValueAndGradient evaluateWithGradient() const override
-    {
-        const Mat3r F = _computeF();
-        return ValueAndGradient(_evaluate(F), _gradient(F));
-    }
+    int numPositions() const override { return NUM_POSITIONS; }
+    int numCoordinates() const override { return NUM_COORDINATES; }
+    bool isInequality() const override { return false; }
 
 
     /** Evaluates the current value of this constraint with pre-allocated memory.
@@ -114,41 +93,6 @@ class HydrostaticConstraint : public virtual ElementConstraint
 
     private:
 
-    /** Helper method to evaluate the constraint given the deformation gradient, F.
-     * Avoids the need to recompute F if we already have it.
-     */
-    inline Real _evaluate(const Mat3r& F) const
-    {
-        assert(0);
-
-        return F.determinant() - (1 + _gamma);
-    }
-    
-    /** Helper method to evaluate the constraint gradient given the deformation gradient, F.
-     * Avoids the need to recompute F if we already have it.
-     */
-    inline VecXr _gradient(const Mat3r& F) const
-    {
-
-        assert(0);
-
-        Mat3r F_cross, prod;
-        F_cross.col(0) = F.col(1).cross(F.col(2));
-        F_cross.col(1) = F.col(2).cross(F.col(0));
-        F_cross.col(2) = F.col(0).cross(F.col(1));
-
-        prod = F_cross * _Q.transpose();
-
-        // TODO: fix this - I think the gradient vector indices are wrong (though this is not used by the solver loop)
-        VecXr grad = VecXr::Zero(_gradient_vector_size);
-        grad(Eigen::seq(_gradient_vector_index[0],_gradient_vector_index[0]+2)) = prod.col(0);
-        grad(Eigen::seq(_gradient_vector_index[1],_gradient_vector_index[1]+2)) = prod.col(1);
-        grad(Eigen::seq(_gradient_vector_index[2],_gradient_vector_index[2]+2)) = prod.col(2);
-        grad(Eigen::seq(_gradient_vector_index[3],_gradient_vector_index[3]+2)) = -prod.col(0) - prod.col(1) - prod.col(2);
-
-        return grad;
-    }
-
     /** Helper method to evaluate the constraint given the deformation gradient, F, using pre-allocated memory.
      * Avoids the need to recompute F if we already have it.
      */
@@ -163,7 +107,7 @@ class HydrostaticConstraint : public virtual ElementConstraint
      * 
      * Requires at least 9 * sizeof(Real) bytes of additional memory for intermediate quantities.
      */
-    inline void _gradient(Real* grad, Real* F) const
+    inline void _gradient(Real* delC, Real* F) const
     {   
         // F_cross = [f2 x f3, f3 x f1, f1 x f2] where f_i are the columns of F
         // F_cross and F are both column-major
@@ -181,24 +125,24 @@ class HydrostaticConstraint : public virtual ElementConstraint
         // see supplementary material of Macklin paper for more details
 
         // calculation of delC wrt 1st position
-        grad[_gradient_vector_index[0]] = (F_cross[0]*_Q(0,0) + F_cross[3]*_Q(0,1) + F_cross[6]*_Q(0,2));
-        grad[_gradient_vector_index[1]] = (F_cross[1]*_Q(0,0) + F_cross[4]*_Q(0,1) + F_cross[7]*_Q(0,2));
-        grad[_gradient_vector_index[2]] = (F_cross[2]*_Q(0,0) + F_cross[5]*_Q(0,1) + F_cross[8]*_Q(0,2));
+        delC[0] = (F_cross[0]*_Q(0,0) + F_cross[3]*_Q(0,1) + F_cross[6]*_Q(0,2));
+        delC[1] = (F_cross[1]*_Q(0,0) + F_cross[4]*_Q(0,1) + F_cross[7]*_Q(0,2));
+        delC[2] = (F_cross[2]*_Q(0,0) + F_cross[5]*_Q(0,1) + F_cross[8]*_Q(0,2));
 
         // calculation of delC wrt 2nd postion
-        grad[_gradient_vector_index[3]] = (F_cross[0]*_Q(1,0) + F_cross[3]*_Q(1,1) + F_cross[6]*_Q(1,2));
-        grad[_gradient_vector_index[4]] = (F_cross[1]*_Q(1,0) + F_cross[4]*_Q(1,1) + F_cross[7]*_Q(1,2));
-        grad[_gradient_vector_index[5]] = (F_cross[2]*_Q(1,0) + F_cross[5]*_Q(1,1) + F_cross[8]*_Q(1,2));
+        delC[3] = (F_cross[0]*_Q(1,0) + F_cross[3]*_Q(1,1) + F_cross[6]*_Q(1,2));
+        delC[4] = (F_cross[1]*_Q(1,0) + F_cross[4]*_Q(1,1) + F_cross[7]*_Q(1,2));
+        delC[5] = (F_cross[2]*_Q(1,0) + F_cross[5]*_Q(1,1) + F_cross[8]*_Q(1,2));
 
         // calculation of delC wrt 3rd position
-        grad[_gradient_vector_index[6]] = (F_cross[0]*_Q(2,0) + F_cross[3]*_Q(2,1) + F_cross[6]*_Q(2,2));
-        grad[_gradient_vector_index[7]] = (F_cross[1]*_Q(2,0) + F_cross[4]*_Q(2,1) + F_cross[7]*_Q(2,2));
-        grad[_gradient_vector_index[8]] = (F_cross[2]*_Q(2,0) + F_cross[5]*_Q(2,1) + F_cross[8]*_Q(2,2));
+        delC[6] = (F_cross[0]*_Q(2,0) + F_cross[3]*_Q(2,1) + F_cross[6]*_Q(2,2));
+        delC[7] = (F_cross[1]*_Q(2,0) + F_cross[4]*_Q(2,1) + F_cross[7]*_Q(2,2));
+        delC[8] = (F_cross[2]*_Q(2,0) + F_cross[5]*_Q(2,1) + F_cross[8]*_Q(2,2));
 
         // calculation of delC wrt 4th position
-        grad[_gradient_vector_index[9]]  = -grad[_gradient_vector_index[0]] - grad[_gradient_vector_index[3]] - grad[_gradient_vector_index[6]];
-        grad[_gradient_vector_index[10]] = -grad[_gradient_vector_index[1]] - grad[_gradient_vector_index[4]] - grad[_gradient_vector_index[7]];
-        grad[_gradient_vector_index[11]] = -grad[_gradient_vector_index[2]] - grad[_gradient_vector_index[5]] - grad[_gradient_vector_index[8]];
+        delC[9]  = -delC[0] - delC[3] - delC[6];
+        delC[10] = -delC[1] - delC[4] - delC[7];
+        delC[11] = -delC[2] - delC[5] - delC[8];
 
         // std::cout << "Ch_grad: " << grad[0] << ", " << grad[1] << ", " << grad[2] << ", " << grad[3] << ", " << grad[4] << ", " << grad[5] << ", " << grad[6] << ", " << grad[7] << ", " << grad[8] << ", " << grad[9] << ", " << grad[10] << ", " << grad[11] << std::endl;
     }

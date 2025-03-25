@@ -56,7 +56,7 @@ struct GPUConstraintProjector
         lambda += dlam;
 
         // update positions
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < constraint.numPositions(); i++)
         {
             float* v_ptr = new_vertices + constraint.positions[i].index;
             atomicAdd(v_ptr,     constraint.positions[i].inv_mass * delC[3*i] * dlam);

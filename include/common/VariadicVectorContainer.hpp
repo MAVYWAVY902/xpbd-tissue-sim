@@ -27,6 +27,11 @@ class VariadicVectorContainer<L>
         _vec.resize(size);
     }
 
+    void _reserve(int size)
+    {
+        _vec.reserve(size);
+    }
+
     void _push_back(const L& elem)
     {
         _vec.push_back(elem);
@@ -37,14 +42,22 @@ class VariadicVectorContainer<L>
         _vec.push_back(std::move(elem));
     }
 
-    void _set(int index, const L& elem)
+    template<class ...Args>
+    L& _emplace_back(Args&&... args)
+    {
+        return _vec.emplace_back(std::forward<Args>(args)...);
+    } 
+
+    L& _set(int index, const L& elem)
     {
         _vec[index] = elem;
+        return _vec[index];
     }
 
-    void _set(int index, L&& elem)
+    L& _set(int index, L&& elem)
     {
         _vec[index] = std::move(elem);
+        return _vec[index];
     }
 
     // internal method for visiting elements
@@ -98,6 +111,12 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
         return this->VariadicVectorContainer<T>::_push_back(std::move(elem));
     }
 
+    template<class T, class ...Args>
+    T& emplace_back(Args&&... args)
+    {
+        return this->VariadicVectorContainer<T>::_emplace_back(std::forward<Args>(args)...);
+    }
+
     template<class T>
     void resize(int size)
     {
@@ -105,13 +124,19 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
     }
 
     template<class T>
-    void set(int index, const T& elem)
+    void reserve(int size)
+    {
+        return this->VariadicVectorContainer<T>::_reserve(size);
+    }
+
+    template<class T>
+    T& set(int index, const T& elem)
     {
         return this->VariadicVectorContainer<T>::_set(index, elem);
     }
 
     template<class T>
-    void set(int index, T&& elem)
+    T& set(int index, T&& elem)
     {
         return this->VariadicVectorContainer<T>::_set(index, std::move(elem));
     }

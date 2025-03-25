@@ -14,6 +14,8 @@ class OutputSimulation : public Simulation
     public:
     explicit OutputSimulation(const std::string& config_filename);
 
+    ~OutputSimulation();
+
     protected:
     explicit OutputSimulation();
 

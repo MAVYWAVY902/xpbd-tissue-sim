@@ -42,6 +42,11 @@ OutputSimulation::OutputSimulation(const std::string& config_filename)
     _init();
 }
 
+OutputSimulation::~OutputSimulation()
+{
+    
+}
+
 void OutputSimulation::_timeStep()
 {
     Simulation::_timeStep();

@@ -190,7 +190,7 @@ __host__ void LaunchProjectConstraints(ConstraintProjector* projectors, int num_
     CHECK_CUDA_ERROR(cudaDeviceSynchronize());
 }
 
-template __host__ void LaunchProjectConstraints<GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>> (GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>> (GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
 template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>> (GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
 template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPURigidDeformableCollisionConstraint>> (GPUConstraintProjector<GPURigidDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
 
@@ -211,8 +211,8 @@ __host__ void CopyVerticesMemcpy(float* dst_vertices, const float* src_vertices,
 
 
 // template <>
-__host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::GPUCombinedConstraintProjector(const GPUHydrostaticConstraint& constraint1_, const GPUDeviatoricConstraint& constraint2_, float dt_)
-    : dt(dt_), alpha_h(constraint1_.alpha), alpha_d(constraint2_.alpha), gamma(constraint1_.gamma)
+__host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(const GPUDeviatoricConstraint& constraint1_, const GPUHydrostaticConstraint& constraint2_, float dt_)
+    : dt(dt_), alpha_d(constraint1_.alpha), alpha_h(constraint2_.alpha), gamma(constraint2_.gamma)
 {
     for (int i = 0; i < 4; i++)
     {
@@ -229,8 +229,8 @@ __host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricC
 }
     
 // template <>
-__host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::GPUCombinedConstraintProjector(GPUHydrostaticConstraint&& constraint1_, GPUDeviatoricConstraint&& constraint2_, float dt_)
-    : dt(dt_), alpha_h(constraint1_.alpha), alpha_d(constraint2_.alpha), gamma(constraint1_.gamma)
+__host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(GPUDeviatoricConstraint&& constraint1_, GPUHydrostaticConstraint&& constraint2_, float dt_)
+    : dt(dt_), alpha_d(constraint1_.alpha), alpha_h(constraint2_.alpha), gamma(constraint2_.gamma)
 {
     for (int i = 0; i < 4; i++)
     {
@@ -245,20 +245,20 @@ __host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricC
 }
 
 // template<>
-__device__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::GPUCombinedConstraintProjector()
+__device__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector()
 {
 
 }
 
 // template<>
-__device__ void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::initialize()
+__device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::initialize()
 {
     lambda[0] = 0;
     lambda[1] = 0;
 }
 
 // template<>
-__device__ void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::project(const float* vertices, float* new_vertices)
+__device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::project(const float* vertices, float* new_vertices)
 {
     // printf("indices: %i, %i, %i, %i\n", positions[0].index, positions[1].index, positions[2].index, positions[3].index);
     float x[12];
@@ -313,28 +313,28 @@ __device__ void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDevi
 
     // solve the 2x2 system
     float A[4];
-    A[0] = alpha_h / (dt * dt);
+    A[0] = alpha_d / (dt * dt);
     A[1] = 0;
     A[2] = 0;
-    A[3] = alpha_d / (dt * dt);
+    A[3] = alpha_h / (dt * dt);
     for (int i = 0; i < 4; i++)
     {
-        A[0] += positions[i].inv_mass * (C_h_grad[3*i]*C_h_grad[3*i] + C_h_grad[3*i+1]*C_h_grad[3*i+1] + C_h_grad[3*i+2]*C_h_grad[3*i+2]);
-        A[3] += positions[i].inv_mass * (C_d_grad[3*i]*C_d_grad[3*i] + C_d_grad[3*i+1]*C_d_grad[3*i+1] + C_d_grad[3*i+2]*C_d_grad[3*i+2]);
+        A[0] += positions[i].inv_mass * (C_d_grad[3*i]*C_d_grad[3*i] + C_d_grad[3*i+1]*C_d_grad[3*i+1] + C_d_grad[3*i+2]*C_d_grad[3*i+2]);
+        A[3] += positions[i].inv_mass * (C_h_grad[3*i]*C_h_grad[3*i] + C_h_grad[3*i+1]*C_h_grad[3*i+1] + C_h_grad[3*i+2]*C_h_grad[3*i+2]);
         A[1] += positions[i].inv_mass * (C_h_grad[3*i]*C_d_grad[3*i] + C_h_grad[3*i+1]*C_d_grad[3*i+1] + C_h_grad[3*i+2]*C_d_grad[3*i+2]);
     }
     A[2] = A[1];
 
     float k[2];
-    k[0] = -C_h - alpha_h * lambda[0]; // TODO: include current lambda (assuming its 0 right now)
-    k[1] = -C_d - alpha_d * lambda[1]; // TODO: include current lambda
+    k[0] = -C_h - alpha_d * lambda[0]; // TODO: include current lambda (assuming its 0 right now)
+    k[1] = -C_d - alpha_h * lambda[1]; // TODO: include current lambda
 
     const float detA = A[0]*A[3] - A[1]*A[2];
-    const float dlam_h = (k[0]*A[3] - k[1]*A[2]) / detA;
-    const float dlam_d = (k[1]*A[0] - k[0]*A[1]) / detA;
+    const float dlam_d = (k[0]*A[3] - k[1]*A[2]) / detA;
+    const float dlam_h = (k[1]*A[0] - k[0]*A[1]) / detA;
 
-    lambda[0] += dlam_h;
-    lambda[1] += dlam_d;
+    lambda[0] += dlam_d;
+    lambda[1] += dlam_h;
 
     // printf("elem: %i  dlam_h: %.10f  dlam_d: %.10f\n", elem_index, dlam_h, dlam_d);
     // const float dlam_h = 0;

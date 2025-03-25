@@ -63,8 +63,8 @@ add_subdirectory("src/haptics")
 
 
 # Solver library
-add_library(Solver)
-add_subdirectory("src/solver")
+# add_library(Solver)
+# add_subdirectory("src/solver")
 
 # SimObject library
 add_library(SimObject)
@@ -75,8 +75,8 @@ target_link_libraries(Collision Eigen3::Eigen mesh2sdf Geometry GeometryUtils)
 target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
 target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
-target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Solver Geometry)   # link MeshUtils and Solver libraries
-target_link_libraries(Solver Eigen3::Eigen SimObject)         # link SimObject library
+target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Geometry)   # link MeshUtils and Solver libraries
+# target_link_libraries(Solver Eigen3::Eigen SimObject)         # link SimObject library
 
 ### Simulation libraries - each has its own executable
 add_library(ResidualSimulation)
@@ -115,9 +115,10 @@ add_executable(VariadicVectorContainerTest src/exec/test/variadic_vector_contain
 
 if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject)
+    target_link_libraries(SimObject GPU)
     target_link_libraries(Collision GPU)
     target_link_libraries(ResidualSimulation GPU)
-    target_link_libraries(Solver GPU)
+    # target_link_libraries(Solver GPU)
 
     target_compile_definitions(Collision PRIVATE HAVE_CUDA)
     target_compile_definitions(Graphics PRIVATE HAVE_CUDA)
@@ -127,7 +128,7 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_compile_definitions(MeshUtils PRIVATE HAVE_CUDA)
     target_compile_definitions(Haptics PRIVATE HAVE_CUDA)
     target_compile_definitions(SimObject PRIVATE HAVE_CUDA)
-    target_compile_definitions(Solver PRIVATE HAVE_CUDA)
+    # target_compile_definitions(Solver PRIVATE HAVE_CUDA)
     target_compile_definitions(ResidualSimulation PRIVATE HAVE_CUDA)
     target_compile_definitions(BeamSimulation PRIVATE HAVE_CUDA)
 
@@ -150,7 +151,7 @@ if (HAVE_CUDA AND NOT NO_GPU)
     # target_compile_options(XPBDCudaTest PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--keep>)
 
     add_executable(XPBDConstraintCudaTest src/exec/constraints_cuda_test.cu)
-    target_link_libraries(XPBDConstraintCudaTest Eigen3::Eigen Geometry Solver SimObject GPU ResidualSimulation)
+    target_link_libraries(XPBDConstraintCudaTest Eigen3::Eigen Geometry SimObject GPU ResidualSimulation)
     target_compile_definitions(XPBDConstraintCudaTest PRIVATE HAVE_CUDA)
 endif()
 

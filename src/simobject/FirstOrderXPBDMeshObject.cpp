@@ -1,5 +1,4 @@
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
-#include "solver/ConstraintProjectorDecorator.hpp"
 #include "simulation/Simulation.hpp"
 
 namespace Sim

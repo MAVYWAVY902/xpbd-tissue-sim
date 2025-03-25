@@ -6,6 +6,10 @@
 #include "simobject/MeshObject.hpp"
 #include "simobject/ElasticMaterial.hpp"
 
+// #include "solver/XPBDSolverUpdates.hpp"
+
+#include "common/VariadicVectorContainer.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #endif
@@ -15,9 +19,19 @@
 // TODO: fix circular dependency and remove the need for this forward declaration
 namespace Solver
 {
-    class Constraint;
+    class DeviatoricConstraint;
+    class HydrostaticConstraint;
+    class StaticDeformableCollisionConstraint;
+    class RigidDeformableCollisionConstraint;
     class CollisionConstraint;
+
+    template<class T>
     class ConstraintProjector;
+
+    template<class T1, class T2>
+    class CombinedConstraintProjector;
+
+    template<class... Ts>
     class XPBDSolver;
 }
 
@@ -61,10 +75,12 @@ class XPBDMeshObject : public Object, public TetMeshObject
     virtual std::string type() const override { return "XPBDMeshObject"; }
 
     const ElasticMaterial& material() const { return _material; }
-    Solver::XPBDSolver const* solver() const { return _solver.get(); }
+    Solver::XPBDSolver<Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
+                        Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
+                        Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint> > const* solver() const { return _solver.get(); }
 
-    int numConstraints() const { return _elastic_constraints.size() + _collision_constraints.size(); }
-    const std::vector<std::unique_ptr<Solver::Constraint>>& elasticConstraints() const { return _elastic_constraints; }
+    // int numConstraints() const { return _elastic_constraints.size() + _collision_constraints.size(); }
+    // const std::vector<std::unique_ptr<Solver::Constraint>>& elasticConstraints() const { return _elastic_constraints; }
 
     Real* vertexPreviousPositionPointer(const int index) const { return const_cast<Real*>(_previous_vertices.col(index).data()); }
 
@@ -139,16 +155,6 @@ class XPBDMeshObject : public Object, public TetMeshObject
      */
     void _createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping, bool first_order);
 
-    /** Helper method to "decorate" (i.e. extend) a ConstraintProjector with the specified options.
-     * @param projector - the ConstraintProjector to decorate
-     * @param with_residual - whether or not to include the primary residual in the update formula for constraint projection.
-     * @param with_damping - whether or not to include XPBD damping (as proposed in the original XPBD paper) in the update formula for constraint projection.
-     * @param first_order - whether or not to reformulate constraints as "first order". Should only be true for FirstOrderXPBDMeshObjects.
-     * 
-     * @returns the decorated ConstraintProjector 
-     */
-    std::unique_ptr<Solver::ConstraintProjector> _decorateConstraintProjector(std::unique_ptr<Solver::ConstraintProjector> projector, bool with_residual, bool with_damping, bool first_order);
-
     /** Creates a XPBDSolver based on the specified solver type and options. The XPBDSolver is responsible for performing the constraint projection.
      * @param solver_type - the type of solver to create. One of the options specified in the XPBDSolverType enum.
      * @param num_solver_iters - the number of solver iterations the solver should perform each time step.
@@ -180,11 +186,18 @@ class XPBDMeshObject : public Object, public TetMeshObject
     bool _constraints_with_residual;        // whether or not the constraints should include the primary residual in their update - set by the Config object
     bool _constraints_with_damping;         // whether or not the constraints should include damping in their update - set by the Config object
 
-    std::unique_ptr<Solver::XPBDSolver> _solver;       // the XPBDSolver that will project the constraints
-    std::vector<std::unique_ptr<Solver::Constraint>> _elastic_constraints;  // the array of constraints applied to the elements of the mesh
+    // TODO: generalize constraints somehow
+    std::unique_ptr<    Solver::XPBDSolver<Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
+                        Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
+                        Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint> > > _solver;
+
+    VariadicVectorContainer<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint, Solver::StaticDeformableCollisionConstraint, Solver::RigidDeformableCollisionConstraint> _constraints;
+
+    // std::unique_ptr<Solver::XPBDSolver> _solver;       // the XPBDSolver that will project the constraints
+    // std::vector<std::unique_ptr<Solver::Constraint>> _elastic_constraints;  // the array of constraints applied to the elements of the mesh
     // std::vector<std::unique_ptr<Solver::CollisionConstraint>> _collision_constraints;
     // std::vector<int> _collision_constraint_projector_indices;
-    std::vector<XPBDCollisionConstraint> _collision_constraints;
+    // std::vector<XPBDCollisionConstraint> _collision_constraints;
 };
 
 } // namespace Sim
