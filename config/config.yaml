@@ -1,6 +1,6 @@
 name: "blah"
-# visualization: "Easy3D"
-visualization: "None"
+visualization: "Easy3D"
+# visualization: "None"
 g-accel: 9.81 # m/s2
 # sim-mode: "Frame-by-frame"
 # sim-mode: "Visualization"
@@ -8,7 +8,7 @@ sim-mode: "AFAP"
 time-step: 5e-4
 collision-rate: 10100
 fps: 30
-end-time: 10
+end-time: 1
 objects:
 
   -
@@ -20,8 +20,8 @@ objects:
     # filename: "../resource/general/stanford_bunny_medpoly.msh"
     # filename: "../resource/general/single.msh"
     # filename: "../resource/cube/cube8.msh"
-    filename: "../resource/cube/cube16.msh"
-    # filename: "../resource/cube/cube32.msh"
+    # filename: "../resource/cube/cube16.msh"
+    filename: "../resource/cube/cube32.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     material:

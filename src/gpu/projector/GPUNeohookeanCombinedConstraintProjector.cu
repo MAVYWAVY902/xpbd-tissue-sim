@@ -1,7 +1,7 @@
 #include "gpu/projector/GPUNeohookeanCombinedConstraintProjector.cuh"
 
 template <>
-__host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::GPUCombinedConstraintProjector(const GPUHydrostaticConstraint& constraint1_, const GPUDeviatoricConstraint& constraint2_, float dt_)
+__host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(const GPUHydrostaticConstraint& constraint1_, const GPUDeviatoricConstraint& constraint2_, float dt_)
     : dt(dt_), alpha_h(constraint1_.alpha), alpha_d(constraint2_.alpha), gamma(constraint1_.gamma)
 {
     for (int i = 0; i < 4; i++)
@@ -19,7 +19,7 @@ __host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricC
 }
     
 template <>
-__host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::GPUCombinedConstraintProjector(GPUHydrostaticConstraint&& constraint1_, GPUDeviatoricConstraint&& constraint2_, float dt_)
+__host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(GPUHydrostaticConstraint&& constraint1_, GPUDeviatoricConstraint&& constraint2_, float dt_)
     : dt(dt_), alpha_h(constraint1_.alpha), alpha_d(constraint2_.alpha), gamma(constraint1_.gamma)
 {
     for (int i = 0; i < 4; i++)
@@ -37,20 +37,20 @@ __host__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricC
 }
 
 template<>
-__device__ GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::GPUCombinedConstraintProjector()
+__device__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector()
 {
 
 }
 
 template<>
-__device__ void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::initialize()
+__device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::initialize()
 {
     lambda[0] = 0;
     lambda[1] = 0;
 }
 
 template<>
-__device__ void GPUCombinedConstraintProjector<GPUHydrostaticConstraint, GPUDeviatoricConstraint>::project(const float* vertices, float* new_vertices)
+__device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::project(const float* vertices, float* new_vertices)
 {
     // printf("indices: %i, %i, %i, %i\n", positions[0].index, positions[1].index, positions[2].index, positions[3].index);
     float x[12];

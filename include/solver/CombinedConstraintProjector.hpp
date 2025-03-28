@@ -46,6 +46,8 @@ class CombinedConstraintProjector
         _constraint1->evaluateWithGradient(C, delC);
         _constraint2->evaluateWithGradient(C+1, delC+Constraint1::NUM_COORDINATES);
 
+        // std::cout << "Cd_grad: " << delC[0]<<", "<<delC[1]<<", "<<delC[2]<<", "<<delC[3]<<", "<<delC[4]<<", "<<delC[5]<<", "<<delC[6]<<", "<<delC[7]<<", "<<delC[8]<<", "<<delC[9]<<", "<<delC[10]<<", "<<delC[11]<<std::endl;
+        // std::cout << "Ch_grad: " << delC[12]<<", "<<delC[13]<<", "<<delC[14]<<", "<<delC[15]<<", "<<delC[16]<<", "<<delC[17]<<", "<<delC[18]<<", "<<delC[19]<<", "<<delC[20]<<", "<<delC[21]<<", "<<delC[22]<<", "<<delC[23]<<std::endl;
         // calculate LHS of lambda update: delC^T * M^-1 * delC
         Real alpha_tilde[2] = { _constraint1->alpha() / (_dt * _dt), _constraint2->alpha() / (_dt * _dt) };
         Real LHS[4];
@@ -66,7 +68,7 @@ class CombinedConstraintProjector
             {
                 float* delC_j = delC + cj*Constraint1::NUM_COORDINATES;
 
-                for (int i = 0; i < Constraint1::NUM_COORDINATES; i++)
+                for (int i = 0; i < Constraint1::NUM_POSITIONS; i++)
                 {
                     LHS[cj*2 + ci] += _constraint1->positions()[i].inv_mass * (delC_i[3*i]*delC_j[3*i] + delC_i[3*i+1]*delC_j[3*i+1] + delC_i[3*i+2]*delC_j[3*i+2]);
                 }
@@ -75,7 +77,6 @@ class CombinedConstraintProjector
             }
             
         }
-
         // compute RHS of lambda update: -C - alpha_tilde * lambda
         float RHS[2];
         for (int ci = 0; ci < 2; ci++)
@@ -89,6 +90,8 @@ class CombinedConstraintProjector
 
         dlam[0] = (RHS[0]*LHS[3] - RHS[1]*LHS[2]) / det;
         dlam[1] = (RHS[1]*LHS[0] - RHS[0]*LHS[1]) / det;
+
+        // std::cout << "dlam[0]: " << dlam[0] << ", dlam[1]: " << dlam[1] << std::endl;
 
         // update lambdas
         _lambda[0] += dlam[0];

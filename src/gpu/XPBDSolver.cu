@@ -221,7 +221,6 @@ __host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticC
         positions[i].index = constraint1_.positions[i].index;
         positions[i].inv_mass = constraint1_.positions[i].inv_mass;
     }
-    std::cout << "GPUNeohookeanCombinedConstraintProjector const& constructor!" << std::endl;
     // printf("indices: %i, %i, %i, %i\n", positions[0].index, positions[1].index, positions[2].index, positions[3].index);
 
     for (int i = 0; i < 9; i++)
@@ -315,10 +314,12 @@ __device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydro
 
     // solve the 2x2 system
     float A[4];
-    A[0] = alpha_d / (dt * dt);
+    float alpha_d_tilde = alpha_d / (dt * dt);
+    float alpha_h_tilde = alpha_h / (dt * dt);
+    A[0] = alpha_d_tilde;
     A[1] = 0;
     A[2] = 0;
-    A[3] = alpha_h / (dt * dt);
+    A[3] = alpha_h_tilde;
     for (int i = 0; i < 4; i++)
     {
         A[0] += positions[i].inv_mass * (C_d_grad[3*i]*C_d_grad[3*i] + C_d_grad[3*i+1]*C_d_grad[3*i+1] + C_d_grad[3*i+2]*C_d_grad[3*i+2]);
@@ -328,8 +329,8 @@ __device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydro
     A[2] = A[1];
 
     float k[2];
-    k[0] = -C_h - alpha_d * lambda[0]; // TODO: include current lambda (assuming its 0 right now)
-    k[1] = -C_d - alpha_h * lambda[1]; // TODO: include current lambda
+    k[0] = -C_d - alpha_d_tilde * lambda[0]; // TODO: include current lambda (assuming its 0 right now)
+    k[1] = -C_h - alpha_h_tilde * lambda[1]; // TODO: include current lambda
 
     const float detA = A[0]*A[3] - A[1]*A[2];
     const float dlam_d = (k[0]*A[3] - k[1]*A[2]) / detA;
@@ -338,7 +339,7 @@ __device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydro
     lambda[0] += dlam_d;
     lambda[1] += dlam_h;
 
-    // printf("elem: %i  dlam_h: %.10f  dlam_d: %.10f\n", elem_index, dlam_h, dlam_d);
+    // printf("dlam_h: %.10f  dlam_d: %.10f\n", dlam_h, dlam_d);
     // const float dlam_h = 0;
     // const float dlam_d = 0;
 
