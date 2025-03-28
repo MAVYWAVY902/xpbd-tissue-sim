@@ -4,6 +4,8 @@
 #include "solver/Constraint.hpp"
 #include "solver/XPBDSolverUpdates.hpp"
 
+#include "common/TypeList.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/projector/GPUConstraintProjector.cuh"
 #endif
@@ -30,6 +32,8 @@ class ConstraintProjector
     // TODO: implement num_coordinates and MAX_NUM_COORDINATES - for single constraint projector they will be the same
     constexpr static int NUM_CONSTRAINTS = 1;
     constexpr static int MAX_NUM_COORDINATES = Constraint::NUM_COORDINATES;
+
+    typedef TypeList<Constraint> ConstraintTypes;
 
     public:
     explicit ConstraintProjector(Real dt, Constraint* constraint_ptr)

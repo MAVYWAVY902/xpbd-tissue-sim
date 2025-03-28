@@ -25,7 +25,7 @@ void BeamSimulation::setup()
     _out_file << toString(0) << std::endl;
 
     for (auto& obj : _objects) {
-        if (XPBDMeshObject* xpbd_mo = dynamic_cast<XPBDMeshObject*>(obj.get()))
+        if (XPBDMeshObject_Base* xpbd_mo = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
         {
             Geometry::AABB aabb = xpbd_mo->boundingBox();
             std::vector<int> vertices_to_fix = xpbd_mo->mesh()->getVerticesWithY(aabb.min[1]);
@@ -45,7 +45,7 @@ void BeamSimulation::setup()
     _out_file << "\nTime(s)";
     for (auto& obj : _objects)
     {
-        if (XPBDMeshObject* xpbd_mo = dynamic_cast<XPBDMeshObject*>(obj.get()))
+        if (XPBDMeshObject_Base* xpbd_mo = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
         {
             std::regex r("\\s+");
             const std::string& name = std::regex_replace(xpbd_mo->name(), r, "");
@@ -65,7 +65,7 @@ void BeamSimulation::printInfo() const
     _out_file << _time;
     for (size_t i = 0; i < _objects.size(); i++) {
 
-        if (XPBDMeshObject* xpbd = dynamic_cast<XPBDMeshObject*>(_objects[i].get()))
+        if (XPBDMeshObject_Base* xpbd = dynamic_cast<XPBDMeshObject_Base*>(_objects[i].get()))
         {
             const Vec3r& beam_deflection = _beams_tip_start[i] - xpbd->mesh()->vertex(_beams_tip_vertex[i]);
 
@@ -74,10 +74,12 @@ void BeamSimulation::printInfo() const
             Real constraint_residual = 0;
             Real volume_ratio = 1;
         
-            VecXr pres_vec = xpbd->solver()->primaryResidual();
-            primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
-            VecXr cres_vec = xpbd->solver()->constraintResidual();
-            constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
+            // TODO: get residuals from solver somehow
+            
+            // VecXr pres_vec = xpbd->solver()->primaryResidual();
+            // primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
+            // VecXr cres_vec = xpbd->solver()->constraintResidual();
+            // constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
 
             _out_file << " " << beam_deflection[0] << " " << beam_deflection[2] << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio;
         }

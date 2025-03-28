@@ -20,12 +20,15 @@ class ElementConstraint : public Constraint
      * @param v3 - the 3rd vertex of the tetrahedral element
      * @param v4 - the 4th vertex of the tetrahedral element
      */
-    ElementConstraint(const Sim::XPBDMeshObject* obj, int v1, int v2, int v3, int v4)
+    ElementConstraint(int v1, Real* p1, Real m1,
+                        int v2, Real* p2, Real m2,
+                        int v3, Real* p3, Real m3,
+                        int v4, Real* p4, Real m4)
         : Constraint(std::vector<PositionReference>({
-            PositionReference(obj, v1),
-            PositionReference(obj, v2),
-            PositionReference(obj, v3),
-            PositionReference(obj, v4)}))
+            PositionReference(v1, p1, m1),
+            PositionReference(v2, p2, m2),
+            PositionReference(v3, p3, m3),
+            PositionReference(v4, p4, m4)}))
     {
         // if this constructor is used, we assumes that this constraint is created when this object is in the rest configuration
         // so we can calculate Q and volume

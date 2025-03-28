@@ -11,12 +11,12 @@
 namespace Sim
 {
 
-class XPBDMeshObject;
+class XPBDMeshObject_Base;
 
 class XPBDMeshObjectGPUResource : public HostReadableGPUResource, HostWritableGPUResource
 {
     public:
-    explicit XPBDMeshObjectGPUResource(XPBDMeshObject* xpbd_obj);
+    explicit XPBDMeshObjectGPUResource(XPBDMeshObject_Base* xpbd_obj);
 
     virtual ~XPBDMeshObjectGPUResource();
 
@@ -30,13 +30,13 @@ class XPBDMeshObjectGPUResource : public HostReadableGPUResource, HostWritableGP
 
     const TetMeshGPUResource& meshGpuResource() const { return _mesh_gpu_resource; }
 
-    const ArrayGPUResource<float>& massesGpuResource() const { return _masses_resource; }
+    // const ArrayGPUResource<float>& massesGpuResource() const { return _masses_resource; }
 
     private:
-    XPBDMeshObject* _xpbd_obj;
+    XPBDMeshObject_Base* _xpbd_obj;
     TetMeshGPUResource _mesh_gpu_resource;
-    WritableArrayGPUResource<float> _velocity_resource;
-    ArrayGPUResource<float> _masses_resource;
+    // WritableArrayGPUResource<float> _velocity_resource;
+    // ArrayGPUResource<float> _masses_resource;
     // ArrayGPUResource<float> _volumes_resource;
     // ArrayGPUResource<float> _Qs_resource;
 };

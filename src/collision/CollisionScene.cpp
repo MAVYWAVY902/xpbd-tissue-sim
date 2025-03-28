@@ -28,6 +28,7 @@ CollisionScene::CollisionScene(const Sim::Simulation* sim)
 void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
 {
     // create a SDF for the new object, if applicable
+    // TODO: move this SDF creation process to RigidObject
     std::unique_ptr<Geometry::SDF> sdf = nullptr;
     if (Sim::RigidSphere* sphere = dynamic_cast<Sim::RigidSphere*>(new_obj))
     {
@@ -55,7 +56,7 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
         sdf->gpuResource()->fullCopyToDevice();
     }
 
-    if (Sim::XPBDMeshObject* mesh_obj = dynamic_cast<Sim::XPBDMeshObject*>(new_obj))
+    if (Sim::XPBDMeshObject_Base* mesh_obj = dynamic_cast<Sim::XPBDMeshObject_Base*>(new_obj))
     {
         // create a managed resource for the mesh
         Geometry::Mesh* mesh_ptr = mesh_obj->mesh();
@@ -109,10 +110,13 @@ void CollisionScene::collideObjects()
 
 void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject& c_obj2)
 {
+    // TODO: should we generalize to all MeshObjects? And then each MeshObject have a virtual method createCollisionConstraintForFace()?
+    // (in an effort to avoid dynamic_cast)
+    
     // std::cout << "Colliding " << c_obj1.obj->name() << " and " << c_obj2.obj->name() << std::endl;
     const Geometry::SDF* sdf;
     const Geometry::Mesh* mesh;
-    Sim::XPBDMeshObject* xpbd_obj;
+    Sim::XPBDMeshObject_Base* xpbd_obj;
     Sim::RigidObject* rigid_obj;
     if (c_obj1.sdf && c_obj2.sdf)
     {
@@ -133,7 +137,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         Sim::MeshObject* mesh_obj = dynamic_cast<Sim::MeshObject*>(c_obj2.obj);
         assert(mesh_obj);
         mesh = mesh_obj->mesh();
-        xpbd_obj = dynamic_cast<Sim::XPBDMeshObject*>(mesh_obj);
+        xpbd_obj = dynamic_cast<Sim::XPBDMeshObject_Base*>(mesh_obj);
         rigid_obj = dynamic_cast<Sim::RigidObject*>(c_obj1.obj);
         assert(xpbd_obj);
     } 
@@ -144,7 +148,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         Sim::MeshObject* mesh_obj = dynamic_cast<Sim::MeshObject*>(c_obj1.obj);
         assert(mesh_obj);
         mesh = mesh_obj->mesh();
-        xpbd_obj = dynamic_cast<Sim::XPBDMeshObject*>(mesh_obj);
+        xpbd_obj = dynamic_cast<Sim::XPBDMeshObject_Base*>(mesh_obj);
         rigid_obj = dynamic_cast<Sim::RigidObject*>(c_obj2.obj);
         assert(xpbd_obj);
     }

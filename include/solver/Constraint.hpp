@@ -4,8 +4,6 @@
 #include <vector>
 #include "common/types.hpp"
 
-#include "simobject/XPBDMeshObject.hpp"
-
 namespace Solver
 {
 
@@ -16,27 +14,23 @@ namespace Solver
  */
 struct PositionReference
 {
-    const Sim::XPBDMeshObject* obj;        // pointer to the MeshObject the position belongs to
+    // const Sim::XPBDMeshObject_Base* obj;        // pointer to the MeshObject the position belongs to
     int index;             // the index of this position in the array of vertices
     Real* position_ptr;       // a direct pointer to the position - points to a data block owned by obj's vertices matrix
-    Real* prev_position_ptr;  // a direct pointer to the previous position - points to a data block owned by obj's previous positions matrix
+    // Real* prev_position_ptr;  // a direct pointer to the previous position - points to a data block owned by obj's previous positions matrix
     Real inv_mass;            // store the inverse mass for quick lookup
-    Real num_constraints;     // number of constraints affect this position - stored here for quick lookup
+    // Real num_constraints;     // number of constraints affect this position - stored here for quick lookup
 
     /** Default constructor */
+
     PositionReference()
-        : obj(0), index(0), position_ptr(0), prev_position_ptr(0), inv_mass(0), num_constraints(0)
+        : position_ptr(0), inv_mass(0)
     {}
 
     /** Constructor that initializes quantities from just an object pointer and index. */
-    PositionReference(const Sim::XPBDMeshObject* obj_, int index_)
-        : obj(obj_), index(index_)
+    PositionReference(int index_, Real* position_ptr_, Real mass_)
+        : index(index_), position_ptr(position_ptr_), inv_mass(1.0/mass_)
     {
-        position_ptr = obj->mesh()->vertexPointer(index);
-        prev_position_ptr = obj->vertexPreviousPositionPointer(index);
-        inv_mass = obj->vertexInvMass(index);
-        // NOTE: this requires knowing how many constraints a position will be a part of a priori - maybe is not the case all the time
-        num_constraints = obj->numConstraintsForPosition(index);
     }
 
     /** Two PositionReferences are equal if they point to the same position in memory. */
@@ -68,8 +62,6 @@ struct PositionReference
 class Constraint
 {
     public:
-
-    typedef std::pair<Real, VecXr> ValueAndGradient;
 
     /** Create a constraint from PositionReferences and an associated compliance (which is by default 0, indicating a hard constraint). */
     Constraint(const std::vector<PositionReference>& positions, const Real alpha = 0)

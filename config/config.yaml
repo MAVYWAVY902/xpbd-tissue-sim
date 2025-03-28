@@ -19,8 +19,8 @@ objects:
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/general/stanford_bunny_medpoly.msh"
     # filename: "../resource/general/single.msh"
-    filename: "../resource/cube/cube8.msh"
-    # filename: "../resource/cube/cube16.msh"
+    # filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube16.msh"
     # filename: "../resource/cube/cube32.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
@@ -42,10 +42,11 @@ objects:
     damping-gamma: 2000
     collisions: false
     damping-multiplier: 100000
-    # solver-type: "Gauss-Seidel"
-    solver-type: "Jacobi"
+    solver-type: "Gauss-Seidel"
+    # solver-type: "Jacobi"
     # solver-type: "Parallel-Jacobi"
     constraint-type: "Stable-Neohookean-Combined"
+    # constraint-type: "Stable-Neohookean"
     with-residual: false
     with-damping: false
     # residual-policy: "Every-Substep"

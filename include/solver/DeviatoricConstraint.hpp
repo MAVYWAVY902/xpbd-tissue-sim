@@ -2,6 +2,7 @@
 #define __DEVIATORIC_CONSTRAINT_HPP
 
 #include "solver/ElementConstraint.hpp"
+#include "simobject/ElasticMaterial.hpp"
 
 #ifdef HAVE_CUDA
 #include "gpu/constraint/GPUDeviatoricConstraint.cuh"
@@ -13,19 +14,21 @@ namespace Solver
 /** Represents the deviatoric constraint derived from the Stable Neo-hookean strain energy, proposed by Macklin et. al: https://mmacklin.com/neohookean.pdf
  */
 class DeviatoricConstraint : public ElementConstraint
-{
-    friend class CombinedNeohookeanConstraintProjector;
-    
+{   
     public:
     constexpr static int NUM_POSITIONS = 4;
     constexpr static int NUM_COORDINATES = 12;
 
     public:
     /** Creates the deviatoric constraint from a MeshObject and the 4 vertices that make up the tetrahedral element. */
-    DeviatoricConstraint(const Sim::XPBDMeshObject* obj, int v1, int v2, int v3, int v4)
-        : ElementConstraint(obj, v1, v2, v3, v4)
+    DeviatoricConstraint(int v1, Real* p1, Real m1,
+                          int v2, Real* p2, Real m2,
+                          int v3, Real* p3, Real m3,
+                          int v4, Real* p4, Real m4,
+                          const ElasticMaterial& material)
+        : ElementConstraint(v1, p1, m1, v2, p2, m2, v3, p3, m3, v4, p4, m4)
     {
-        _alpha = 1/(obj->material().mu() * _volume);
+        _alpha = 1/(material.mu() * _volume); // set alpha after the ElementConstraint constructor because we need the element volume
     }
 
     int numPositions() const override { return NUM_POSITIONS; }

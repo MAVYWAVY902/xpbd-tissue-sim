@@ -23,8 +23,17 @@
 namespace Sim
 {
 
-XPBDMeshObject::XPBDMeshObject(const Simulation* sim, const XPBDMeshObjectConfig* config)
-    : Object(sim, config), TetMeshObject(config, config), _material(config->materialConfig())
+XPBDMeshObject_Base::XPBDMeshObject_Base(const Simulation* sim, const XPBDMeshObjectConfig* config)
+    : Object(sim, config), TetMeshObject(config, config)
+{}
+
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+
+template<typename SolverType, typename ...ConstraintTypes>
+XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation* sim, const XPBDMeshObjectConfig* config)
+    : XPBDMeshObject_Base(sim, config), _material(config->materialConfig()),
+        _solver(this, config->numSolverIters().value(), config->residualPolicy().value())
 {
     /* extract values from the Config object */
     
@@ -39,24 +48,29 @@ XPBDMeshObject::XPBDMeshObject(const Simulation* sim, const XPBDMeshObjectConfig
     // constraint specifications
     _constraints_with_residual = config->withResidual().value();
     _constraints_with_damping = config->withDamping().value();
-    _constraint_type = config->constraintType().value();
+    _constraint_type = config->constraintType();
 
     _damping_gamma = config->dampingGamma().value();
 }
 
-XPBDMeshObject::~XPBDMeshObject()
+template<typename SolverType, typename... ConstraintTypes>
+XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::~XPBDMeshObject()
 {
 
 }
 
-Geometry::AABB XPBDMeshObject::boundingBox() const
+template<typename SolverType, typename... ConstraintTypes>
+Geometry::AABB XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::boundingBox() const
 {
     return _mesh->boundingBox();
 }
 
-void XPBDMeshObject::setup()
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
 {
     _loadAndConfigureMesh();
+
+    _solver.setup();
 
     // initialize the previous vertices matrix once we've loaded the mesh
     _previous_vertices = _mesh->vertices();
@@ -64,17 +78,17 @@ void XPBDMeshObject::setup()
     _vertex_velocities.colwise() = _initial_velocity;
 
     _calculatePerVertexQuantities();
-    _createSolver(_solver_type, _num_solver_iters, _residual_policy);       // create the Solver object first and then add ConstraintProjectors to it
     _createConstraints(_constraint_type, _constraints_with_residual, _constraints_with_damping, false);     // create constraints and add ConstraintProjectors to the solver object
 }
 
-int XPBDMeshObject::numConstraintsForPosition(const int index) const
+template<typename SolverType, typename... ConstraintTypes>
+int XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::numConstraintsForPosition(const int index) const
 {
-    if (_constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN)
+    if (std::holds_alternative<XPBDMeshObjectConstraintTypes::StableNeohookean>(_constraint_type))
     {
         return 2*_vertex_attached_elements[index];   // if sequential constraints are used, there are 2 constraints per element ==> # of constraint updates = 2 * # of elements attached to that vertex
     }
-    else if (_constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED)
+    else if (std::holds_alternative<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined>(_constraint_type))
     {
         return _vertex_attached_elements[index];     // if combined constraints are used, there are 2 constraints per element but they are solved together ==> # of constraint updates = # of elements attached to that vertex
     }
@@ -85,13 +99,22 @@ int XPBDMeshObject::numConstraintsForPosition(const int index) const
     }
 }
 
-void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
-                                    const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w)
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
+                                    const XPBDMeshObject_Base* obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w)
 {
-    Solver::StaticDeformableCollisionConstraint& collision_constraint = _constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, obj, v1, v2, v3, u, v, w);
+    Real* v1_ptr = obj->mesh()->vertexPointer(v1);
+    Real* v2_ptr = obj->mesh()->vertexPointer(v2);
+    Real* v3_ptr = obj->mesh()->vertexPointer(v3);
+
+    Real m1 = obj->vertexMass(v1);
+    Real m2 = obj->vertexMass(v2);
+    Real m3 = obj->vertexMass(v3);
+    Solver::StaticDeformableCollisionConstraint& collision_constraint = 
+        _constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
     Solver::ConstraintProjectorOptions projector_options;
-    _solver->addConstraintProjector(_sim->dt(), projector_options, &collision_constraint); // TODO: accomodate for first-order method
+    _solver.addConstraintProjector(_sim->dt(), projector_options, &collision_constraint); // TODO: accomodate for first-order method
 
     // XPBDCollisionConstraint xpbd_collision_constraint;
     // xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -101,16 +124,25 @@ void XPBDMeshObject::addStaticCollisionConstraint(const Geometry::SDF* sdf, cons
     // _collision_constraints.push_back(std::move(xpbd_collision_constraint));
 }
 
-void XPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
-                                       const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w)
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+                                       const Sim::XPBDMeshObject_Base* deformable_obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w)
 {
     // std::unique_ptr<Solver::RigidDeformableCollisionConstraint> collision_constraint = std::make_unique<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, deformable_obj, v1, v2, v3, u, v, w);
     // std::unique_ptr<Solver::ConstraintProjector> collision_projector = std::make_unique<Solver::RigidBodyConstraintProjector>(collision_constraint.get(), _sim->dt());
+    Real* v1_ptr = deformable_obj->mesh()->vertexPointer(v1);
+    Real* v2_ptr = deformable_obj->mesh()->vertexPointer(v2);
+    Real* v3_ptr = deformable_obj->mesh()->vertexPointer(v3);
 
-    Solver::RigidDeformableCollisionConstraint& collision_constraint = _constraints.template emplace_back<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, deformable_obj, v1, v2, v3, u, v, w);
+    Real m1 = deformable_obj->vertexMass(v1);
+    Real m2 = deformable_obj->vertexMass(v2);
+    Real m3 = deformable_obj->vertexMass(v3);
+
+    Solver::RigidDeformableCollisionConstraint& collision_constraint = 
+        _constraints.template emplace_back<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
     Solver::ConstraintProjectorOptions projector_options;
-    _solver->addConstraintProjector(_sim->dt(), projector_options, &collision_constraint); // TODO: accomodate for first-order method
+    _solver.addConstraintProjector(_sim->dt(), projector_options, &collision_constraint); // TODO: accomodate for first-order method
 
     // XPBDCollisionConstraint xpbd_collision_constraint;
     // xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -120,18 +152,21 @@ void XPBDMeshObject::addRigidDeformableCollisionConstraint(const Geometry::SDF* 
     // _collision_constraints.push_back(std::move(xpbd_collision_constraint));
 }
 
-void XPBDMeshObject::clearCollisionConstraints()
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::clearCollisionConstraints()
 {
     // TODO: implement
     
 }
 
-void XPBDMeshObject::removeOldCollisionConstraints(const int threshold)
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::removeOldCollisionConstraints(const int /*threshold*/)
 {
     // TODO: implement (actually I don't think this is used, but it might be in the future)
 }
 
-void XPBDMeshObject::_calculatePerVertexQuantities()
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_calculatePerVertexQuantities()
 {
     // calculate masses for each vertex
     _vertex_masses.resize(_mesh->numVertices());
@@ -173,7 +208,8 @@ void XPBDMeshObject::_calculatePerVertexQuantities()
     } 
 }
 
-void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool with_residual, bool with_damping, bool first_order)
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_createConstraints(XPBDMeshObjectConstraintTypes::variant_type /*constraint_type*/, bool with_residual, bool with_damping, bool first_order)
 {
     // TODO: think about this... we need to resize each vector initially so that pointers to constraints are still valid...
     // alternative: use vector unique_ptr<Constraint> 
@@ -196,69 +232,89 @@ void XPBDMeshObject::_createConstraints(XPBDConstraintType constraint_type, bool
         const int v1 = element[1];
         const int v2 = element[2];
         const int v3 = element[3];
-        if (constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN)
+
+        Real* v0_ptr = _mesh->vertexPointer(v0);
+        Real* v1_ptr = _mesh->vertexPointer(v1);
+        Real* v2_ptr = _mesh->vertexPointer(v2);
+        Real* v3_ptr = _mesh->vertexPointer(v3);
+
+        Real m0 = vertexMass(v0);
+        Real m1 = vertexMass(v1);
+        Real m2 = vertexMass(v2);
+        Real m3 = vertexMass(v3);
+        // if (std::holds_alternative<XPBDMeshObjectConstraintTypes::StableNeohookean>(_constraint_type))
+        if constexpr (std::is_same_v<typename SolverType::projector_type_list, XPBDMeshObjectConstraintTypes::StableNeohookean::projector_type_list>)
         {
-            Solver::HydrostaticConstraint& hyd_constraint = _constraints.template emplace_back<Solver::HydrostaticConstraint>(this, v0, v1, v2, v3);
-            Solver::DeviatoricConstraint& dev_constraint = _constraints.template emplace_back<Solver::DeviatoricConstraint>(this, v0, v1, v2, v3);
+            Solver::HydrostaticConstraint& hyd_constraint = 
+                _constraints.template emplace_back<Solver::HydrostaticConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            Solver::DeviatoricConstraint& dev_constraint = 
+                _constraints.template emplace_back<Solver::DeviatoricConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
             
-            // TODO: support separate constraints - maybe though SeparateConstraintProjector class? For now, just have them be together.
-            // _solver->addConstraintProjector(_sim->dt(), projector_options, &hyd_constraint);
-            // _solver->addConstraintProjector(_sim->dt(), projector_options, &dev_constraint);
-            _solver->addConstraintProjector(_sim->dt(), projector_options, &dev_constraint, &hyd_constraint);
+            // TODO: support separate constraints - maybe though SeparateConstraintProjector class?.
+            _solver.addConstraintProjector(_sim->dt(), projector_options, &hyd_constraint);
+            _solver.addConstraintProjector(_sim->dt(), projector_options, &dev_constraint);
+            // _solver.addConstraintProjector(_sim->dt(), projector_options, &dev_constraint, &hyd_constraint);
             
         }
-        else if (constraint_type == XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED)
+        // else if (std::holds_alternative<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined>(_constraint_type))
+        if constexpr (std::is_same_v<typename SolverType::projector_type_list, XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::projector_type_list>)
         {
-            Solver::HydrostaticConstraint& hyd_constraint = _constraints.template emplace_back<Solver::HydrostaticConstraint>(this, v0, v1, v2, v3);
-            Solver::DeviatoricConstraint& dev_constraint = _constraints.template emplace_back<Solver::DeviatoricConstraint>(this, v0, v1, v2, v3);
+            Solver::HydrostaticConstraint& hyd_constraint = 
+                _constraints.template emplace_back<Solver::HydrostaticConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            Solver::DeviatoricConstraint& dev_constraint = 
+                _constraints.template emplace_back<Solver::DeviatoricConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
 
-            _solver->addConstraintProjector(_sim->dt(), projector_options, &dev_constraint, &hyd_constraint);
+            _solver.addConstraintProjector(_sim->dt(), projector_options, &dev_constraint, &hyd_constraint);
         }
     }
 }
 
-void XPBDMeshObject::_createSolver(XPBDSolverType solver_type, int num_solver_iters, XPBDResidualPolicy residual_policy)
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_createSolver(XPBDSolverType /*solver_type*/, int /*num_solver_iters*/, XPBDResidualPolicy /*residual_policy*/)
 {
-    if (solver_type == XPBDSolverType::GAUSS_SEIDEL)
-    {
-        typedef Solver::XPBDGaussSeidelSolver<
-        Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
-            Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
-            Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint>
-        > SolverType;
+    // if (solver_type == XPBDSolverType::GAUSS_SEIDEL)
+    // {
+    //     typedef Solver::XPBDGaussSeidelSolver<
+    //     Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
+    //         Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
+    //         Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint>
+    //     > SolverType;
 
-        _solver = std::make_unique<SolverType>(this, num_solver_iters, residual_policy);
-    }
-    else if (solver_type == XPBDSolverType::JACOBI)
-    {
-        typedef Solver::XPBDJacobiSolver<
-            Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
-            Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
-            Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint>
-        > SolverType;
+    //     _solver = std::make_unique<SolverType>(this, num_solver_iters, residual_policy);
+    // }
+    // else if (solver_type == XPBDSolverType::JACOBI)
+    // {
+    //     typedef Solver::XPBDJacobiSolver<
+    //         Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
+    //         Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
+    //         Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint>
+    //     > SolverType;
 
-        _solver = std::make_unique<SolverType>(this, num_solver_iters, residual_policy);
-    }
-    else if (solver_type == XPBDSolverType::PARALLEL_JACOBI)
-    {
-        typedef Solver::XPBDParallelJacobiSolver<
-            Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
-            Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
-            Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint>
-        > SolverType;
-        _solver = std::make_unique<SolverType>(this, num_solver_iters, residual_policy);
+    //     _solver = std::make_unique<SolverType>(this, num_solver_iters, residual_policy);
+    // }
+    // else if (solver_type == XPBDSolverType::PARALLEL_JACOBI)
+    // {
+    //     typedef Solver::XPBDParallelJacobiSolver<
+    //         Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
+    //         Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
+    //         Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint>
+    //     > SolverType;
+    //     _solver = std::make_unique<SolverType>(this, num_solver_iters, residual_policy);
 
-        // _solver = std::make_unique<Solver::XPBDParallelJacobiSolver>(this, num_solver_iters, residual_policy);
-    }
+    //     // _solver = std::make_unique<Solver::XPBDParallelJacobiSolver>(this, num_solver_iters, residual_policy);
+    // }
+    // _solver = SolverType(this, num_solver_iters, residual_policy);
 }
 
-std::string XPBDMeshObject::toString(const int indent) const
+template<typename SolverType, typename... ConstraintTypes>
+std::string XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::toString(const int indent) const
 {
     // TODO: complete toString
     return Object::toString(indent+1);
 }
 
-void XPBDMeshObject::update()
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::update()
 {
     // set _x_prev to be ready for the next substep
     _previous_vertices = _mesh->vertices();
@@ -267,7 +323,8 @@ void XPBDMeshObject::update()
     _projectConstraints();
 }
 
-void XPBDMeshObject::_movePositionsInertially()
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_movePositionsInertially()
 {
     const Real dt = _sim->dt();
     // move vertices according to their velocity
@@ -280,9 +337,10 @@ void XPBDMeshObject::_movePositionsInertially()
     }
 }
 
-void XPBDMeshObject::_projectConstraints()
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_projectConstraints()
 {
-    _solver->solve();
+    _solver.solve();
 
     // TODO: update collision constraints unused
     // for (auto& c : _collision_constraints)
@@ -309,7 +367,8 @@ void XPBDMeshObject::_projectConstraints()
 
 }
 
-void XPBDMeshObject::velocityUpdate()
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::velocityUpdate()
 {
     // TODO: apply frictional forces
     // we do this in the velocity update (i.e. after update() is finished) to ensure that all objects have had their constraints projected already
@@ -330,25 +389,55 @@ void XPBDMeshObject::velocityUpdate()
 }
 
 #ifdef HAVE_CUDA
-void XPBDMeshObject::createGPUResource()
+
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::createGPUResource()
 {
     _gpu_resource = std::make_unique<Sim::XPBDMeshObjectGPUResource>(this);
     _gpu_resource->allocate();
 }
 
-XPBDMeshObjectGPUResource* XPBDMeshObject::gpuResource()
+template<typename SolverType, typename... ConstraintTypes>
+XPBDMeshObjectGPUResource* XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::gpuResource()
 {
     assert(_gpu_resource);
     // TODO: see if we can remove this dynamic_cast somehow
     return dynamic_cast<XPBDMeshObjectGPUResource*>(_gpu_resource.get());
 }
 
-const XPBDMeshObjectGPUResource* XPBDMeshObject::gpuResource() const
+template<typename SolverType, typename... ConstraintTypes>
+const XPBDMeshObjectGPUResource* XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::gpuResource() const
 {
     assert(_gpu_resource);
     // TODO: see if we can remove this dynamic_cast somehow
     return dynamic_cast<const XPBDMeshObjectGPUResource*>(_gpu_resource.get());
 }
 #endif
+
+#include "common/XPBDTypedefs.hpp"
+// instantiate templates
+// TODO: find a way to automate this!
+typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookean::projector_type_list>::GaussSeidel StableNeohookeanGaussSeidel;
+template class XPBDMeshObject<StableNeohookeanGaussSeidel, XPBDMeshObjectConstraintTypes::StableNeohookean::constraint_type_list>;
+
+typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookean::projector_type_list>::Jacobi StableNeohookeanJacobi;
+template class XPBDMeshObject<StableNeohookeanJacobi, XPBDMeshObjectConstraintTypes::StableNeohookean::constraint_type_list>;
+
+typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookean::projector_type_list>::ParallelJacobi StableNeohookeanParallelJacobi;
+template class XPBDMeshObject<StableNeohookeanParallelJacobi, XPBDMeshObjectConstraintTypes::StableNeohookean::constraint_type_list>;
+
+typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::projector_type_list>::GaussSeidel StableNeohookeanCombinedGaussSeidel;
+template class XPBDMeshObject<StableNeohookeanCombinedGaussSeidel, XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::constraint_type_list>;
+
+typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::projector_type_list>::Jacobi StableNeohookeanCombinedJacobi;
+template class XPBDMeshObject<StableNeohookeanCombinedJacobi, XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::constraint_type_list>;
+
+typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::projector_type_list>::ParallelJacobi StableNeohookeanCobminedParallelJacobi;
+template class XPBDMeshObject<StableNeohookeanCobminedParallelJacobi, XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::constraint_type_list>;
+
+
+// CTAD
+template<typename SolverType, typename ...ConstraintTypes> XPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const XPBDMeshObjectConfig* config)
+    -> XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>;
 
 } // namespace Sim

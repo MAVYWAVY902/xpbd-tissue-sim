@@ -112,6 +112,7 @@ target_link_libraries(BeamTest BeamSimulation)
 # target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
 
 add_executable(VariadicVectorContainerTest src/exec/test/variadic_vector_container_test.cpp)
+target_link_libraries(VariadicVectorContainerTest Eigen3::Eigen)
 
 if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject)
@@ -150,9 +151,9 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_compile_definitions(XPBDCudaTest PRIVATE HAVE_CUDA)
     # target_compile_options(XPBDCudaTest PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--keep>)
 
-    add_executable(XPBDConstraintCudaTest src/exec/constraints_cuda_test.cu)
-    target_link_libraries(XPBDConstraintCudaTest Eigen3::Eigen Geometry SimObject GPU ResidualSimulation)
-    target_compile_definitions(XPBDConstraintCudaTest PRIVATE HAVE_CUDA)
+    # add_executable(XPBDConstraintCudaTest src/exec/constraints_cuda_test.cu)
+    # target_link_libraries(XPBDConstraintCudaTest Eigen3::Eigen Geometry SimObject GPU ResidualSimulation)
+    # target_compile_definitions(XPBDConstraintCudaTest PRIVATE HAVE_CUDA)
 endif()
 
 

@@ -11,6 +11,8 @@
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "simobject/RigidPrimitives.hpp"
 
+#include "simobject/XPBDObjectFactory.hpp"
+
 #include "utils/MeshUtils.hpp"
 
 #include <cuda_profiler_api.h>
@@ -97,14 +99,16 @@ void Simulation::setup()
     {
         std::unique_ptr<Object> new_obj;
         // try downcasting
-        
+        // TODO: fix this to remove dynamic_cast! maybe move creation to Config class? Idk
         if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
         {
-            new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
+            // new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
+            new_obj = XPBDObjectFactory::createFirstOrderXPBDMeshObject(this, xpbd_config);
         }
         else if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
         {
-            new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
+            // new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
+            new_obj = XPBDObjectFactory::createXPBDMeshObject(this, xpbd_config);
         }
         else if (RigidMeshObjectConfig* rigid_config = dynamic_cast<RigidMeshObjectConfig*>(obj_config.get()))
         {
@@ -207,7 +211,7 @@ void Simulation::_timeStep()
         auto t1 = std::chrono::steady_clock::now();
         for (auto& obj : _objects)
         {
-            if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
+            if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
                 xpbd_obj->clearCollisionConstraints();
         }
         _collision_scene->collideObjects();

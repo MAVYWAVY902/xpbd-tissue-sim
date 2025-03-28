@@ -14,7 +14,7 @@ class XPBDGaussSeidelSolver : public XPBDSolver<ConstraintProjectors...>
 {
     public:
     /** Same constructor as XPBDSolver */
-    explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+    explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDResidualPolicy residual_policy)
         : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy)
     {
     }

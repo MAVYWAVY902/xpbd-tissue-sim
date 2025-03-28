@@ -5,14 +5,9 @@
 #include "config/MeshObjectConfig.hpp"
 #include "config/ElasticMaterialConfig.hpp"
 
-#include <memory>
+#include "common/XPBDTypedefs.hpp"
 
-enum class XPBDSolverType
-{
-    GAUSS_SEIDEL,
-    JACOBI,
-    PARALLEL_JACOBI
-};
+#include <memory>
 
 // namespace Solver
 // {
@@ -40,18 +35,11 @@ enum class XPBDSolverType
 //     typedef CombinedConstraintProjector<ConstraintTypes::type...> ProjectorType;
 // };
 
-enum class XPBDConstraintType
-{
-    STABLE_NEOHOOKEAN,
-    STABLE_NEOHOOKEAN_COMBINED
-};
-
-enum class XPBDResidualPolicy
-{
-    NEVER=0,
-    EVERY_SUBSTEP,
-    EVERY_ITERATION
-};
+// enum class XPBDConstraintType
+// {
+//     STABLE_NEOHOOKEAN,
+//     STABLE_NEOHOOKEAN_COMBINED
+// };
 
 class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 {
@@ -60,7 +48,10 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     /** Static predefined default for solve mode */
     static std::optional<XPBDSolverType>& DEFAULT_SOLVER_TYPE() { static std::optional<XPBDSolverType> solver_type(XPBDSolverType::GAUSS_SEIDEL); return solver_type; }
     /** Static predefined default for constraint type */
-    static std::optional<XPBDConstraintType>& DEFAULT_CONSTRAINT_TYPE() { static std::optional<XPBDConstraintType> constraint_type(XPBDConstraintType::STABLE_NEOHOOKEAN); return constraint_type; }
+    static std::optional<XPBDMeshObjectConstraintTypes::variant_type>& DEFAULT_CONSTRAINT_TYPE()
+    { 
+        static std::optional<XPBDMeshObjectConstraintTypes::variant_type> constraint_type(XPBDMeshObjectConstraintTypes::STABLE_NEOHOOKEAN_COMBINED); return constraint_type; 
+    }
     
     static std::optional<bool>& DEFAULT_WITH_RESIDUAL() { static std::optional<bool> with_residual(false); return with_residual; }
     static std::optional<bool>& DEFAULT_WITH_DAMPING() { static std::optional<bool> with_damping(false); return with_damping; }
@@ -80,11 +71,11 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         return solver_type_options;
     }
 
-    static std::map<std::string, XPBDConstraintType>& CONSTRAINT_TYPE_OPTIONS()
+    static std::map<std::string, XPBDMeshObjectConstraintTypes::variant_type>& CONSTRAINT_TYPE_OPTIONS()
     { 
-        static std::map<std::string, XPBDConstraintType> constraint_type_options{
-            {"Stable-Neohookean", XPBDConstraintType::STABLE_NEOHOOKEAN},
-            {"Stable-Neohookean-Combined", XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED}
+        static std::map<std::string, XPBDMeshObjectConstraintTypes::variant_type> constraint_type_options{
+            {"Stable-Neohookean", XPBDMeshObjectConstraintTypes::STABLE_NEOHOOKEAN},
+            {"Stable-Neohookean-Combined", XPBDMeshObjectConstraintTypes::STABLE_NEOHOOKEAN_COMBINED}
         };
         return constraint_type_options;
     }
@@ -129,7 +120,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
                                     Real density, Real E, Real nu, Real mu_s, Real mu_k,                                                    // ElasticMaterial params
 
-                                    int num_solver_iters, XPBDSolverType solver_type, XPBDConstraintType constraint_type,                   // XPBDMeshObject params
+                                    int num_solver_iters, XPBDSolverType solver_type, XPBDMeshObjectConstraintTypes::variant_type constraint_type,                   // XPBDMeshObject params
                                     bool with_residual, bool with_damping, Real damping_gamma, XPBDResidualPolicy residual_policy )
         : ObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions),
           MeshObjectConfig(filename, max_size, size, draw_points, draw_edges, draw_faces, color)
@@ -148,7 +139,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     // Getters
     std::optional<int> numSolverIters() const { return _num_solver_iters.value; }
     std::optional<XPBDSolverType> solverType() const { return _solve_type.value; }
-    std::optional<XPBDConstraintType> constraintType() const { return _constraint_type.value; }
+    XPBDMeshObjectConstraintTypes::variant_type constraintType() const { return _constraint_type.value.value(); }
     std::optional<bool> withResidual() const { return _with_residual.value; }
     std::optional<bool> withDamping() const { return _with_damping.value; }
     std::optional<Real> dampingGamma() const { return _damping_gamma.value; }
@@ -160,7 +151,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     // Parameters
     ConfigParameter<int> _num_solver_iters;
     ConfigParameter<XPBDSolverType> _solve_type;
-    ConfigParameter<XPBDConstraintType> _constraint_type;
+    ConfigParameter<XPBDMeshObjectConstraintTypes::variant_type> _constraint_type;
     ConfigParameter<bool> _with_residual;
     ConfigParameter<bool> _with_damping;
     ConfigParameter<Real> _damping_gamma;

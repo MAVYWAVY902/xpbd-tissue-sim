@@ -191,6 +191,8 @@ __host__ void LaunchProjectConstraints(ConstraintProjector* projectors, int num_
 }
 
 template __host__ void LaunchProjectConstraints<GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>> (GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPUDeviatoricConstraint>> (GPUConstraintProjector<GPUDeviatoricConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPUHydrostaticConstraint>> (GPUConstraintProjector<GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
 template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>> (GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
 template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPURigidDeformableCollisionConstraint>> (GPUConstraintProjector<GPURigidDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
 

@@ -1,8 +1,6 @@
 #ifndef __GPU_DEVIATORIC_CONSTRAINT_CUH
 #define __GPU_DEVIATORIC_CONSTRAINT_CUH
 
-#include "simobject/XPBDMeshObject.hpp"
-
 #include "gpu/common/helper.cuh"
 #include "gpu/constraint/GPUPositionReference.cuh"
 
@@ -14,32 +12,32 @@ struct GPUDeviatoricConstraint
     float Q[9];
     float alpha;
 
-    __host__ GPUDeviatoricConstraint(Sim::XPBDMeshObject* xpbd_obj, int v0, int v1, int v2, int v3)
-    {
-        // float* gpu_vertices = xpbd_obj->gpuResource()->meshGpuResource().gpuVertices();
-        // positions[0].ptr = gpu_vertices + v0*3;
-        positions[0].inv_mass = 1 / xpbd_obj->vertexMass(v0);
-        positions[0].index = v0;
+    // __host__ GPUDeviatoricConstraint(Sim::XPBDMeshObject_Base* xpbd_obj, int v0, int v1, int v2, int v3)
+    // {
+    //     // float* gpu_vertices = xpbd_obj->gpuResource()->meshGpuResource().gpuVertices();
+    //     // positions[0].ptr = gpu_vertices + v0*3;
+    //     positions[0].inv_mass = 1 / xpbd_obj->vertexMass(v0);
+    //     positions[0].index = v0;
 
-        // positions[1].ptr = gpu_vertices + v1*3;
-        positions[1].inv_mass = 1 / xpbd_obj->vertexMass(v1);
-        positions[1].index = v1;
+    //     // positions[1].ptr = gpu_vertices + v1*3;
+    //     positions[1].inv_mass = 1 / xpbd_obj->vertexMass(v1);
+    //     positions[1].index = v1;
 
-        // positions[2].ptr = gpu_vertices + v2*3;
-        positions[2].inv_mass = 1 / xpbd_obj->vertexMass(v2);
-        positions[2].index = v2;
+    //     // positions[2].ptr = gpu_vertices + v2*3;
+    //     positions[2].inv_mass = 1 / xpbd_obj->vertexMass(v2);
+    //     positions[2].index = v2;
 
-        // positions[3].ptr = gpu_vertices + v3*3;
-        positions[3].inv_mass = 1 / xpbd_obj->vertexMass(v3);
-        positions[3].index = v3;
+    //     // positions[3].ptr = gpu_vertices + v3*3;
+    //     positions[3].inv_mass = 1 / xpbd_obj->vertexMass(v3);
+    //     positions[3].index = v3;
 
-        // compute Q and rest volume
-        const Geometry::Mesh* mesh = xpbd_obj->mesh();
-        float rest_volume;
-        computeQandVolume(mesh->vertex(v0), mesh->vertex(v1), mesh->vertex(v2), mesh->vertex(v3), Q, &rest_volume);
+    //     // compute Q and rest volume
+    //     const Geometry::Mesh* mesh = xpbd_obj->mesh();
+    //     float rest_volume;
+    //     computeQandVolume(mesh->vertex(v0), mesh->vertex(v1), mesh->vertex(v2), mesh->vertex(v3), Q, &rest_volume);
 
-        alpha = 1/(xpbd_obj->material().mu() * rest_volume);
-    }
+    //     alpha = 1/(xpbd_obj->material().mu() * rest_volume);
+    // }
 
     __host__ GPUDeviatoricConstraint( int v0_ind, float inv_m0,
                                       int v1_ind, float inv_m1,

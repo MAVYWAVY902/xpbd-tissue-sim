@@ -4,6 +4,8 @@
 #include "solver/Constraint.hpp"
 #include "solver/XPBDSolverUpdates.hpp"
 
+#include "common/TypeList.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/projector/GPUCombinedConstraintProjector.cuh"
 #endif
@@ -18,6 +20,8 @@ class CombinedConstraintProjector
     constexpr static int NUM_CONSTRAINTS = 2;
     constexpr static int MAX_NUM_COORDINATES = Constraint1::NUM_COORDINATES + Constraint2::NUM_COORDINATES;
     
+    typedef TypeList<Constraint1, Constraint2> ConstraintTypes;
+
     public:
     explicit CombinedConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
         : _dt(dt), _constraint1(constraint1), _constraint2(constraint2)

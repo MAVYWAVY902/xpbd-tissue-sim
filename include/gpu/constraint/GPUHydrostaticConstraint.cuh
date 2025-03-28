@@ -1,8 +1,6 @@
 #ifndef __GPU_HYDROSTATIC_CONSTRAINT_CUH
 #define __GPU_HYDROSTATIC_CONSTRAINT_CUH
 
-#include "simobject/XPBDMeshObject.hpp"
-
 #include "gpu/common/helper.cuh"
 #include "gpu/constraint/GPUPositionReference.cuh"
 
@@ -15,33 +13,33 @@ struct GPUHydrostaticConstraint
     float alpha;
     float gamma;
 
-    __host__ GPUHydrostaticConstraint(const Sim::XPBDMeshObject* xpbd_obj, int v0, int v1, int v2, int v3)
-    {
-        // float* gpu_vertices = xpbd_obj->gpuResource()->meshGpuResource().gpuVertices();
-        // positions[0].ptr = gpu_vertices + v0*3;
-        positions[0].inv_mass = 1 / xpbd_obj->vertexMass(v0);
-        positions[0].index = v0;
+    // __host__ GPUHydrostaticConstraint(const Sim::XPBDMeshObject_Base* xpbd_obj, int v0, int v1, int v2, int v3)
+    // {
+    //     // float* gpu_vertices = xpbd_obj->gpuResource()->meshGpuResource().gpuVertices();
+    //     // positions[0].ptr = gpu_vertices + v0*3;
+    //     positions[0].inv_mass = 1 / xpbd_obj->vertexMass(v0);
+    //     positions[0].index = v0;
 
-        // positions[1].ptr = gpu_vertices + v1*3;
-        positions[1].inv_mass = 1 / xpbd_obj->vertexMass(v1);
-        positions[1].index = v1;
+    //     // positions[1].ptr = gpu_vertices + v1*3;
+    //     positions[1].inv_mass = 1 / xpbd_obj->vertexMass(v1);
+    //     positions[1].index = v1;
 
-        // positions[2].ptr = gpu_vertices + v2*3;
-        positions[2].inv_mass = 1 / xpbd_obj->vertexMass(v2);
-        positions[2].index = v2;
+    //     // positions[2].ptr = gpu_vertices + v2*3;
+    //     positions[2].inv_mass = 1 / xpbd_obj->vertexMass(v2);
+    //     positions[2].index = v2;
 
-        // positions[3].ptr = gpu_vertices + v3*3;
-        positions[3].inv_mass = 1 / xpbd_obj->vertexMass(v3);
-        positions[3].index = v3;
+    //     // positions[3].ptr = gpu_vertices + v3*3;
+    //     positions[3].inv_mass = 1 / xpbd_obj->vertexMass(v3);
+    //     positions[3].index = v3;
 
-        // compute Q and rest volume
-        const Geometry::Mesh* mesh = xpbd_obj->mesh();
-        float rest_volume;
-        computeQandVolume(mesh->vertex(v0), mesh->vertex(v1), mesh->vertex(v2), mesh->vertex(v3), Q, &rest_volume);
+    //     // compute Q and rest volume
+    //     const Geometry::Mesh* mesh = xpbd_obj->mesh();
+    //     float rest_volume;
+    //     computeQandVolume(mesh->vertex(v0), mesh->vertex(v1), mesh->vertex(v2), mesh->vertex(v3), Q, &rest_volume);
 
-        alpha = 1/(xpbd_obj->material().lambda() * rest_volume);            // set alpha after the ElementConstraint constructor because we need the element volume
-        gamma = xpbd_obj->material().mu() / xpbd_obj->material().lambda(); 
-    }
+    //     alpha = 1/(xpbd_obj->material().lambda() * rest_volume);            // set alpha after the ElementConstraint constructor because we need the element volume
+    //     gamma = xpbd_obj->material().mu() / xpbd_obj->material().lambda(); 
+    // }
 
     __host__ GPUHydrostaticConstraint(int v0_ind, float inv_m0,
                                       int v1_ind, float inv_m1,

@@ -1,8 +1,8 @@
 #ifndef __XPBD_SOLVER_HPP
 #define __XPBD_SOLVER_HPP
 
-#include "simobject/XPBDMeshObject.hpp"
-#include "config/XPBDMeshObjectConfig.hpp"
+#include "simobject/XPBDMeshObjectBase.hpp"
+#include "common/XPBDEnumTypes.hpp"
 
 #include "solver/Constraint.hpp"
 #include "solver/ConstraintProjector.hpp"
@@ -18,19 +18,27 @@ template<typename ...ConstraintProjectors>
 class XPBDSolver
 {
     public:
-    explicit XPBDSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+    using projector_type_list = TypeList<ConstraintProjectors...>;
+
+    explicit XPBDSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDResidualPolicy residual_policy)
         : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)
     {
-        _primary_residual.resize(3*_obj->mesh()->numVertices());
         _rigid_body_updates.resize(14); // 14 doubles is enough to store 2 rigid body updates (no more than 2 rigid bodies will be involved in a single constraint projection)
     }
 
-    virtual ~XPBDSolver() = default;
+    ~XPBDSolver() = default;
+
+    void setup()
+    {
+        // resize the primary residual vector according to the MeshObject's number of vertices
+        // TODO: should there be a generalized numCoordinates() method for XPBDObjects?
+        _primary_residual.resize(3*_obj->mesh()->numVertices());
+    }   
 
     /** Project the constraints and apply the position updates.
      * Generally consists of constraint initialization, a solver loop that will run num_iter times, and optional residual calculation.
      */
-    virtual void solve()
+    void solve()
     {
         _inertial_positions = _obj->mesh()->vertices();
 
@@ -149,7 +157,7 @@ class XPBDSolver
     protected:
     VariadicVectorContainer<ConstraintProjectors...> _constraint_projectors;
 
-    Sim::XPBDMeshObject* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
+    Sim::XPBDMeshObject_Base* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
     int _num_iter;                                         // number of solver iterations per solve() call
     Geometry::Mesh::VerticesMat _inertial_positions;                // stores the positions after the inertial update - useful for primary residual calculation
 

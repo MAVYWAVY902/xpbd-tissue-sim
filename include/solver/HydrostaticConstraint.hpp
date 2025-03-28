@@ -2,6 +2,7 @@
 #define __HYDROSTATIC_CONSTRAINT_HPP
 
 #include "solver/ElementConstraint.hpp"
+#include "simobject/ElasticMaterial.hpp"
 
 #ifdef HAVE_CUDA
 #include "gpu/constraint/GPUHydrostaticConstraint.cuh"
@@ -21,11 +22,15 @@ class HydrostaticConstraint : public ElementConstraint
     
     public:
     /** Creates the hydrostatic constraint from a MeshObject and the 4 vertices that make up the tetrahedral element. */
-    HydrostaticConstraint(const Sim::XPBDMeshObject* obj, int v1, int v2, int v3, int v4)
-        : ElementConstraint(obj, v1, v2, v3, v4)
+    HydrostaticConstraint(int v1, Real* p1, Real m1,
+                          int v2, Real* p2, Real m2,
+                          int v3, Real* p3, Real m3,
+                          int v4, Real* p4, Real m4,
+                          const ElasticMaterial& material)
+        : ElementConstraint(v1, p1, m1, v2, p2, m2, v3, p3, m3, v4, p4, m4)
     {
-        _alpha = 1/(obj->material().lambda() * _volume);            // set alpha after the ElementConstraint constructor because we need the element volume
-        _gamma = obj->material().mu() / obj->material().lambda();  
+        _alpha = 1/(material.lambda() * _volume);            // set alpha after the ElementConstraint constructor because we need the element volume
+        _gamma = material.mu() / material.lambda();  
     }
 
     int numPositions() const override { return NUM_POSITIONS; }

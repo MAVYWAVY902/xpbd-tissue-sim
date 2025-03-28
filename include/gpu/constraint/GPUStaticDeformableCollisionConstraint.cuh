@@ -1,8 +1,6 @@
 #ifndef __GPU_STATIC_DEFORMABLE_COLLLISION_CONSTRAINT_CUH
 #define __GPU_STATIC_DEFORMABLE_COLLLISION_CONSTRAINT_CUH
 
-#include "simobject/XPBDMeshObject.hpp"
-
 #include "gpu/common/helper.cuh"
 #include "gpu/constraint/GPUPositionReference.cuh"
 
@@ -16,33 +14,33 @@ struct GPUStaticDeformableCollisionConstraint
     float n[3];
     float alpha;
     
-    __host__ GPUStaticDeformableCollisionConstraint(Sim::XPBDMeshObject* xpbd_obj, int v0, int v1, int v2,
-                                                    float u, float v, float w,
-                                                    const Eigen::Vector3f& static_point, const Eigen::Vector3f& collision_normal)
-    {
-        positions[0].inv_mass = 1 / xpbd_obj->vertexMass(v0);
-        positions[0].index = v0;
+    // __host__ GPUStaticDeformableCollisionConstraint(Sim::XPBDMeshObject_Base* xpbd_obj, int v0, int v1, int v2,
+    //                                                 float u, float v, float w,
+    //                                                 const Eigen::Vector3f& static_point, const Eigen::Vector3f& collision_normal)
+    // {
+    //     positions[0].inv_mass = 1 / xpbd_obj->vertexMass(v0);
+    //     positions[0].index = v0;
 
-        positions[1].inv_mass = 1 / xpbd_obj->vertexMass(v1);
-        positions[1].index = v1;
+    //     positions[1].inv_mass = 1 / xpbd_obj->vertexMass(v1);
+    //     positions[1].index = v1;
 
-        positions[2].inv_mass = 1 / xpbd_obj->vertexMass(v2);
-        positions[2].index = v2;
+    //     positions[2].inv_mass = 1 / xpbd_obj->vertexMass(v2);
+    //     positions[2].index = v2;
 
-        bary_coords[0] = u;
-        bary_coords[1] = v;
-        bary_coords[2] = w;
+    //     bary_coords[0] = u;
+    //     bary_coords[1] = v;
+    //     bary_coords[2] = w;
 
-        p[0] = static_point[0];
-        p[1] = static_point[1];
-        p[2] = static_point[2];
+    //     p[0] = static_point[0];
+    //     p[1] = static_point[1];
+    //     p[2] = static_point[2];
 
-        n[0] = collision_normal[0];
-        n[1] = collision_normal[1];
-        n[2] = collision_normal[2];
+    //     n[0] = collision_normal[0];
+    //     n[1] = collision_normal[1];
+    //     n[2] = collision_normal[2];
 
-        alpha = 0;
-    }
+    //     alpha = 0;
+    // }
 
     __host__ GPUStaticDeformableCollisionConstraint(int v0_ind, float inv_m0,
                                                     int v1_ind, float inv_m1,

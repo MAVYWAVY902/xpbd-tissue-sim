@@ -22,7 +22,7 @@ void ResidualSimulation::setup()
     _out_file << toString(0) << std::endl;
 
     for (auto& obj : _objects) {
-        if (XPBDMeshObject* xpbd_mo = dynamic_cast<XPBDMeshObject*>(obj.get()))
+        if (XPBDMeshObject_Base* xpbd_mo = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
         {
             _out_file << "\n" << xpbd_mo->toString(1) << std::endl;
         }
@@ -32,7 +32,7 @@ void ResidualSimulation::setup()
     _out_file << "\nTime(s)";
     for (auto& obj : _objects)
     {
-        if (XPBDMeshObject* xpbd_mo = dynamic_cast<XPBDMeshObject*>(obj.get()))
+        if (XPBDMeshObject_Base* xpbd_mo = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
         {
             std::regex r("\\s+");
             const std::string& name = std::regex_replace(xpbd_mo->name(), r, "");
@@ -54,12 +54,14 @@ void ResidualSimulation::printInfo() const
         Real primary_residual = 0;
         Real constraint_residual = 0;
         Real volume_ratio = 1;
-        if (XPBDMeshObject* xpbd = dynamic_cast<XPBDMeshObject*>(_objects[i].get()))
+        if (XPBDMeshObject_Base* xpbd = dynamic_cast<XPBDMeshObject_Base*>(_objects[i].get()))
         {
-            VecXr pres_vec = xpbd->solver()->primaryResidual();
-            primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
-            VecXr cres_vec = xpbd->solver()->constraintResidual();
-            constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
+            // TODO: get residuals from solver (somehow)
+            
+            // VecXr pres_vec = xpbd->solver()->primaryResidual();
+            // primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
+            // VecXr cres_vec = xpbd->solver()->constraintResidual();
+            // constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
             // constraint_residual = elastic_mesh_object->constraintResidual();
             // dynamics_residual = elastic_mesh_object->dynamicsResidual();
             // volume_ratio = elastic_mesh_object->volumeRatio();

@@ -13,15 +13,20 @@ class XPBDJacobiSolver : public XPBDSolver<ConstraintProjectors...>
 {
     public:
     /** Same constructor as XPBDSolver */
-    explicit XPBDJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+    explicit XPBDJacobiSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDResidualPolicy residual_policy)
         : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy)
     {}
+
+    void setup()
+    {
+        
+    }
 
     // TODO: figure out how to "override" XPBDSolver functionality for addConstraintProjector
     template<class... Constraints>
     void addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraints* ... constraints)
     {
-        auto projector = _createConstraintProjector(dt, options, constraints...);
+        auto projector = this->_createConstraintProjector(dt, options, constraints...);
     
         // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
         this->_coordinate_updates.resize(this->_coordinate_updates.size() + projector.numCoordinates());
@@ -51,7 +56,7 @@ class XPBDJacobiSolver : public XPBDSolver<ConstraintProjectors...>
     /** Implements a Gauss-Seidel update strategy for constraint projection.
      * @param data - the pre-allocated data block to use for evaluating the constraints and their gradients. Assumes that it is large enough to accomodate the ConstraintProjector with the largest memory requirement.
      */
-    virtual void _iterateConstraints() override
+    void _iterateConstraints()
     {
         int total_coord_updates = 0;
         this->_constraint_projectors.for_each_element([&](auto& proj)

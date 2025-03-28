@@ -38,14 +38,23 @@ template<typename ...ConstraintProjectors>
 class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
 { 
     public:
-    explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
-        : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy),
-        _temp_vertices(obj->mesh()->numVertices()*3),
-        _temp_vertices_resource(_temp_vertices.data(), _temp_vertices.size())
+    explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDResidualPolicy residual_policy)
+        : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy) 
+    { 
+
+    }
+
+    void setup()
     {
+        this->XPBDSolver<ConstraintProjectors...>::setup();
+
+        _temp_vertices.resize(this->_obj->mesh()->numVertices()*3);
+        _temp_vertices_resource = Sim::ArrayGPUResource<float>(_temp_vertices.data(), _temp_vertices.size());
+
         // createGPUResource() will create the GPU resource for the XPBDMeshObject AND allocate memory for it
-        obj->createGPUResource();
-        _xpbd_obj_resource = dynamic_cast<Sim::XPBDMeshObjectGPUResource*>(obj->gpuResource());
+        this->_obj->createGPUResource();
+        // TODO: remove dynamic_cast
+        _xpbd_obj_resource = dynamic_cast<Sim::XPBDMeshObjectGPUResource*>(this->_obj->gpuResource());
         _xpbd_obj_resource->fullCopyToDevice();
 
         // point the VectorGPUResources to their appropriate vectors of GPUConstraintProjectors
@@ -55,7 +64,6 @@ class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
 
         // allocate memory for the temporary vertices on the GPU
         _temp_vertices_resource.allocate();
-
     }
 
     template<class ProjectorType>
@@ -67,7 +75,7 @@ class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
         
     }
 
-    virtual void solve() override
+    void solve()
     {
         auto copy_projectors = [&](auto dummy)
         {
@@ -161,6 +169,16 @@ class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
 };
 
 } // namespace Solver
+#else
+
+namespace Solver
+{
+    template<typename ...ConstraintProjectors>
+    class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
+    {
+
+    };
+}
 
 #endif
 
