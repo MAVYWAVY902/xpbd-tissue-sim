@@ -1,7 +1,7 @@
 #ifndef __RIGID_BODY_CONSTRAINT_HPP
 #define __RIGID_BODY_CONSTRAINT_HPP
 
-#include "solver/Constraint.hpp"
+#include "solver/constraint/Constraint.hpp"
 #include "simobject/RigidObject.hpp"
 #include "utils/GeometryUtils.hpp"
 

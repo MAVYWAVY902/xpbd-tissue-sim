@@ -1,7 +1,7 @@
 #ifndef __STATIC_DEFORMABLE_COLLISION_CONSTRAINT_HPP
 #define __STATIC_DEFORMABLE_COLLISION_CONSTRAINT_HPP
 
-#include "solver/CollisionConstraint.hpp"
+#include "solver/constraint/CollisionConstraint.hpp"
 #include "geometry/SDF.hpp"
 
 #ifdef HAVE_CUDA
@@ -23,15 +23,7 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
                                         int v1, Real* p1, Real m1,
                                         int v2, Real* p2, Real m2,
                                         int v3, Real* p3, Real m3,
-                                        Real u, Real v, Real w)
-        : CollisionConstraint(std::vector<PositionReference>({
-        PositionReference(v1, p1, m1),
-        PositionReference(v2, p2, m2),
-        PositionReference(v3, p3, m3)}), n),
-        _sdf(sdf), _p(p), _u(u), _v(v), _w(w)
-    {
-
-    }
+                                        Real u, Real v, Real w);
 
     int numPositions() const override { return NUM_POSITIONS; }
     int numCoordinates() const override { return NUM_COORDINATES; }
@@ -41,31 +33,14 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      */
-    inline void evaluate(Real* C) const override
-    {
-        const Vec3r a = _u*Eigen::Map<Vec3r>(_positions[0].position_ptr) + _v*Eigen::Map<Vec3r>(_positions[1].position_ptr) + _w*Eigen::Map<Vec3r>(_positions[2].position_ptr);
-        *C = _collision_normal.dot(a - _p);
-    }
+    void evaluate(Real* C) const override;
 
     /** Computes the gradient of this constraint in vector form with pre-allocated memory.
      * i.e. returns delC(x)
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    inline void gradient(Real* delC) const override
-    {
-        delC[0] = _u*_collision_normal[0];
-        delC[1] = _u*_collision_normal[1];
-        delC[2] = _u*_collision_normal[2];
-
-        delC[3] = _v*_collision_normal[0];
-        delC[4] = _v*_collision_normal[1];
-        delC[5] = _v*_collision_normal[2];
-        
-        delC[6] = _w*_collision_normal[0];
-        delC[7] = _w*_collision_normal[1];
-        delC[8] = _w*_collision_normal[2];
-    }
+    void gradient(Real* delC) const override;
 
 
     /** Computes the value and gradient of this constraint with pre-allocated memory.
@@ -76,23 +51,11 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    void evaluateWithGradient(Real* C, Real* grad) const override
-    {
-        evaluate(C);
-        gradient(grad);
-    }
+    void evaluateWithGradient(Real* C, Real* grad) const override;
 
     #ifdef HAVE_CUDA
     typedef GPUStaticDeformableCollisionConstraint GPUConstraintType;
-    GPUConstraintType createGPUConstraint() const
-    {
-        GPUConstraintType gpu_constraint = GPUConstraintType(_positions[0].index, _positions[0].inv_mass,
-                                                             _positions[1].index, _positions[1].inv_mass,
-                                                             _positions[2].index, _positions[2].inv_mass,
-                                                             _u, _v, _w,
-                                                             _p, _collision_normal);
-        return gpu_constraint;
-    }
+    GPUConstraintType createGPUConstraint() const;
     #endif
 
     /** Collision constraints should be implemented as inequalities, i.e. as C(x) >= 0. */
@@ -103,7 +66,7 @@ class StaticDeformableCollisionConstraint : public CollisionConstraint
      * @param mu_s - the coefficient of static friction between the two bodies
      * @param mu_k - the coefficient of kinetic friction between the two bodies
      */
-    inline virtual void applyFriction(Real, Real, Real) const override {}
+    inline virtual void applyFriction(Real, Real, Real) const override;
     // inline virtual void applyFriction(Real lam, Real mu_s, Real mu_k) const override
     // {
     //     // since we are colliding with a static point/body, only need to apply frictional forces to the deformable body

@@ -8,7 +8,7 @@ sim-mode: "AFAP"
 time-step: 5e-4
 collision-rate: 10100
 fps: 30
-end-time: 1
+end-time: 10
 objects:
 
   -
@@ -20,8 +20,8 @@ objects:
     # filename: "../resource/general/stanford_bunny_medpoly.msh"
     # filename: "../resource/general/single.msh"
     # filename: "../resource/cube/cube8.msh"
-    # filename: "../resource/cube/cube16.msh"
-    filename: "../resource/cube/cube32.msh"
+    filename: "../resource/cube/cube16.msh"
+    # filename: "../resource/cube/cube32.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     material:
@@ -42,9 +42,9 @@ objects:
     damping-gamma: 2000
     collisions: false
     damping-multiplier: 100000
-    solver-type: "Gauss-Seidel"
+    # solver-type: "Gauss-Seidel"
     # solver-type: "Jacobi"
-    # solver-type: "Parallel-Jacobi"
+    solver-type: "Parallel-Jacobi"
     constraint-type: "Stable-Neohookean-Combined"
     # constraint-type: "Stable-Neohookean"
     with-residual: false

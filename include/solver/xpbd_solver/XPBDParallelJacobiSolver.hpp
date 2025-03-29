@@ -3,7 +3,7 @@
 
 #ifdef HAVE_CUDA
 
-#include "solver/XPBDSolver.hpp"
+#include "solver/xpbd_solver/XPBDSolver.hpp"
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #include "gpu/resource/ArrayGPUResource.hpp"
 #include "gpu/resource/VectorGPUResource.hpp"
@@ -176,7 +176,17 @@ namespace Solver
     template<typename ...ConstraintProjectors>
     class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
     {
-
+        public:
+        explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDResidualPolicy residual_policy)
+        : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy) 
+        { 
+            assert(0 && "Not implemented for CPU!");
+        }
+        // not needed - constraint solve happens on GPU
+        virtual void _iterateConstraints() override
+        {
+            assert(0 && "Not implemented for CPU!");
+        }
     };
 }
 

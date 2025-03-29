@@ -1,6 +1,7 @@
 #ifndef __GPU_STATIC_DEFORMABLE_COLLLISION_CONSTRAINT_CUH
 #define __GPU_STATIC_DEFORMABLE_COLLLISION_CONSTRAINT_CUH
 
+#include "gpu/common/gcc_hostdevice.hpp"
 #include "gpu/common/helper.cuh"
 #include "gpu/constraint/GPUPositionReference.cuh"
 

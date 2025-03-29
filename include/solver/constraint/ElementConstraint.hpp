@@ -1,7 +1,7 @@
 #ifndef __ELEMENT_CONSTRAINT_HPP
 #define __ELEMENT_CONSTRAINT_HPP
 
-#include "solver/Constraint.hpp"
+#include "solver/constraint/Constraint.hpp"
 
 namespace Solver 
 {

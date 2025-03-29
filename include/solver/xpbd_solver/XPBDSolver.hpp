@@ -4,10 +4,10 @@
 #include "simobject/XPBDMeshObjectBase.hpp"
 #include "common/XPBDEnumTypes.hpp"
 
-#include "solver/Constraint.hpp"
-#include "solver/ConstraintProjector.hpp"
-#include "solver/CombinedConstraintProjector.hpp"
-#include "solver/XPBDSolverUpdates.hpp"
+#include "solver/constraint/Constraint.hpp"
+#include "solver/xpbd_projector/ConstraintProjector.hpp"
+#include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
+#include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 
 #include "common/VariadicVectorContainer.hpp"
 

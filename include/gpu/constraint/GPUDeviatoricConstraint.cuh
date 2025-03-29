@@ -1,6 +1,7 @@
 #ifndef __GPU_DEVIATORIC_CONSTRAINT_CUH
 #define __GPU_DEVIATORIC_CONSTRAINT_CUH
 
+#include "gpu/common/gcc_hostdevice.hpp"
 #include "gpu/common/helper.cuh"
 #include "gpu/constraint/GPUPositionReference.cuh"
 

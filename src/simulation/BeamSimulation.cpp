@@ -3,7 +3,7 @@
 
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
-#include "solver/XPBDSolver.hpp"
+#include "solver/xpbd_solver/XPBDSolver.hpp"
 
 #include <regex>
 

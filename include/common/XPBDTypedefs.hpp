@@ -1,17 +1,17 @@
 #ifndef __XPBD_TYPEDEFS_HPP
 #define __XPBD_TYPEDEFS_HPP
 
-#include "solver/ConstraintProjector.hpp"
-#include "solver/CombinedConstraintProjector.hpp"
+#include "solver/xpbd_projector/ConstraintProjector.hpp"
+#include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
 
-#include "solver/HydrostaticConstraint.hpp"
-#include "solver/DeviatoricConstraint.hpp"
-#include "solver/StaticDeformableCollisionConstraint.hpp"
-#include "solver/RigidDeformableCollisionConstraint.hpp"
+#include "solver/constraint/HydrostaticConstraint.hpp"
+#include "solver/constraint/DeviatoricConstraint.hpp"
+#include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
+#include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
 
-#include "solver/XPBDGaussSeidelSolver.hpp"
-#include "solver/XPBDJacobiSolver.hpp"
-#include "solver/XPBDParallelJacobiSolver.hpp"
+#include "solver/xpbd_solver/XPBDGaussSeidelSolver.hpp"
+#include "solver/xpbd_solver/XPBDJacobiSolver.hpp"
+#include "solver/xpbd_solver/XPBDParallelJacobiSolver.hpp"
 
 #include "common/TypeList.hpp"
 

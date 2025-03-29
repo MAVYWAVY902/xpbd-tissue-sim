@@ -1,8 +1,8 @@
 #ifndef __COMBINED_CONSTRAINT_PROJECTOR_HPP
 #define __COMBINED_CONSTRAINT_PROJECTOR_HPP
 
-#include "solver/Constraint.hpp"
-#include "solver/XPBDSolverUpdates.hpp"
+#include "solver/constraint/Constraint.hpp"
+#include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 
 #include "common/TypeList.hpp"
 

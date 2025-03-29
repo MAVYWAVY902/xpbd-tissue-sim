@@ -1,7 +1,7 @@
 #ifndef __XPBD_JACOBI_SOLVER_HPP
 #define __XPBD_JACOBI_SOLVER_HPP
 
-#include "solver/XPBDSolver.hpp"
+#include "solver/xpbd_solver/XPBDSolver.hpp"
 
 namespace Solver
 {

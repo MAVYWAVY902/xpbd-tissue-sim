@@ -1,51 +1,69 @@
-#ifndef __RIGID_BODY_CONSTRAINT_PROJECTOR_HPP
-#define __RIGID_BODY_CONSTRAINT_PROJECTOR_HPP
+#ifndef __CONSTRAINT_PROJECTOR_HPP
+#define __CONSTRAINT_PROJECTOR_HPP
 
-#include "solver/XPBDSolverUpdates.hpp"
-#include "solver/RigidBodyConstraint.hpp"
+#include "solver/constraint/DeviatoricConstraint.hpp"
+#include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 
-#include <type_traits>
+#include "common/TypeList.hpp"
+
+#ifdef HAVE_CUDA
+#include "gpu/projector/GPUConstraintProjector.cuh"
+#endif
 
 namespace Solver
 {
 
-template<class RBConstraint>
-class RigidBodyConstraintProjector
+struct ConstraintProjectorOptions
+{
+    bool with_residual;
+    bool with_damping;
+    bool first_order;
+    Real damping_gamma;
+
+    ConstraintProjectorOptions()
+        : with_residual(false), with_damping(false), first_order(false), damping_gamma(0)
+    {}
+};
+
+template<class Constraint>
+class ConstraintProjector
 {
     public:
+    // TODO: implement num_coordinates and MAX_NUM_COORDINATES - for single constraint projector they will be the same
     constexpr static int NUM_CONSTRAINTS = 1;
-    constexpr static int NUM_COORDINATES = RBConstraint::NUM_COORDINATES;
+    constexpr static int MAX_NUM_COORDINATES = Constraint::NUM_COORDINATES;
+
+    typedef TypeList<Constraint> ConstraintTypes;
 
     public:
-    explicit RigidBodyConstraintProjector(Real dt, RBConstraint* constraint_ptr)
+    explicit ConstraintProjector(Real dt, Constraint* constraint_ptr)
         : _dt(dt), _constraint(constraint_ptr), _valid(true)
     {
     }
 
     void setValidity(bool valid) { _valid = valid; }
-    bool isValid() { return _valid; }
+    bool isValid() const { return _valid; }
+
+    int numCoordinates() { return MAX_NUM_COORDINATES; }
 
     void initialize()
     {
         _lambda = 0;
     }
 
-    void project(CoordinateUpdate* coordinate_updates_ptr, RigidBodyUpdate* rigid_body_updates_ptr)
+    void project(CoordinateUpdate* coordinate_updates_ptr)
     {
         Real C;
-        Real delC[RBConstraint::NUM_COORDINATES];
+        Real delC[Constraint::NUM_COORDINATES];
         _constraint->evaluateWithGradient(&C, delC);
 
         // if inequality constraint, make sure that the constraint should actually be enforce
         if (C > 0 && _constraint->isInequality())
         {
-            for (int i = 0; i < RBConstraint::NUM_COORDINATES; i++) 
+            for (int i = 0; i < Constraint::NUM_COORDINATES; i++) 
             { 
                 coordinate_updates_ptr[i].ptr = nullptr;
-            }
-            for (int i = 0; i < RBConstraint::NUM_RIGID_BODIES; i++)
-            {
-                rigid_body_updates_ptr[i].obj_ptr = nullptr;
+                coordinate_updates_ptr[i].update = 0;
             }
             return;
         }
@@ -55,9 +73,9 @@ class RigidBodyConstraintProjector
         Real LHS = alpha_tilde;
         const std::vector<PositionReference>& positions = _constraint->positions();
         
-        for (int i = 0; i < RBConstraint::NUM_POSITIONS; i++)
+        for (int i = 0; i < Constraint::NUM_POSITIONS; i++)
         {
-            LHS += _constraint->positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
+            LHS += positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
         }
 
         // compute RHS of lambda update: -C - alpha_tilde*lambda
@@ -68,7 +86,7 @@ class RigidBodyConstraintProjector
         _lambda += dlam;
 
         // compute position updates
-        for (int i = 0; i < RBConstraint::NUM_POSITIONS; i++)
+        for (int i = 0; i < Constraint::NUM_POSITIONS; i++)
         {
             Real update_x = positions[i].inv_mass * delC[3*i] * dlam;
             Real update_y = positions[i].inv_mass * delC[3*i+1] * dlam;
@@ -81,21 +99,13 @@ class RigidBodyConstraintProjector
             coordinate_updates_ptr[3*i+2].ptr = positions[i].position_ptr+2;
             coordinate_updates_ptr[3*i+2].update = update_z;
         }
-
-        // compute the update for each rigid body using the corresponding RigidBodyXPBDHelper object
-        for (int ri = 0; ri < _constraint->numRigidBodies(); ri++)
-        {
-            rigid_body_updates_ptr[ri].obj_ptr = _constraint->rigidBodies()[ri];
-            _constraint->rigidBodyHelpers()[ri]->update(dlam, rigid_body_updates_ptr[ri].position_update, rigid_body_updates_ptr[ri].orientation_update);
-        }
     }
 
-    // TODO: implement specific GPUConstraintProjector type for rigid body constraints - need RigidObjectGPUResource and stuff like that
     #ifdef HAVE_CUDA
-    typedef GPUConstraintProjector<typename RBConstraint::GPUConstraintType> GPUConstraintProjectorType;
+    typedef GPUConstraintProjector<typename Constraint::GPUConstraintType> GPUConstraintProjectorType;
     GPUConstraintProjectorType createGPUConstraintProjector() const
     {
-        typename RBConstraint::GPUConstraintType gpu_constraint = _constraint->createGPUConstraint();
+        typename Constraint::GPUConstraintType gpu_constraint = _constraint->createGPUConstraint();
         return GPUConstraintProjectorType(std::move(gpu_constraint), _dt);
     }
     #endif
@@ -103,10 +113,13 @@ class RigidBodyConstraintProjector
     private:
     Real _dt;
     Real _lambda;
-    RBConstraint* _constraint;
+    Constraint* _constraint;
     bool _valid;
+    
+
 };
 
-} // namespace Solver
 
-#endif // __RIGID_BODY_CONSTRAINT_PROJECTOR_HPP
+} // Solver
+
+#endif // __CONSTRAINT_PROJECTOR_HPP
