@@ -5,8 +5,8 @@ namespace Sim
 {
 
 template<typename SolverType, typename... ConstraintTypes>
-FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::FirstOrderXPBDMeshObject(TypeList<ConstraintTypes...> types, const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config)
-    : XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>(types, sim, config)
+FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::FirstOrderXPBDMeshObject(const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config)
+    : XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>(sim, config)
 {
     std::cout << "FirstOrderXPBDMeshObject constructor! " << std::endl;
     _damping_multiplier = config->dampingMultiplier().value();
@@ -59,26 +59,23 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_movePo
 }
 
 // CTAD
-template<typename SolverType, typename ...ConstraintTypes> FirstOrderXPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const FirstOrderXPBDMeshObjectConfig* config)
-    -> FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>;
+// template<typename SolverType, typename ...ConstraintTypes> FirstOrderXPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const FirstOrderXPBDMeshObjectConfig* config)
+//     -> FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>;
 
-typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookean::projector_type_list>::GaussSeidel StableNeohookeanGaussSeidel;
-template class FirstOrderXPBDMeshObject<StableNeohookeanGaussSeidel, XPBDMeshObjectConstraintTypes::StableNeohookean::constraint_type_list>;
+using SolverTypesStableNeohookean = XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintConfigurations::StableNeohookean::projector_type_list>;
+using SolverTypesStableNeohookeanCombined = XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::projector_type_list>;
+using StableNeohookeanConstraints = XPBDMeshObjectConstraintConfigurations::StableNeohookean::constraint_type_list;
+using StableNeohookeanCombinedConstraints = XPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::constraint_type_list;
 
-typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookean::projector_type_list>::Jacobi StableNeohookeanJacobi;
-template class FirstOrderXPBDMeshObject<StableNeohookeanJacobi, XPBDMeshObjectConstraintTypes::StableNeohookean::constraint_type_list>;
+// Stable Neohookean constraint config
+template class FirstOrderXPBDMeshObject<SolverTypesStableNeohookean::GaussSeidel, StableNeohookeanConstraints>;
+template class FirstOrderXPBDMeshObject<SolverTypesStableNeohookean::Jacobi, StableNeohookeanConstraints>;
+template class FirstOrderXPBDMeshObject<SolverTypesStableNeohookean::ParallelJacobi, StableNeohookeanConstraints>;
 
-typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookean::projector_type_list>::ParallelJacobi StableNeohookeanParallelJacobi;
-template class FirstOrderXPBDMeshObject<StableNeohookeanParallelJacobi, XPBDMeshObjectConstraintTypes::StableNeohookean::constraint_type_list>;
-
-typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::projector_type_list>::GaussSeidel StableNeohookeanCombinedGaussSeidel;
-template class FirstOrderXPBDMeshObject<StableNeohookeanCombinedGaussSeidel, XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::constraint_type_list>;
-
-typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::projector_type_list>::Jacobi StableNeohookeanCombinedJacobi;
-template class FirstOrderXPBDMeshObject<StableNeohookeanCombinedJacobi, XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::constraint_type_list>;
-
-typedef XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::projector_type_list>::ParallelJacobi StableNeohookeanCobminedParallelJacobi;
-template class FirstOrderXPBDMeshObject<StableNeohookeanCobminedParallelJacobi, XPBDMeshObjectConstraintTypes::StableNeohookeanCombined::constraint_type_list>;
+// Stable Neohookean Combined constraint config
+template class FirstOrderXPBDMeshObject<SolverTypesStableNeohookeanCombined::GaussSeidel, StableNeohookeanCombinedConstraints>;
+template class FirstOrderXPBDMeshObject<SolverTypesStableNeohookeanCombined::Jacobi, StableNeohookeanCombinedConstraints>;
+template class FirstOrderXPBDMeshObject<SolverTypesStableNeohookeanCombined::ParallelJacobi, StableNeohookeanCombinedConstraints>;
 
 
 } //namespace Sim

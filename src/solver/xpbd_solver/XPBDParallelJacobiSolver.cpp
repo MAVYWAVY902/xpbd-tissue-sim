@@ -10,7 +10,7 @@
 // namespace Solver
 // {
 
-// XPBDParallelJacobiSolver::XPBDParallelJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+// XPBDParallelJacobiSolver::XPBDParallelJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
 //     : XPBDSolver(obj, num_iter, residual_policy),
 //     _element_Qs(obj->tetMesh()->numElements()*9),
 //     _element_volumes(obj->tetMesh()->numElements()),

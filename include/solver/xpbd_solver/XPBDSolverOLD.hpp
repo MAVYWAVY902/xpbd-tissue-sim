@@ -34,7 +34,7 @@ class XPBDSolver
      * @param num_iter - number of solver loop iterations
      * @param residual_policy - how often to compute the residual
      */
-    explicit XPBDSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy);
+    explicit XPBDSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy);
 
     virtual ~XPBDSolver() = default;
 
@@ -164,7 +164,7 @@ class XPBDSolver
     int _num_iter;                                         // number of solver iterations per solve() call
     Geometry::Mesh::VerticesMat _inertial_positions;                // stores the positions after the inertial update - useful for primary residual calculation
 
-    XPBDResidualPolicy _residual_policy;                        // determines how often to calculate the residuals - this varies depending on the information needs of the user
+    XPBDSolverResidualPolicyEnum _residual_policy;                        // determines how often to calculate the residuals - this varies depending on the information needs of the user
 
     bool _constraints_using_primary_residual;                   // whether or not any of the ConstraintProjectors require the primary residual to do the position update
 

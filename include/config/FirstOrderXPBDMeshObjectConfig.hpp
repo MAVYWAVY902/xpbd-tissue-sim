@@ -26,8 +26,8 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
 
                                     Real density, Real E, Real nu, Real mu_s, Real mu_k,                                                    // ElasticMaterial params
 
-                                    int num_solver_iters, XPBDSolverType solver_type, XPBDMeshObjectConstraintTypes::variant_type constraint_type,                   // XPBDMeshObject params
-                                    bool with_residual, bool with_damping, Real damping_gamma, XPBDResidualPolicy residual_policy,
+                                    int num_solver_iters, XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
+                                    bool with_residual, bool with_damping, Real damping_gamma, XPBDSolverResidualPolicyEnum residual_policy,
                                 
                                     Real damping_multiplier )  
                                                                                                                                             // FirstOrderXPBDMeshObject params

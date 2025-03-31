@@ -12,7 +12,7 @@ template<typename SolverType, typename... ConstraintTypes>
 class FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>
 {
     public:
-    explicit FirstOrderXPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config);
+    explicit FirstOrderXPBDMeshObject(const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config);
 
     virtual std::string toString(const int indent) const override;
     virtual std::string type() const override { return "FirstOrderXPBDMeshObject"; }

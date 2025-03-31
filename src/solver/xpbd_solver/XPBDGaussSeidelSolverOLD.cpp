@@ -9,7 +9,7 @@
 namespace Solver
 {
 
-XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+XPBDGaussSeidelSolver::XPBDGaussSeidelSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
     : XPBDSolver(obj, num_iter, residual_policy)
 {}
 

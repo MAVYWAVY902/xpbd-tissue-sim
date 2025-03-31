@@ -7,23 +7,23 @@
 #include "config/XPBDMeshObjectConfig.hpp"
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 
+#include "common/XPBDEnumTypes.hpp"
 #include "common/XPBDTypedefs.hpp"
 
 // create a class with static methods to create XPBDMeshObject with appropriate template parameters given config object
 class XPBDObjectFactory
 {
     public:
-    // TODO: using variant type for ConstraintType, and using enum for SolverType. Pick one
     static std::unique_ptr<Sim::XPBDMeshObject_Base> createXPBDMeshObject(const Sim::Simulation* sim, const XPBDMeshObjectConfig* config)
     {
-        XPBDMeshObjectConstraintTypes::variant_type constraint_type = config->constraintType();
-        if (std::holds_alternative<XPBDMeshObjectConstraintTypes::StableNeohookean>(constraint_type))
+        XPBDMeshObjectConstraintConfigurationEnum constraint_type = config->constraintType();
+        if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN)
         {
-            return _createXPBDMeshObject<XPBDMeshObjectConstraintTypes::StableNeohookean>(sim, config);
+            return _createXPBDMeshObject<XPBDMeshObjectConstraintConfigurations::StableNeohookean>(sim, config);
         }
-        else if (std::holds_alternative<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined>(constraint_type))
+        else if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED)
         {
-            return _createXPBDMeshObject<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined>(sim, config);
+            return _createXPBDMeshObject<XPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined>(sim, config);
         }
         else
         {
@@ -34,14 +34,14 @@ class XPBDObjectFactory
 
     static std::unique_ptr<Sim::XPBDMeshObject_Base> createFirstOrderXPBDMeshObject(const Sim::Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config)
     {
-        XPBDMeshObjectConstraintTypes::variant_type constraint_type = config->constraintType();
-        if (std::holds_alternative<XPBDMeshObjectConstraintTypes::StableNeohookean>(constraint_type))
+        XPBDMeshObjectConstraintConfigurationEnum constraint_type = config->constraintType();
+        if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN)
         {
-            return _createFirstOrderXPBDMeshObject<XPBDMeshObjectConstraintTypes::StableNeohookean>(sim, config);
+            return _createFirstOrderXPBDMeshObject<XPBDMeshObjectConstraintConfigurations::StableNeohookean>(sim, config);
         }
-        else if (std::holds_alternative<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined>(constraint_type))
+        else if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED)
         {
-            return _createFirstOrderXPBDMeshObject<XPBDMeshObjectConstraintTypes::StableNeohookeanCombined>(sim, config);
+            return _createFirstOrderXPBDMeshObject<XPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined>(sim, config);
         }
         else
         {
@@ -54,24 +54,21 @@ class XPBDObjectFactory
     template<typename ConstraintType>
     static std::unique_ptr<Sim::XPBDMeshObject_Base> _createXPBDMeshObject(const Sim::Simulation* sim, const XPBDMeshObjectConfig* config)
     {
-        XPBDSolverType solver_type = config->solverType().value();
-        if (solver_type == XPBDSolverType::GAUSS_SEIDEL)
+        XPBDObjectSolverTypeEnum solver_type = config->solverType().value();
+        if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)
         {
             using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::GaussSeidel;
-            typename ConstraintType::constraint_type_list constraint_type_list;
-            return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(constraint_type_list, sim, config);
+            return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
-        else if (solver_type == XPBDSolverType::JACOBI)
+        else if (solver_type == XPBDObjectSolverTypeEnum::JACOBI)
         {
             using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::Jacobi;
-            typename ConstraintType::constraint_type_list constraint_type_list;
-            return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(constraint_type_list, sim, config);
+            return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
-        else if (solver_type == XPBDSolverType::PARALLEL_JACOBI)
+        else if (solver_type == XPBDObjectSolverTypeEnum::PARALLEL_JACOBI)
         {
             using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::ParallelJacobi;
-            typename ConstraintType::constraint_type_list constraint_type_list;
-            return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(constraint_type_list, sim, config);
+            return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else
         {
@@ -84,24 +81,21 @@ class XPBDObjectFactory
     template<typename ConstraintType>
     static std::unique_ptr<Sim::XPBDMeshObject_Base> _createFirstOrderXPBDMeshObject(const Sim::Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config)
     {
-        XPBDSolverType solver_type = config->solverType().value();
-        if (solver_type == XPBDSolverType::GAUSS_SEIDEL)
+        XPBDObjectSolverTypeEnum solver_type = config->solverType().value();
+        if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)
         {
             using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::GaussSeidel;
-            typename ConstraintType::constraint_type_list constraint_type_list;
-            return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(constraint_type_list, sim, config);
+            return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
-        else if (solver_type == XPBDSolverType::JACOBI)
+        else if (solver_type == XPBDObjectSolverTypeEnum::JACOBI)
         {
             using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::Jacobi;
-            typename ConstraintType::constraint_type_list constraint_type_list;
-            return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(constraint_type_list, sim, config);
+            return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
-        else if (solver_type == XPBDSolverType::PARALLEL_JACOBI)
+        else if (solver_type == XPBDObjectSolverTypeEnum::PARALLEL_JACOBI)
         {
             using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::ParallelJacobi;
-            typename ConstraintType::constraint_type_list constraint_type_list;
-            return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(constraint_type_list, sim, config);
+            return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else
         {

@@ -12,7 +12,7 @@ class XPBDJacobiSolver : public XPBDSolver
 {
     public:
     /** Same constructor as XPBDSolver */
-    explicit XPBDJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy);
+    explicit XPBDJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy);
 
     protected:
     /** Implements a Gauss-Seidel update strategy for constraint projection.

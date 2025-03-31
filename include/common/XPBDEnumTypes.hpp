@@ -3,15 +3,21 @@
 
 // TODO: is this file needed? Introduced to solve some circular dependencies...
 
-enum class XPBDSolverType
+enum class XPBDObjectSolverTypeEnum
 {
     GAUSS_SEIDEL,
     JACOBI,
     PARALLEL_JACOBI
 };
 
+enum class XPBDMeshObjectConstraintConfigurationEnum
+{
+    STABLE_NEOHOOKEAN,
+    STABLE_NEOHOOKEAN_COMBINED
+};
+
 // TODO: rename to something slightly more descriptive, i.e. XPBDSolverResidualPolicy
-enum class XPBDResidualPolicy
+enum class XPBDSolverResidualPolicyEnum
 {
     NEVER=0,
     EVERY_SUBSTEP,

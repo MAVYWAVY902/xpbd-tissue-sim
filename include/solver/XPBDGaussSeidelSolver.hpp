@@ -1,7 +1,7 @@
 #ifndef __XPBD_GAUSS_SEIDEL_SOLVER_HPP
 #define __XPBD_GAUSS_SEIDEL_SOLVER_HPP
 
-#include "solver/xpbd_solver/XPBDSolver.hpp"
+#include "solver/XPBDSolver.hpp"
 
 namespace Solver
 {

@@ -6,7 +6,7 @@
 
 namespace Solver
 {
-XPBDJacobiSolver::XPBDJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+XPBDJacobiSolver::XPBDJacobiSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
     : XPBDSolver(obj, num_iter, residual_policy)
 {
     _position_updates.conservativeResize(3, obj->mesh()->numVertices());

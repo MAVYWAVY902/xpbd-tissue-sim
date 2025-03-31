@@ -4,12 +4,11 @@
 #include "simobject/XPBDMeshObjectBase.hpp"
 #include "common/XPBDEnumTypes.hpp"
 
-#include "solver/constraint/Constraint.hpp"
-#include "solver/xpbd_projector/ConstraintProjector.hpp"
-#include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
-#include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
+#include "solver/Constraint.hpp"
+#include "solver/ConstraintProjector.hpp"
+#include "solver/CombinedConstraintProjector.hpp"
+#include "solver/XPBDSolverUpdates.hpp"
 
-#include "common/TypeList.hpp"
 #include "common/VariadicVectorContainer.hpp"
 
 namespace Solver
@@ -20,7 +19,6 @@ class XPBDSolver
 {
     public:
     using projector_type_list = TypeList<ConstraintProjectors...>;
-    using constraint_type_list = typename ConcatenateTypeLists<typename ConstraintProjectors::ConstraintTypes...>::type;
 
     explicit XPBDSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)

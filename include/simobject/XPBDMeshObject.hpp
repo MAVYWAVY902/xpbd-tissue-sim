@@ -61,9 +61,9 @@ struct XPBDCollisionConstraint
  */
 template<typename SolverType, typename ConstraintTypeList> class XPBDMeshObject;
 
-// TODO: should the template parameters be SolverType, XPBDMeshObjectConstraintType?
-// if we have an XPBDObject base class that is templated with <SolverType, ...ConstraintTypes>, we can get constraints from XPBDMeshObjectConstraintType
-// this way, we can use if constexpr (std::is_same_v<XPBDMeshObjectConstraintType, XPBDMeshObjectConstraintTypes::StableNeohookean) which is maybe a more direct comparison
+// TODO: should the template parameters be SolverType, XPBDMeshObjectConstraintConfiguration?
+// if we have an XPBDObject base class that is templated with <SolverType, ...ConstraintTypes>, we can get constraints from XPBDMeshObjectConstraintConfiguration
+// this way, we can use if constexpr (std::is_same_v<XPBDMeshObjectConstraintConfiguration, XPBDMeshObjectConstraintConfigurations::StableNeohookean) which is maybe a more direct comparison
 //  instead of using a variant variable
 template<typename SolverType, typename... ConstraintTypes>
 class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMeshObject_Base
@@ -78,7 +78,7 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
      * @param config : the YAML node dictionary describing the parameters for the new XPBDMeshObject
      */
     // TODO: parameter pack in constructor for ConstraintTypes type deduction. Maybe move this to XPBDMeshObjectConfig?
-    explicit XPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation* sim, const XPBDMeshObjectConfig* config);
+    explicit XPBDMeshObject(const Simulation* sim, const XPBDMeshObjectConfig* config);
 
     virtual ~XPBDMeshObject();
 
@@ -161,14 +161,7 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
      * @param with_damping - whether or not to include XPBD damping (as proposed in the original XPBD paper) in the update formula for constraint projection.
      * @param first_order - whether or not to reformulate constraints as "first order". Should only be true for FirstOrderXPBDMeshObjects.
      */
-    void _createConstraints(XPBDMeshObjectConstraintTypes::variant_type constraint_type, bool with_residual, bool with_damping, bool first_order);
-
-    /** Creates a XPBDSolver based on the specified solver type and options. The XPBDSolver is responsible for performing the constraint projection.
-     * @param solver_type - the type of solver to create. One of the options specified in the XPBDSolverType enum.
-     * @param num_solver_iters - the number of solver iterations the solver should perform each time step.
-     * @param residual_policy - dictates how often the solver should compute the residuals. The residuals are useful for measuring how accurate the solver is.
-     */
-    void _createSolver(XPBDSolverType solver_type, int num_solver_iters, XPBDResidualPolicy residual_policy);
+    void _createConstraints(XPBDMeshObjectConstraintConfigurationEnum constraint_type, bool with_residual, bool with_damping, bool first_order);
 
     protected:
     Geometry::Mesh::VerticesMat _previous_vertices;
@@ -184,13 +177,9 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
     std::vector<int> _vertex_attached_elements;
     std::vector<bool> _is_fixed_vertex;
 
-    XPBDSolverType _solver_type;            // the type of solver to create - set by the Config object
-    XPBDResidualPolicy _residual_policy;    // how often the solver should compute the residuals - set by the Config object
-    int _num_solver_iters;             // number of iterations the solver should have - set by the Config object
-
     Real _damping_gamma;                  // the amount of damping per constraint. gamma = alpha_tilde * beta_tilde / dt (see Equation (26) in the XPBD paper for more details.)
     
-    XPBDMeshObjectConstraintTypes::variant_type _constraint_type;    // the type of constraints to create - set by the Config object
+    XPBDMeshObjectConstraintConfigurationEnum _constraint_type;    // the type of constraints to create - set by the Config object
     bool _constraints_with_residual;        // whether or not the constraints should include the primary residual in their update - set by the Config object
     bool _constraints_with_damping;         // whether or not the constraints should include damping in their update - set by the Config object
 

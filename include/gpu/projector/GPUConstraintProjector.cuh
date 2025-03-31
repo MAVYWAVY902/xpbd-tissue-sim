@@ -12,12 +12,12 @@ struct GPUConstraintProjector
     Constraint constraint;
 
     __host__ GPUConstraintProjector(const Constraint& constraint_, float dt_)
-        : constraint(constraint_), dt(dt_)
+        :  dt(dt_), constraint(constraint_)
     {
 
     } 
     __host__ GPUConstraintProjector(Constraint&& constraint_, float dt_)
-        : constraint(std::move(constraint_)), dt(dt_)
+        :  dt(dt_), constraint(std::move(constraint_))
     {
     }
 

@@ -8,7 +8,7 @@
 namespace Solver
 {
 
-XPBDSolver::XPBDSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDResidualPolicy residual_policy)
+XPBDSolver::XPBDSolver(Sim::XPBDMeshObject* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
     : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)
 {
     _primary_residual.resize(3*_obj->mesh()->numVertices());
@@ -82,7 +82,7 @@ void XPBDSolver::solve()
     }
 
     // calculate the residual after this step if required by the residual policy
-    if (_residual_policy == XPBDResidualPolicy::EVERY_SUBSTEP)
+    if (_residual_policy == XPBDSolverResidualPolicyEnum::EVERY_SUBSTEP)
     {
         _calculatePrimaryResidual();
         _calculateConstraintResidual();

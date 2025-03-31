@@ -648,7 +648,7 @@ int main(void)
         "obj1", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), false,
         "../resource/general/single.msh", 1, Vec3r(1,1,1), false, true, true, Vec4r(0,0,0,1),
         1000, 3e6, 0.48, 0.4, 0.1,
-        1, XPBDSolverType::GAUSS_SEIDEL, XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED, false, false, 0, XPBDResidualPolicy::NEVER
+        1, XPBDObjectSolverType::GAUSS_SEIDEL, XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED, false, false, 0, XPBDSolverResidualPolicyEnum::NEVER
     ));
 
     SimulationConfig sim_config("dummy_sim", "", 1e-3, 10, 9.81, SimulationMode::AFAP, Visualization::NONE, 0, 0);
@@ -657,7 +657,7 @@ int main(void)
     XPBDMeshObjectConfig config("obj1", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), false,
                                 "../resource/cube/cube16.msh", 1, Vec3r(1,1,1), false, true, true, Vec4r(0,0,0,1),
                                 1000, 3e6, 0.48, 0.4, 0.1,
-                                1, XPBDSolverType::GAUSS_SEIDEL, XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED, false, false, 0, XPBDResidualPolicy::NEVER);
+                                1, XPBDObjectSolverType::GAUSS_SEIDEL, XPBDConstraintType::STABLE_NEOHOOKEAN_COMBINED, false, false, 0, XPBDSolverResidualPolicyEnum::NEVER);
     Sim::XPBDMeshObject xpbd_obj(&sim, &config);
     
     xpbd_obj.setup();

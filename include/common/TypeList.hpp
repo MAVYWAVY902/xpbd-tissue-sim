@@ -1,11 +1,15 @@
 #ifndef __TYPE_LIST_HPP
 #define __TYPE_LIST_HPP
 
+/** Empty struct that stores a parameter pack. Very useful for template metaprogramming. */
 template<typename ...Types>
 struct TypeList
 {
 };
 
+/////////////////////////////////////////////////////////////////////////////////////////
+// Concatenating TypeLists
+//////////////////////////////////////////////////////////////////////////////////////////
 // Helper type trait to concatenate TypeLists
 template<typename... TypeLists>
 struct ConcatenateTypeLists;
@@ -31,8 +35,6 @@ struct ConcatenateTypeLists<TypeList<Types1...>, TypeList<Types2...>, RestLists.
     using type = typename ConcatenateTypeLists<TypeList<Types1..., Types2...>, RestLists...>::type;
 };
 
-// Constexpr function wrapper to make it more user-friendly
-template<typename... TypeLists>
-constexpr auto concatenate_type_lists_v = typename ConcatenateTypeLists<TypeLists...>::type{};
+
 
 #endif // __TYPE_LIST_HPP
