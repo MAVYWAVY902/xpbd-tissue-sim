@@ -12,7 +12,7 @@ namespace Solver
 {
 
 // TODO: systematic way for forward declarations...
-template<typename Constraint1, typename Constraint2>
+template<bool IsFirstOrder, typename Constraint1, typename Constraint2>
 class CombinedConstraintProjector;
 
 class HydrostaticConstraint;
@@ -21,7 +21,8 @@ class HydrostaticConstraint;
  */
 class DeviatoricConstraint : public ElementConstraint
 {   
-    friend class CombinedConstraintProjector<DeviatoricConstraint, HydrostaticConstraint>;
+    friend class CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstraint>;
+    friend class CombinedConstraintProjector<false, DeviatoricConstraint, HydrostaticConstraint>;
 
     public:
     constexpr static int NUM_POSITIONS = 4;

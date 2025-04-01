@@ -28,13 +28,13 @@ namespace Solver
     class RigidDeformableCollisionConstraint;
     class CollisionConstraint;
 
-    template<class T>
+    template<bool, class T>
     class ConstraintProjector;
 
-    template<class T1, class T2>
+    template<bool, class T1, class T2>
     class CombinedConstraintProjector;
 
-    template<class... Ts>
+    template<bool, class... Ts>
     class XPBDSolver;
 }
 
@@ -155,13 +155,9 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
 
     virtual void _calculatePerVertexQuantities();
 
-    /** Creates constraints according to the specified constraint type and options.
-     * @param constraint_type - the type of constraints to create and apply to the elements of the mesh. One of the options specified in the XPBDConstraintType enum.
-     * @param with_residual - whether or not to include the primary residual in the update formula for constraint projection.
-     * @param with_damping - whether or not to include XPBD damping (as proposed in the original XPBD paper) in the update formula for constraint projection.
-     * @param first_order - whether or not to reformulate constraints as "first order". Should only be true for FirstOrderXPBDMeshObjects.
+    /** Creates constraints according to the constraint type.
      */
-    void _createConstraints(XPBDMeshObjectConstraintConfigurationEnum constraint_type, bool with_residual, bool with_damping, bool first_order);
+    void _createElasticConstraints();
 
     protected:
     Geometry::Mesh::VerticesMat _previous_vertices;

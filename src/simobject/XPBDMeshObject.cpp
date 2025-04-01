@@ -71,7 +71,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
     _vertex_velocities.colwise() = _initial_velocity;
 
     _calculatePerVertexQuantities();
-    _createConstraints(_constraint_type, _constraints_with_residual, _constraints_with_damping, false);     // create constraints and add ConstraintProjectors to the solver object
+    _createElasticConstraints();     // create constraints and add ConstraintProjectors to the solver object
 }
 
 template<typename SolverType, typename... ConstraintTypes>
@@ -106,8 +106,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addStaticCollisio
     Solver::StaticDeformableCollisionConstraint& collision_constraint = 
         _constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
-    Solver::ConstraintProjectorOptions projector_options;
-    _solver.addConstraintProjector(_sim->dt(), projector_options, &collision_constraint); // TODO: accomodate for first-order method
+    _solver.addConstraintProjector(_sim->dt(), &collision_constraint); // TODO: accomodate for first-order method
 
     // XPBDCollisionConstraint xpbd_collision_constraint;
     // xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -134,8 +133,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addRigidDeformabl
     Solver::RigidDeformableCollisionConstraint& collision_constraint = 
         _constraints.template emplace_back<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
-    Solver::ConstraintProjectorOptions projector_options;
-    _solver.addConstraintProjector(_sim->dt(), projector_options, &collision_constraint); // TODO: accomodate for first-order method
+    _solver.addConstraintProjector(_sim->dt(), &collision_constraint); // TODO: accomodate for first-order method
 
     // XPBDCollisionConstraint xpbd_collision_constraint;
     // xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -202,7 +200,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_calculatePerVert
 }
 
 template<typename SolverType, typename... ConstraintTypes>
-void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_createConstraints(XPBDMeshObjectConstraintConfigurationEnum /*constraint_type*/, bool with_residual, bool with_damping, bool first_order)
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_createElasticConstraints()
 {
     // TODO: think about this... we need to resize each vector initially so that pointers to constraints are still valid...
     // alternative: use vector unique_ptr<Constraint> 
@@ -210,12 +208,6 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_createConstraint
     _constraints.template reserve<Solver::DeviatoricConstraint>(tetMesh()->numElements());
     _constraints.template reserve<Solver::StaticDeformableCollisionConstraint>(_mesh->numFaces());
     _constraints.template reserve<Solver::RigidDeformableCollisionConstraint>(_mesh->numFaces());
-
-    Solver::ConstraintProjectorOptions projector_options;
-    projector_options.with_residual = with_residual;
-    projector_options.with_damping = with_damping;
-    projector_options.first_order = first_order;
-    projector_options.damping_gamma = _damping_gamma;
 
     // create constraint(s) for each element
     for (int i = 0; i < tetMesh()->numElements(); i++)
@@ -244,8 +236,8 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_createConstraint
                 _constraints.template emplace_back<Solver::DeviatoricConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
             
             // TODO: support separate constraints - maybe though SeparateConstraintProjector class?.
-            _solver.addConstraintProjector(_sim->dt(), projector_options, &hyd_constraint);
-            _solver.addConstraintProjector(_sim->dt(), projector_options, &dev_constraint);
+            _solver.addConstraintProjector(_sim->dt(), &hyd_constraint);
+            _solver.addConstraintProjector(_sim->dt(), &dev_constraint);
             // _solver.addConstraintProjector(_sim->dt(), projector_options, &dev_constraint, &hyd_constraint);
             
         }
@@ -257,7 +249,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_createConstraint
             Solver::DeviatoricConstraint& dev_constraint = 
                 _constraints.template emplace_back<Solver::DeviatoricConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
 
-            _solver.addConstraintProjector(_sim->dt(), projector_options, &dev_constraint, &hyd_constraint);
+            _solver.addConstraintProjector(_sim->dt(), &dev_constraint, &hyd_constraint);
         }
     }
 }
@@ -428,8 +420,8 @@ const XPBDMeshObjectGPUResource* XPBDMeshObject<SolverType, TypeList<ConstraintT
 
 
 // TODO: find a way to automate this!
-using SolverTypesStableNeohookean = XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintConfigurations::StableNeohookean::projector_type_list>;
-using SolverTypesStableNeohookeanCombined = XPBDMeshObjectSolverTypes<XPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::projector_type_list>;
+using SolverTypesStableNeohookean = XPBDObjectSolverTypes<XPBDMeshObjectConstraintConfigurations::StableNeohookean::projector_type_list>;
+using SolverTypesStableNeohookeanCombined = XPBDObjectSolverTypes<XPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::projector_type_list>;
 using StableNeohookeanConstraints = XPBDMeshObjectConstraintConfigurations::StableNeohookean::constraint_type_list;
 using StableNeohookeanCombinedConstraints = XPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::constraint_type_list;
 
@@ -443,6 +435,17 @@ template class XPBDMeshObject<SolverTypesStableNeohookeanCombined::GaussSeidel, 
 template class XPBDMeshObject<SolverTypesStableNeohookeanCombined::Jacobi, StableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject<SolverTypesStableNeohookeanCombined::ParallelJacobi, StableNeohookeanCombinedConstraints>;
 
+using FirstOrderSolverTypesStableNeohookean = FirstOrderXPBDObjectSolverTypes<FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookean::projector_type_list>;
+using FirstOrderSolverTypesStableNeohookeanCombined = FirstOrderXPBDObjectSolverTypes<FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::projector_type_list>;
+using FirstOrderStableNeohookeanConstraints = FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookean::constraint_type_list;
+using FirstOrderStableNeohookeanCombinedConstraints = FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::constraint_type_list;
+template class XPBDMeshObject<FirstOrderSolverTypesStableNeohookean::GaussSeidel, FirstOrderStableNeohookeanConstraints>;
+template class XPBDMeshObject<FirstOrderSolverTypesStableNeohookean::Jacobi, FirstOrderStableNeohookeanConstraints>;
+template class XPBDMeshObject<FirstOrderSolverTypesStableNeohookean::ParallelJacobi, FirstOrderStableNeohookeanConstraints>;
+
+template class XPBDMeshObject<FirstOrderSolverTypesStableNeohookeanCombined::GaussSeidel, FirstOrderStableNeohookeanCombinedConstraints>;
+template class XPBDMeshObject<FirstOrderSolverTypesStableNeohookeanCombined::Jacobi, FirstOrderStableNeohookeanCombinedConstraints>;
+template class XPBDMeshObject<FirstOrderSolverTypesStableNeohookeanCombined::ParallelJacobi, FirstOrderStableNeohookeanCombinedConstraints>;
 // CTAD
 // template<typename SolverType, typename ...ConstraintTypes> XPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const XPBDMeshObjectConfig* config)
 //     -> XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>;

@@ -13,14 +13,15 @@
 namespace Solver
 {
 
-template<class Constraint1, class Constraint2>
+template<bool IsFirstOrder, class Constraint1, class Constraint2>
 class CombinedConstraintProjector
 {
     public:
     constexpr static int NUM_CONSTRAINTS = 2;
     constexpr static int MAX_NUM_COORDINATES = Constraint1::NUM_COORDINATES + Constraint2::NUM_COORDINATES;
     
-    typedef TypeList<Constraint1, Constraint2> ConstraintTypes;
+    using constraint_type_list = TypeList<Constraint1, Constraint2>;
+    constexpr static bool is_first_order = IsFirstOrder;
 
     public:
     explicit CombinedConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
@@ -48,8 +49,23 @@ class CombinedConstraintProjector
 
         // std::cout << "Cd_grad: " << delC[0]<<", "<<delC[1]<<", "<<delC[2]<<", "<<delC[3]<<", "<<delC[4]<<", "<<delC[5]<<", "<<delC[6]<<", "<<delC[7]<<", "<<delC[8]<<", "<<delC[9]<<", "<<delC[10]<<", "<<delC[11]<<std::endl;
         // std::cout << "Ch_grad: " << delC[12]<<", "<<delC[13]<<", "<<delC[14]<<", "<<delC[15]<<", "<<delC[16]<<", "<<delC[17]<<", "<<delC[18]<<", "<<delC[19]<<", "<<delC[20]<<", "<<delC[21]<<", "<<delC[22]<<", "<<delC[23]<<std::endl;
+        
+        // compute alpha_tilde
+        // if using 1st order XPBD method - alpha_tilde = alpha / dt
+        // if using 2nd order XPBD method - alpha_tilde = alpha / dt^2
+        Real alpha_tilde[2];
+        if constexpr(IsFirstOrder)
+        {
+            alpha_tilde[0] = _constraint1->alpha() / _dt;
+            alpha_tilde[1] = _constraint2->alpha() / _dt;
+        }
+        else
+        {
+            alpha_tilde[0] = _constraint1->alpha() / (_dt * _dt);
+            alpha_tilde[1] = _constraint2->alpha() / (_dt * _dt);
+        }
+
         // calculate LHS of lambda update: delC^T * M^-1 * delC
-        Real alpha_tilde[2] = { _constraint1->alpha() / (_dt * _dt), _constraint2->alpha() / (_dt * _dt) };
         Real LHS[4];
         for (int ci = 0; ci < 2; ci++)
         {

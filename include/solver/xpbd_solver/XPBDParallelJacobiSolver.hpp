@@ -34,19 +34,19 @@ using TypeIdentity_t = typename TypeIdentity<T>::type;
 namespace Solver
 {
 
-template<typename ...ConstraintProjectors>
-class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
+template<bool IsFirstOrder, typename ...ConstraintProjectors>
+class XPBDParallelJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
 { 
     public:
     explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
-        : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy) 
+        : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy) 
     { 
 
     }
 
     void setup()
     {
-        this->XPBDSolver<ConstraintProjectors...>::setup();
+        this->XPBDSolver<IsFirstOrder, ConstraintProjectors...>::setup();
 
         _temp_vertices.resize(this->_obj->mesh()->numVertices()*3);
         _temp_vertices_resource = Sim::ArrayGPUResource<float>(_temp_vertices.data(), _temp_vertices.size());
@@ -116,18 +116,17 @@ class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
     // not needed - constraint solve happens on GPU
     virtual void _iterateConstraints() override {}
 
-    // TODO: figure out how to "override" XPBDSolver functionality for addConstraintProjector
     template<class... Constraints>
-    void addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraints* ... constraints)
+    void addConstraintProjector(Real dt, Constraints* ... constraints)
     {
-        auto projector = this->_createConstraintProjector(dt, options, constraints...);
+        auto projector = this->_createConstraintProjector(dt, constraints...);
         auto gpu_projector = projector.createGPUConstraintProjector();
         _gpu_projectors.template get<MonitoredVector<decltype(gpu_projector)>>().push_back(std::move(gpu_projector));
     }
 
     protected:
     template<class Constraint>
-    int _addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraint* constraint)
+    int _addConstraintProjector(Real dt,  Constraint* constraint)
     {
         typename Constraint::GPUConstraintType gpu_constraint = constraint->createGPUConstraint();
         typedef GPUConstraintProjector<typename Constraint::GPUConstraintType> ProjectorType;
@@ -138,7 +137,7 @@ class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
     }
 
     template<class Constraint1, class Constraint2>
-    int _addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraint1* constraint1, Constraint2* constraint2)
+    int _addConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
     {
         typename Constraint1::GPUConstraintType gpu_constraint1 = constraint1->createGPUConstraint();
         typename Constraint2::GPUConstraintType gpu_constraint2 = constraint2->createGPUConstraint();
@@ -173,12 +172,12 @@ class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
 
 namespace Solver
 {
-    template<typename ...ConstraintProjectors>
-    class XPBDParallelJacobiSolver : public XPBDSolver<ConstraintProjectors...>
+    template<bool IsFirstOrder, typename ...ConstraintProjectors>
+    class XPBDParallelJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
     {
         public:
         explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
-        : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy) 
+        : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy) 
         { 
             assert(0 && "Not implemented for CPU!");
         }

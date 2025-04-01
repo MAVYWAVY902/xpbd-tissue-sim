@@ -15,12 +15,12 @@
 namespace Solver
 {
 
-template<typename ...ConstraintProjectors>
+template<bool IsFirstOrder, typename ...ConstraintProjectors>
 class XPBDSolver
 {
     public:
     using projector_type_list = TypeList<ConstraintProjectors...>;
-    using constraint_type_list = typename ConcatenateTypeLists<typename ConstraintProjectors::ConstraintTypes...>::type;
+    using constraint_type_list = typename ConcatenateTypeLists<typename ConstraintProjectors::constraint_type_list...>::type;
 
     explicit XPBDSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)
@@ -87,9 +87,9 @@ class XPBDSolver
     int numIterations() const { return _num_iter; }
 
     template<class... Constraints>
-    void addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraints* ... constraints)
+    void addConstraintProjector(Real dt, Constraints* ... constraints)
     {
-        auto projector = _createConstraintProjector(dt, options, constraints...);
+        auto projector = _createConstraintProjector(dt, constraints...);
     
         // amount of pre-allocated memory required to perform the constraint(s) projection
         // size_t required_array_size = projector.memoryNeeded() / sizeof(Real);
@@ -109,8 +109,8 @@ class XPBDSolver
         _num_constraints += decltype(projector)::NUM_CONSTRAINTS;
     
         // check if primary residual is needed for constraint projection
-        if (options.with_residual)
-        {
+        // if (options.with_residual)
+        // {
             // TODO: FIX THIS for the NEW APPROACH!!!
 
             // _constraints_using_primary_residual = true;
@@ -118,7 +118,7 @@ class XPBDSolver
             // {
             //     wpr->setPrimaryResidual(_primary_residual.data());
             // }
-        }
+        // }
             
         _constraint_projectors.template push_back<decltype(projector)>(std::move(projector));
     }
@@ -141,17 +141,18 @@ class XPBDSolver
 
     
     template <class Constraint>
-    ConstraintProjector<Constraint> _createConstraintProjector(Real dt, const ConstraintProjectorOptions& /* options */, Constraint* constraint)
+    ConstraintProjector<IsFirstOrder, Constraint> _createConstraintProjector(Real dt, Constraint* constraint)
     {
-        ConstraintProjector<Constraint> projector = ConstraintProjector(dt, constraint);
+        ConstraintProjector<IsFirstOrder, Constraint> projector = ConstraintProjector<IsFirstOrder, Constraint>(dt, constraint);
 
         return projector;
     }
 
     template <class Constraint1, class Constraint2>
-    CombinedConstraintProjector<Constraint1, Constraint2> _createConstraintProjector(Real dt, const ConstraintProjectorOptions& /* options */, Constraint1* constraint1, Constraint2* constraint2)
+    CombinedConstraintProjector<IsFirstOrder, Constraint1, Constraint2> _createConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
     {
-        CombinedConstraintProjector<Constraint1, Constraint2> projector = CombinedConstraintProjector(dt, constraint1, constraint2);
+        CombinedConstraintProjector<IsFirstOrder, Constraint1, Constraint2> projector = 
+            CombinedConstraintProjector<IsFirstOrder, Constraint1, Constraint2>(dt, constraint1, constraint2);
 
         return projector;
     }

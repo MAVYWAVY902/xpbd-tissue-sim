@@ -23,11 +23,21 @@ class FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : publi
 
    //  Real vertexInvDamping(const unsigned index) const { return _inv_B[index]; }
 
+   void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
+      const XPBDMeshObject_Base* obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w);
+   
+   void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+      const Sim::XPBDMeshObject_Base* deformable_obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w);
+
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override { assert(0); /* not implemented */ }
  #endif
 
     protected:
+    /** Creates constraints according to the constraint type.
+     */
+    void _createElasticConstraints();
+
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the forces applied to them
      */

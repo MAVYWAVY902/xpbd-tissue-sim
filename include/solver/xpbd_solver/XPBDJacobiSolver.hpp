@@ -8,13 +8,13 @@ namespace Solver
 
 /** Enforces constraints using the XPBD algorithm with Jacobi iterations, where the state is updated after all constraint projections.
  */
-template <typename ...ConstraintProjectors>
-class XPBDJacobiSolver : public XPBDSolver<ConstraintProjectors...>
+template <bool IsFirstOrder, typename ...ConstraintProjectors>
+class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
 {
     public:
     /** Same constructor as XPBDSolver */
     explicit XPBDJacobiSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
-        : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy)
+        : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
     {}
 
     void setup()
@@ -24,9 +24,9 @@ class XPBDJacobiSolver : public XPBDSolver<ConstraintProjectors...>
 
     // TODO: figure out how to "override" XPBDSolver functionality for addConstraintProjector
     template<class... Constraints>
-    void addConstraintProjector(Real dt, const ConstraintProjectorOptions& options, Constraints* ... constraints)
+    void addConstraintProjector(Real dt, Constraints* ... constraints)
     {
-        auto projector = this->_createConstraintProjector(dt, options, constraints...);
+        auto projector = this->_createConstraintProjector(dt, constraints...);
     
         // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
         this->_coordinate_updates.resize(this->_coordinate_updates.size() + projector.numCoordinates());
@@ -35,8 +35,8 @@ class XPBDJacobiSolver : public XPBDSolver<ConstraintProjectors...>
         this->_num_constraints += decltype(projector)::NUM_CONSTRAINTS;
     
         // check if primary residual is needed for constraint projection
-        if (options.with_residual)
-        {
+        // if (options.with_residual)
+        // {
             // TODO: FIX THIS for the NEW APPROACH!!!
 
             // _constraints_using_primary_residual = true;
@@ -44,7 +44,7 @@ class XPBDJacobiSolver : public XPBDSolver<ConstraintProjectors...>
             // {
             //     wpr->setPrimaryResidual(_primary_residual.data());
             // }
-        }
+        // }
             
         this->_constraint_projectors.template push_back<decltype(projector)>(std::move(projector));
     }

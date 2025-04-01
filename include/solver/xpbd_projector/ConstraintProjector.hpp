@@ -25,7 +25,7 @@ struct ConstraintProjectorOptions
     {}
 };
 
-template<class Constraint>
+template<bool IsFirstOrder, class Constraint>
 class ConstraintProjector
 {
     public:
@@ -33,7 +33,8 @@ class ConstraintProjector
     constexpr static int NUM_CONSTRAINTS = 1;
     constexpr static int MAX_NUM_COORDINATES = Constraint::NUM_COORDINATES;
 
-    typedef TypeList<Constraint> ConstraintTypes;
+    using constraint_type_list = TypeList<Constraint>;
+    constexpr static bool is_first_order = IsFirstOrder;
 
     public:
     explicit ConstraintProjector(Real dt, Constraint* constraint_ptr)
@@ -68,8 +69,20 @@ class ConstraintProjector
             return;
         }
 
-        // calculate LHS of lambda update: delC^T * M^-1 * delC
-        Real alpha_tilde = _constraint->alpha() / (_dt * _dt);
+        // compute alpha_tilde
+        // if using 1st order XPBD method - alpha_tilde = alpha / dt
+        // if using 2nd order XPBD method - alpha_tilde = alpha / dt^2
+        Real alpha_tilde;
+        if constexpr(IsFirstOrder)
+        {
+            alpha_tilde = _constraint->alpha() / _dt;
+        }
+        else
+        {
+            alpha_tilde = _constraint->alpha() / (_dt * _dt);
+        }
+
+        // calculate LHS of lambda update: delC^T * M^-1 * delC + alpha_tilde
         Real LHS = alpha_tilde;
         const std::vector<PositionReference>& positions = _constraint->positions();
         

@@ -37,11 +37,11 @@ class XPBDObjectFactory
         XPBDMeshObjectConstraintConfigurationEnum constraint_type = config->constraintType();
         if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN)
         {
-            return _createFirstOrderXPBDMeshObject<XPBDMeshObjectConstraintConfigurations::StableNeohookean>(sim, config);
+            return _createFirstOrderXPBDMeshObject<FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookean>(sim, config);
         }
         else if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED)
         {
-            return _createFirstOrderXPBDMeshObject<XPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined>(sim, config);
+            return _createFirstOrderXPBDMeshObject<FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined>(sim, config);
         }
         else
         {
@@ -57,17 +57,17 @@ class XPBDObjectFactory
         XPBDObjectSolverTypeEnum solver_type = config->solverType().value();
         if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)
         {
-            using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::GaussSeidel;
+            using SolverType = typename XPBDObjectSolverTypes<typename ConstraintType::projector_type_list>::GaussSeidel;
             return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else if (solver_type == XPBDObjectSolverTypeEnum::JACOBI)
         {
-            using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::Jacobi;
+            using SolverType = typename XPBDObjectSolverTypes<typename ConstraintType::projector_type_list>::Jacobi;
             return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else if (solver_type == XPBDObjectSolverTypeEnum::PARALLEL_JACOBI)
         {
-            using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::ParallelJacobi;
+            using SolverType = typename XPBDObjectSolverTypes<typename ConstraintType::projector_type_list>::ParallelJacobi;
             return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else
@@ -84,17 +84,17 @@ class XPBDObjectFactory
         XPBDObjectSolverTypeEnum solver_type = config->solverType().value();
         if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)
         {
-            using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::GaussSeidel;
+            using SolverType = typename FirstOrderXPBDObjectSolverTypes<typename ConstraintType::projector_type_list>::GaussSeidel;
             return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else if (solver_type == XPBDObjectSolverTypeEnum::JACOBI)
         {
-            using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::Jacobi;
+            using SolverType = typename FirstOrderXPBDObjectSolverTypes<typename ConstraintType::projector_type_list>::Jacobi;
             return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else if (solver_type == XPBDObjectSolverTypeEnum::PARALLEL_JACOBI)
         {
-            using SolverType = typename XPBDMeshObjectSolverTypes<typename ConstraintType::projector_type_list>::ParallelJacobi;
+            using SolverType = typename FirstOrderXPBDObjectSolverTypes<typename ConstraintType::projector_type_list>::ParallelJacobi;
             return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else

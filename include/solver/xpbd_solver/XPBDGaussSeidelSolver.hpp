@@ -9,13 +9,13 @@ namespace Solver
 /** Enforces constraints using the XPBD algorithm with a Gauss-Seidel update strategy, where the state is updated after every constraint projection.
  * This is the algorithm/update strategy proposed by the original XPBD paper.
  */
-template <typename ...ConstraintProjectors>
-class XPBDGaussSeidelSolver : public XPBDSolver<ConstraintProjectors...>
+template <bool IsFirstOrder, typename ...ConstraintProjectors>
+class XPBDGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
 {
     public:
     /** Same constructor as XPBDSolver */
     explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
-        : XPBDSolver<ConstraintProjectors...>(obj, num_iter, residual_policy)
+        : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
     {
     }
 

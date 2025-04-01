@@ -9,8 +9,12 @@
 namespace Solver
 {
 
+// TODO: partial template specialization with IsFirstOrder?
 template<>
-void CombinedConstraintProjector<DeviatoricConstraint, HydrostaticConstraint>::project(CoordinateUpdate* coordinate_updates_ptr);
+void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstraint>::project(CoordinateUpdate* coordinate_updates_ptr);
+
+template<>
+void CombinedConstraintProjector<false, DeviatoricConstraint, HydrostaticConstraint>::project(CoordinateUpdate* coordinate_updates_ptr);
 
 } // namespace Solver
 
