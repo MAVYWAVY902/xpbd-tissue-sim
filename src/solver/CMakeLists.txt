@@ -11,6 +11,8 @@ target_sources(Solver
         ${SOLVER_SRC_DIR}/constraint/StaticDeformableCollisionConstraint.cpp
         ${SOLVER_SRC_DIR}/constraint/RigidDeformableCollisionConstraint.cpp
 
+        ${SOLVER_SRC_DIR}/xpbd_projector/CombinedNeohookeanConstraintProjector.cpp
+
         # ${SOLVER_SRC_DIR}/XPBDSolver.cpp
         # ${SOLVER_SRC_DIR}/XPBDGaussSeidelSolver.cpp
         # ${SOLVER_SRC_DIR}/XPBDJacobiSolver.cpp

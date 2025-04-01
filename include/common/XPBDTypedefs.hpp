@@ -3,6 +3,7 @@
 
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
+#include "solver/xpbd_projector/CombinedNeohookeanConstraintProjector.hpp"
 
 #include "solver/constraint/HydrostaticConstraint.hpp"
 #include "solver/constraint/DeviatoricConstraint.hpp"

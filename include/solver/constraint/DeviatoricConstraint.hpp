@@ -11,10 +11,18 @@
 namespace Solver
 {
 
+// TODO: systematic way for forward declarations...
+template<typename Constraint1, typename Constraint2>
+class CombinedConstraintProjector;
+
+class HydrostaticConstraint;
+
 /** Represents the deviatoric constraint derived from the Stable Neo-hookean strain energy, proposed by Macklin et. al: https://mmacklin.com/neohookean.pdf
  */
 class DeviatoricConstraint : public ElementConstraint
 {   
+    friend class CombinedConstraintProjector<DeviatoricConstraint, HydrostaticConstraint>;
+
     public:
     constexpr static int NUM_POSITIONS = 4;
     constexpr static int NUM_COORDINATES = 12;
@@ -51,10 +59,19 @@ class DeviatoricConstraint : public ElementConstraint
      * 
      * This may be desirable when there would be duplicate work involved to evaluate constraint and its gradient separately.
      * 
+     * Inline for performance reasons.
+     * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    void evaluateWithGradient(Real* C, Real* grad) const;
+    void evaluateWithGradient(Real* C, Real* grad) const
+    {
+        Real F[9];
+        Real X[9];
+        _computeF(F, X);
+        _evaluate(C, F);
+        _gradient(grad, C, F);
+    }
 
     #ifdef HAVE_CUDA
     typedef GPUDeviatoricConstraint GPUConstraintType;
@@ -62,16 +79,52 @@ class DeviatoricConstraint : public ElementConstraint
     #endif
 
     private:
+    /** Note - these are inline for performance reasons. (~7% speedup) */
 
     /** Helper method to evaluate the constraint given the deformation gradient, F, using pre-allocated memory.
      * Avoids the need to recompute F if we already have it.
      */
-    inline void _evaluate(Real* C, Real* F) const;
+    void _evaluate(Real* C, Real* F) const
+    {
+        // C = frob(F)
+        *C = std::sqrt(F[0]*F[0] + F[1]*F[1] + F[2]*F[2] + F[3]*F[3] + F[4]*F[4] + F[5]*F[5] + F[6]*F[6] + F[7]*F[7] + F[8]*F[8]);
+    }
 
     /** Helper method to evaluate the constraint gradient given the deformation gradient, F, useing pre-allocated memory.
      * Avoids the need to recompute F and C(x) if we already have it.
      */
-    inline void _gradient(Real* delC, Real* C, Real* F) const;
+    void _gradient(Real* delC, Real* C, Real* F) const
+    {
+        // for A = 1/C * F * Q^T,
+        // 1st column of A is delC wrt 1st position
+        // 2nd column of A is delC wrt 2nd position
+        // 3rd column of A is delC wrt 3rd position
+        // delC wrt 4th position is (-1st column - 2nd column - 3rd column)
+        // see supplementary material of Macklin paper for more details
+
+        Real inv_C = 1.0/(*C);
+
+        // F is column major
+        // calculation of delC wrt 1st position
+        delC[0] = inv_C * (F[0]*_Q(0,0) + F[3]*_Q(0,1) + F[6]*_Q(0,2));
+        delC[1] = inv_C * (F[1]*_Q(0,0) + F[4]*_Q(0,1) + F[7]*_Q(0,2));
+        delC[2] = inv_C * (F[2]*_Q(0,0) + F[5]*_Q(0,1) + F[8]*_Q(0,2));
+
+        // calculation of delC wrt 2nd position
+        delC[3] = inv_C * (F[0]*_Q(1,0) + F[3]*_Q(1,1) + F[6]*_Q(1,2));
+        delC[4] = inv_C * (F[1]*_Q(1,0) + F[4]*_Q(1,1) + F[7]*_Q(1,2));
+        delC[5] = inv_C * (F[2]*_Q(1,0) + F[5]*_Q(1,1) + F[8]*_Q(1,2));
+
+        // calculation of delC wrt 3rd position
+        delC[6] = inv_C * (F[0]*_Q(2,0) + F[3]*_Q(2,1) + F[6]*_Q(2,2));
+        delC[7] = inv_C * (F[1]*_Q(2,0) + F[4]*_Q(2,1) + F[7]*_Q(2,2));
+        delC[8] = inv_C * (F[2]*_Q(2,0) + F[5]*_Q(2,1) + F[8]*_Q(2,2));
+
+        // calculation of delC wrt 4th position
+        delC[9]  = -delC[0] - delC[3] - delC[6];
+        delC[10] = -delC[1] - delC[4] - delC[7];
+        delC[11] = -delC[2] - delC[5] - delC[8];
+    }
 
 };
 

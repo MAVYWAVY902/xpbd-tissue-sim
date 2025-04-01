@@ -3,6 +3,8 @@
 
 #include "utils/CudaHelperMath.h"
 
+#include <iostream>
+
 template<class Constraint1, class Constraint2>
 struct GPUCombinedConstraintProjector
 {
