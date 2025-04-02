@@ -7,7 +7,7 @@ class VirtuosoArmConfig : public ObjectConfig
 {
     public:
     static std::optional<double>& DEFAULT_OT_DIAMETER() { static std::optional<double> ot_dia(0.15); return ot_dia; }
-    static std::optional<double>& DEFUALT_OT_CURVATURE() { static std::optional<double> ot_curv(0.15); return ot_curv; }
+    static std::optional<double>& DEFUALT_OT_R_CURVATURE() { static std::optional<double> ot_curv(0.15); return ot_curv; }
     static std::optional<double>& DEFAULT_IT_DIAMETER() { static std::optional<double> it_dia(0.1); return it_dia; }
     static std::optional<double>& DEFAULT_IT_INITIAL_TRANSLATION() { static std::optional<double> it_trans(0.05); return it_trans; }
     static std::optional<double>& DEFAULT_IT_INITIAL_ROTATION() { static std::optional<double> it_rot(0); return it_rot; }
@@ -24,7 +24,7 @@ class VirtuosoArmConfig : public ObjectConfig
         _extractParameter("inner-tube-rotation", node, _it_initial_rotation, DEFAULT_IT_INITIAL_ROTATION());
 
         _extractParameter("outer-tube-diameter", node, _ot_diameter, DEFAULT_OT_DIAMETER());
-        _extractParameter("outer-tube-curvature", node, _ot_curvature, DEFUALT_OT_CURVATURE());
+        _extractParameter("outer-tube-radius-of-curvature", node, _ot_r_curvature, DEFUALT_OT_R_CURVATURE());
         _extractParameter("outer-tube-translation", node, _ot_initial_translation, DEFAULT_OT_INITIAL_TRANSLATION());
         _extractParameter("outer-tube-rotation", node, _ot_initial_rotation, DEFAULT_OT_INITIAL_ROTATION());
         _extractParameter("outer-tube-distal-straight-length", node, _ot_distal_straight_length, DEFAULT_OT_DISTAL_STRAIGHT_LENGTH());
@@ -37,7 +37,7 @@ class VirtuosoArmConfig : public ObjectConfig
     double innerTubeInitialTranslation() const { return _it_initial_translation.value.value(); }
     double innerTubeInitialRotation() const { return _it_initial_rotation.value.value(); }
     double outerTubeDiameter() const { return _ot_diameter.value.value(); }
-    double outerTubeCurvature() const { return _ot_curvature.value.value(); }
+    double outerTubeRadiusOfCurvature() const { return _ot_r_curvature.value.value(); }
     double outerTubeInitialTranslation() const { return _ot_initial_translation.value.value(); }
     double outerTubeInitialRotation() const { return _ot_initial_rotation.value.value(); }
     double outerTubeDistalStraightLength() const { return _ot_distal_straight_length.value.value(); }
@@ -49,7 +49,7 @@ class VirtuosoArmConfig : public ObjectConfig
     ConfigParameter<double> _it_initial_rotation;
 
     ConfigParameter<double> _ot_diameter;
-    ConfigParameter<double> _ot_curvature;
+    ConfigParameter<double> _ot_r_curvature;
     ConfigParameter<double> _ot_distal_straight_length;
     ConfigParameter<double> _ot_initial_translation;
     ConfigParameter<double> _ot_initial_rotation;

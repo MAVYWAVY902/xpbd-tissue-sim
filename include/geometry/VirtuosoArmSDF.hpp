@@ -41,7 +41,7 @@ class VirtuosoArmSDF : public SDF
     private:
     Eigen::Vector3d _bodyToGlobalInnerTubeGradient(const Eigen::Vector3d& grad) const
     {
-        const double ot_curv = _virtuoso_arm->outerTubeCurvature();
+        const double ot_curv = _virtuoso_arm->outerTubeRadiusOfCurvature();
         const double ot_rot = _virtuoso_arm->outerTubeRotation();
         const double ot_trans = _virtuoso_arm->outerTubeTranslation();
         const double ot_distal_len = _virtuoso_arm->outerTubeDistalStraightLength();
@@ -55,7 +55,7 @@ class VirtuosoArmSDF : public SDF
     }
     Eigen::Vector3d _globalToBodyInnerTube(const Eigen::Vector3d& x) const
     {
-        const double ot_curv = _virtuoso_arm->outerTubeCurvature();
+        const double ot_curv = _virtuoso_arm->outerTubeRadiusOfCurvature();
         const double ot_rot = _virtuoso_arm->outerTubeRotation();
         const double ot_trans = _virtuoso_arm->outerTubeTranslation();
         const double ot_distal_len = _virtuoso_arm->outerTubeDistalStraightLength();

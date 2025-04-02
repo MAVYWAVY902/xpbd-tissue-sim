@@ -33,7 +33,7 @@ void Easy3DVirtuosoArmGraphicsObject::update()
 void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
 {
     // generate the initial mesh by combining the torus (outer tube) and the cylinder (inner tube) meshes
-    easy3d::SurfaceMesh torus_mesh = _generateTorusMesh(_virtuoso_arm->outerTubeCurvature(), _virtuoso_arm->outerTubeDiameter(), 0, _OT_RADIAL_RES, _OT_TUBULAR_RES);
+    easy3d::SurfaceMesh torus_mesh = _generateTorusMesh(_virtuoso_arm->outerTubeRadiusOfCurvature(), _virtuoso_arm->outerTubeDiameter(), 0, _OT_RADIAL_RES, _OT_TUBULAR_RES);
     easy3d::SurfaceMesh ot_cyl_mesh = easy3d::SurfaceMeshFactory::cylinder(_OT_TUBULAR_RES, _virtuoso_arm->outerTubeDiameter()/2.0, _virtuoso_arm->outerTubeDistalStraightLength());
     const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
     easy3d::SurfaceMesh cyl_mesh = easy3d::SurfaceMeshFactory::cylinder(_IT_TUBULAR_RES, _virtuoso_arm->innerTubeDiameter()/2.0, l);
@@ -51,11 +51,11 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     const Eigen::Vector3d& ot_pos = _virtuoso_arm->outerTubePosition();
     for (auto& p : _e3d_mesh.points())
     {
-        // rotate around Y-axis
+        // rotate around z-axis
         const double x = p[0];
-        const double z = p[2];
-        p[0] = std::cos(ot_rot)*x + std::sin(ot_rot)*z;
-        p[2] = -std::sin(ot_rot)*x + std::cos(ot_rot)*z;
+        const double y = p[1];
+        p[0] = std::cos(ot_rot)*x - std::sin(ot_rot)*y;
+        p[1] = std::sin(ot_rot)*x + std::cos(ot_rot)*y;
 
         // translate mesh to outer tube position
         p[0] += ot_pos[0];
@@ -68,11 +68,11 @@ void Easy3DVirtuosoArmGraphicsObject::_updateInnerTubeMesh()
 {
     int ind_offset = _OT_RADIAL_RES*_OT_TUBULAR_RES + 2 + _OT_TUBULAR_RES*2; // number of vertices in outer tube mesh
 
-    const double max_angle = std::max(_virtuoso_arm->outerTubeTranslation() - _virtuoso_arm->outerTubeDistalStraightLength(), 0.0) / _virtuoso_arm->outerTubeCurvature();
+    const double max_angle = std::max(_virtuoso_arm->outerTubeTranslation() - _virtuoso_arm->outerTubeDistalStraightLength(), 0.0) / _virtuoso_arm->outerTubeRadiusOfCurvature();
     // starting point for the inner tube mesh
     double ot_straight_cyl_length = std::min(_virtuoso_arm->outerTubeDistalStraightLength(), _virtuoso_arm->outerTubeTranslation());
-    const double offset_x = _virtuoso_arm->outerTubeCurvature()*std::cos(max_angle) - _virtuoso_arm->outerTubeCurvature() - ot_straight_cyl_length*std::sin(max_angle);
-    const double offset_y = _virtuoso_arm->outerTubeCurvature()*std::sin(max_angle) + ot_straight_cyl_length*std::cos(max_angle);
+    const double offset_x = -_virtuoso_arm->outerTubeRadiusOfCurvature()*std::cos(max_angle) + _virtuoso_arm->outerTubeRadiusOfCurvature() + ot_straight_cyl_length*std::sin(max_angle);
+    const double offset_z = _virtuoso_arm->outerTubeRadiusOfCurvature()*std::sin(max_angle) + ot_straight_cyl_length*std::cos(max_angle);
     const double it_rot = _virtuoso_arm->innerTubeRotation();
     const double it_length = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
 
@@ -83,42 +83,36 @@ void Easy3DVirtuosoArmGraphicsObject::_updateInnerTubeMesh()
         p = cyl.points()[i-ind_offset];
 
         // rotate about the Z-axis by the inner tube rotation
-        // rotate about Z-axis by max_angle to align the tube's angle with the end of the outer tube
         const double x1 = p[0];
         const double y1 = p[1];
         p[0] = std::cos(it_rot)*x1 - std::sin(it_rot)*y1;
         p[1] = std::sin(it_rot)*x1 + std::cos(it_rot)*y1;
 
-        // rotate about X-axis 90 degrees
-        const double p1 = p[1];
-        p[1] = p[2];
-        p[2] = -p1;
-
-        // rotate about Z-axis by max_angle to align the tube's angle with the end of the outer tube
+        // rotate about y-axis by max_angle to align the tube's angle with the end of the outer tube
         const double x2 = p[0];
-        const double y2 = p[1];
-        p[0] = std::cos(max_angle)*x2 - std::sin(max_angle)*y2;
-        p[1] = std::sin(max_angle)*x2 + std::cos(max_angle)*y2;
+        const double z2 = p[2];
+        p[0] = std::cos(max_angle)*x2 + std::sin(max_angle)*z2;
+        p[2] = -std::sin(max_angle)*x2 + std::cos(max_angle)*z2;
 
         // translate the inner tube the end of the outer tube
         p[0] += offset_x;
-        p[1] += offset_y;
+        p[2] += offset_z;
     }
 
 }
 
 void Easy3DVirtuosoArmGraphicsObject::_updateOuterTubeMesh()
 {
-    const double radius = _virtuoso_arm->outerTubeCurvature();
+    const double radius = _virtuoso_arm->outerTubeRadiusOfCurvature();
     const double thickness = _virtuoso_arm->outerTubeDiameter();
-    const double max_angle = std::max(_virtuoso_arm->outerTubeTranslation() - _virtuoso_arm->outerTubeDistalStraightLength(), 0.0) / _virtuoso_arm->outerTubeCurvature();
+    const double max_angle = std::max(_virtuoso_arm->outerTubeTranslation() - _virtuoso_arm->outerTubeDistalStraightLength(), 0.0) / radius;
     // get discrete points along center curve - [0, max_angle]
-    // center curve will be in the XY plane (arbitrarily)
+    // center curve will be in the XZ plane, initial slope in the positive Z-direction, curving towards positive X (arbitrarily)
     std::vector<easy3d::vec3> center_pts;
     double center_angle = 0;
     for (int i = 0; i < _OT_RADIAL_RES; i++)
     {
-        const easy3d::vec3 center_pt(radius*std::cos(center_angle) - radius, radius*std::sin(center_angle), 0.0);
+        const easy3d::vec3 center_pt(-radius*std::cos(center_angle) + radius, 0.0, radius*std::sin(center_angle));
         center_pts.push_back(center_pt);
 
         center_angle += max_angle / (_OT_RADIAL_RES - 1);
@@ -134,10 +128,11 @@ void Easy3DVirtuosoArmGraphicsObject::_updateOuterTubeMesh()
         for (int ti = 0; ti < _OT_TUBULAR_RES; ti++)
         {
             const double tube_angle = ti * (2*3.1415 / _OT_TUBULAR_RES);
-            const easy3d::vec3 circle_pt(thickness/2.0 * std::cos(tube_angle), 0.0, thickness/2.0 * std::sin(tube_angle));
-            const easy3d::vec3 tube_pt(center_pt[0] + std::cos(center_angle) * circle_pt[0] - std::sin(center_angle) * circle_pt[1],
-                                       center_pt[1] + std::cos(center_angle) * circle_pt[1] + std::sin(center_angle) * circle_pt[0],
-                                       center_pt[2] + circle_pt[2]);
+            const easy3d::vec3 circle_pt(thickness/2.0 * std::cos(tube_angle), thickness/2.0 * std::sin(tube_angle), 0.0);
+            const easy3d::vec3 tube_pt(center_pt[0] + std::cos(center_angle) * circle_pt[0] + std::sin(center_angle) * circle_pt[2],
+                                       center_pt[1] + circle_pt[1],
+                                       center_pt[2] + std::cos(center_angle) * circle_pt[2] - std::sin(center_angle) * circle_pt[0]
+                                       );
             _e3d_mesh.points()[cur_ind++] = tube_pt;
         }
     }
@@ -154,20 +149,15 @@ void Easy3DVirtuosoArmGraphicsObject::_updateOuterTubeMesh()
         auto& p = _e3d_mesh.points()[i];
         p = cyl.points()[i-ind_offset];
 
-        // rotate about X-axis 90 degrees
-        const double p1 = p[1];
-        p[1] = p[2];
-        p[2] = -p1;
-
-        // rotate about Z-axis by max_angle to align the tube's angle with the end of the curved part of the outer tube
+        // rotate about y-axis by max_angle to align the tube's angle with the end of the curved part of the outer tube
         const double x2 = p[0];
-        const double y2 = p[1];
-        p[0] = std::cos(max_angle)*x2 - std::sin(max_angle)*y2;
-        p[1] = std::sin(max_angle)*x2 + std::cos(max_angle)*y2;
+        const double z2 = p[2];
+        p[0] = std::cos(max_angle)*x2 + std::sin(max_angle)*z2;
+        p[2] = -std::sin(max_angle)*x2 + std::cos(max_angle)*z2;
 
         // translate the straight tube the end of the curved part of the outer tube
         p[0] += center_pts.back()[0];
-        p[1] += center_pts.back()[1];
+        p[2] += center_pts.back()[2];
     }
 }
 

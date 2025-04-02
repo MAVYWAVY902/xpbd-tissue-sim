@@ -71,4 +71,31 @@ Eigen::Vector4d eulXYZ2Quat(const double x, const double y, const double z)
     return Eigen::Vector4d({q1, q2, q3, w});
 }
 
+Eigen::Matrix3d Rz(double theta)
+{
+    Eigen::Matrix3d rot_mat;
+    rot_mat << std::cos(theta), -std::sin(theta), 0.0,
+                std::sin(theta), std::cos(theta), 0.0,
+                0.0, 0.0, 1.0;
+    return rot_mat;
+}
+
+Eigen::Matrix3d Ry(double theta)
+{
+    Eigen::Matrix3d rot_mat;
+    rot_mat << std::cos(theta), 0.0, std::sin(theta),
+                0.0, 1.0, 0.0,
+                -std::sin(theta), 0.0, std::cos(theta);
+    return rot_mat;
+}
+
+Eigen::Matrix3d Rx(double theta)
+{
+    Eigen::Matrix3d rot_mat;
+    rot_mat << 1.0, 0.0, 0.0,
+                0.0, std::cos(theta), -std::sin(theta),
+                0.0, std::sin(theta), std::cos(theta);
+    return rot_mat;
+}
+
 } // namespace GeometryUtils

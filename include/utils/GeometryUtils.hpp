@@ -13,6 +13,10 @@ Eigen::Vector3d rotateVectorByQuat(const Eigen::Vector3d& v, const Eigen::Vector
 Eigen::Vector4d inverseQuat(const Eigen::Vector4d& quat);
 Eigen::Vector4d eulXYZ2Quat(const double x, const double y, const double z);
 
+Eigen::Matrix3d Rz(double theta);
+Eigen::Matrix3d Ry(double theta);
+Eigen::Matrix3d Rx(double theta);
+
 }
 
 #endif // __GEOMETRY_UTILS_HPP

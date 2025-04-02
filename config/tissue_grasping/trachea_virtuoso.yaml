@@ -1,7 +1,7 @@
 name: "Virtuoso Trachea"
 
 # Tissue grasping simulation-specific parameters
-input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
+input-device: "Keyboard" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 fixed-faces-filename: "../resource/tissue/tracheal_tumor_v2_fixed_faces.txt"
 
 g-accel: 0 # m/s2
@@ -19,10 +19,10 @@ objects:
     name: "Arm1"
     type: "VirtuosoArm"
     outer-tube-diameter: 1.56e-3
-    outer-tube-curvature: 1.5383e-2
+    outer-tube-radius-of-curvature: 1.5383e-2
     outer-tube-distal-straight-length: 5e-3
     outer-tube-translation: 6e-3
-    outer-tube-rotation: 90
+    outer-tube-rotation: 0
     inner-tube-diameter: 1.04e-3
     inner-tube-translation: 2.3e-2
     outer-tube-position: [0, -0.03, 0]
