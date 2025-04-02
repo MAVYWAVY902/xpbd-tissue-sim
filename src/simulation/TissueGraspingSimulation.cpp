@@ -7,7 +7,7 @@ namespace Sim
 {
 
 TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_filename)
-    : VirtuosoSimulation()
+    : Simulation()
 {
     // create a more specialized config object specifically for BeamStretchSimulations
     _config = std::make_unique<TissueGraspingSimulationConfig>(YAML::LoadFile(config_filename));
@@ -41,7 +41,7 @@ void TissueGraspingSimulation::setup()
     _write_mesh = true;
     _last_mesh_write_time = 0;
 
-    VirtuosoSimulation::setup();
+    Simulation::setup();
 
     // _viewer->enableMouseInteraction(false);
     
@@ -152,7 +152,7 @@ void TissueGraspingSimulation::_updateGraphics()
     //     }
     // }
 
-    VirtuosoSimulation::_updateGraphics();
+    Simulation::_updateGraphics();
 }
 
 void TissueGraspingSimulation::_timeStep()
@@ -178,7 +178,7 @@ void TissueGraspingSimulation::_timeStep()
         _last_mesh_write_time = _time;
     }
 
-    VirtuosoSimulation::_timeStep();
+    Simulation::_timeStep();
 }
 
 void TissueGraspingSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
@@ -198,7 +198,7 @@ void TissueGraspingSimulation::notifyMouseButtonPressed(int button, int action, 
         // _toggleTissueGrasping();
     }
 
-    VirtuosoSimulation::notifyMouseButtonPressed(button, action, modifiers);
+    Simulation::notifyMouseButtonPressed(button, action, modifiers);
 }
 
 void TissueGraspingSimulation::notifyMouseMoved(double x, double y)
@@ -234,7 +234,7 @@ void TissueGraspingSimulation::notifyMouseMoved(double x, double y)
     _mouse_pos_2d(0) = x;
     _mouse_pos_2d(1) = y;
 
-    VirtuosoSimulation::notifyMouseMoved(x, y);
+    Simulation::notifyMouseMoved(x, y);
 }   
 
 void TissueGraspingSimulation::notifyKeyPressed(int key, int action, int modifiers)
@@ -302,7 +302,7 @@ void TissueGraspingSimulation::notifyKeyPressed(int key, int action, int modifie
         
     }
 
-    VirtuosoSimulation::notifyKeyPressed(key, action, modifiers);
+    Simulation::notifyKeyPressed(key, action, modifiers);
     
 }
 

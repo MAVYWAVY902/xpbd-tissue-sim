@@ -52,6 +52,9 @@ class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
     /** Triggered when mouse moves */
     bool callback_event_cursor_pos(double x, double y) override;
 
+    /** Triggered when mouse is scrolled */
+    bool callback_event_scroll(double dx, double dy) override;
+
 
     private:
     easy3d::TextRenderer::Align _getEasy3dAlignment(const TextAlignment& alignment) const;

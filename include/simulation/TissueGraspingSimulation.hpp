@@ -2,7 +2,6 @@
 #define __TISSUE_GRASPING_SIMULATION_HPP
 
 #include "simulation/OutputSimulation.hpp"
-#include "simulation/VirtuosoSimulation.hpp"
 #include "haptics/HapticDeviceManager.hpp"
 #include "config/TissueGraspingSimulationConfig.hpp"
 #include "simobject/XPBDMeshObject.hpp"
@@ -12,7 +11,7 @@
 namespace Sim
 {
 
-class TissueGraspingSimulation : public VirtuosoSimulation
+class TissueGraspingSimulation : public Simulation
 {
     public:
 

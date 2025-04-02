@@ -4,6 +4,14 @@
 #include "simulation/Simulation.hpp"
 #include "simobject/VirtuosoArm.hpp"
 
+#include "config/VirtuosoSimulationConfig.hpp"
+
+#include "haptics/HapticDeviceManager.hpp"
+
+#include "simobject/RigidPrimitives.hpp"
+
+#include <map>
+
 namespace Sim
 {
 
@@ -14,7 +22,7 @@ class VirtuosoSimulation : public Simulation
 
     VirtuosoSimulation();
 
-    virtual std::string type() const override { return "ResidualSimulation"; }
+    virtual std::string type() const override { return "VirtuosoSimulation"; }
 
     virtual void setup() override;
 
@@ -25,13 +33,33 @@ class VirtuosoSimulation : public Simulation
      */
     virtual void notifyKeyPressed(int key, int action, int modifiers) override;
 
+    virtual void notifyMouseButtonPressed(int button, int action, int modifiers) override;
+
+    virtual void notifyMouseMoved(double x, double y) override;
+
+    virtual void notifyMouseScrolled(double dx, double dy) override;
+
     protected:
+    void _timeStep() override;
+
     // TODO: make these settable simulation parameters
     constexpr static double IT_ROT_RATE = 10; // rad/s
     constexpr static double IT_TRANS_RATE = 0.005; // m/s
     constexpr static double OT_ROT_RATE = 10; // rad/s
     constexpr static double OT_TRANS_RATE = 0.005; // m/s 
     VirtuosoArm* _virtuoso_arm;
+
+    std::optional<std::string> _fixed_faces_filename;
+    SimulationInputDevice _input_device;
+
+    RigidSphere* _tip_cursor;
+
+    std::map<int, bool> _keys_held;
+
+    Eigen::Vector2d _last_mouse_pos;
+
+    /** Manages haptic device(s) */
+    std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
 };
 
 } // namespace Sim

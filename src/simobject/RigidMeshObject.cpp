@@ -11,11 +11,10 @@ RigidMeshObject::RigidMeshObject(const Simulation* sim, const RigidMeshObjectCon
     _density = config->density();
 }
 
-// RigidMeshObject::RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density)
-//     : RigidObject(sim, name), _density(density)
-// {
-//     _mesh = MeshUtils::loadTetMeshFromGmshFile(filename);
-// }
+RigidMeshObject::RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density)
+    : RigidObject(sim, name), MeshObject(filename), _density(density)
+{
+}
 
 std::string RigidMeshObject::toString(const int indent) const
 {

@@ -38,11 +38,6 @@ class Simulation
         virtual std::string toString(const int indent) const;
         virtual std::string type() const { return "Simulation"; }
 
-        /** Adds a MeshObject to the simulation. Will add its Drawables to the Viewer as well.
-         * @param mesh_obj : the MeshObject being added  
-        */        
-        // void addObject(std::shared_ptr<MeshObject> mesh_obj);
-
         double time() const { return _time; }
 
         double dt() const { return _time_step; }
@@ -72,8 +67,16 @@ class Simulation
         virtual void notifyMouseButtonPressed(int button, int action, int modifiers);
 
         virtual void notifyMouseMoved(double x, double y);
+
+        virtual void notifyMouseScrolled(double dx, double dy);
     
     protected:
+        /** Helper to add an object to the simulation (used by derived Simulation classes)
+         * Assumes that the object HAS NOT BEEN SETUP YET (i.e. setup() has not been called for the new object)
+         * 
+        */        
+       void _addObject(std::unique_ptr<Object> new_obj, bool with_collisions=false);
+
         /** Time step the simulation */
         virtual void _timeStep();
 

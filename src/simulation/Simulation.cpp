@@ -75,14 +75,24 @@ std::string Simulation::toString(const int indent) const
     return  ss.str();
 }
 
-// void Simulation::addObject(std::shared_ptr<MeshObject> mesh_object)
-// {
-//     mesh_object->setSimulation(this);
-    
-//     // add new object to MeshObjects container
-//     _mesh_objects.push_back(mesh_object);
-    
-// }
+void Simulation::_addObject(std::unique_ptr<Object> new_obj, bool collisions)
+{
+    // set up the new object
+    new_obj->setup();
+        
+    // add the new object to the collision scene if collisions are enabled
+    if (collisions)
+    {
+        _collision_scene->addObject(new_obj.get());
+    }
+    // add the new object to the graphics scene to be visualized
+    if (_graphics_scene)
+    {
+        _graphics_scene->addObject(new_obj.get());
+    }
+
+    _objects.push_back(std::move(new_obj));
+}
 
 void Simulation::setup()
 {   
@@ -288,6 +298,11 @@ void Simulation::notifyMouseButtonPressed(int /* button */, int /* action */, in
 }
 
 void Simulation::notifyMouseMoved(double /* x */, double /* y */)
+{
+    // do nothing
+}
+
+void Simulation::notifyMouseScrolled(double /* dx */, double /* dy */)
 {
     // do nothing
 }

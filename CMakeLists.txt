@@ -62,9 +62,9 @@ add_subdirectory("src/simulation")
 
 target_link_libraries(ResidualSimulation Collision Graphics SimObject yaml-cpp)
 target_link_libraries(BeamSimulation ResidualSimulation)
-target_link_libraries(VirtuosoSimulation ResidualSimulation)
+target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
 # target_link_libraries(BeamStretchSimulation ResidualSimulation)
-target_link_libraries(TissueGraspingSimulation Haptics VirtuosoSimulation)
+target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
 # target_link_libraries(InitialDeformationSimulation ResidualSimulation)
 
 ### Create executables

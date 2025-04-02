@@ -12,6 +12,8 @@ class RigidSphere : public RigidObject
     public:
     RigidSphere(const Simulation* sim, const RigidSphereConfig* config);
 
+    RigidSphere(const Simulation* sim, const std::string& name, double radius, double density=1.0);
+
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
     */

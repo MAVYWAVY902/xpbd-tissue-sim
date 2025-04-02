@@ -14,6 +14,8 @@ class RigidMeshObject : public RigidObject, public MeshObject
     public:
     RigidMeshObject(const Simulation* sim, const RigidMeshObjectConfig* config);
 
+    RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density=1.0);
+
     // RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density);
 
     virtual std::string type() const override { return "RigidMeshObject"; }

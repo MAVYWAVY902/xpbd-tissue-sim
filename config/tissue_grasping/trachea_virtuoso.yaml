@@ -1,8 +1,6 @@
-name: "TissueGrasping"
+name: "Virtuoso Trachea"
 
 # Tissue grasping simulation-specific parameters
-z-scaling: 0.001    # scaling factor for converting vertical mouse movement with vertical tissue displacement
-grasp-size: 0.002   # the size of the area to grasp
 input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 fixed-faces-filename: "../resource/tissue/tracheal_tumor_v2_fixed_faces.txt"
 
@@ -28,7 +26,7 @@ objects:
     inner-tube-diameter: 1.04e-3
     inner-tube-translation: 2.3e-2
     outer-tube-position: [0, -0.03, 0]
-    collisions: true
+    collisions: false
   # -
   #   name: "Arm1"
   #   type: "VirtuosoArm"
@@ -65,7 +63,7 @@ objects:
     with-residual: false
     with-damping: false
     damping-multiplier: 400000000
-    collisions: true
+    collisions: false
 
   # -
   #   name: "sphere"

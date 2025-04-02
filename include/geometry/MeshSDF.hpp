@@ -41,6 +41,21 @@ class MeshSDF : public SDF
         }
     }
 
+    MeshSDF(const Sim::RigidMeshObject* mesh_obj)
+        : SDF(), _mesh_obj(mesh_obj) 
+    {
+        // calculate the SDF at the mesh's un-transformed state
+        // if the corresponding RigidMeshObject to this SDF has an initial rotation, the mesh is already rotated, which will throw off the SDF
+        Geometry::Mesh mesh_copy = *(mesh_obj->mesh());
+        // untranslate the copy of the mesh
+        mesh_copy.moveTogether(-mesh_obj->position());
+        // unrotate the copy of the mesh
+        const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(mesh_obj->orientation()));
+        mesh_copy.rotateAbout(Eigen::Vector3d::Zero(), rot_mat);
+        // compute the SDF
+        _sdf = mesh2sdf::MeshSDF(mesh_copy.vertices(), mesh_copy.faces(), 128, 5, true);
+    }
+
     virtual double evaluate(const Eigen::Vector3d& x) const
     {
         // transform x into body coordinates

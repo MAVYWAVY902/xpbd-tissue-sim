@@ -74,6 +74,16 @@ bool Easy3DTextRenderingViewer::callback_event_cursor_pos(double x, double y)
         return true;
 }
 
+bool Easy3DTextRenderingViewer::callback_event_scroll(double dx, double dy)
+{
+    _processScrollEvent(dx, dy);
+
+    if (_enable_mouse_interaction)
+        return easy3d::Viewer::callback_event_scroll(dx, dy);
+    else
+        return true;
+}
+
 void Easy3DTextRenderingViewer::init()
 {
     easy3d::Viewer::init();

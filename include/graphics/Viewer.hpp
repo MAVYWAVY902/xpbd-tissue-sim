@@ -155,6 +155,9 @@ class Viewer
     /** Shared viewer behavior on mouse move events. */
     void _processCursorMoveEvent(double x, double y);
 
+    /** Shared viewer behavior on mouse scroll events. */
+    void _processScrollEvent(double dx, double dy);
+
     std::string _name;
 
     /** Stores each TextSpec under its name */

@@ -39,9 +39,13 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
     }
     else if (Sim::RigidMeshObject* mesh_obj = dynamic_cast<Sim::RigidMeshObject*>(new_obj))
     {
-        const RigidMeshObjectConfig* obj_config = dynamic_cast<const RigidMeshObjectConfig*>(config);
-        assert(obj_config);
-        sdf = std::make_unique<Geometry::MeshSDF>(mesh_obj, obj_config);
+        if ( const RigidMeshObjectConfig* obj_config = dynamic_cast<const RigidMeshObjectConfig*>(config) )
+        {
+            sdf = std::make_unique<Geometry::MeshSDF>(mesh_obj, obj_config);
+        }
+        else
+            sdf = std::make_unique<Geometry::MeshSDF>(mesh_obj);
+        
     }
     else if (Sim::VirtuosoArm* arm = dynamic_cast<Sim::VirtuosoArm*>(new_obj))
     {

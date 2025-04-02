@@ -11,9 +11,20 @@ RigidSphere::RigidSphere(const Simulation* sim, const RigidSphereConfig* config)
 
     // mass is volume * density = 4/3 * pi * r^3 * density
     _m = 4.0/3.0 * 3.1415 * _radius * _radius * _radius * config->density();
-    std::cout << "Mass: " << _m << std::endl;
-    std::cout << "Position: " << _p << std::endl;
-    std::cout << "Velocity: " << _v << std::endl;
+
+    // moment of inertia of sphere about axis through its center is 2/5 * m * r^2
+    _I(0,0) = 2.0/5.0 * _m * _radius * _radius;
+    _I(1,1) = 2.0/5.0 * _m * _radius * _radius;
+    _I(2,2) = 2.0/5.0 * _m * _radius * _radius;
+
+    _I_inv = _I.inverse();
+}
+
+RigidSphere::RigidSphere(const Simulation* sim, const std::string& name, double radius, double density)
+    : RigidObject(sim, name), _radius(radius)
+{
+    // mass is volume * density = 4/3 * pi * r^3 * density
+    _m = 4.0/3.0 * 3.1415 * _radius * _radius * _radius * density;
 
     // moment of inertia of sphere about axis through its center is 2/5 * m * r^2
     _I(0,0) = 2.0/5.0 * _m * _radius * _radius;

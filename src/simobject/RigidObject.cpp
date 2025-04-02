@@ -75,17 +75,18 @@ void RigidObject::velocityUpdate()
     if (_fixed)
         return;
 
+    // TODO: uncomment this (commenting out so that the rigid cursor object for VirtuosoSimulation does not accumulate velocity when it follows the mouse)
     // update linear velocity
-    _v = (_p - _p_prev) / _sim->dt();
+    // _v = (_p - _p_prev) / _sim->dt();
 
-    // update angular velocity
-    const Eigen::Vector4d dq = GeometryUtils::quatMult(_q, GeometryUtils::inverseQuat(_q_prev));
-    _w = 2 / _sim->dt() * dq(Eigen::seq(0,2));
-    if (dq[3] < 0)  
-        _w = -_w;
+    // // update angular velocity
+    // const Eigen::Vector4d dq = GeometryUtils::quatMult(_q, GeometryUtils::inverseQuat(_q_prev));
+    // _w = 2 / _sim->dt() * dq(Eigen::seq(0,2));
+    // if (dq[3] < 0)  
+    //     _w = -_w;
 
-    _p_prev = _p;
-    _q_prev = _q;
+    // _p_prev = _p;
+    // _q_prev = _q;
 }
 
 void RigidObject::applyForceAtPoint(const Eigen::Vector3d& f, const Eigen::Vector3d& p) 

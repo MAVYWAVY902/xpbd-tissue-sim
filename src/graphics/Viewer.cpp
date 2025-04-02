@@ -82,4 +82,13 @@ void Viewer::_processCursorMoveEvent(double x, double y)
     }
 }
 
+void Viewer::_processScrollEvent(double dx, double dy)
+{
+    if (_simulation)
+    {
+        // notify the simulation that the mouse wheel was scrolled
+        _simulation->notifyMouseScrolled(dx, dy);
+    }
+}
+
 } // namespace Graphics

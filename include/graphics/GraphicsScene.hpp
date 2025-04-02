@@ -56,7 +56,7 @@ class GraphicsScene
      * @param obj_config : the ObjectConfig that contains any visualization parameters (e.g. coloring, draw points, etc.)
      * @returns the index of the provided object in the _graphics_objects array (can be used to fetch it in the future)
      */
-    virtual int addObject(const Sim::Object* obj, const ObjectConfig* obj_config) = 0;
+    virtual int addObject(const Sim::Object* obj, const ObjectConfig* obj_config=nullptr) = 0;
 
     /** Sets the camera mode to Orthographic */
     virtual void setCameraOrthographic() = 0;
