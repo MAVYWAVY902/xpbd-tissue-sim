@@ -1,5 +1,8 @@
 #include "graphics/Easy3DVirtuosoArmGraphicsObject.hpp"
 
+#include "geometry/TransformationMatrix.hpp"
+#include "geometry/CoordinateFrame.hpp"
+
 #include <easy3d/algo/surface_mesh_factory.h>
 #include <easy3d/renderer/renderer.h>
 #include <easy3d/renderer/drawable_triangles.h>
@@ -48,19 +51,29 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     // right now, the center of the base of the outer tube is located at (0,0,0)
     // rotate the whole mesh around (0,0,0) according to the outer tube rotation and then translate the mesh to the appropriate location
     const double ot_rot = _virtuoso_arm->outerTubeRotation();
-    const Eigen::Vector3d& ot_pos = _virtuoso_arm->outerTubePosition();
+
+    Geometry::TransformationMatrix endoscope_transform = _virtuoso_arm->endoscopeFrame().transform();
+    Eigen::Matrix3d endoscope_rot_mat = endoscope_transform.rotMat();
+    easy3d::Mat3<float> rot_mat_easy3d;
+    rot_mat_easy3d(0,0) = endoscope_rot_mat(0,0); rot_mat_easy3d(0,1) = endoscope_rot_mat(0,1); rot_mat_easy3d(0,2) = endoscope_rot_mat(0,2);
+    rot_mat_easy3d(1,0) = endoscope_rot_mat(1,0); rot_mat_easy3d(1,1) = endoscope_rot_mat(1,1); rot_mat_easy3d(1,2) = endoscope_rot_mat(1,2);
+    rot_mat_easy3d(2,0) = endoscope_rot_mat(2,0); rot_mat_easy3d(2,1) = endoscope_rot_mat(2,1); rot_mat_easy3d(2,2) = endoscope_rot_mat(2,2);
+
+    Eigen::Vector3d endoscope_pos = endoscope_transform.translation();
     for (auto& p : _e3d_mesh.points())
     {
-        // rotate around z-axis
+        // rotate around z-axis according to outer tube rotation
         const double x = p[0];
         const double y = p[1];
         p[0] = std::cos(ot_rot)*x - std::sin(ot_rot)*y;
         p[1] = std::sin(ot_rot)*x + std::cos(ot_rot)*y;
 
-        // translate mesh to outer tube position
-        p[0] += ot_pos[0];
-        p[1] += ot_pos[1];
-        p[2] += ot_pos[2];
+        p = rot_mat_easy3d*p;
+
+        // apply endoscope transformation
+        p[0] += endoscope_pos[0];
+        p[1] += endoscope_pos[1];
+        p[2] += endoscope_pos[2];
     }
 }
 

@@ -3,6 +3,8 @@
 
 #include <Eigen/Dense>
 
+#include "utils/GeometryUtils.hpp"
+
 namespace Geometry
 {
 
@@ -49,8 +51,22 @@ class TransformationMatrix
 
     const Eigen::Matrix4d& asMatrix() const { return _matrix; }
 
-    Eigen::Vector3d origin() const { return _matrix.block<3, 1>(0,3); }
-    void setOrigin(const Eigen::Vector3d& new_origin) { _matrix.block<3, 1>(0,3) = new_origin; }
+    Eigen::Vector3d translation() const { return _matrix.block<3, 1>(0,3); }
+    void setTranslation(const Eigen::Vector3d& new_trans) { _matrix.block<3, 1>(0,3) = new_trans; }
+
+    Eigen::Matrix3d rotMat() const { return _matrix.block<3,3>(0,0); }
+
+    TransformationMatrix inverse() const
+    {
+        return TransformationMatrix(rotMat().transpose(), -rotMat().transpose()*translation());
+    }
+
+    Eigen::Matrix<double,6,6> adjoint() const
+    {
+        Eigen::Matrix<double,6,6> mat;
+        mat << rotMat(), Eigen::Matrix3d::Zero(), GeometryUtils::Bracket_so3(translation())*rotMat(), rotMat();
+        return mat;
+    }
 
     private:
     Eigen::Matrix4d _matrix;

@@ -36,13 +36,13 @@ class CoordinateFrame
     }
 
     const TransformationMatrix& transform() const { return _transform; }
-    Eigen::Vector3d origin() const { return _transform.origin(); }
+    Eigen::Vector3d origin() const { return _transform.translation(); }
 
     /** Sets location and orientation of the coordinate frame via a specified SE3 transformation matrix. */
     void setTransform(const Eigen::Matrix4d& new_transform) { _transform = TransformationMatrix(new_transform); }
 
     /** Sets the origin of the coordinate frame, keeping the rotation of the coordinate axes the same. */
-    void setOrigin(const Eigen::Vector3d& new_origin) { _transform.setOrigin(new_origin); }
+    void setOrigin(const Eigen::Vector3d& new_origin) { _transform.setTranslation(new_origin); }
 
     /** Transform the coordinate frame by a specified SE3 transformation matrix. */
     void applyTransform(const TransformationMatrix& transform) { _transform *= transform; } 

@@ -17,6 +17,11 @@ Eigen::Matrix3d Rz(double theta);
 Eigen::Matrix3d Ry(double theta);
 Eigen::Matrix3d Rx(double theta);
 
+Eigen::Vector3d Vee_SO3(const Eigen::Matrix3d& mat);
+Eigen::Matrix3d Bracket_so3(const Eigen::Vector3d& vec);
+Eigen::Vector<double,6> Vee_SE3(const Eigen::Matrix4d& mat);
+Eigen::Matrix4d Bracket_se3(const Eigen::Vector<double,6>& vec);
+
 }
 
 #endif // __GEOMETRY_UTILS_HPP

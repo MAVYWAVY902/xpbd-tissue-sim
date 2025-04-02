@@ -47,13 +47,11 @@ class VirtuosoArm : public Object
     double outerTubeTranslation() const { return _ot_translation; }
     double outerTubeRotation() const { return _ot_rotation; }
     double outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
-    Eigen::Vector3d outerTubePosition() const { return _ot_position; }
 
-    void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; }
-    void setInnerTubeRotation(double r) { _it_rotation = r; }
-    void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; }
-    void setOuterTubeRotation(double r) { _ot_rotation = r; }
-    void setOuterTubePosition(const Eigen::Vector3d& p) { _ot_position = p; }
+    void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _stale_frames = true; }
+    void setInnerTubeRotation(double r) { _it_rotation = r; _stale_frames = true; }
+    void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _stale_frames = true; }
+    void setOuterTubeRotation(double r) { _ot_rotation = r; _stale_frames = true; }
 
     const Geometry::CoordinateFrame& endoscopeFrame() const { return _endoscope_frame; }
     const Geometry::CoordinateFrame& outerTubeBaseFrame() const { return _ot_base_frame; }
@@ -61,8 +59,25 @@ class VirtuosoArm : public Object
     const Geometry::CoordinateFrame& outerTubeEndFrame() const { return _ot_end_frame; }
     const Geometry::CoordinateFrame& innerTubeEndFrame() const { return _it_end_frame; }
 
+    Eigen::Vector3d tipPosition() const;
+    void setTipPosition(const Eigen::Vector3d& new_position);
+
     private:
     void _recomputeCoordinateFrames();
+    void _differentialInverseKinematics(const Eigen::Vector3d& dx);
+
+    /** Computes the spatial Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
+     * Used in the 3DOF positional differential inverse kinematics.
+     * 
+     * (The only joint variables that affect tip position are outer tube rotation, outer tube translation, inner tube translation)
+     */
+    Eigen::Matrix<double,6,3> _3DOFSpatialJacobian();
+
+    /** Computes the hybrid Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
+     * This is a 3x3 matrix (J_a) that relates the velocity of the tip position in the world frame (p_dot) to the actuator velocities (q_dot):
+     *      p_dot = J_a * q_dot
+     */
+    Eigen::Matrix3d _3DOFAnalyticalHybridJacobian();
 
     private:
     double _it_dia; // inner tube diameter, in m
@@ -76,7 +91,8 @@ class VirtuosoArm : public Object
     double _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
     double _ot_distal_straight_length; // the length of the straight section on the distal part of the outer tube
 
-    Eigen::Vector3d _ot_position; // the position of the base of the outer tube
+    Eigen::Vector3d _endoscope_position;
+    Eigen::Matrix3d _endoscope_rotation;
 
 
     Geometry::CoordinateFrame _endoscope_frame;       // coordinate frame of the end of the endoscope
@@ -84,6 +100,8 @@ class VirtuosoArm : public Object
     Geometry::CoordinateFrame _ot_curve_end_frame;    // coordinate frame at the end of the curved section of the outer tube
     Geometry::CoordinateFrame _ot_end_frame;          // coordinate frame at the end of the outer tube
     Geometry::CoordinateFrame _it_end_frame;          // coordinate frame at the end of the inner tube
+
+    bool _stale_frames;     // true if the joint variables have been updated and the coordinate frames need to be recomputed
 
 
 };

@@ -87,7 +87,7 @@ void VirtuosoSimulation::notifyMouseMoved(double x, double y)
             
             const Eigen::Vector3d current_tip_position = _tip_cursor->position();
             const Eigen::Vector3d offset = right_vec*dx + up_vec*-dy; // negate dy since increasing dy is actually opposite of camera frame up vec
-            _tip_cursor->setPosition(current_tip_position + offset*scaling);
+            _moveCursor(offset*scaling);
         }
     }
 
@@ -118,10 +118,17 @@ void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
 
             const Eigen::Vector3d current_tip_position = _tip_cursor->position();
             const Eigen::Vector3d offset = view_dir*dy;
-            _tip_cursor->setPosition(current_tip_position + offset*scaling);
+            _moveCursor(offset*scaling);
         }
     }
     
+}
+
+void VirtuosoSimulation::_moveCursor(const Eigen::Vector3d& dp)
+{
+    const Eigen::Vector3d current_tip_position = _tip_cursor->position();
+    _tip_cursor->setPosition(current_tip_position + dp);
+    _virtuoso_arm->setTipPosition(_tip_cursor->position());
 }
 
 void VirtuosoSimulation::_timeStep()

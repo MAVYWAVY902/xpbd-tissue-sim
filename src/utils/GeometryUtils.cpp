@@ -98,4 +98,36 @@ Eigen::Matrix3d Rx(double theta)
     return rot_mat;
 }
 
+Eigen::Vector3d Vee_SO3(const Eigen::Matrix3d& mat)
+{
+    // we'll just assume mat is skew-symmetric
+    return Eigen::Vector3d(mat(2,1), mat(0,2), mat(1,0));
+}
+
+Eigen::Matrix3d Bracket_so3(const Eigen::Vector3d& vec)
+{
+    // make skew-symmetric matrix
+    Eigen::Matrix3d mat;
+    mat << 0, -vec[2], vec[1],
+           vec[2], 0, -vec[0],
+           -vec[1], vec[0], 0;
+    return mat;
+}
+
+Eigen::Vector<double,6> Vee_SE3(const Eigen::Matrix4d& mat)
+{
+    Eigen::Vector<double,6> vec;
+    vec(Eigen::seq(0,2)) = Vee_SO3(mat.block<3,3>(0,0));
+    vec(Eigen::seq(3,5)) = mat.block<3,1>(0,3);
+    return vec;
+}
+
+Eigen::Matrix4d Bracket_se3(const Eigen::Vector<double,6>& vec)
+{
+    Eigen::Matrix4d mat = Eigen::Matrix4d::Zero();
+    mat.block<3,3>(0,0) = Bracket_so3( (vec(Eigen::seq(0,2))) );
+    mat.block<3,1>(0,3) = vec(Eigen::seq(3,5));
+    return mat;
+}
+
 } // namespace GeometryUtils

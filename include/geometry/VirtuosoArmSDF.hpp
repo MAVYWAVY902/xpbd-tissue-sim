@@ -7,6 +7,7 @@
 namespace Geometry
 {
 
+// TODO: fix SDF for revamped VirtuosoArm
 class VirtuosoArmSDF : public SDF
 {
     public:
@@ -69,7 +70,7 @@ class VirtuosoArmSDF : public SDF
         const double p_x = ot_curv * std::cos(ot_max_angle) - ot_curv - ot_distal_len*std::sin(ot_max_angle);
         const double p_y = ot_curv * std::sin(ot_max_angle) + ot_distal_len*std::cos(ot_max_angle);
         const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
-        const Eigen::Vector3d ot_pos = _virtuoso_arm->outerTubePosition();
+        const Eigen::Vector3d ot_pos = Eigen::Vector3d::Zero();//_virtuoso_arm->outerTubePosition();
         Eigen::Vector3d trans_vec(  std::cos(ot_rot) * (p_x - std::sin(ot_max_angle)*l*0.5) + ot_pos[0],
                                     p_y + std::cos(ot_max_angle)*l*0.5 + ot_pos[1],
                                     -std::sin(ot_rot) * (p_x - std::sin(ot_max_angle)*l*0.5) + ot_pos[2]);

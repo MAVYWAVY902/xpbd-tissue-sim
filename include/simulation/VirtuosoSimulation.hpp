@@ -42,6 +42,8 @@ class VirtuosoSimulation : public Simulation
     protected:
     void _timeStep() override;
 
+    void _moveCursor(const Eigen::Vector3d& dp);
+
     // TODO: make these settable simulation parameters
     constexpr static double IT_ROT_RATE = 10; // rad/s
     constexpr static double IT_TRANS_RATE = 0.005; // m/s
