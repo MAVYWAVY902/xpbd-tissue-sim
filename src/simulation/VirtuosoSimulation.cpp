@@ -60,6 +60,7 @@ void VirtuosoSimulation::setup()
 
     // create an object at the tip of the robot to show where grasping is
     std::unique_ptr<RigidSphere> tip_cursor_ptr = std::make_unique<RigidSphere>(this, "tip cursor", 0.001);
+    tip_cursor_ptr->setPosition(_virtuoso_arm->tipPosition());
     _tip_cursor = tip_cursor_ptr.get();
     _addObject(std::move(tip_cursor_ptr));
 }

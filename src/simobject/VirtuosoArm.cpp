@@ -2,6 +2,8 @@
 
 #include "utils/GeometryUtils.hpp"
 
+#include <algorithm>
+
 namespace Sim 
 {
 
@@ -42,7 +44,7 @@ Eigen::Vector3d VirtuosoArm::tipPosition() const
 
 void VirtuosoArm::setTipPosition(const Eigen::Vector3d& new_position)
 {
-    _differentialInverseKinematics(new_position);
+    _differentialInverseKinematics(new_position - tipPosition());
     _stale_frames = true;
 }
 
@@ -86,7 +88,7 @@ void VirtuosoArm::_recomputeCoordinateFrames()
     const Eigen::Vector3d end_of_xz_curve(-_ot_r_curvature*std::cos(swept_angle) + _ot_r_curvature, 0, _ot_r_curvature*std::sin(swept_angle));
     Geometry::TransformationMatrix T_curve_end(GeometryUtils::Ry(swept_angle), end_of_xz_curve);
 
-    _ot_curve_end_frame = _ot_base_frame * T_rot_z * T_curve_end;
+    _ot_curve_end_frame = _ot_base_frame * T_curve_end;
 
     // compute frame for end of outer tube
     // consists of simply moving along the current z-axis by the length of the distal straight section
@@ -100,10 +102,15 @@ void VirtuosoArm::_recomputeCoordinateFrames()
 
     _stale_frames = false;
 
+    // std::cout << "Curve end: \n" << _ot_curve_end_frame.transform().asMatrix() << std::endl;
+    // std::cout << "OT end: \n" << _ot_end_frame.transform().asMatrix() << std::endl;
+    // std::cout << "Tip Transform: \n" << _it_end_frame.transform().asMatrix() << std::endl;
+
 }
 
 void VirtuosoArm::_differentialInverseKinematics(const Eigen::Vector3d& dx)
 {
+    _recomputeCoordinateFrames();
     const Eigen::Vector3d target_position = tipPosition() + dx;
 
     for (int i = 0; i < 10; i++)
@@ -117,7 +124,16 @@ void VirtuosoArm::_differentialInverseKinematics(const Eigen::Vector3d& dx)
         _ot_rotation += dq[0];
         _ot_translation += dq[1];
         _it_translation += dq[2];
+
+        // enforce joint limits
+        _ot_translation = std::clamp(_ot_translation, 0.0, 40.0e-3);
+        _it_translation = std::clamp(_it_translation, 0.0, 50.0e-3);
+
+        _recomputeCoordinateFrames();
     }
+
+    std::cout << "Tip pos: " << tipPosition()[0] << ", " << tipPosition()[1] << ", " << tipPosition()[2] << std::endl;
+    std::cout << "q: " << _ot_rotation << ", " << _ot_translation << ", " << _it_translation << std::endl;
 
     _stale_frames = true;
 }
@@ -185,10 +201,11 @@ Eigen::Matrix<double,6,3> VirtuosoArm::_3DOFSpatialJacobian()
     const Geometry::TransformationMatrix T_inv = _it_end_frame.transform().inverse();
     
     Eigen::Matrix<double,6,3> J_s;
-    J_s.col(0) = GeometryUtils::Vee_SE3(dT_d_ot_rot * T_inv.asMatrix());
-    J_s.col(1) = GeometryUtils::Vee_SE3(dT_d_ot_trans * T_inv.asMatrix());
-    J_s.col(2) = GeometryUtils::Vee_SE3(dT_d_it_trans * T_inv.asMatrix());
+    J_s.col(0) = GeometryUtils::Vee_SE3(_endoscope_frame.transform().asMatrix() * dT_d_ot_rot * T_inv.asMatrix());
+    J_s.col(1) = GeometryUtils::Vee_SE3(_endoscope_frame.transform().asMatrix() * dT_d_ot_trans * T_inv.asMatrix());
+    J_s.col(2) = GeometryUtils::Vee_SE3(_endoscope_frame.transform().asMatrix() * dT_d_it_trans * T_inv.asMatrix());
 
+    // std::cout << "J_s:\n" << J_s << std::endl;
     return J_s;
 }
 
@@ -201,10 +218,18 @@ Eigen::Matrix3d VirtuosoArm::_3DOFAnalyticalHybridJacobian()
     Eigen::Matrix<double,3,6> C;
     C << Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Identity();
 
-    Eigen::Matrix<double,6,6> R;
-    R << _it_end_frame.transform().rotMat(), Eigen::Matrix3d::Zero(), _it_end_frame.transform().rotMat(), Eigen::Matrix3d::Zero();
+    // std::cout << "C:\n" << C << std::endl;
 
-    Eigen::Matrix3d J_a = C * R * _it_end_frame.transform().inverse().adjoint() * _3DOFSpatialJacobian();
+    Eigen::Matrix<double,6,6> R;
+    R << _it_end_frame.transform().rotMat(), Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(), _it_end_frame.transform().rotMat();
+
+    // std::cout << "R:\n" << R << std::endl;
+
+    Eigen::Matrix<double,6,3> J_b = _it_end_frame.transform().inverse().adjoint() * _3DOFSpatialJacobian();
+    // std::cout << "J_b:\n" << J_b << std::endl;
+    Eigen::Matrix3d J_a = C * R * J_b;
+
+    // std::cout << "J_a:\n" << J_a << std::endl;
     return J_a;
 }
 

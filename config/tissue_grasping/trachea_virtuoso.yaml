@@ -21,10 +21,10 @@ objects:
     outer-tube-diameter: 1.56e-3
     outer-tube-radius-of-curvature: 1.5383e-2
     outer-tube-distal-straight-length: 5e-3
-    outer-tube-translation: 6e-3
-    outer-tube-rotation: 0
+    outer-tube-translation: 10e-3
+    outer-tube-rotation: 45
     inner-tube-diameter: 1.04e-3
-    inner-tube-translation: 2.3e-2
+    inner-tube-translation: 20e-3
     endoscope-position: [0, -0.03, 0]
     endoscope-rotation: [0, 90, 90]
     collisions: false
