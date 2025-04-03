@@ -132,7 +132,7 @@ class CombinedConstraintProjector
     }
 
     #ifdef HAVE_CUDA
-    typedef GPUCombinedConstraintProjector<typename Constraint1::GPUConstraintType, typename Constraint2::GPUConstraintType> GPUConstraintProjectorType;
+    typedef GPUCombinedConstraintProjector<IsFirstOrder, typename Constraint1::GPUConstraintType, typename Constraint2::GPUConstraintType> GPUConstraintProjectorType;
     GPUConstraintProjectorType createGPUConstraintProjector() const
     {
         typename Constraint1::GPUConstraintType gpu_constraint1 = _constraint1->createGPUConstraint();

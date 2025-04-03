@@ -190,11 +190,17 @@ __host__ void LaunchProjectConstraints(ConstraintProjector* projectors, int num_
     CHECK_CUDA_ERROR(cudaDeviceSynchronize());
 }
 
-template __host__ void LaunchProjectConstraints<GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>> (GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
-template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPUDeviatoricConstraint>> (GPUConstraintProjector<GPUDeviatoricConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
-template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPUHydrostaticConstraint>> (GPUConstraintProjector<GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
-template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>> (GPUConstraintProjector<GPUStaticDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
-template __host__ void LaunchProjectConstraints<GPUConstraintProjector<GPURigidDeformableCollisionConstraint>> (GPUConstraintProjector<GPURigidDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUCombinedConstraintProjector<true, GPUDeviatoricConstraint, GPUHydrostaticConstraint>> (GPUCombinedConstraintProjector<true, GPUDeviatoricConstraint, GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<true, GPUDeviatoricConstraint>> (GPUConstraintProjector<true, GPUDeviatoricConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<true, GPUHydrostaticConstraint>> (GPUConstraintProjector<true, GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<true, GPUStaticDeformableCollisionConstraint>> (GPUConstraintProjector<true, GPUStaticDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<true, GPURigidDeformableCollisionConstraint>> (GPUConstraintProjector<true, GPURigidDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+
+template __host__ void LaunchProjectConstraints<GPUCombinedConstraintProjector<false, GPUDeviatoricConstraint, GPUHydrostaticConstraint>> (GPUCombinedConstraintProjector<false, GPUDeviatoricConstraint, GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<false, GPUDeviatoricConstraint>> (GPUConstraintProjector<false, GPUDeviatoricConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<false, GPUHydrostaticConstraint>> (GPUConstraintProjector<false, GPUHydrostaticConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<false, GPUStaticDeformableCollisionConstraint>> (GPUConstraintProjector<false, GPUStaticDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
+template __host__ void LaunchProjectConstraints<GPUConstraintProjector<false, GPURigidDeformableCollisionConstraint>> (GPUConstraintProjector<false, GPURigidDeformableCollisionConstraint>* projectors, int num_projectors, const float* vertices, float* new_vertices);
 
 __global__ void CopyVertices(const float* src_vertices, float* dst_vertices, int num_vertices)
 {
@@ -213,7 +219,8 @@ __host__ void CopyVerticesMemcpy(float* dst_vertices, const float* src_vertices,
 
 
 // template <>
-__host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(const GPUDeviatoricConstraint& constraint1_, const GPUHydrostaticConstraint& constraint2_, float dt_)
+template<bool IsFirstOrder>
+__host__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(const GPUDeviatoricConstraint& constraint1_, const GPUHydrostaticConstraint& constraint2_, float dt_)
     : dt(dt_), alpha_d(constraint1_.alpha), alpha_h(constraint2_.alpha), gamma(constraint2_.gamma)
 {
     for (int i = 0; i < 4; i++)
@@ -230,7 +237,8 @@ __host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticC
 }
     
 // template <>
-__host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(GPUDeviatoricConstraint&& constraint1_, GPUHydrostaticConstraint&& constraint2_, float dt_)
+template<bool IsFirstOrder>
+__host__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(GPUDeviatoricConstraint&& constraint1_, GPUHydrostaticConstraint&& constraint2_, float dt_)
     : dt(dt_), alpha_d(constraint1_.alpha), alpha_h(constraint2_.alpha), gamma(constraint2_.gamma)
 {
     for (int i = 0; i < 4; i++)
@@ -246,20 +254,23 @@ __host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticC
 }
 
 // template<>
-__device__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector()
+template<bool IsFirstOrder>
+__device__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector()
 {
 
 }
 
 // template<>
-__device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::initialize()
+template<bool IsFirstOrder>
+__device__ void GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::initialize()
 {
     lambda[0] = 0;
     lambda[1] = 0;
 }
 
 // template<>
-__device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::project(const float* vertices, float* new_vertices)
+template<bool IsFirstOrder>
+__device__ void GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::project(const float* vertices, float* new_vertices)
 {
     // printf("indices: %i, %i, %i, %i\n", positions[0].index, positions[1].index, positions[2].index, positions[3].index);
     float x[12];
@@ -314,12 +325,25 @@ __device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydro
 
     // solve the 2x2 system
     float A[4];
-    float alpha_d_tilde = alpha_d / (dt * dt);
-    float alpha_h_tilde = alpha_h / (dt * dt);
-    A[0] = alpha_d_tilde;
+
+    float alpha_h_tilde;
+    float alpha_d_tilde;
+    if constexpr (IsFirstOrder)
+    {
+        alpha_h_tilde = alpha_h / dt;
+        alpha_d_tilde = alpha_d / dt;
+    }
+    else
+    {
+        alpha_h_tilde = alpha_h / (dt * dt);
+        alpha_d_tilde = alpha_d / (dt * dt);
+    }
+
+    A[0] = alpha_h_tilde;
+    A[3] = alpha_d_tilde;
     A[1] = 0;
     A[2] = 0;
-    A[3] = alpha_h_tilde;
+
     for (int i = 0; i < 4; i++)
     {
         A[0] += positions[i].inv_mass * (C_d_grad[3*i]*C_d_grad[3*i] + C_d_grad[3*i+1]*C_d_grad[3*i+1] + C_d_grad[3*i+2]*C_d_grad[3*i+2]);
@@ -359,3 +383,6 @@ __device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydro
         // coord_updates[12*elem_index + 3*i+2] = inv_m[i] * (C_h_grad[3*i+2] * dlam_h + C_d_grad[3*i+2] * dlam_d);
     }
 }
+
+template class GPUCombinedConstraintProjector<true, GPUDeviatoricConstraint, GPUHydrostaticConstraint>;
+template class GPUCombinedConstraintProjector<false, GPUDeviatoricConstraint, GPUHydrostaticConstraint>;

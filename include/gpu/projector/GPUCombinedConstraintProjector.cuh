@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-template<class Constraint1, class Constraint2>
+template<bool IsFirstOrder, class Constraint1, class Constraint2>
 struct GPUCombinedConstraintProjector
 {
     float dt;
@@ -45,7 +45,17 @@ struct GPUCombinedConstraintProjector
         constraint1.evaluateWithGradient(vertices, C, delC);
         constraint2.evaluateWithGradient(vertices, C + 1, delC + constraint1.numPositions()*3);
 
-        float alpha_tilde[2] = {constraint1.alpha / (dt*dt), constraint2.alpha / (dt*dt)};
+        float alpha_tilde[2];
+        if constexpr (IsFirstOrder)
+        {
+            alpha_tilde[0] = constraint1.alpha / dt;
+            alpha_tilde[1] = constraint2.alpha / dt;
+        }
+        else
+        {
+            alpha_tilde[0] = constraint1.alpha / (dt*dt);
+            alpha_tilde[1] = constraint2.alpha / (dt*dt);
+        }
 
         // compute LHS of lambda upate - delC^T * M^-1 * delC
         float LHS[4];

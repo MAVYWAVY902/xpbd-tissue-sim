@@ -33,6 +33,8 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
 
     this->_loadAndConfigureMesh();
 
+    this->_solver.setup();
+
     // initialize the previous vertices matrix once we've loaded the mesh
     this->_previous_vertices = this->_mesh->vertices();
     this->_vertex_velocities = Geometry::Mesh::VerticesMat::Zero(3, this->_mesh->numVertices());

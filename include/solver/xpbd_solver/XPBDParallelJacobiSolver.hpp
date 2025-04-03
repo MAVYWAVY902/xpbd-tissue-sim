@@ -129,7 +129,7 @@ class XPBDParallelJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProje
     int _addConstraintProjector(Real dt,  Constraint* constraint)
     {
         typename Constraint::GPUConstraintType gpu_constraint = constraint->createGPUConstraint();
-        typedef GPUConstraintProjector<typename Constraint::GPUConstraintType> ProjectorType;
+        typedef GPUConstraintProjector<IsFirstOrder, typename Constraint::GPUConstraintType> ProjectorType;
         ProjectorType projector(std::move(gpu_constraint), dt);
         _gpu_projectors.template get<ProjectorType>().push_back(std::move(projector));
 
@@ -141,7 +141,7 @@ class XPBDParallelJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProje
     {
         typename Constraint1::GPUConstraintType gpu_constraint1 = constraint1->createGPUConstraint();
         typename Constraint2::GPUConstraintType gpu_constraint2 = constraint2->createGPUConstraint();
-        typedef GPUCombinedConstraintProjector<typename Constraint1::GPUConstraintType, typename Constraint2::GPUConstraintType> ProjectorType;
+        typedef GPUCombinedConstraintProjector<IsFirstOrder, typename Constraint1::GPUConstraintType, typename Constraint2::GPUConstraintType> ProjectorType;
         ProjectorType projector(std::move(gpu_constraint1), std::move(gpu_constraint2), dt);
         _gpu_projectors.template get<MonitoredVector<ProjectorType>>().push_back(std::move(projector));
 

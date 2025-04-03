@@ -1,7 +1,7 @@
 #include "gpu/projector/GPUNeohookeanCombinedConstraintProjector.cuh"
 
-template <>
-__host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(const GPUHydrostaticConstraint& constraint1_, const GPUDeviatoricConstraint& constraint2_, float dt_)
+template <bool IsFirstOrder>
+__host__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(const GPUHydrostaticConstraint& constraint1_, const GPUDeviatoricConstraint& constraint2_, float dt_)
     : dt(dt_), alpha_h(constraint1_.alpha), alpha_d(constraint2_.alpha), gamma(constraint1_.gamma)
 {
     for (int i = 0; i < 4; i++)
@@ -18,8 +18,8 @@ __host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticC
     }
 }
     
-template <>
-__host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(GPUHydrostaticConstraint&& constraint1_, GPUDeviatoricConstraint&& constraint2_, float dt_)
+template <bool IsFirstOrder>
+__host__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(GPUHydrostaticConstraint&& constraint1_, GPUDeviatoricConstraint&& constraint2_, float dt_)
     : dt(dt_), alpha_h(constraint1_.alpha), alpha_d(constraint2_.alpha), gamma(constraint1_.gamma)
 {
     for (int i = 0; i < 4; i++)
@@ -36,21 +36,21 @@ __host__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticC
     }
 }
 
-template<>
-__device__ GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector()
+template<bool IsFirstOrder>
+__device__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector()
 {
 
 }
 
-template<>
-__device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::initialize()
+template<bool IsFirstOrder>
+__device__ void GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::initialize()
 {
     lambda[0] = 0;
     lambda[1] = 0;
 }
 
-template<>
-__device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>::project(const float* vertices, float* new_vertices)
+template<bool IsFirstOrder>
+__device__ void GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::project(const float* vertices, float* new_vertices)
 {
     // printf("indices: %i, %i, %i, %i\n", positions[0].index, positions[1].index, positions[2].index, positions[3].index);
     float x[12];
@@ -105,10 +105,21 @@ __device__ void GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydro
 
     // solve the 2x2 system
     float A[4];
-    A[0] = alpha_h / (dt * dt);
+
+    if constexpr (IsFirstOrder)
+    {
+        A[0] = alpha_h / dt;
+        A[3] = alpha_d / dt;
+    }
+    else
+    {
+        A[0] = alpha_h / (dt * dt);
+        A[3] = alpha_d / (dt * dt);
+    }
+
     A[1] = 0;
     A[2] = 0;
-    A[3] = alpha_d / (dt * dt);
+    
     for (int i = 0; i < 4; i++)
     {
         A[0] += positions[i].inv_mass * (C_h_grad[3*i]*C_h_grad[3*i] + C_h_grad[3*i+1]*C_h_grad[3*i+1] + C_h_grad[3*i+2]*C_h_grad[3*i+2]);

@@ -4,7 +4,7 @@
 #include "utils/CudaHelperMath.h"
 #include "common/VariadicContainer.hpp"
 
-template<class Constraint>
+template<bool IsFirstOrder, class Constraint>
 struct GPUConstraintProjector
 {
     float dt;
@@ -39,7 +39,15 @@ struct GPUConstraintProjector
         // evaluate constraint and its gradient
         constraint.evaluateWithGradient(vertices, &C, delC);
 
-        float alpha_tilde = constraint.alpha / (dt*dt);
+        float alpha_tilde;
+        if constexpr (IsFirstOrder)
+        {
+            alpha_tilde = constraint.alpha / dt;
+        }
+        else
+        {
+            alpha_tilde = constraint.alpha / (dt*dt);
+        }
 
         // compute LHS of lambda upate - delC^T * M^-1 * delC
         float LHS = alpha_tilde;

@@ -42,9 +42,9 @@ objects:
     damping-gamma: 2000
     collisions: false
     damping-multiplier: 100000
-    solver-type: "Gauss-Seidel"
+    # solver-type: "Gauss-Seidel"
     # solver-type: "Jacobi"
-    # solver-type: "Parallel-Jacobi"
+    solver-type: "Parallel-Jacobi"
     constraint-type: "Stable-Neohookean-Combined"
     # constraint-type: "Stable-Neohookean"
     with-residual: false

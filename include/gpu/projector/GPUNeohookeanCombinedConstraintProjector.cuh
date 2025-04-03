@@ -6,8 +6,8 @@
 #include "gpu/constraint/GPUDeviatoricConstraint.cuh"
 #include "gpu/constraint/GPUHydrostaticConstraint.cuh"
 
-template <>
-struct GPUCombinedConstraintProjector<GPUDeviatoricConstraint, GPUHydrostaticConstraint>
+template <bool IsFirstOrder>
+struct GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>
 {
     float dt;
     float lambda[2];

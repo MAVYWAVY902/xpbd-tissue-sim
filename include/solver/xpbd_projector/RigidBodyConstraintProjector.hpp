@@ -13,7 +13,8 @@
 namespace Solver
 {
 
-template<class RBConstraint>
+// TODO: 1st order XPBD and Rigid Bodies just doesn't really make sense - can we always have this be false?
+template<bool IsFirstOrder, class RBConstraint>
 class RigidBodyConstraintProjector
 {
     public:
@@ -96,7 +97,7 @@ class RigidBodyConstraintProjector
 
     // TODO: implement specific GPUConstraintProjector type for rigid body constraints - need RigidObjectGPUResource and stuff like that
     #ifdef HAVE_CUDA
-    typedef GPUConstraintProjector<typename RBConstraint::GPUConstraintType> GPUConstraintProjectorType;
+    typedef GPUConstraintProjector<IsFirstOrder, typename RBConstraint::GPUConstraintType> GPUConstraintProjectorType;
     GPUConstraintProjectorType createGPUConstraintProjector() const
     {
         typename RBConstraint::GPUConstraintType gpu_constraint = _constraint->createGPUConstraint();
