@@ -21,15 +21,15 @@ RigidObject::RigidObject(const Simulation* sim, const RigidObjectConfig* config)
 }
 
 RigidObject::RigidObject(const Simulation* sim, const std::string& name)
-    : Object(sim, name), _p({0,0,0}), _q({0,0,0,1}), _m(0), _I(Eigen::Matrix3d::Zero()), _v({0,0,0}), _w({0,0,0})
+    : Object(sim, name), _p({0,0,0}), _q({0,0,0,1}), _m(0), _I(Eigen::Matrix3d::Zero()), _v({0,0,0}), _w({0,0,0}), _fixed(false)
 {}
 
 RigidObject::RigidObject(const Simulation* sim, const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation)
-    : Object(sim, name), _p(position), _q(orientation), _m(0), _I(Eigen::Matrix3d::Zero()), _v({0,0,0}), _w({0,0,0})
+    : Object(sim, name), _p(position), _q(orientation), _m(0), _I(Eigen::Matrix3d::Zero()), _v({0,0,0}), _w({0,0,0}), _fixed(false)
 {}
 
 RigidObject::RigidObject(const Simulation* sim, const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation, const double mass, const Eigen::Matrix3d& inertia_mat)
-    : Object(sim, name), _p(position), _q(orientation), _m(mass), _I(inertia_mat), _v({0,0,0}), _w({0,0,0})
+    : Object(sim, name), _p(position), _q(orientation), _m(mass), _I(inertia_mat), _v({0,0,0}), _w({0,0,0}), _fixed(false)
 {}
 
 std::string RigidObject::toString(const int indent) const

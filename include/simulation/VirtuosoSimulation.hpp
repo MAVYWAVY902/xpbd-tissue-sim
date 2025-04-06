@@ -51,8 +51,13 @@ class VirtuosoSimulation : public Simulation
     constexpr static double IT_ROT_RATE = 10; // rad/s
     constexpr static double IT_TRANS_RATE = 0.005; // m/s
     constexpr static double OT_ROT_RATE = 10; // rad/s
-    constexpr static double OT_TRANS_RATE = 0.005; // m/s 
-    VirtuosoArm* _virtuoso_arm;
+    constexpr static double OT_TRANS_RATE = 0.005; // m/s
+
+    VirtuosoArm* _virtuoso_arm1;
+    VirtuosoArm* _virtuoso_arm2;
+
+    VirtuosoArm* _active_arm;
+
     XPBDMeshObject* _tissue_obj;
 
     std::optional<std::string> _fixed_faces_filename;

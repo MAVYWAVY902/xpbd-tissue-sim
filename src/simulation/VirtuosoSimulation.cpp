@@ -53,10 +53,16 @@ void VirtuosoSimulation::setup()
     {
         if (VirtuosoArm* arm = dynamic_cast<VirtuosoArm*>(obj.get()))
         {
-            _virtuoso_arm = arm;
-            break;
+            if (!_virtuoso_arm1)
+                _virtuoso_arm1 = arm;
+            else
+            {
+                _virtuoso_arm2 = arm;
+                break;
+            }
         }
     }
+    _active_arm = _virtuoso_arm1;
 
     for (auto& obj : _objects)
     {
@@ -80,7 +86,9 @@ void VirtuosoSimulation::setup()
 
     // create an object at the tip of the robot to show where grasping is
     std::unique_ptr<RigidSphere> tip_cursor_ptr = std::make_unique<RigidSphere>(this, "tip cursor", 0.001);
-    tip_cursor_ptr->setPosition(_virtuoso_arm->tipPosition());
+    std::cout << _active_arm->tipPosition() << std::endl;
+    tip_cursor_ptr->setPosition(_active_arm->tipPosition());
+    std::cout << tip_cursor_ptr->position() << std::endl;
     _tip_cursor = tip_cursor_ptr.get();
     _addObject(std::move(tip_cursor_ptr));
 }
@@ -142,6 +150,21 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
         it->second = (action > 0); // if action > 0, key is pressed or held
     }
 
+    // when 'ALT' is pressed, switch which arm is active
+    if (key == 342 && action == 1)
+    {
+        if (_virtuoso_arm2 && _active_arm == _virtuoso_arm1)
+        {
+            _active_arm = _virtuoso_arm2;
+        }
+        else if (_virtuoso_arm1 && _active_arm == _virtuoso_arm2)
+        {
+            _active_arm = _virtuoso_arm1;
+        }
+
+        _tip_cursor->setPosition(_active_arm->tipPosition());
+    }
+
 }
 
 void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
@@ -165,7 +188,7 @@ void VirtuosoSimulation::_moveCursor(const Eigen::Vector3d& dp)
 {
     const Eigen::Vector3d current_tip_position = _tip_cursor->position();
     _tip_cursor->setPosition(current_tip_position + dp);
-    _virtuoso_arm->setTipPosition(_tip_cursor->position());
+    _active_arm->setTipPosition(_tip_cursor->position());
 }
 
 void VirtuosoSimulation::_toggleTissueGrasping()
@@ -216,44 +239,44 @@ void VirtuosoSimulation::_timeStep()
     {
         if (_keys_held[81] > 0) // Q = CCW inner tube rotation
         {
-            const double cur_rot = _virtuoso_arm->innerTubeRotation();
-            _virtuoso_arm->setInnerTubeRotation(cur_rot + IT_ROT_RATE*dt());
+            const double cur_rot = _active_arm->innerTubeRotation();
+            _active_arm->setInnerTubeRotation(cur_rot + IT_ROT_RATE*dt());
 
         }
         if (_keys_held[87] > 0) // W = CCW outer tube rotation
         {
-            const double cur_rot = _virtuoso_arm->outerTubeRotation();
-            _virtuoso_arm->setOuterTubeRotation(cur_rot + OT_ROT_RATE*dt());
+            const double cur_rot = _active_arm->outerTubeRotation();
+            _active_arm->setOuterTubeRotation(cur_rot + OT_ROT_RATE*dt());
         }
         if (_keys_held[69] > 0) // E = inner tube extension
         {
-            const double cur_trans = _virtuoso_arm->innerTubeTranslation();
-            _virtuoso_arm->setInnerTubeTranslation(cur_trans + IT_TRANS_RATE*dt());
+            const double cur_trans = _active_arm->innerTubeTranslation();
+            _active_arm->setInnerTubeTranslation(cur_trans + IT_TRANS_RATE*dt());
         }
         if (_keys_held[82] > 0) // R = outer tube extension
         {
-            const double cur_trans = _virtuoso_arm->outerTubeTranslation();
-            _virtuoso_arm->setOuterTubeTranslation(cur_trans + OT_TRANS_RATE*dt());
+            const double cur_trans = _active_arm->outerTubeTranslation();
+            _active_arm->setOuterTubeTranslation(cur_trans + OT_TRANS_RATE*dt());
         }
         if (_keys_held[65] > 0) // A = CW inner tube rotation
         {
-            const double cur_rot = _virtuoso_arm->innerTubeRotation();
-            _virtuoso_arm->setInnerTubeRotation(cur_rot - IT_ROT_RATE*dt()); 
+            const double cur_rot = _active_arm->innerTubeRotation();
+            _active_arm->setInnerTubeRotation(cur_rot - IT_ROT_RATE*dt()); 
         }
         if (_keys_held[83] > 0) // S = CW outer tube rotation
         {
-            const double cur_rot = _virtuoso_arm->outerTubeRotation();
-            _virtuoso_arm->setOuterTubeRotation(cur_rot - OT_ROT_RATE*dt());
+            const double cur_rot = _active_arm->outerTubeRotation();
+            _active_arm->setOuterTubeRotation(cur_rot - OT_ROT_RATE*dt());
         }
         if (_keys_held[68] > 0) // D = inner tube retraction
         {
-            const double cur_trans = _virtuoso_arm->innerTubeTranslation();
-            _virtuoso_arm->setInnerTubeTranslation(cur_trans - IT_TRANS_RATE*dt());
+            const double cur_trans = _active_arm->innerTubeTranslation();
+            _active_arm->setInnerTubeTranslation(cur_trans - IT_TRANS_RATE*dt());
         }
         if (_keys_held[70] > 0) // F = outer tube retraction
         {
-            const double cur_trans = _virtuoso_arm->outerTubeTranslation();
-            _virtuoso_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
+            const double cur_trans = _active_arm->outerTubeTranslation();
+            _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
         }
         
     }

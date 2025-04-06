@@ -16,32 +16,6 @@ end-time: 1000
 objects:
 
   -
-    name: "Arm1"
-    type: "VirtuosoArm"
-    outer-tube-diameter: 1.56e-3
-    outer-tube-radius-of-curvature: 1.5383e-2
-    outer-tube-distal-straight-length: 5e-3
-    outer-tube-translation: 10e-3
-    outer-tube-rotation: 45
-    inner-tube-rotation: 45
-    inner-tube-diameter: 1.04e-3
-    inner-tube-translation: 20e-3
-    endoscope-position: [0, -0.03, 0]
-    endoscope-rotation: [0, 90, 90]
-    collisions: true
-  # -
-  #   name: "Arm1"
-  #   type: "VirtuosoArm"
-  #   outer-tube-diameter: 1.5e-2
-  #   outer-tube-curvature: 1e-1
-  #   outer-tube-translation: 1e-2
-  #   outer-tube-rotation: 45
-  #   inner-tube-diameter: 1e-2
-  #   inner-tube-translation: 2e-3
-  #   outer-tube-position: [0, -0.03, 0]
-  #   collisions: true
-
-  -
     name: "Cube1"
     # type: "XPBDMeshObject"
     type: "FirstOrderXPBDMeshObject"
@@ -66,6 +40,38 @@ objects:
     with-damping: false
     # damping-multiplier: 400000000
     damping-multiplier: 600000000
-    collisions: true
+    collisions: false
+
+  -
+    name: "Arm1"
+    type: "VirtuosoArm"
+    outer-tube-diameter: 1.56e-3
+    outer-tube-radius-of-curvature: 1.5383e-2
+    outer-tube-distal-straight-length: 5e-3
+    outer-tube-translation: 10e-3
+    outer-tube-rotation: 45
+    inner-tube-rotation: 45
+    inner-tube-diameter: 1.04e-3
+    inner-tube-translation: 20e-3
+    endoscope-position: [0.005, -0.03, 0]
+    endoscope-rotation: [0, 90, 90]
+    collisions: false
+
+  -
+    name: "Arm2"
+    type: "VirtuosoArm"
+    outer-tube-diameter: 1.56e-3
+    outer-tube-radius-of-curvature: 1.5383e-2
+    outer-tube-distal-straight-length: 5e-3
+    outer-tube-translation: 10e-3
+    outer-tube-rotation: -45
+    inner-tube-rotation: 45
+    inner-tube-diameter: 1.04e-3
+    inner-tube-translation: 20e-3
+    endoscope-position: [-0.005, -0.03, 0]
+    endoscope-rotation: [0, 90, 90]
+    collisions: false
+
+  
 
 

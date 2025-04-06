@@ -125,6 +125,8 @@ void VirtuosoArm::_recomputeCoordinateFrames()
 
     _stale_frames = false;
 
+    std::cout << "Tip position: " << tipPosition() << std::endl;
+
 }
 
 void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Eigen::Vector3d& dx)
