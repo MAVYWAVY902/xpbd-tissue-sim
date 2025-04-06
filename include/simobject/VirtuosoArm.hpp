@@ -80,7 +80,25 @@ class VirtuosoArm : public Object
 
     private:
     void _recomputeCoordinateFrames();
-    void _differentialInverseKinematics(const Eigen::Vector3d& dx);
+
+    /** Computes the new joint positions given a change in tip position, using only the analytical Jacobian.
+     * The Jacobian used is the analytical derivative of the tip transformation matrix (i.e. not a numerical Jacobian)
+     *   that does not incorporate the effect of tip forces.
+     * 
+     * Note: this method easily breaks when the Jacobian becomes singular or the commanded position is outside the reachable workspace of the robot.
+     */
+    void _jacobianDifferentialInverseKinematics(const Eigen::Vector3d& dx);
+
+    /** Computes the new joint positions given a change in tip position, using a hybrid approach combining analytical geometry and the analytical Jacobian.
+     * The outer tube rotation is given by the angle of the commanded position in cylindrical coordinates (i.e. easily solved for analytically).
+     *   - note: we limit the change in outer tube rotation (which may be quite large around a singularity) if the change is larger than what the motors can physically do.
+     * 
+     * The updates in outer tube and inner tube translation are given by the Jacobian.
+     * 
+     * Note: this method is more robust to the singularity while maintaining the favorable properties of Jacobian-based inverse kinematics.
+     * Another note: the Jacobian used also does not incorporate applied forces. 
+     */
+    void _hybridDifferentialInverseKinematics(const Eigen::Vector3d& dx);
 
     /** Computes the spatial Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
      * Used in the 3DOF positional differential inverse kinematics.

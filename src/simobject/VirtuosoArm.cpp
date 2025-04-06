@@ -44,7 +44,8 @@ Eigen::Vector3d VirtuosoArm::tipPosition() const
 
 void VirtuosoArm::setTipPosition(const Eigen::Vector3d& new_position)
 {
-    _differentialInverseKinematics(new_position - tipPosition());
+    // _jacobianDifferentialInverseKinematics(new_position - tipPosition());
+    _hybridDifferentialInverseKinematics(new_position - tipPosition());
     _stale_frames = true;
 }
 
@@ -126,7 +127,7 @@ void VirtuosoArm::_recomputeCoordinateFrames()
 
 }
 
-void VirtuosoArm::_differentialInverseKinematics(const Eigen::Vector3d& dx)
+void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Eigen::Vector3d& dx)
 {
     _recomputeCoordinateFrames();
     const Eigen::Vector3d target_position = tipPosition() + dx;
@@ -156,6 +157,44 @@ void VirtuosoArm::_differentialInverseKinematics(const Eigen::Vector3d& dx)
     std::cout << "q: " << _ot_rotation << ", " << _ot_translation << ", " << _it_translation << std::endl;
 
     _stale_frames = true;
+}
+
+void VirtuosoArm::_hybridDifferentialInverseKinematics(const Eigen::Vector3d& dx)
+{
+    _recomputeCoordinateFrames();
+    const Eigen::Vector3d target_position = tipPosition() + dx;
+
+    // solve for the outer tube rotation analytically
+    Geometry::TransformationMatrix global_to_arm_base = _arm_base_frame.transform().inverse();
+    const Eigen::Vector3d arm_base_pt = global_to_arm_base.rotMat() * target_position + global_to_arm_base.translation();
+    const double target_angle = std::atan2(arm_base_pt[0], -arm_base_pt[1]);
+
+    _ot_rotation = target_angle;
+
+    for (int i = 0; i < 10; i++)
+    {
+        const Eigen::Vector3d pos_err = target_position - tipPosition();
+        if (pos_err.norm() < 1e-10)
+            break;
+
+        const Eigen::Matrix3d J_a = _3DOFAnalyticalHybridJacobian();
+        const Eigen::Vector3d dq = J_a.colPivHouseholderQr().solve(pos_err);
+        _ot_translation += dq[1];
+        _it_translation += dq[2];
+
+        _recomputeCoordinateFrames();
+    }
+
+    // enforce constraints
+    _ot_translation = std::clamp(_ot_translation, _ot_distal_straight_length+1e-4, 20e-3);  // TODO: create var for joint limits
+    _it_translation = std::clamp(_it_translation, _ot_distal_straight_length+1e-4, 40e-3);
+    if (_it_translation < _ot_translation)
+    {
+        const double d = _ot_translation - _it_translation;
+        _it_translation += d/2;
+        _ot_translation -= d/2;
+        // _it_translation += d;
+    }
 }
 
 Eigen::Matrix<double,6,3> VirtuosoArm::_3DOFSpatialJacobian()
