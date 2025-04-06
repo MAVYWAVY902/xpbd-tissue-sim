@@ -9,6 +9,7 @@
 #include "haptics/HapticDeviceManager.hpp"
 
 #include "simobject/RigidPrimitives.hpp"
+#include "simobject/XPBDMeshObject.hpp"
 
 #include <map>
 
@@ -44,17 +45,21 @@ class VirtuosoSimulation : public Simulation
 
     void _moveCursor(const Eigen::Vector3d& dp);
 
+    void _toggleTissueGrasping();
+
     // TODO: make these settable simulation parameters
     constexpr static double IT_ROT_RATE = 10; // rad/s
     constexpr static double IT_TRANS_RATE = 0.005; // m/s
     constexpr static double OT_ROT_RATE = 10; // rad/s
     constexpr static double OT_TRANS_RATE = 0.005; // m/s 
     VirtuosoArm* _virtuoso_arm;
+    XPBDMeshObject* _tissue_obj;
 
     std::optional<std::string> _fixed_faces_filename;
     SimulationInputDevice _input_device;
 
     RigidSphere* _tip_cursor;
+    bool _grasping;
 
     std::map<int, bool> _keys_held;
 

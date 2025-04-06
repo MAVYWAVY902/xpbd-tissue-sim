@@ -7,6 +7,7 @@
 #include "solver/RigidBodyConstraintProjector.hpp"
 #include "solver/HydrostaticConstraint.hpp"
 #include "solver/DeviatoricConstraint.hpp"
+#include "solver/AttachmentConstraint.hpp"
 #include "solver/ConstraintProjectorDecorator.hpp"
 #include "solver/CombinedNeohookeanConstraintProjector.hpp"
 #include "utils/MeshUtils.hpp"
@@ -129,6 +130,31 @@ void XPBDMeshObject::removeOldCollisionConstraints(const int threshold)
             _collision_constraints.erase(_collision_constraints.begin() + i);
         }
     }
+}
+
+void XPBDMeshObject::addAttachmentConstraint(int v_ind, const Eigen::Vector3d* attach_pos_ptr, const Eigen::Vector3d& attachment_offset)
+{
+    std::unique_ptr<Solver::AttachmentConstraint> attachment_constraint = std::make_unique<Solver::AttachmentConstraint>(this, v_ind, attach_pos_ptr, attachment_offset);
+    // std::unique_ptr<Solver::Constraint> vec = 
+    std::unique_ptr<Solver::ConstraintProjector> projector = std::make_unique<Solver::ConstraintProjector>(std::vector<Solver::Constraint*>({attachment_constraint.get()}), _sim->dt());
+
+    int index = _solver->addConstraintProjector(std::move(projector));
+
+    XPBDAttachmentConstraint xpbd_attachment_constraint;
+    xpbd_attachment_constraint.constraint = std::move(attachment_constraint);
+    xpbd_attachment_constraint.projector_index = index;
+
+    _attachment_constraints.push_back(std::move(xpbd_attachment_constraint));
+}
+
+void XPBDMeshObject::clearAttachmentConstraints()
+{
+    for (const auto& c : _attachment_constraints)
+    {
+        _solver->removeConstraintProjector(c.projector_index);
+    }
+
+    _attachment_constraints.clear();
 }
 
 void XPBDMeshObject::_calculatePerVertexQuantities()

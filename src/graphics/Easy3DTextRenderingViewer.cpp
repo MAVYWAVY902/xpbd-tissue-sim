@@ -53,7 +53,7 @@ bool Easy3DTextRenderingViewer::callback_event_keyboard(int key, int action, int
 
 bool Easy3DTextRenderingViewer::callback_event_mouse_button(int button, int action, int modifiers)
 {
-    _processMouseButtonEvent(action, button, modifiers);
+    _processMouseButtonEvent(button, action, modifiers);
 
     // if mouse interaction is enabled, pass on the event to easy3d::Viewer
     if (_enable_mouse_interaction)

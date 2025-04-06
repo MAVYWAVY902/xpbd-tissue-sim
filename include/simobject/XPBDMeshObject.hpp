@@ -12,6 +12,7 @@
 namespace Solver
 {
     class Constraint;
+    class AttachmentConstraint;
     class CollisionConstraint;
     class ConstraintProjector;
     class XPBDSolver;
@@ -32,6 +33,12 @@ struct XPBDCollisionConstraint
     std::unique_ptr<Solver::CollisionConstraint> constraint;
     int projector_index;
     int num_steps_unused;
+};
+
+struct XPBDAttachmentConstraint
+{
+    std::unique_ptr<Solver::AttachmentConstraint> constraint;
+    int projector_index;
 };
 
 /** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
@@ -99,6 +106,10 @@ class XPBDMeshObject : public Object, public TetMeshObject
     void clearCollisionConstraints();
 
     void removeOldCollisionConstraints(const int threshold);
+
+    void addAttachmentConstraint(int v_ind, const Eigen::Vector3d* attach_pos_ptr, const Eigen::Vector3d& attachment_offset);
+
+    void clearAttachmentConstraints();
 
     protected:
     /** Moves the vertices in the absence of constraints.
@@ -168,6 +179,7 @@ class XPBDMeshObject : public Object, public TetMeshObject
 
     std::unique_ptr<Solver::XPBDSolver> _solver;       // the XPBDSolver that will project the constraints
     std::vector<std::unique_ptr<Solver::Constraint>> _elastic_constraints;  // the array of constraints applied to the elements of the mesh
+    std::vector<XPBDAttachmentConstraint> _attachment_constraints; // array of attachment constraints
     // std::vector<std::unique_ptr<Solver::CollisionConstraint>> _collision_constraints;
     // std::vector<int> _collision_constraint_projector_indices;
     std::vector<XPBDCollisionConstraint> _collision_constraints;

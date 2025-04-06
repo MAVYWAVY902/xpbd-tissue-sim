@@ -26,9 +26,9 @@ objects:
     inner-tube-rotation: 45
     inner-tube-diameter: 1.04e-3
     inner-tube-translation: 20e-3
-    endoscope-position: [0, 0, 0]
-    endoscope-rotation: [0, 0, 0]
-    collisions: false
+    endoscope-position: [0, -0.03, 0]
+    endoscope-rotation: [0, 90, 90]
+    collisions: true
   # -
   #   name: "Arm1"
   #   type: "VirtuosoArm"
@@ -41,30 +41,30 @@ objects:
   #   outer-tube-position: [0, -0.03, 0]
   #   collisions: true
 
-  # -
-  #   name: "Cube1"
-  #   # type: "XPBDMeshObject"
-  #   type: "FirstOrderXPBDMeshObject"
-  #   filename: "../resource/tissue/tracheal_tumor_v2.msh"
-  #   material:
-  #     name: "Soft Tissue"
-  #     density: 1000
-  #     E: 6e4
-  #     nu: 0.49
-  #   color: [1.0, 0.0, 0.0, 1.0]
-  #   draw-points: false
-  #   draw-edges: true
-  #   max-size: 0.06
-  #   position: [0, 0, 0]
-  #   velocity: [0, 0, 0]
-  #   rotation: [0, 0, 0]
-  #   num-solver-iters: 1
-  #   residual-policy: "Never"
-  #   solver-type: "Gauss-Seidel"
-  #   constraint-type: "Stable-Neohookean-Combined"
-  #   with-residual: false
-  #   with-damping: false
-  #   damping-multiplier: 400000000
-  #   collisions: false
+  -
+    name: "Cube1"
+    # type: "XPBDMeshObject"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tissue/tracheal_tumor_v2.msh"
+    material:
+      name: "Soft Tissue"
+      density: 1000
+      E: 6e4
+      nu: 0.49
+    color: [1.0, 0.0, 0.0, 1.0]
+    draw-points: false
+    draw-edges: true
+    max-size: 0.06
+    position: [0, 0, 0]
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]
+    num-solver-iters: 1
+    residual-policy: "Never"
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    with-residual: false
+    with-damping: false
+    damping-multiplier: 400000000
+    collisions: true
 
 

@@ -4,7 +4,7 @@ namespace Sim
 {
 
 VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
-    : Simulation()
+    : Simulation(), _grasping(false)
 {
     _config = std::make_unique<VirtuosoSimulationConfig>(YAML::LoadFile(config_filename));
 
@@ -58,6 +58,26 @@ void VirtuosoSimulation::setup()
         }
     }
 
+    for (auto& obj : _objects)
+    {
+        if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
+        {
+            _tissue_obj = xpbd_obj;
+            break;
+        }
+    }
+
+    assert(_tissue_obj);
+
+    if (_fixed_faces_filename.has_value())
+    {
+        std::set<unsigned> vertices = MeshUtils::verticesFromFixedFacesFile(_fixed_faces_filename.value());
+        for (const auto& v : vertices)
+        {
+            _tissue_obj->fixVertex(v);
+        }
+    }
+
     // create an object at the tip of the robot to show where grasping is
     std::unique_ptr<RigidSphere> tip_cursor_ptr = std::make_unique<RigidSphere>(this, "tip cursor", 0.001);
     tip_cursor_ptr->setPosition(_virtuoso_arm->tipPosition());
@@ -67,6 +87,22 @@ void VirtuosoSimulation::setup()
 
 void VirtuosoSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
 {
+    if (_input_device != SimulationInputDevice::MOUSE)
+    {
+        return;
+    }
+
+    // button = 0 ==> left mouse button
+    // button = 1 ==> right mouse button
+    // action = 0 ==> mouse up
+    // action = 1 ==> mouse down
+    
+    if (button == 0 && action == 1)
+    {
+        _toggleTissueGrasping();
+    }
+
+    Simulation::notifyMouseButtonPressed(button, action, modifiers);
 
 }
 
@@ -130,6 +166,48 @@ void VirtuosoSimulation::_moveCursor(const Eigen::Vector3d& dp)
     const Eigen::Vector3d current_tip_position = _tip_cursor->position();
     _tip_cursor->setPosition(current_tip_position + dp);
     _virtuoso_arm->setTipPosition(_tip_cursor->position());
+}
+
+void VirtuosoSimulation::_toggleTissueGrasping()
+{
+    if (_grasping)
+    {
+        _tissue_obj->clearAttachmentConstraints();
+        _grasping = false;
+    }
+    else
+    {
+        std::set<unsigned> vertices_to_grasp;
+
+        // quick and dirty way to find all vertices in a sphere
+        const Eigen::Vector3d tip_pos = _tip_cursor->position();
+        for (int theta = 0; theta < 360; theta+=30)
+        {
+            for (int phi = 0; phi < 360; phi+=30)
+            {
+                for (double p = 0; p < _tip_cursor->radius(); p+=_tip_cursor->radius()/5.0)
+                {
+                    const double x = tip_pos[0] + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
+                    const double y = tip_pos[1] + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
+                    const double z = tip_pos[2] + p*std::cos(phi*M_PI/180);
+                    unsigned v = _tissue_obj->mesh()->getClosestVertex(Eigen::Vector3d(x, y, z));
+
+                    // make sure v is inside sphere
+                    if ((tip_pos - _tissue_obj->mesh()->vertex(v)).norm() <= _tip_cursor->radius())
+                        if (!_tissue_obj->vertexFixed(v))
+                            vertices_to_grasp.insert(v);
+                }
+            }
+        }
+
+        for (const auto& v : vertices_to_grasp)
+        {
+            _tissue_obj->addAttachmentConstraint(v, &_tip_cursor->position(), Eigen::Vector3d::Zero());
+        }
+
+        _grasping = true;
+    }
+    
 }
 
 void VirtuosoSimulation::_timeStep()
