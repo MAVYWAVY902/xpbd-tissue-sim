@@ -2,6 +2,7 @@
 #define __VIRTUOSO_ARM_SDF_HPP
 
 #include "geometry/SDF.hpp"
+#include "geometry/TransformationMatrix.hpp"
 #include "simobject/VirtuosoArm.hpp"
 
 namespace Geometry
@@ -42,40 +43,53 @@ class VirtuosoArmSDF : public SDF
     private:
     Eigen::Vector3d _bodyToGlobalInnerTubeGradient(const Eigen::Vector3d& grad) const
     {
-        const double ot_curv = _virtuoso_arm->outerTubeRadiusOfCurvature();
-        const double ot_rot = _virtuoso_arm->outerTubeRotation();
-        const double ot_trans = _virtuoso_arm->outerTubeTranslation();
-        const double ot_distal_len = _virtuoso_arm->outerTubeDistalStraightLength();
-        const double ot_max_angle = std::max(ot_trans - ot_distal_len, 0.0) / ot_curv;
+        // const double ot_curv = _virtuoso_arm->outerTubeRadiusOfCurvature();
+        // const double ot_rot = _virtuoso_arm->outerTubeRotation();
+        // const double ot_trans = _virtuoso_arm->outerTubeTranslation();
+        // const double ot_distal_len = _virtuoso_arm->outerTubeDistalStraightLength();
+        // const double ot_max_angle = std::max(ot_trans - ot_distal_len, 0.0) / ot_curv;
 
-        Eigen::Matrix3d rot_mat;
-        rot_mat <<  std::cos(ot_rot)*std::cos(ot_max_angle), -std::sin(ot_rot), -std::cos(ot_rot)*std::sin(ot_max_angle),
-                    std::sin(ot_max_angle), 0, std::cos(ot_max_angle),
-                    -std::sin(ot_rot)*std::cos(ot_max_angle), -std::cos(ot_rot), std::sin(ot_rot)*std::sin(ot_max_angle);
-        return rot_mat*grad;
+        const double it_trans = _virtuoso_arm->innerTubeTranslation();
+        const double ot_trans = _virtuoso_arm->outerTubeTranslation();
+        const double exposed_length = std::max(0.0, it_trans - ot_trans);
+
+        // Eigen::Matrix3d rot_mat;
+        // rot_mat <<  std::cos(ot_rot)*std::cos(ot_max_angle), -std::sin(ot_rot), -std::cos(ot_rot)*std::sin(ot_max_angle),
+        //             std::sin(ot_max_angle), 0, std::cos(ot_max_angle),
+        //             -std::sin(ot_rot)*std::cos(ot_max_angle), -std::cos(ot_rot), std::sin(ot_rot)*std::sin(ot_max_angle);
+
+        const TransformationMatrix it_middle_transform = _virtuoso_arm->innerTubeStartFrame().transform() * TransformationMatrix(Eigen::Matrix3d::Identity(), Eigen::Vector3d(0,0,exposed_length/2));
+        
+        return it_middle_transform.rotMat()*grad;
     }
     Eigen::Vector3d _globalToBodyInnerTube(const Eigen::Vector3d& x) const
     {
-        const double ot_curv = _virtuoso_arm->outerTubeRadiusOfCurvature();
-        const double ot_rot = _virtuoso_arm->outerTubeRotation();
+        // const double ot_curv = _virtuoso_arm->outerTubeRadiusOfCurvature();
+        // const double ot_rot = _virtuoso_arm->outerTubeRotation();
+        const double it_trans = _virtuoso_arm->innerTubeTranslation();
         const double ot_trans = _virtuoso_arm->outerTubeTranslation();
-        const double ot_distal_len = _virtuoso_arm->outerTubeDistalStraightLength();
-        const double ot_max_angle = std::max(ot_trans - ot_distal_len, 0.0) / ot_curv;
+        const double exposed_length = std::max(0.0, it_trans - ot_trans);
+        // const double ot_distal_len = _virtuoso_arm->outerTubeDistalStraightLength();
+        // const double ot_max_angle = std::max(ot_trans - ot_distal_len, 0.0) / ot_curv;
 
-        Eigen::Matrix3d rot_mat;
-        rot_mat <<  std::cos(ot_rot)*std::cos(ot_max_angle), -std::sin(ot_rot), -std::cos(ot_rot)*std::sin(ot_max_angle),
-                    std::sin(ot_max_angle), 0, std::cos(ot_max_angle),
-                    -std::sin(ot_rot)*std::cos(ot_max_angle), -std::cos(ot_rot), std::sin(ot_rot)*std::sin(ot_max_angle);
+        // Eigen::Matrix3d rot_mat;
+        // rot_mat <<  std::cos(ot_rot)*std::cos(ot_max_angle), -std::sin(ot_rot), -std::cos(ot_rot)*std::sin(ot_max_angle),
+        //             std::sin(ot_max_angle), 0, std::cos(ot_max_angle),
+        //             -std::sin(ot_rot)*std::cos(ot_max_angle), -std::cos(ot_rot), std::sin(ot_rot)*std::sin(ot_max_angle);
 
-        const double p_x = ot_curv * std::cos(ot_max_angle) - ot_curv - ot_distal_len*std::sin(ot_max_angle);
-        const double p_y = ot_curv * std::sin(ot_max_angle) + ot_distal_len*std::cos(ot_max_angle);
-        const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
-        const Eigen::Vector3d ot_pos = Eigen::Vector3d::Zero();//_virtuoso_arm->outerTubePosition();
-        Eigen::Vector3d trans_vec(  std::cos(ot_rot) * (p_x - std::sin(ot_max_angle)*l*0.5) + ot_pos[0],
-                                    p_y + std::cos(ot_max_angle)*l*0.5 + ot_pos[1],
-                                    -std::sin(ot_rot) * (p_x - std::sin(ot_max_angle)*l*0.5) + ot_pos[2]);
+        // const double p_x = ot_curv * std::cos(ot_max_angle) - ot_curv - ot_distal_len*std::sin(ot_max_angle);
+        // const double p_y = ot_curv * std::sin(ot_max_angle) + ot_distal_len*std::cos(ot_max_angle);
+        // const double l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), 0.0);
+        // const Eigen::Vector3d ot_pos = Eigen::Vector3d::Zero();//_virtuoso_arm->outerTubePosition();
+        // Eigen::Vector3d trans_vec(  std::cos(ot_rot) * (p_x - std::sin(ot_max_angle)*l*0.5) + ot_pos[0],
+        //                             p_y + std::cos(ot_max_angle)*l*0.5 + ot_pos[1],
+        //                             -std::sin(ot_rot) * (p_x - std::sin(ot_max_angle)*l*0.5) + ot_pos[2]);
         
-        return rot_mat.transpose()*x - rot_mat.transpose()*trans_vec;
+        
+        const TransformationMatrix it_middle_transform = _virtuoso_arm->innerTubeStartFrame().transform() * TransformationMatrix(Eigen::Matrix3d::Identity(), Eigen::Vector3d(0,0,exposed_length/2));
+        const TransformationMatrix inv_transform = it_middle_transform.inverse();
+
+        return inv_transform.rotMat()*x + inv_transform.translation();
 
     }
 

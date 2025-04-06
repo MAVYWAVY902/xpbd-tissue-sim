@@ -65,9 +65,10 @@ class VirtuosoArm : public Object
     void setOuterTubeRotation(double r) { _ot_rotation = r; _stale_frames = true; }
 
     const Geometry::CoordinateFrame& armBaseFrame() const { return _arm_base_frame; }
-    const Geometry::CoordinateFrame& outerTubeBaseFrame() const { return _ot_frames[0]; }
+    const Geometry::CoordinateFrame& outerTubeStartFrame() const { return _ot_frames[0]; }
     const Geometry::CoordinateFrame& outerTubeCurveEndFrame() const { return _ot_frames[NUM_OT_CURVE_FRAMES - 1]; }
     const Geometry::CoordinateFrame& outerTubeEndFrame() const { return _ot_frames.back(); }
+    const Geometry::CoordinateFrame& innerTubeStartFrame() const { return _it_frames[0]; }
     const Geometry::CoordinateFrame& innerTubeEndFrame() const { return _it_frames.back(); }
 
     const OuterTubeFramesArray& outerTubeFrames() const { return _ot_frames; }
