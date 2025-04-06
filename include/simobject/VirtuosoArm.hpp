@@ -6,11 +6,22 @@
 
 #include "geometry/CoordinateFrame.hpp"
 
+#include <array>
+
 namespace Sim
 {
 
 class VirtuosoArm : public Object
 {
+
+    private:
+    constexpr static int NUM_OT_CURVE_FRAMES = 15;      // number of coordinate frames defined along the curved section of the outer tube
+    constexpr static int NUM_OT_STRAIGHT_FRAMES = 5;    // number of coordinate frames defined along the straight distal section of the outer tube
+    constexpr static int NUM_IT_FRAMES = 20;            // number of coordinate frames defined along the inner tube
+
+    public:
+    using OuterTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES>;
+    using InnerTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_IT_FRAMES>;
 
     public:
     VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config);
@@ -53,14 +64,19 @@ class VirtuosoArm : public Object
     void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _stale_frames = true; }
     void setOuterTubeRotation(double r) { _ot_rotation = r; _stale_frames = true; }
 
-    const Geometry::CoordinateFrame& endoscopeFrame() const { return _endoscope_frame; }
-    const Geometry::CoordinateFrame& outerTubeBaseFrame() const { return _ot_base_frame; }
-    const Geometry::CoordinateFrame& outerTubeCurveEndFrame() const { return _ot_curve_end_frame; }
-    const Geometry::CoordinateFrame& outerTubeEndFrame() const { return _ot_end_frame; }
-    const Geometry::CoordinateFrame& innerTubeEndFrame() const { return _it_end_frame; }
+    const Geometry::CoordinateFrame& armBaseFrame() const { return _arm_base_frame; }
+    const Geometry::CoordinateFrame& outerTubeBaseFrame() const { return _ot_frames[0]; }
+    const Geometry::CoordinateFrame& outerTubeCurveEndFrame() const { return _ot_frames[NUM_OT_CURVE_FRAMES - 1]; }
+    const Geometry::CoordinateFrame& outerTubeEndFrame() const { return _ot_frames.back(); }
+    const Geometry::CoordinateFrame& innerTubeEndFrame() const { return _it_frames.back(); }
+
+    const OuterTubeFramesArray& outerTubeFrames() const { return _ot_frames; }
+    const InnerTubeFramesArray& innerTubeFrames() const { return _it_frames; }
 
     Eigen::Vector3d tipPosition() const;
     void setTipPosition(const Eigen::Vector3d& new_position);
+
+    void setActuatorValues(double ot_rotation, double ot_translation, double it_rotation, double it_translation);
 
     private:
     void _recomputeCoordinateFrames();
@@ -91,15 +107,19 @@ class VirtuosoArm : public Object
     double _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
     double _ot_distal_straight_length; // the length of the straight section on the distal part of the outer tube
 
-    Eigen::Vector3d _endoscope_position;
-    Eigen::Matrix3d _endoscope_rotation;
+    Eigen::Vector3d _arm_base_position;
+    Eigen::Matrix3d _arm_base_rotation;
 
 
-    Geometry::CoordinateFrame _endoscope_frame;       // coordinate frame of the end of the endoscope
-    Geometry::CoordinateFrame _ot_base_frame;         // coordinate frame of the base of the robot (i.e. this can be rotated relative tot the endoscope frame)
-    Geometry::CoordinateFrame _ot_curve_end_frame;    // coordinate frame at the end of the curved section of the outer tube
-    Geometry::CoordinateFrame _ot_end_frame;          // coordinate frame at the end of the outer tube
-    Geometry::CoordinateFrame _it_end_frame;          // coordinate frame at the end of the inner tube
+    Geometry::CoordinateFrame _arm_base_frame;        // coordinate frame at the tool channel (where it leaves the endoscope)
+    
+    OuterTubeFramesArray _ot_frames;  // coordinate frames along the backbone of the outer tube
+    InnerTubeFramesArray _it_frames;  // coordinate frames along the backbone of the inner tube
+    
+    // Geometry::CoordinateFrame _ot_base_frame;         // coordinate frame of the base of the robot (i.e. this can be rotated relative tot the endoscope frame)
+    // Geometry::CoordinateFrame _ot_curve_end_frame;    // coordinate frame at the end of the curved section of the outer tube
+    // Geometry::CoordinateFrame _ot_end_frame;          // coordinate frame at the end of the outer tube
+    // Geometry::CoordinateFrame _it_end_frame;          // coordinate frame at the end of the inner tube
 
     bool _stale_frames;     // true if the joint variables have been updated and the coordinate frames need to be recomputed
 

@@ -8,7 +8,7 @@ namespace Sim
 {
 
 VirtuosoArm::VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config)
-    : Object(sim, config)
+    : Object(sim, config), _ot_frames(), _it_frames()
 {
     _it_dia = config->innerTubeDiameter();
     _it_translation = config->innerTubeInitialTranslation();
@@ -20,9 +20,9 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config)
     _ot_rotation = config->outerTubeInitialRotation() * 3.1415/180.0;   // convert to radians
     _ot_distal_straight_length = config->outerTubeDistalStraightLength();
 
-    _endoscope_position = config->endoscopeInitialPosition();
+    _arm_base_position = config->endoscopeInitialPosition();
     Eigen::Vector3d initial_rot_xyz = config->endoscopeInitialRotation() * 3.1415 / 180.0;
-    _endoscope_rotation = GeometryUtils::quatToMat(GeometryUtils::eulXYZ2Quat(initial_rot_xyz[0], initial_rot_xyz[1], initial_rot_xyz[2]));
+    _arm_base_rotation = GeometryUtils::quatToMat(GeometryUtils::eulXYZ2Quat(initial_rot_xyz[0], initial_rot_xyz[1], initial_rot_xyz[2]));
 
     _recomputeCoordinateFrames();
 
@@ -39,13 +39,23 @@ Eigen::Vector3d VirtuosoArm::tipPosition() const
     // if (_stale_frames)
     //     _recomputeCoordinateFrames();
     
-    return _it_end_frame.origin();
+    return innerTubeEndFrame().origin();
 }
 
 void VirtuosoArm::setTipPosition(const Eigen::Vector3d& new_position)
 {
     _differentialInverseKinematics(new_position - tipPosition());
     _stale_frames = true;
+}
+
+void VirtuosoArm::setActuatorValues(double ot_rotation, double ot_translation, double it_rotation, double it_translation)
+{
+    _ot_rotation = ot_rotation;
+    _ot_translation = ot_translation;
+    _it_rotation = it_rotation;
+    _it_translation = it_translation;
+
+    _recomputeCoordinateFrames();
 }
 
 void VirtuosoArm::setup()
@@ -74,37 +84,45 @@ Geometry::AABB VirtuosoArm::boundingBox() const
 
 void VirtuosoArm::_recomputeCoordinateFrames()
 {
-    // compute endoscope (base) frame based on current position and orientation
-    _endoscope_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_endoscope_rotation, _endoscope_position));
+    // compute arm (base) frame based on current position and orientation
+    _arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
 
     // compute outer tube base frmae
     // consists of rotating about the current z-axis accordint to outer tube rotation
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Eigen::Vector3d::Zero());
-    _ot_base_frame = _endoscope_frame * T_rot_z;
+    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z;
 
-    // compute frame for end of curved section of outer tube
-    // consists of rotating around the body y-axis by the angle swept by the outer tube curve
     double swept_angle = std::max(_ot_translation - _ot_distal_straight_length, 0.0) / _ot_r_curvature; 
-    const Eigen::Vector3d end_of_xz_curve(-_ot_r_curvature*std::cos(swept_angle) + _ot_r_curvature, 0, _ot_r_curvature*std::sin(swept_angle));
-    Geometry::TransformationMatrix T_curve_end(GeometryUtils::Ry(swept_angle), end_of_xz_curve);
+    // frames for the curved section of the outer tube
+    for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
+    {
+        double cur_angle = i * swept_angle / (NUM_OT_CURVE_FRAMES - 1);
+        const Eigen::Vector3d curve_point(0.0, -_ot_r_curvature +_ot_r_curvature*std::cos(cur_angle), _ot_r_curvature*std::sin(cur_angle));
+        Geometry::TransformationMatrix T(GeometryUtils::Rx(cur_angle), curve_point);
+        _ot_frames[i] = ot_base_frame * T;
+    }
 
-    _ot_curve_end_frame = _ot_base_frame * T_curve_end;
+    // frames for the straight section of the outer tube
+    for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
+    {
+        // relative transformation along z-axis
+        Geometry::TransformationMatrix T(Eigen::Matrix3d::Identity(), Eigen::Vector3d(0,0, std::min(_ot_translation, _ot_distal_straight_length) / NUM_OT_STRAIGHT_FRAMES));
+        _ot_frames[NUM_OT_CURVE_FRAMES + i] = _ot_frames[NUM_OT_CURVE_FRAMES + i -1] * T;
+    }
 
-    // compute frame for end of outer tube
-    // consists of simply moving along the current z-axis by the length of the distal straight section
-    Geometry::TransformationMatrix T_curve_end_to_ot_end(Eigen::Matrix3d::Identity(), Eigen::Vector3d(0, 0, std::min(_ot_distal_straight_length, _ot_translation)));
-    _ot_end_frame = _ot_curve_end_frame * T_curve_end_to_ot_end;
-
-    // compute frame for end of inner tube
-    // consists of rotating around the current z-axis by the inner tube rotation and moving along the current z-axis by the exposed length of the inner tube
-    Geometry::TransformationMatrix T_ot_end_to_it_end(GeometryUtils::Rz(_it_rotation), Eigen::Vector3d(0, 0, std::max(0.0, _it_translation - _ot_translation)));
-    _it_end_frame = _ot_end_frame * T_ot_end_to_it_end;
+    // frames for the inner tube
+    // unrotate about z-axis for outer tube rotation, then rotate about z-axis with inner tube rotation to get to the beginning of the exposed part of the inner tube
+    Geometry::TransformationMatrix T_rot_z_outer_to_inner(GeometryUtils::Rz(_it_rotation-_ot_rotation), Eigen::Vector3d::Zero());
+    _it_frames[0] = _ot_frames.back() * T_rot_z_outer_to_inner;
+    const double it_length = std::max(0.0, _it_translation - _ot_translation);      // exposed length of the inner tube
+    for (int i = 1; i < NUM_IT_FRAMES; i++)
+    {
+        // relative transformation matrix along z-axis
+        Geometry::TransformationMatrix T(Eigen::Matrix3d::Identity(), Eigen::Vector3d(0, 0, it_length / (NUM_IT_FRAMES - 1)));
+        _it_frames[i] = _it_frames[i-1] * T;
+    }
 
     _stale_frames = false;
-
-    // std::cout << "Curve end: \n" << _ot_curve_end_frame.transform().asMatrix() << std::endl;
-    // std::cout << "OT end: \n" << _ot_end_frame.transform().asMatrix() << std::endl;
-    // std::cout << "Tip Transform: \n" << _it_end_frame.transform().asMatrix() << std::endl;
 
 }
 
@@ -126,13 +144,15 @@ void VirtuosoArm::_differentialInverseKinematics(const Eigen::Vector3d& dx)
         _it_translation += dq[2];
 
         // enforce joint limits
-        _ot_translation = std::clamp(_ot_translation, 0.0, 40.0e-3);
+        _ot_translation = std::clamp(_ot_translation, 0.0, 50.0e-3);
         _it_translation = std::clamp(_it_translation, 0.0, 50.0e-3);
 
         _recomputeCoordinateFrames();
     }
 
+    const Eigen::Vector3d final_err = target_position - tipPosition();
     std::cout << "Tip pos: " << tipPosition()[0] << ", " << tipPosition()[1] << ", " << tipPosition()[2] << std::endl;
+    std::cout << "Tip err: " << final_err[0] << ", " << final_err[1] << ", " << final_err[2] << std::endl;
     std::cout << "q: " << _ot_rotation << ", " << _ot_translation << ", " << _it_translation << std::endl;
 
     _stale_frames = true;
@@ -174,38 +194,42 @@ Eigen::Matrix<double,6,3> VirtuosoArm::_3DOFSpatialJacobian()
 
     // now just implement dT/dq
     const double alpha = std::max(_ot_translation - _ot_distal_straight_length, 0.0) / _ot_r_curvature;    // angle swept by the outer tube curve
+    const double beta = _it_rotation - _ot_rotation;    // difference in angle between outer tube and inner tube
     const double straight_length = std::min(_ot_distal_straight_length, _ot_translation) + std::max(0.0, _it_translation - _ot_translation); // length of the straight section of the combined outer + inner tube
+
     // precompute some sin and cos
     const double ct1 = std::cos(_ot_rotation);
     const double st1 = std::sin(_ot_rotation);
     const double ca = std::cos(alpha);
     const double sa = std::sin(alpha);
+    const double cb = std::cos(beta);
+    const double sb = std::sin(beta);
 
     Eigen::Matrix4d dT_d_ot_rot, dT_d_ot_trans, dT_d_it_trans;
-    dT_d_ot_rot << -st1*ca, -ct1, -st1*sa, -st1*sa*straight_length - st1*(-_ot_r_curvature*ca + _ot_r_curvature),
-                   ct1*ca, -st1, ct1*sa,  ct1*sa*straight_length + ct1*(-_ot_r_curvature*ca + _ot_r_curvature),
-                    0, 0, 0, 0,
+    dT_d_ot_rot << sb*ct1 + cb*-st1 + cb*st1*ca - sb*ct1*ca, cb*ct1 + sb*st1 - sb*st1*ca - cb*ct1*ca, ct1*sa, ct1*sa*straight_length - ct1*(_ot_r_curvature*ca - _ot_r_curvature),
+                   sb*st1 + cb*ct1 - cb*ct1*ca - sb*st1*ca, cb*st1 - sb*ct1 + sb*ct1*ca + -cb*st1*ca, st1*sa, st1*sa*straight_length - st1*(_ot_r_curvature*ca - _ot_r_curvature),
+                    -cb*sa, sb*sa, 0, 0,
                     0, 0, 0, 0;
 
-    dT_d_ot_trans << ct1*-sa*dalpha_d1, 0, ct1*ca*dalpha_d1, ct1*ca*dalpha_d1*straight_length + ct1*sa*(dmin_d1 + dmax_d1) + ct1*(-_ot_r_curvature*-sa*dalpha_d1),
-                    st1*-sa*dalpha_d1, 0, st1*ca*dalpha_d1, st1*ca*dalpha_d1*straight_length + st1*sa*(dmin_d1 + dmax_d1) + st1*(-_ot_r_curvature*-sa*dalpha_d1),
-                    -ca*dalpha_d1, 0, -sa*dalpha_d1, -sa*dalpha_d1*straight_length + ca*(dmin_d1 + dmax_d1) + _ot_r_curvature*ca*dalpha_d1,
-                    0, 0, 0, 0;
 
-    dT_d_it_trans << 0, 0, 0, ct1*sa*dmax_d2,
-                     0, 0, 0, st1*sa*dmax_d2,
+    dT_d_ot_trans << sb*st1*sa*dalpha_d1, cb*st1*sa*dalpha_d1, st1*ca*dalpha_d1, st1*ca*dalpha_d1*straight_length + st1*sa*(dmin_d1 + dmax_d1) + st1*_ot_r_curvature*sa*dalpha_d1,
+                     -sb*ct1*sa*dalpha_d1, -cb*ct1*sa*dalpha_d1, -ct1*ca*dalpha_d1, -ct1*ca*dalpha_d1*straight_length - ct1*sa*(dmin_d1 + dmax_d1) - ct1*_ot_r_curvature*sa*dalpha_d1,
+                     sb*ca*dalpha_d1, cb*ca*dalpha_d1, -sa*dalpha_d1, -sa*dalpha_d1*straight_length + ca*(dmin_d1 + dmax_d1) + _ot_r_curvature*ca*dalpha_d1,
+                     0, 0, 0, 0;
+
+    dT_d_it_trans << 0, 0, 0, st1*sa*dmax_d2,
+                     0, 0, 0, -ct1*sa*dmax_d2,
                      0, 0, 0, ca*dmax_d2,
                      0, 0, 0, 0;
 
     // and assemble them into the spatial Jacobian
-    const Geometry::TransformationMatrix T_inv = _it_end_frame.transform().inverse();
+    const Geometry::TransformationMatrix T_inv = innerTubeEndFrame().transform().inverse();
     
     Eigen::Matrix<double,6,3> J_s;
-    J_s.col(0) = GeometryUtils::Vee_SE3(_endoscope_frame.transform().asMatrix() * dT_d_ot_rot * T_inv.asMatrix());
-    J_s.col(1) = GeometryUtils::Vee_SE3(_endoscope_frame.transform().asMatrix() * dT_d_ot_trans * T_inv.asMatrix());
-    J_s.col(2) = GeometryUtils::Vee_SE3(_endoscope_frame.transform().asMatrix() * dT_d_it_trans * T_inv.asMatrix());
+    J_s.col(0) = GeometryUtils::Vee_SE3(_arm_base_frame.transform().asMatrix() * dT_d_ot_rot * T_inv.asMatrix());
+    J_s.col(1) = GeometryUtils::Vee_SE3(_arm_base_frame.transform().asMatrix() * dT_d_ot_trans * T_inv.asMatrix());
+    J_s.col(2) = GeometryUtils::Vee_SE3(_arm_base_frame.transform().asMatrix() * dT_d_it_trans * T_inv.asMatrix());
 
-    // std::cout << "J_s:\n" << J_s << std::endl;
     return J_s;
 }
 
@@ -221,11 +245,11 @@ Eigen::Matrix3d VirtuosoArm::_3DOFAnalyticalHybridJacobian()
     // std::cout << "C:\n" << C << std::endl;
 
     Eigen::Matrix<double,6,6> R;
-    R << _it_end_frame.transform().rotMat(), Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(), _it_end_frame.transform().rotMat();
+    R << innerTubeEndFrame().transform().rotMat(), Eigen::Matrix3d::Zero(), Eigen::Matrix3d::Zero(), innerTubeEndFrame().transform().rotMat();
 
     // std::cout << "R:\n" << R << std::endl;
 
-    Eigen::Matrix<double,6,3> J_b = _it_end_frame.transform().inverse().adjoint() * _3DOFSpatialJacobian();
+    Eigen::Matrix<double,6,3> J_b = innerTubeEndFrame().transform().inverse().adjoint() * _3DOFSpatialJacobian();
     // std::cout << "J_b:\n" << J_b << std::endl;
     Eigen::Matrix3d J_a = C * R * J_b;
 
