@@ -1,5 +1,7 @@
 #include "simulation/VirtuosoSimulation.hpp"
 
+#include "utils/GeometryUtils.hpp"
+
 namespace Sim
 {
 
@@ -19,6 +21,7 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
         _haptic_device_manager = std::make_unique<HapticDeviceManager>();
+        _last_haptic_pos = _haptic_device_manager->position();
     }
 
     // initialize the keys map with the relevant keycodes
@@ -283,6 +286,32 @@ void VirtuosoSimulation::_timeStep()
             const double cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
         }
+        
+    }
+    else if (_input_device == SimulationInputDevice::HAPTIC)
+    {
+        Eigen::Vector3d cur_pos = _haptic_device_manager->position();
+        bool button_pressed = _haptic_device_manager->button1Pressed();
+        
+        if (_keys_held[32] > 0)
+        {
+            Eigen::Vector3d dx = cur_pos - _last_haptic_pos;
+
+            // transform dx from haptic input frame to global coordinates
+            Eigen::Vector3d dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
+            _moveCursor(dx_sim*0.0001);
+        }
+
+        if (!_grasping && button_pressed)
+        {
+            _toggleTissueGrasping();
+        }
+        else if (_grasping && !button_pressed)
+        {
+            _toggleTissueGrasping();
+        }
+        
+        _last_haptic_pos = cur_pos;
         
     }
 

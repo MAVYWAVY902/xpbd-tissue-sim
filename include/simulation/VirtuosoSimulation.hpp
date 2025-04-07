@@ -47,31 +47,36 @@ class VirtuosoSimulation : public Simulation
 
     void _toggleTissueGrasping();
 
-    // TODO: make these settable simulation parameters
-    constexpr static double IT_ROT_RATE = 10; // rad/s
+    protected:
+
+    XPBDMeshObject* _tissue_obj;    // the tissue XPBD object that is being manipulated
+    std::optional<std::string> _fixed_faces_filename;   // a .txt filename that lists all the faces that should be held fixed
+
+    VirtuosoArm* _virtuoso_arm1;    // one Virtuoso arm
+    VirtuosoArm* _virtuoso_arm2;    // the second Virtuoso arm (optional)
+
+    VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assuming only one input device)
+    
+    RigidSphere* _tip_cursor;       // spherical object for visualizing grasp area 
+    bool _grasping;                 // whether or not we are actively grasping the tissue
+
+    
+    SimulationInputDevice _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)
+
+    /** MOUSE INPUT */
+    Eigen::Vector2d _last_mouse_pos;    // tracks the last mouse position (used in when mouse input is used to control the arms)
+
+    /** HAPTIC INPUT */
+    Eigen::Vector3d _last_haptic_pos;   // tracks the last haptic posiion
+    std::unique_ptr<HapticDeviceManager> _haptic_device_manager;    // manages haptic device and provides an interface to their state
+
+    /** KEYBOARD INPUT */
+    constexpr static double IT_ROT_RATE = 3; // rad/s
     constexpr static double IT_TRANS_RATE = 0.005; // m/s
-    constexpr static double OT_ROT_RATE = 10; // rad/s
+    constexpr static double OT_ROT_RATE = 3; // rad/s
     constexpr static double OT_TRANS_RATE = 0.005; // m/s
 
-    VirtuosoArm* _virtuoso_arm1;
-    VirtuosoArm* _virtuoso_arm2;
-
-    VirtuosoArm* _active_arm;
-
-    XPBDMeshObject* _tissue_obj;
-
-    std::optional<std::string> _fixed_faces_filename;
-    SimulationInputDevice _input_device;
-
-    RigidSphere* _tip_cursor;
-    bool _grasping;
-
-    std::map<int, bool> _keys_held;
-
-    Eigen::Vector2d _last_mouse_pos;
-
-    /** Manages haptic device(s) */
-    std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
+    std::map<int, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
 };
 
 } // namespace Sim
