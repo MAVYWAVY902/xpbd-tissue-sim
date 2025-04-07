@@ -102,7 +102,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
             const int v2 = (ti != _OT_TUBULAR_RES-1) ? v1 + 1 : fi*_OT_TUBULAR_RES;
             const int v3 = v2 + _OT_TUBULAR_RES;
             const int v4 = v1 + _OT_TUBULAR_RES;
-            _e3d_mesh.add_quad(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v4), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
+            _e3d_mesh.add_quad(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v2), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v4));
         }
     }
 
@@ -112,7 +112,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
         const int v1 = num_ot_vertices - 2;
         const int v2 = (ti != _OT_TUBULAR_RES-1) ? ti + 1 : 0;
         const int v3 = ti;
-        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
+        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v2), easy3d::SurfaceMesh::Vertex(v3));
     }
 
     for (int ti = 0; ti < _OT_TUBULAR_RES; ti++)
@@ -120,7 +120,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
         const int v1 = num_ot_vertices - 1;
         const int v2 = (ot_frames.size()-1)*_OT_TUBULAR_RES + ti;
         const int v3 = (ti != _OT_TUBULAR_RES-1) ? v2 + 1 : (ot_frames.size()-1)*_OT_TUBULAR_RES;
-        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v3), easy3d::SurfaceMesh::Vertex(v2));
+        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(v1), easy3d::SurfaceMesh::Vertex(v2), easy3d::SurfaceMesh::Vertex(v3));
     }
 
 
@@ -134,9 +134,9 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
             const int v3 = v2 + _IT_TUBULAR_RES;
             const int v4 = v1 + _IT_TUBULAR_RES;
             _e3d_mesh.add_quad(easy3d::SurfaceMesh::Vertex(num_ot_vertices+v1), 
-                easy3d::SurfaceMesh::Vertex(num_ot_vertices+v4), 
+                easy3d::SurfaceMesh::Vertex(num_ot_vertices+v2), 
                 easy3d::SurfaceMesh::Vertex(num_ot_vertices+v3), 
-                easy3d::SurfaceMesh::Vertex(num_ot_vertices+v2));
+                easy3d::SurfaceMesh::Vertex(num_ot_vertices+v4));
         }
     }
 
@@ -146,7 +146,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
         const int v1 = num_it_vertices - 2;
         const int v2 = (ti != _IT_TUBULAR_RES-1) ? ti + 1 : 0;
         const int v3 = ti;
-        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(num_ot_vertices+v1), easy3d::SurfaceMesh::Vertex(num_ot_vertices+v3), easy3d::SurfaceMesh::Vertex(num_ot_vertices+v2));
+        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(num_ot_vertices+v1), easy3d::SurfaceMesh::Vertex(num_ot_vertices+v2), easy3d::SurfaceMesh::Vertex(num_ot_vertices+v3));
     }
 
     for (int ti = 0; ti < _IT_TUBULAR_RES; ti++)
@@ -154,7 +154,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
         const int v1 = num_it_vertices - 1;
         const int v2 = (it_frames.size()-1)*_IT_TUBULAR_RES + ti;
         const int v3 = (ti != _IT_TUBULAR_RES-1) ? v2 + 1 : (it_frames.size()-1)*_IT_TUBULAR_RES;
-        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(num_ot_vertices+v1), easy3d::SurfaceMesh::Vertex(num_ot_vertices+v3), easy3d::SurfaceMesh::Vertex(num_ot_vertices+v2));
+        _e3d_mesh.add_triangle(easy3d::SurfaceMesh::Vertex(num_ot_vertices+v1), easy3d::SurfaceMesh::Vertex(num_ot_vertices+v2), easy3d::SurfaceMesh::Vertex(num_ot_vertices+v3));
     }
 }
 
@@ -216,6 +216,8 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     _e3d_mesh.points()[it_index_offset + it_frames.size()*_IT_TUBULAR_RES+1] = easy3d::vec3(it_frames.back().origin()[0], it_frames.back().origin()[1], it_frames.back().origin()[2]);
 
 
+    // update face normals
+    _e3d_mesh.update_face_normals();
 }
 
 } // namespace Graphics
