@@ -19,6 +19,9 @@ class VirtuosoArm : public Object
     constexpr static int NUM_OT_STRAIGHT_FRAMES = 5;    // number of coordinate frames defined along the straight distal section of the outer tube
     constexpr static int NUM_IT_FRAMES = 20;            // number of coordinate frames defined along the inner tube
 
+    constexpr static int MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
+    constexpr static int MAX_IT_TRANSLATION = 40e-3;    // maximum inner tube translation (joint limit on Virtuoso system)
+
     public:
     using OuterTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES>;
     using InnerTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_IT_FRAMES>;
@@ -82,6 +85,8 @@ class VirtuosoArm : public Object
     private:
     void _recomputeCoordinateFrames();
 
+    Geometry::TransformationMatrix _computeTipTransform(double ot_rot, double ot_trans, double it_rot, double it_trans);
+
     /** Computes the new joint positions given a change in tip position, using only the analytical Jacobian.
      * The Jacobian used is the analytical derivative of the tip transformation matrix (i.e. not a numerical Jacobian)
      *   that does not incorporate the effect of tip forces.
@@ -107,6 +112,11 @@ class VirtuosoArm : public Object
      * (The only joint variables that affect tip position are outer tube rotation, outer tube translation, inner tube translation)
      */
     Eigen::Matrix<double,6,3> _3DOFSpatialJacobian();
+
+    /** Computes the spatial Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
+     * Uses a NUMERICAL approach - varies each joint variable and computes the change in the tip transform.
+     */
+    Eigen::Matrix<double,6,3> _3DOFNumericalSpatialJacobian();
 
     /** Computes the hybrid Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
      * This is a 3x3 matrix (J_a) that relates the velocity of the tip position in the world frame (p_dot) to the actuator velocities (q_dot):
@@ -134,11 +144,6 @@ class VirtuosoArm : public Object
     
     OuterTubeFramesArray _ot_frames;  // coordinate frames along the backbone of the outer tube
     InnerTubeFramesArray _it_frames;  // coordinate frames along the backbone of the inner tube
-    
-    // Geometry::CoordinateFrame _ot_base_frame;         // coordinate frame of the base of the robot (i.e. this can be rotated relative tot the endoscope frame)
-    // Geometry::CoordinateFrame _ot_curve_end_frame;    // coordinate frame at the end of the curved section of the outer tube
-    // Geometry::CoordinateFrame _ot_end_frame;          // coordinate frame at the end of the outer tube
-    // Geometry::CoordinateFrame _it_end_frame;          // coordinate frame at the end of the inner tube
 
     bool _stale_frames;     // true if the joint variables have been updated and the coordinate frames need to be recomputed
 
