@@ -46,7 +46,7 @@ objects:
     name: "Robot"
     type: "VirtuosoRobot"
     position: [0,-0.03,-0.0015]
-    rotation: [0, 90, 90]
+    rotation: [-90, 0, 0]
     arms:
     -
       name: "Arm1"

@@ -65,6 +65,8 @@ class Easy3DGraphicsScene : public GraphicsScene
     /** Sets the camera position. */
     virtual void setCameraPosition(const Eigen::Vector3d& position) override;
 
+    protected:
+    void _addAllDrawablesForModel(const easy3d::Model* model);
 
     protected:
     /** the easy3d::Viewer which renders graphics, non-owning downcasted pointer for convenience in calling easy3d::Viewer specific methods */

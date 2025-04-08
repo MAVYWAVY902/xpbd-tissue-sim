@@ -11,7 +11,7 @@ namespace Graphics
 Easy3DVirtuosoRobotGraphicsObject::Easy3DVirtuosoRobotGraphicsObject(const std::string& name, const Sim::VirtuosoRobot* virtuoso_robot)
     : VirtuosoRobotGraphicsObject(name, virtuoso_robot)
 {
-    _e3d_mesh = easy3d::SurfaceMeshFactory::cylinder(30, _virtuoso_robot->endoscopeDiameter()/2.0, 0.1);
+    _e3d_mesh = easy3d::SurfaceMeshFactory::cylinder(30, _virtuoso_robot->endoscopeDiameter()/2.0, _virtuoso_robot->endoscopeLength());
     const Geometry::TransformationMatrix& endoscope_transform = _virtuoso_robot->endoscopeFrame().transform();
     const Eigen::Matrix3d& rot_mat = endoscope_transform.rotMat();
     easy3d::Mat3<float> e3d_rot_mat;
@@ -21,6 +21,8 @@ Easy3DVirtuosoRobotGraphicsObject::Easy3DVirtuosoRobotGraphicsObject(const std::
 
     for (auto& pt : _e3d_mesh.points())
     {
+        pt[2] -= _virtuoso_robot->endoscopeLength();
+
         pt = e3d_rot_mat*pt;
 
         pt[0] += endoscope_transform.translation()[0];
@@ -64,7 +66,7 @@ void Easy3DVirtuosoRobotGraphicsObject::update()
 
 void Easy3DVirtuosoRobotGraphicsObject::_updateMesh()
 {
-    
+
 }
 
 } // namespace Graphics

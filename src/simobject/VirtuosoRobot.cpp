@@ -30,6 +30,7 @@ VirtuosoRobot::VirtuosoRobot(const Simulation* sim, const VirtuosoRobotConfig* c
     _endoscope_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(rot_mat, position));
 
     _endoscope_dia = config->endoscopeDiameter();
+    _endoscope_length = config->endoscopeLength();
     _arm_separation_dist = config->armSeparationDistance();
     _optic_vertical_dist = config->opticVerticalDistance();
     _optic_tilt = config->opticTilt() * M_PI / 180.0;

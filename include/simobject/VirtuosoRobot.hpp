@@ -22,7 +22,13 @@ class VirtuosoRobot : public Object
     /** Returns a string with the type of the object. */
     virtual std::string type() const override { return "VirtuosoRobot"; }
 
+    bool hasArm1() const { return (_arm1 != nullptr); }
+    bool hasArm2() const { return (_arm2 != nullptr); }
     int numArms() const { return (_arm1 != nullptr) + (_arm2 != nullptr); }
+    const VirtuosoArm* arm1() const { return _arm1.get(); }
+    const VirtuosoArm* arm2() const { return _arm2.get(); }
+
+    double endoscopeLength() const { return _endoscope_length; }
     double endoscopeDiameter() const { return _endoscope_dia; }
     double armSeparationDistance() const { return _arm_separation_dist; }
 
@@ -51,6 +57,7 @@ class VirtuosoRobot : public Object
 
     private:
     double _endoscope_dia;              // diameter (in m) of the endoscope
+    double _endoscope_length;           // length (in m) of the endoscope
     double _arm_separation_dist;        // horizontal distance (in m) between the centers of the two arms
     double _optic_vertical_dist;        // vertical distance (in m) between the centers of the arms and the optic
     double _optic_tilt;            // rotation (in rad) of the optic around the positive X axis

@@ -119,12 +119,40 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const ObjectConfig* o
     else if (const Sim::VirtuosoRobot* robot = dynamic_cast<const Sim::VirtuosoRobot*>(obj))
     {
         new_graphics_obj = std::make_unique<Easy3DVirtuosoRobotGraphicsObject>(robot->name(), robot);
+
+        if (robot->hasArm1())
+        {
+            std::unique_ptr<Easy3DVirtuosoArmGraphicsObject> arm1_graphics_obj = std::make_unique<Easy3DVirtuosoArmGraphicsObject>(robot->arm1()->name(), robot->arm1());
+            _addAllDrawablesForModel(arm1_graphics_obj.get());
+            _graphics_objects.push_back(std::move(arm1_graphics_obj));
+        }
+        if (robot->hasArm2())
+        {
+            std::unique_ptr<Easy3DVirtuosoArmGraphicsObject> arm2_graphics_obj = std::make_unique<Easy3DVirtuosoArmGraphicsObject>(robot->arm2()->name(), robot->arm2());
+            _addAllDrawablesForModel(arm2_graphics_obj.get());
+            _graphics_objects.push_back(std::move(arm2_graphics_obj));
+        }
+        
     }
 
     // all Easy3D graphics objects should be easy3d::Models themselves
     easy3d::Model* model = dynamic_cast<easy3d::Model*>(new_graphics_obj.get());
     assert(model);
 
+    _addAllDrawablesForModel(model);
+
+    
+
+    // finally add the GraphicsObject to the list of GraphicsObjects
+    _graphics_objects.push_back(std::move(new_graphics_obj));
+
+
+    
+    return _graphics_objects.size() - 1;
+}
+
+void Easy3DGraphicsScene::_addAllDrawablesForModel(const easy3d::Model* model)
+{
     // add the easy3d::Drawables created by the Easy3DMeshGraphicsObject to the easy3d::Viewer
     for (const auto& pt_drawable : model->renderer()->points_drawables())
     {
@@ -138,13 +166,6 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const ObjectConfig* o
     {
         _easy3d_viewer->add_drawable(tri_drawable);
     }
-
-    // finally add the GraphicsObject to the list of GraphicsObjects
-    _graphics_objects.push_back(std::move(new_graphics_obj));
-
-
-    
-    return _graphics_objects.size() - 1;
 }
 
 void Easy3DGraphicsScene::setCameraOrthographic()
