@@ -64,6 +64,9 @@ class GraphicsScene
     /** Sets the camera mode to Perspective */
     virtual void setCameraPerspective() = 0;
 
+    /** Sets the FOV of the camera (FOV in radians). */
+    virtual void setCameraFOV(double fov) = 0;
+
 
     /** Gets the camera view direction. */
     virtual Eigen::Vector3d cameraViewDirection() const = 0;

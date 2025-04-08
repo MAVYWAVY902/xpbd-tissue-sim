@@ -178,6 +178,11 @@ void Easy3DGraphicsScene::setCameraPerspective()
     _easy3d_viewer->camera()->setType(easy3d::Camera::PERSPECTIVE);
 }
 
+void Easy3DGraphicsScene::setCameraFOV(double fov)
+{
+    _easy3d_viewer->camera()->setFieldOfView(fov);
+}
+
 Eigen::Vector3d Easy3DGraphicsScene::cameraViewDirection() const
 {
     easy3d::vec3 view_dir = _easy3d_viewer->camera()->viewDirection();

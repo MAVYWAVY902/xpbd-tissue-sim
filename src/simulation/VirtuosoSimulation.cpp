@@ -23,6 +23,10 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
         _haptic_device_manager = std::make_unique<HapticDeviceManager>();
         _last_haptic_pos = _haptic_device_manager->position();
     }
+    if (_input_device == SimulationInputDevice::MOUSE)
+    {
+        _graphics_scene->viewer()->enableMouseInteraction(false);
+    }
 
     // initialize the keys map with the relevant keycodes
     int key_codes[] = {
@@ -167,6 +171,20 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
         }
 
         _tip_cursor->setPosition(_active_arm->tipPosition());
+    }
+    // when 'TAB' is pressed, switch the camera view to the endoscope view
+    else if (key == 258 && action == 1)
+    {
+        if (_graphics_scene)
+        {
+            const Geometry::TransformationMatrix& cam_transform = _virtuoso_robot->camFrame().transform();
+            _graphics_scene->setCameraPosition(cam_transform.translation());
+
+            // find view dir
+            const Eigen::Vector3d& z_axis_pt = cam_transform.rotMat() * Eigen::Vector3d(0,0,1) + cam_transform.translation();
+            _graphics_scene->setCameraViewDirection(z_axis_pt - cam_transform.translation());
+            _graphics_scene->setCameraFOV(80.0 * M_PI / 180.0);
+        }
     }
 
 }
