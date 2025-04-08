@@ -4,6 +4,7 @@
 #include "config/FirstOrderXPBDMeshObjectConfig.hpp"
 #include "config/RigidPrimitiveConfigs.hpp"
 #include "config/VirtuosoArmConfig.hpp"
+#include "config/VirtuosoRobotConfig.hpp"
 
 #include "graphics/Easy3DGraphicsScene.hpp"
 
@@ -12,6 +13,7 @@
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "simobject/RigidPrimitives.hpp"
 #include "simobject/VirtuosoArm.hpp"
+#include "simobject/VirtuosoRobot.hpp"
 
 #include "utils/MeshUtils.hpp"
 
@@ -128,6 +130,10 @@ void Simulation::setup()
         else if (VirtuosoArmConfig* virtuoso_config = dynamic_cast<VirtuosoArmConfig*>(obj_config.get()))
         {
             new_obj = std::make_unique<VirtuosoArm>(this, virtuoso_config);
+        }
+        else if (VirtuosoRobotConfig* virtuoso_config = dynamic_cast<VirtuosoRobotConfig*>(obj_config.get()))
+        {
+            new_obj = std::make_unique<VirtuosoRobot>(this, virtuoso_config);
         }
         else
         {

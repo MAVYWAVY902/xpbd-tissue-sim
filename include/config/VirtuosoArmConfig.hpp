@@ -14,8 +14,8 @@ class VirtuosoArmConfig : public ObjectConfig
     static std::optional<double>& DEFAULT_OT_INITIAL_TRANSLATION() { static std::optional<double> ot_trans(0.1); return ot_trans; }
     static std::optional<double>& DEFAULT_OT_INITIAL_ROTATION() { static std::optional<double> ot_rot(0); return ot_rot; }
     static std::optional<double>& DEFAULT_OT_DISTAL_STRAIGHT_LENGTH() { static std::optional<double> ot_l(0); return ot_l; }
-    static std::optional<Eigen::Vector3d>& DEFAULT_ENDOSCOPE_INITIAL_POSITION() { static std::optional<Eigen::Vector3d> pos({0.0, 0.0, 0.0}); return pos; }
-    static std::optional<Eigen::Vector3d>& DEFAULT_ENDOSCOPE_INITIAL_ROTATION() { static std::optional<Eigen::Vector3d> rot({0.0, 0.0, 0.0}); return rot; }
+    static std::optional<Eigen::Vector3d>& DEFAULT_BASE_INITIAL_POSITION() { static std::optional<Eigen::Vector3d> pos({0.0, 0.0, 0.0}); return pos; }
+    static std::optional<Eigen::Vector3d>& DEFAULT_BASE_INITIAL_ROTATION() { static std::optional<Eigen::Vector3d> rot({0.0, 0.0, 0.0}); return rot; }
 
 
     explicit VirtuosoArmConfig(const YAML::Node& node)
@@ -31,8 +31,29 @@ class VirtuosoArmConfig : public ObjectConfig
         _extractParameter("outer-tube-rotation", node, _ot_initial_rotation, DEFAULT_OT_INITIAL_ROTATION());
         _extractParameter("outer-tube-distal-straight-length", node, _ot_distal_straight_length, DEFAULT_OT_DISTAL_STRAIGHT_LENGTH());
 
-        _extractParameter("endoscope-position", node, _endoscope_initial_position, DEFAULT_ENDOSCOPE_INITIAL_POSITION());
-        _extractParameter("endoscope-rotation", node, _endoscope_initial_rotation, DEFAULT_ENDOSCOPE_INITIAL_ROTATION());
+        _extractParameter("base-position", node, _base_initial_position, DEFAULT_BASE_INITIAL_POSITION());
+        _extractParameter("base-rotation", node, _base_initial_rotation, DEFAULT_BASE_INITIAL_ROTATION());
+    }
+
+    explicit VirtuosoArmConfig(
+        double ot_dia, double ot_r_curve, double ot_d_s_length, double it_dia,
+        double ot_rot, double ot_trans, double it_rot, double it_trans,
+        const Eigen::Vector3d& initial_pos, const Eigen::Vector3d& initial_rot 
+    )
+        : ObjectConfig()
+    {
+        _ot_diameter.value = ot_dia;
+        _ot_r_curvature.value = ot_r_curve;
+        _ot_distal_straight_length.value = ot_d_s_length;
+        _it_diameter.value = it_dia;
+
+        _ot_initial_rotation.value = ot_rot;
+        _ot_initial_translation.value = ot_trans;
+        _it_initial_rotation.value = it_rot;
+        _it_initial_translation.value = it_trans;
+
+        _base_initial_position.value = initial_pos;
+        _base_initial_rotation.value = initial_rot;
     }
 
     // Getters and setters
@@ -44,8 +65,8 @@ class VirtuosoArmConfig : public ObjectConfig
     double outerTubeInitialTranslation() const { return _ot_initial_translation.value.value(); }
     double outerTubeInitialRotation() const { return _ot_initial_rotation.value.value(); }
     double outerTubeDistalStraightLength() const { return _ot_distal_straight_length.value.value(); }
-    Eigen::Vector3d endoscopeInitialPosition() const { return _endoscope_initial_position.value.value(); }
-    Eigen::Vector3d endoscopeInitialRotation() const { return _endoscope_initial_rotation.value.value(); }
+    Eigen::Vector3d baseInitialPosition() const { return _base_initial_position.value.value(); }
+    Eigen::Vector3d baseInitialRotation() const { return _base_initial_rotation.value.value(); }
 
     protected:
     ConfigParameter<double> _it_diameter;
@@ -58,8 +79,8 @@ class VirtuosoArmConfig : public ObjectConfig
     ConfigParameter<double> _ot_initial_translation;
     ConfigParameter<double> _ot_initial_rotation;
 
-    ConfigParameter<Eigen::Vector3d> _endoscope_initial_position;
-    ConfigParameter<Eigen::Vector3d> _endoscope_initial_rotation;
+    ConfigParameter<Eigen::Vector3d> _base_initial_position;
+    ConfigParameter<Eigen::Vector3d> _base_initial_rotation;
 
 };
 

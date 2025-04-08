@@ -7,6 +7,7 @@
 #include "config/RigidMeshObjectConfig.hpp"
 #include "config/RigidPrimitiveConfigs.hpp"
 #include "config/VirtuosoArmConfig.hpp"
+#include "config/VirtuosoRobotConfig.hpp"
 
 
 /** Enum defining the different ways the simulation can be run 
@@ -104,6 +105,7 @@ class SimulationConfig : public Config
             else if (type == "RigidBox")                    config = std::make_unique<RigidBoxConfig>(obj_node);
             else if (type == "RigidCylinder")               config = std::make_unique<RigidCylinderConfig>(obj_node);
             else if (type == "VirtuosoArm")                 config = std::make_unique<VirtuosoArmConfig>(obj_node);
+            else if (type == "VirtuosoRobot")               config = std::make_unique<VirtuosoRobotConfig>(obj_node);
             else
             {
                 std::cerr << "Unknown type of object! \"" << type << "\" is not a type of simulation object." << std::endl;

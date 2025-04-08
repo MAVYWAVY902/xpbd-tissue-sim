@@ -24,6 +24,15 @@ class ObjectConfig : public Config
         _extractParameter("velocity", node, _initial_velocity, DEFAULT_VELOCITY());
         _extractParameter("rotation", node, _initial_rotation, DEFAULT_ROTATION());
     }
+
+    explicit ObjectConfig()
+        : Config()
+    {
+        _collisions.value = DEFAULT_COLLISIONS();
+        _initial_position.value = DEFAULT_POSITION();
+        _initial_velocity.value = DEFAULT_VELOCITY();
+        _initial_rotation.value = DEFAULT_ROTATION();
+    }
     
     bool collisions() const { return _collisions.value.value(); }
     Eigen::Vector3d initialPosition() const { return _initial_position.value.value(); }

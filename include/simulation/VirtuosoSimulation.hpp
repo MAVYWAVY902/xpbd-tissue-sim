@@ -41,6 +41,9 @@ class VirtuosoSimulation : public Simulation
     virtual void notifyMouseScrolled(double dx, double dy) override;
 
     protected:
+
+    void _updateGraphics() override;
+    
     void _timeStep() override;
 
     void _moveCursor(const Eigen::Vector3d& dp);

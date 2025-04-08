@@ -20,8 +20,8 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config)
     _ot_rotation = config->outerTubeInitialRotation() * M_PI/180.0;   // convert to radians
     _ot_distal_straight_length = config->outerTubeDistalStraightLength();
 
-    _arm_base_position = config->endoscopeInitialPosition();
-    Eigen::Vector3d initial_rot_xyz = config->endoscopeInitialRotation() * M_PI / 180.0;
+    _arm_base_position = config->baseInitialPosition();
+    Eigen::Vector3d initial_rot_xyz = config->baseInitialRotation() * M_PI / 180.0;
     _arm_base_rotation = GeometryUtils::quatToMat(GeometryUtils::eulXYZ2Quat(initial_rot_xyz[0], initial_rot_xyz[1], initial_rot_xyz[2]));
 
     _recomputeCoordinateFrames();

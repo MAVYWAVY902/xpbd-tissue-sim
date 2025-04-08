@@ -1,18 +1,18 @@
 name: "Virtuoso Trachea"
 
 # Tissue grasping simulation-specific parameters
-input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
+input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 fixed-faces-filename: "../resource/tissue/tracheal_tumor_v2_fixed_faces.txt"
 
 g-accel: 0 # m/s2
-sim-mode: "Visualization"
+# sim-mode: "Visualization"
 # sim-mode: "Frame-by-frame"
-# sim-mode: "AFAP"
+sim-mode: "AFAP"
 time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
-collision-rate: 33333
+collision-rate: 1
 fps: 30
-end-time: 1000
+end-time: 5
 objects:
 
   -
@@ -43,34 +43,36 @@ objects:
     collisions: false
 
   -
-    name: "Arm1"
-    type: "VirtuosoArm"
-    outer-tube-diameter: 1.56e-3
-    outer-tube-radius-of-curvature: 1.5383e-2
-    outer-tube-distal-straight-length: 5e-3
-    outer-tube-translation: 7e-3
-    outer-tube-rotation: 30
-    inner-tube-rotation: 30
-    inner-tube-diameter: 1.04e-3
-    inner-tube-translation: 20e-3
-    endoscope-position: [0.005, -0.03, 0]
-    endoscope-rotation: [0, 90, 90]
-    collisions: false
+    name: "Robot"
+    type: "VirtuosoRobot"
+    position: [0,-0.03,-0.0015]
+    rotation: [0, 90, 90]
+    arms:
+    -
+      name: "Arm1"
+      type: "VirtuosoArm"
+      outer-tube-diameter: 1.56e-3
+      outer-tube-radius-of-curvature: 1.5383e-2
+      outer-tube-distal-straight-length: 5e-3
+      outer-tube-translation: 7e-3
+      outer-tube-rotation: 30
+      inner-tube-rotation: 30
+      inner-tube-diameter: 1.04e-3
+      inner-tube-translation: 20e-3
+      collisions: false
 
-  -
-    name: "Arm2"
-    type: "VirtuosoArm"
-    outer-tube-diameter: 1.56e-3
-    outer-tube-radius-of-curvature: 1.5383e-2
-    outer-tube-distal-straight-length: 5e-3
-    outer-tube-translation: 7e-3
-    outer-tube-rotation: -45
-    inner-tube-rotation: 45
-    inner-tube-diameter: 1.04e-3
-    inner-tube-translation: 20e-3
-    endoscope-position: [-0.005, -0.03, 0]
-    endoscope-rotation: [0, 90, 90]
-    collisions: false
+    -
+      name: "Arm2"
+      type: "VirtuosoArm"
+      outer-tube-diameter: 1.56e-3
+      outer-tube-radius-of-curvature: 1.5383e-2
+      outer-tube-distal-straight-length: 5e-3
+      outer-tube-translation: 7e-3
+      outer-tube-rotation: -45
+      inner-tube-rotation: 45
+      inner-tube-diameter: 1.04e-3
+      inner-tube-translation: 20e-3
+      collisions: false
 
   
 

@@ -241,6 +241,38 @@ void VirtuosoSimulation::_toggleTissueGrasping()
     
 }
 
+void VirtuosoSimulation::_updateGraphics()
+{
+    if (_input_device == SimulationInputDevice::HAPTIC)
+    {
+        Eigen::Vector3d cur_pos = _haptic_device_manager->position();
+        bool button_pressed = _haptic_device_manager->button1Pressed();
+        
+        if (_keys_held[32] > 0)
+        {
+            Eigen::Vector3d dx = cur_pos - _last_haptic_pos;
+
+            // transform dx from haptic input frame to global coordinates
+            Eigen::Vector3d dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
+            _moveCursor(dx_sim*0.0001);
+        }
+
+        if (!_grasping && button_pressed)
+        {
+            _toggleTissueGrasping();
+        }
+        else if (_grasping && !button_pressed)
+        {
+            _toggleTissueGrasping();
+        }
+
+        _last_haptic_pos = cur_pos;
+        
+    }
+
+    Simulation::_updateGraphics();
+}
+
 void VirtuosoSimulation::_timeStep()
 {
     if (_input_device == SimulationInputDevice::KEYBOARD)
@@ -288,32 +320,7 @@ void VirtuosoSimulation::_timeStep()
         }
         
     }
-    else if (_input_device == SimulationInputDevice::HAPTIC)
-    {
-        Eigen::Vector3d cur_pos = _haptic_device_manager->position();
-        bool button_pressed = _haptic_device_manager->button1Pressed();
-        
-        if (_keys_held[32] > 0)
-        {
-            Eigen::Vector3d dx = cur_pos - _last_haptic_pos;
-
-            // transform dx from haptic input frame to global coordinates
-            Eigen::Vector3d dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
-            _moveCursor(dx_sim*0.0001);
-        }
-
-        if (!_grasping && button_pressed)
-        {
-            _toggleTissueGrasping();
-        }
-        else if (_grasping && !button_pressed)
-        {
-            _toggleTissueGrasping();
-        }
-        
-        _last_haptic_pos = cur_pos;
-        
-    }
+    
 
     Simulation::_timeStep();
 }
