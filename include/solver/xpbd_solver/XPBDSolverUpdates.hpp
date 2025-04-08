@@ -1,6 +1,8 @@
 #ifndef __XPBD_SOLVER_UPDATES_HPP
 #define __XPBD_SOLVER_UPDATES_HPP
 
+#include "common/types.hpp"
+
 namespace Sim
 {
     class RigidObject;
@@ -11,15 +13,15 @@ namespace Solver
 
 struct CoordinateUpdate
 {
-    float* ptr;
-    float update;
+    Real* ptr;
+    Real update;
 };
 
 struct RigidBodyUpdate
 {
     Sim::RigidObject* obj_ptr;
-    float position_update[3];
-    float orientation_update[4];
+    Real position_update[3];
+    Real orientation_update[4];
 };
 
 } // namespace Solver

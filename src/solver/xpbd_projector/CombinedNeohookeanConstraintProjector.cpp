@@ -45,10 +45,10 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
 
     for (int ci = 0; ci < 2; ci++)
     {
-        float* delC_i = delC + ci*DeviatoricConstraint::NUM_COORDINATES;
+        Real* delC_i = delC + ci*DeviatoricConstraint::NUM_COORDINATES;
         for (int cj = ci; cj < 2; cj++)
         {
-            float* delC_j = delC + cj*DeviatoricConstraint::NUM_COORDINATES;
+            Real* delC_j = delC + cj*DeviatoricConstraint::NUM_COORDINATES;
 
             for (int i = 0; i < DeviatoricConstraint::NUM_POSITIONS; i++)
             {
@@ -60,15 +60,15 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
         
     }
     // compute RHS of lambda update: -C - alpha_tilde * lambda
-    float RHS[2];
+    Real RHS[2];
     for (int ci = 0; ci < 2; ci++)
     {
         RHS[ci] = -C[ci] - alpha_tilde[ci] * _lambda[ci];
     }
 
     // compute lambda update - solve 2x2 system
-    float dlam[2];
-    const float det = LHS[0]*LHS[3] - LHS[1]*LHS[2];
+    Real dlam[2];
+    const Real det = LHS[0]*LHS[3] - LHS[1]*LHS[2];
 
     dlam[0] = (RHS[0]*LHS[3] - RHS[1]*LHS[2]) / det;
     dlam[1] = (RHS[1]*LHS[0] - RHS[0]*LHS[1]) / det;
@@ -128,10 +128,10 @@ void CombinedConstraintProjector<false, DeviatoricConstraint, HydrostaticConstra
 
     for (int ci = 0; ci < 2; ci++)
     {
-        float* delC_i = delC + ci*DeviatoricConstraint::NUM_COORDINATES;
+        Real* delC_i = delC + ci*DeviatoricConstraint::NUM_COORDINATES;
         for (int cj = ci; cj < 2; cj++)
         {
-            float* delC_j = delC + cj*DeviatoricConstraint::NUM_COORDINATES;
+            Real* delC_j = delC + cj*DeviatoricConstraint::NUM_COORDINATES;
 
             for (int i = 0; i < DeviatoricConstraint::NUM_POSITIONS; i++)
             {
@@ -143,15 +143,15 @@ void CombinedConstraintProjector<false, DeviatoricConstraint, HydrostaticConstra
         
     }
     // compute RHS of lambda update: -C - alpha_tilde * lambda
-    float RHS[2];
+    Real RHS[2];
     for (int ci = 0; ci < 2; ci++)
     {
         RHS[ci] = -C[ci] - alpha_tilde[ci] * _lambda[ci];
     }
 
     // compute lambda update - solve 2x2 system
-    float dlam[2];
-    const float det = LHS[0]*LHS[3] - LHS[1]*LHS[2];
+    Real dlam[2];
+    const Real det = LHS[0]*LHS[3] - LHS[1]*LHS[2];
 
     dlam[0] = (RHS[0]*LHS[3] - RHS[1]*LHS[2]) / det;
     dlam[1] = (RHS[1]*LHS[0] - RHS[0]*LHS[1]) / det;

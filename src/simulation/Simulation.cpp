@@ -15,8 +15,6 @@
 
 #include "utils/MeshUtils.hpp"
 
-#include <cuda_profiler_api.h>
-
 #include <gmsh.h>
 
 namespace Sim
@@ -94,7 +92,6 @@ std::string Simulation::toString(const int indent) const
 
 void Simulation::setup()
 {   
-    cudaProfilerStart();
     for (const auto& obj_config : _config->objectConfigs())
     {
         std::unique_ptr<Object> new_obj;
@@ -306,7 +303,6 @@ int Simulation::run()
     if (_graphics_scene)
     {
         _graphics_scene->run();
-        cudaProfilerStop();
         return 0;
     }
     else
