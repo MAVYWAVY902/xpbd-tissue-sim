@@ -27,6 +27,8 @@ class VirtuosoRobot : public Object
     int numArms() const { return (_arm1 != nullptr) + (_arm2 != nullptr); }
     const VirtuosoArm* arm1() const { return _arm1.get(); }
     const VirtuosoArm* arm2() const { return _arm2.get(); }
+    VirtuosoArm* arm1() { return _arm1.get(); }
+    VirtuosoArm* arm2() { return _arm2.get(); }
 
     double endoscopeLength() const { return _endoscope_length; }
     double endoscopeDiameter() const { return _endoscope_dia; }

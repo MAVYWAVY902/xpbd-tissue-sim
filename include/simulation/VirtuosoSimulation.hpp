@@ -2,6 +2,7 @@
 #define __VIRTUOSO_SIMULATION_HPP
 
 #include "simulation/Simulation.hpp"
+#include "simobject/VirtuosoRobot.hpp"
 #include "simobject/VirtuosoArm.hpp"
 
 #include "config/VirtuosoSimulationConfig.hpp"
@@ -55,9 +56,7 @@ class VirtuosoSimulation : public Simulation
     XPBDMeshObject* _tissue_obj;    // the tissue XPBD object that is being manipulated
     std::optional<std::string> _fixed_faces_filename;   // a .txt filename that lists all the faces that should be held fixed
 
-    VirtuosoArm* _virtuoso_arm1;    // one Virtuoso arm
-    VirtuosoArm* _virtuoso_arm2;    // the second Virtuoso arm (optional)
-
+    VirtuosoRobot* _virtuoso_robot; // the Virtuoso robot (includes both arms)
     VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assuming only one input device)
     
     RigidSphere* _tip_cursor;       // spherical object for visualizing grasp area 

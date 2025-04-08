@@ -62,12 +62,12 @@ class VirtuosoArm : public Object
     double outerTubeRotation() const { return _ot_rotation; }
     double outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
 
-    void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _stale_frames = true; }
-    void setInnerTubeRotation(double r) { _it_rotation = r; _stale_frames = true; }
-    void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _stale_frames = true; }
-    void setOuterTubeRotation(double r) { _ot_rotation = r; _stale_frames = true; }
-    void setBasePosition(const Eigen::Vector3d& pos) { _arm_base_position = pos; _stale_frames = true; }
-    void setBaseRotation(const Eigen::Matrix3d& rot_mat) { _arm_base_rotation = rot_mat; _stale_frames = true;}
+    void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
+    void setInnerTubeRotation(double r) { _it_rotation = r; _recomputeCoordinateFrames(); }
+    void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
+    void setOuterTubeRotation(double r) { _ot_rotation = r; _recomputeCoordinateFrames(); }
+    void setBasePosition(const Eigen::Vector3d& pos) { _arm_base_position = pos; _recomputeCoordinateFrames(); }
+    void setBaseRotation(const Eigen::Matrix3d& rot_mat) { _arm_base_rotation = rot_mat; _recomputeCoordinateFrames();}
 
     const Geometry::CoordinateFrame& armBaseFrame() const { return _arm_base_frame; }
     const Geometry::CoordinateFrame& outerTubeStartFrame() const { return _ot_frames[0]; }

@@ -6,7 +6,7 @@ namespace Sim
 {
 
 VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
-    : Simulation(), _grasping(false), _virtuoso_arm1(nullptr), _virtuoso_arm2(nullptr)
+    : Simulation(), _virtuoso_robot(nullptr), _active_arm(nullptr), _grasping(false)
 {
     _config = std::make_unique<VirtuosoSimulationConfig>(YAML::LoadFile(config_filename));
 
@@ -51,24 +51,24 @@ void VirtuosoSimulation::setup()
 {
     Simulation::setup();
     
-    // find the VirtuosoArm object
+    // find the VirtuosoRobot object
     for (auto& obj : _objects)
     {
-        if (VirtuosoArm* arm = dynamic_cast<VirtuosoArm*>(obj.get()))
+        if (VirtuosoRobot* robot = dynamic_cast<VirtuosoRobot*>(obj.get()))
         {
-            if (!_virtuoso_arm1)
-            {
-                _virtuoso_arm1 = arm;
-            }
-            else
-            {
-                _virtuoso_arm2 = arm;
-                break;
-            }
+            _virtuoso_robot = robot;
+            break;
         }
     }
-    _active_arm = _virtuoso_arm1;
 
+    assert(_virtuoso_robot);
+
+    // set the active arm to be arm1
+    _active_arm = _virtuoso_robot->arm1();
+    assert(_active_arm);
+
+
+    // find the XPBDMeshObject (which we're assuming to be the tissue)
     for (auto& obj : _objects)
     {
         if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
@@ -91,8 +91,8 @@ void VirtuosoSimulation::setup()
 
     // create an object at the tip of the robot to show where grasping is
     std::unique_ptr<RigidSphere> tip_cursor_ptr = std::make_unique<RigidSphere>(this, "tip cursor", 0.001);
-    assert(_active_arm);
     tip_cursor_ptr->setPosition(_active_arm->tipPosition());
+    std::cout << _active_arm->tipPosition() << std::endl;
     _tip_cursor = tip_cursor_ptr.get();
     _addObject(std::move(tip_cursor_ptr));
 }
@@ -157,13 +157,13 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
     // when 'ALT' is pressed, switch which arm is active
     if (key == 342 && action == 1)
     {
-        if (_virtuoso_arm2 && _active_arm == _virtuoso_arm1)
+        if (_virtuoso_robot->hasArm2() && _active_arm == _virtuoso_robot->arm1())
         {
-            _active_arm = _virtuoso_arm2;
+            _active_arm = _virtuoso_robot->arm2();
         }
-        else if (_virtuoso_arm1 && _active_arm == _virtuoso_arm2)
+        else if (_virtuoso_robot->hasArm1() && _active_arm == _virtuoso_robot->arm2())
         {
-            _active_arm = _virtuoso_arm1;
+            _active_arm = _virtuoso_robot->arm1();
         }
 
         _tip_cursor->setPosition(_active_arm->tipPosition());
