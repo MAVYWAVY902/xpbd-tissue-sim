@@ -271,9 +271,10 @@ void VirtuosoSimulation::_updateGraphics()
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
         Eigen::Vector3d cur_pos = _haptic_device_manager->position();
-        bool button_pressed = _haptic_device_manager->button1Pressed();
+        bool button1_pressed = _haptic_device_manager->button1Pressed();
+        bool button2_pressed = _haptic_device_manager->button2Pressed();
         
-        if (_keys_held[32] > 0)
+        if (button2_pressed)
         {
             Eigen::Vector3d dx = cur_pos - _last_haptic_pos;
 
@@ -282,11 +283,11 @@ void VirtuosoSimulation::_updateGraphics()
             _moveCursor(dx_sim*0.0001);
         }
 
-        if (!_grasping && button_pressed)
+        if (!_grasping && button1_pressed)
         {
             _toggleTissueGrasping();
         }
-        else if (_grasping && !button_pressed)
+        else if (_grasping && !button1_pressed)
         {
             _toggleTissueGrasping();
         }
