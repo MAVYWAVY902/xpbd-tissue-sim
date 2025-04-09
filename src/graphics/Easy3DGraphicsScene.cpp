@@ -200,6 +200,12 @@ Eigen::Vector3d Easy3DGraphicsScene::cameraUpDirection() const
     return Eigen::Vector3d(up_dir.x, up_dir.y, up_dir.z);
 }
 
+void Easy3DGraphicsScene::setCameraUpDirection(const Eigen::Vector3d& up_dir)
+{
+    easy3d::vec3 e3d_up_dir(up_dir(0), up_dir(1), up_dir(2));
+    _easy3d_viewer->camera()->setUpVector(e3d_up_dir);
+}
+
 Eigen::Vector3d Easy3DGraphicsScene::cameraRightDirection() const
 {
     easy3d::vec3 right_dir = _easy3d_viewer->camera()->rightVector();

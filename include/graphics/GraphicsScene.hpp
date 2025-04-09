@@ -75,8 +75,13 @@ class GraphicsScene
 
     /** Gets the camera up direction. */
     virtual Eigen::Vector3d cameraUpDirection() const = 0;
+    /** Sets the camera up direction */
+    virtual void setCameraUpDirection(const Eigen::Vector3d& up_dir) = 0;
+
     /** Gets the camera right direction. */
     virtual Eigen::Vector3d cameraRightDirection() const = 0;
+    /** Sets the camera right direction. */
+    // virtual void setCameraRightDirection(const Eigen::Vector3d& right_dir) const = 0;
 
     /** Gets the camera position. */
     virtual Eigen::Vector3d cameraPosition() const = 0;

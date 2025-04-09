@@ -96,7 +96,7 @@ HDCallbackCode HDCALLBACK HapticDeviceManager::_copyCallback(void *data)
 
 void HapticDeviceManager::copyState()
 {
-    // std::lock_guard<std::mutex> guard(_state_mtx);
+    std::lock_guard<std::mutex> guard(_state_mtx);
     _position(0) = _device_data.device_position[0];
     _position(1) = _device_data.device_position[1];
     _position(2) = _device_data.device_position[2];
@@ -119,7 +119,7 @@ void HapticDeviceManager::copyState()
 
 void HapticDeviceManager::setDeviceData(const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform)
 {
-    // std::lock_guard<std::mutex> guard(_state_mtx);
+    std::lock_guard<std::mutex> guard(_state_mtx);
     _device_data.button1_state = b1_state;
     _device_data.button2_state = b2_state;
     _device_data.device_position = position;

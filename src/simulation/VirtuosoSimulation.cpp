@@ -182,7 +182,9 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
 
             // find view dir
             const Eigen::Vector3d& z_axis_pt = cam_transform.rotMat() * Eigen::Vector3d(0,0,1) + cam_transform.translation();
+            const Eigen::Vector3d& y_axis_pt = cam_transform.rotMat() * Eigen::Vector3d(0,1,0) + cam_transform.translation();
             _graphics_scene->setCameraViewDirection(z_axis_pt - cam_transform.translation());
+            _graphics_scene->setCameraUpDirection(y_axis_pt - cam_transform.translation());
             _graphics_scene->setCameraFOV(80.0 * M_PI / 180.0);
         }
     }

@@ -60,6 +60,9 @@ class Easy3DGraphicsScene : public GraphicsScene
 
     /** Gets the camera up direction. */
     virtual Eigen::Vector3d cameraUpDirection() const override;
+    /** Sets the camera up direction */
+    virtual void setCameraUpDirection(const Eigen::Vector3d& up_dir) override;
+
     /** Gets the camera right direction. */
     virtual Eigen::Vector3d cameraRightDirection() const override;
 
