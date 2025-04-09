@@ -36,12 +36,13 @@ class HapticDeviceManager
 
     const HHD hHD() const { return _hHD; }
 
+    void setForce(const Eigen::Vector3d& force);
+    const Eigen::Vector3d& force() const { return _force; }
+
     protected:
     static HDCallbackCode HDCALLBACK _updateCallback(void *data);
     static HDCallbackCode HDCALLBACK _copyCallback(void *data);
 
-    // void setPosition(const Eigen::Vector3d& new_position) { _position = new_position; }
-    // void setButtonPressed(const bool pressed) { _button_pressed = pressed; }
     void copyState();
     void setStale(const bool stale) { _stale = stale; }
     inline void setDeviceData(const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform);
@@ -54,6 +55,8 @@ class HapticDeviceManager
     bool _button2_pressed;
     Eigen::Matrix3d _orientation;
     bool _stale;
+
+    Eigen::Vector3d _force;
 
     std::mutex _state_mtx;
 };

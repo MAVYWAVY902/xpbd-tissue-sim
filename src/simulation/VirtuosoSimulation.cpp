@@ -257,6 +257,9 @@ void VirtuosoSimulation::_toggleTissueGrasping()
         }
 
         _grasping = true;
+
+        // TODO: remove once we have actual forces from tissue
+        _initial_grasp_pos = tip_pos;
     }
     
 }
@@ -287,6 +290,19 @@ void VirtuosoSimulation::_updateGraphics()
         }
 
         _last_haptic_pos = cur_pos;
+
+        if (_grasping)
+        {
+            const Eigen::Vector3d force = 1000*(_initial_grasp_pos - _tip_cursor->position());
+
+            // transform force from global coordinates into haptic input frame
+            const Eigen::Vector3d haptic_force = GeometryUtils::Rx(-M_PI/2.0) * force;
+            _haptic_device_manager->setForce(haptic_force);
+        }
+        else
+        {
+            _haptic_device_manager->setForce(Eigen::Vector3d::Zero());
+        }
         
     }
 

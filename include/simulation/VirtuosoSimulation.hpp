@@ -69,6 +69,7 @@ class VirtuosoSimulation : public Simulation
     Eigen::Vector2d _last_mouse_pos;    // tracks the last mouse position (used in when mouse input is used to control the arms)
 
     /** HAPTIC INPUT */
+    Eigen::Vector3d _initial_grasp_pos; // initial grasping position (used to calculate dummy forces)
     Eigen::Vector3d _last_haptic_pos;   // tracks the last haptic posiion
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;    // manages haptic device and provides an interface to their state
 

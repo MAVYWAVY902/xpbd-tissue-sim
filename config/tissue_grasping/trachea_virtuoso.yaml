@@ -29,7 +29,7 @@ objects:
     color: [1.0, 0.0, 0.0, 1.0]
     draw-points: false
     draw-edges: true
-    max-size: 0.000006
+    max-size: 0.06
     position: [0, 0, 0]
     velocity: [0, 0, 0]
     rotation: [0, 0, 0]
@@ -42,9 +42,9 @@ objects:
     # damping-multiplier: 400000000
     damping-multiplier: 600000000
     collisions: false
-    draw-faces: false
-    draw-points: false
-    draw-edges: false
+    draw-faces: true
+    draw-points: true
+    draw-edges: true
 
   -
     name: "Robot"

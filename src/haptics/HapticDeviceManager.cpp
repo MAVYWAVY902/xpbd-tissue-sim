@@ -20,6 +20,13 @@ HapticDeviceManager::HapticDeviceManager()
     HHD hHD = hdGetCurrentDevice();
     std::cout << hHD << ", " << _hHD << std::endl;
     HDSchedulerHandle update_callback_handle = hdScheduleAsynchronous(_updateCallback, this, HD_MAX_SCHEDULER_PRIORITY);
+    
+    HDboolean bForcesOn = hdIsEnabled(HD_FORCE_OUTPUT);
+    std::cout << "Forces enabled? " << (bool)bForcesOn << std::endl;
+    hdEnable(HD_FORCE_OUTPUT);
+    bForcesOn = hdIsEnabled(HD_FORCE_OUTPUT);
+    std::cout << "Forces enabled? " << (bool)bForcesOn << std::endl;
+
     hdStartScheduler();
 
     // /* Check for errors and abort if so. */
@@ -71,9 +78,23 @@ HDCallbackCode HDCALLBACK HapticDeviceManager::_updateCallback(void *data)
     button1_pressed_hd = (nButtons & HD_DEVICE_BUTTON_1) ? HD_TRUE : HD_FALSE;
     button2_pressed_hd = (nButtons & HD_DEVICE_BUTTON_2) ? HD_TRUE : HD_FALSE;
 
+    /** Update the force */
+    hduVector3Dd force_hd;
+    const Eigen::Vector3d& force = device_manager->force();
+    force_hd[0] = force[0];
+    force_hd[1] = force[1];
+    force_hd[2] = force[2];
+
+    hdSetDoublev(HD_CURRENT_FORCE, force_hd);
 
     /* End haptics frame. */
     hdEndFrame(device_manager->hHD());
+
+    HDErrorInfo error;
+    if (HD_DEVICE_ERROR(error = hdGetError()))
+    {
+        hduPrintError(stderr, &error, "_updateCallback");
+    }
 
     device_manager->setDeviceData(button1_pressed_hd, button2_pressed_hd, position_hd, transform_hd);
 
@@ -115,6 +136,13 @@ void HapticDeviceManager::copyState()
     _button2_pressed = _device_data.button2_state;
 
     _stale = false; 
+}
+
+void HapticDeviceManager::setForce(const Eigen::Vector3d& force)
+{
+    _force = force;
+
+    // hdScheduleAsynchronous(_setForceCallback, this, HD_MIN_SCHEDULER_PRIORITY);
 }
 
 void HapticDeviceManager::setDeviceData(const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform)
