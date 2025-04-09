@@ -76,7 +76,6 @@ HDCallbackCode HDCALLBACK HapticDeviceManager::_updateCallback(void *data)
     hdEndFrame(device_manager->hHD());
 
     device_manager->setDeviceData(button1_pressed_hd, button2_pressed_hd, position_hd, transform_hd);
-    device_manager->setStale(true);
 
     return HD_CALLBACK_CONTINUE;
 }
@@ -97,6 +96,7 @@ HDCallbackCode HDCALLBACK HapticDeviceManager::_copyCallback(void *data)
 
 void HapticDeviceManager::copyState()
 {
+    // std::lock_guard<std::mutex> guard(_state_mtx);
     _position(0) = _device_data.device_position[0];
     _position(1) = _device_data.device_position[1];
     _position(2) = _device_data.device_position[2];
@@ -119,17 +119,20 @@ void HapticDeviceManager::copyState()
 
 void HapticDeviceManager::setDeviceData(const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform)
 {
+    // std::lock_guard<std::mutex> guard(_state_mtx);
     _device_data.button1_state = b1_state;
     _device_data.button2_state = b2_state;
     _device_data.device_position = position;
     std::memcpy(_device_data.device_transform, transform, sizeof(HDdouble)*16);
+    _stale = true;
 }
 
 Eigen::Vector3d HapticDeviceManager::position()
 {
     if (_stale)
     {
-        hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
+        // hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
+        copyState();
     }
 
     return _position;
@@ -139,7 +142,8 @@ Eigen::Matrix3d HapticDeviceManager::orientation()
 {
     if (_stale)
     {
-        hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
+        // hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
+        copyState();
     }
 
     return _orientation;
@@ -149,7 +153,8 @@ bool HapticDeviceManager::button1Pressed()
 {
     if (_stale)
     {
-        hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
+        // hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
+        copyState();
     }
 
     return _button1_pressed;
@@ -159,7 +164,8 @@ bool HapticDeviceManager::button2Pressed()
 {
     if (_stale)
     {
-        hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
+        // hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
+        copyState();
     }
 
     return _button2_pressed;

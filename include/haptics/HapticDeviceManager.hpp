@@ -8,6 +8,7 @@
 #include "common/colors.hpp"
 #include <iostream>
 #include <cassert>
+#include <mutex>
 
 #include <Eigen/Dense>
 
@@ -45,6 +46,7 @@ class HapticDeviceManager
     void setStale(const bool stale) { _stale = stale; }
     inline void setDeviceData(const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform);
 
+    private:
     HHD _hHD;
     HapticDeviceData _device_data;
     Eigen::Vector3d _position;
@@ -52,6 +54,8 @@ class HapticDeviceManager
     bool _button2_pressed;
     Eigen::Matrix3d _orientation;
     bool _stale;
+
+    std::mutex _state_mtx;
 };
 
 #endif // __HAPTIC_DEVICE_MANAGER_HPP
