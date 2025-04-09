@@ -61,6 +61,7 @@ class VirtuosoSimulation : public Simulation
     
     RigidSphere* _tip_cursor;       // spherical object for visualizing grasp area 
     bool _grasping;                 // whether or not we are actively grasping the tissue
+    std::vector<int> _grasped_vertices; // indexes of the grasped vertices in the tissue mesh
 
     
     SimulationInputDevice _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)

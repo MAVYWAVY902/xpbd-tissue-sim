@@ -159,6 +159,8 @@ class Constraint
      */
     void setGradientVectorIndex(const int coord_index, const int gradient_index) { _gradient_vector_index[coord_index] = gradient_index; }
 
+    virtual Eigen::Vector3d elasticForce(int vertex_index) { assert(0 && "Not implemented in base class, override!"); }
+
     protected:
     double _alpha;      // Compliance for this constraint
 

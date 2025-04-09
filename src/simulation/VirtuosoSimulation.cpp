@@ -220,6 +220,7 @@ void VirtuosoSimulation::_toggleTissueGrasping()
     if (_grasping)
     {
         _tissue_obj->clearAttachmentConstraints();
+        _grasped_vertices.clear();
         _grasping = false;
     }
     else
@@ -254,6 +255,7 @@ void VirtuosoSimulation::_toggleTissueGrasping()
         for (const auto& [v, offset] : vertices_to_grasp)
         {
             _tissue_obj->addAttachmentConstraint(v, &_tip_cursor->position(), offset);
+            _grasped_vertices.push_back(v);
         }
 
         _grasping = true;
@@ -293,10 +295,17 @@ void VirtuosoSimulation::_updateGraphics()
 
         if (_grasping)
         {
-            const Eigen::Vector3d force = 1000*(_initial_grasp_pos - _tip_cursor->position());
+            Eigen::Vector3d total_force = Eigen::Vector3d::Zero();
+            for (const auto& v : _grasped_vertices)
+            {
+                total_force += _tissue_obj->elasticForceAtVertex(v);
+            }
+            std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
+
+            // const Eigen::Vector3d force = 1000*(_initial_grasp_pos - _tip_cursor->position());
 
             // transform force from global coordinates into haptic input frame
-            const Eigen::Vector3d haptic_force = GeometryUtils::Rx(-M_PI/2.0) * force;
+            const Eigen::Vector3d haptic_force = GeometryUtils::Rx(-M_PI/2.0) * total_force;
             _haptic_device_manager->setForce(haptic_force);
         }
         else

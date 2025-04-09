@@ -363,4 +363,20 @@ void XPBDMeshObject::velocityUpdate()
     // std::cout << "Vertex velocities:\n" << _vertex_velocities << std::endl;
 }
 
+Eigen::Vector3d XPBDMeshObject::elasticForceAtVertex(int index)
+{
+    // get elements attached to the vertex in the mesh
+    const std::vector<int> _attached_elements = tetMesh()->attachedElementsToVertex(index);
+    Eigen::Vector3d total_force = Eigen::Vector3d::Zero();
+    for (const auto& elem_index : _attached_elements)
+    {
+        total_force += _elastic_constraints[2*elem_index]->elasticForce(index);
+        total_force += _elastic_constraints[2*elem_index+1]->elasticForce(index);
+    }
+
+    std::cout << "Total elastic force at vertex: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
+
+    return total_force;
+}
+
 } // namespace Sim

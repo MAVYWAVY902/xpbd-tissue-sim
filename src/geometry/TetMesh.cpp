@@ -7,7 +7,18 @@ namespace Geometry
 
 TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const ElementsMat& elements)
     : Mesh(vertices, faces), _elements(elements)
-{}
+{
+    // compute mesh properties
+    _attached_elements_to_vertex.resize(numVertices());
+    for (int i = 0; i < numElements(); i++)
+    {
+        const Eigen::Vector4i& elem = element(i);
+        _attached_elements_to_vertex[elem[0]].push_back(i);
+        _attached_elements_to_vertex[elem[1]].push_back(i);
+        _attached_elements_to_vertex[elem[2]].push_back(i);
+        _attached_elements_to_vertex[elem[3]].push_back(i);
+    }
+}
 
 double TetMesh::elementVolume(const int index) const
 {

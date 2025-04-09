@@ -36,8 +36,12 @@ class TetMesh : public Mesh
      */
     std::pair<int, double> averageTetEdgeLength() const;
 
+    const std::vector<int>& attachedElementsToVertex(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
+
     protected:
     ElementsMat _elements;  // the matrix of tetrahedral elements
+
+    std::vector<std::vector<int>> _attached_elements_to_vertex; // lists the elements (by index) attached to a vertex
 };
 
 } // namespace Geometry

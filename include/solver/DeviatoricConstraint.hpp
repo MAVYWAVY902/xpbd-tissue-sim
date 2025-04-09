@@ -52,6 +52,30 @@ class DeviatoricConstraint : public ElementConstraint
         return ValueAndGradient(C, _gradient(F, C));
     }
 
+    Eigen::Vector3d elasticForce(int index) override
+    {
+        double C;
+        double delC[12];
+        evaluateWithGradient(&C, delC);
+
+        // compute elastic force for index
+        int pos_index = -1;
+        for (unsigned i = 0; i < _positions.size(); i++)
+        {
+            if (index == _positions[i].index)
+            {
+                pos_index = i;
+                break;
+            }
+        }
+        if (pos_index == -1)
+            assert(0 && "This constraint does not affect passed position!");
+        
+        Eigen::Vector3d grad = Eigen::Map<Eigen::Vector3d>(delC + _gradient_vector_index[3*pos_index]);
+
+        return -grad * (1.0/_alpha) * C;
+    }
+
 
     /** Evaluates the current value of this constraint with pre-allocated memory.
      * i.e. returns C(x)

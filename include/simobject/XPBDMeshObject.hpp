@@ -111,6 +111,8 @@ class XPBDMeshObject : public Object, public TetMeshObject
 
     void clearAttachmentConstraints();
 
+    Eigen::Vector3d elasticForceAtVertex(int index);
+
     protected:
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the external forces applied to them
