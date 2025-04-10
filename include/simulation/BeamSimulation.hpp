@@ -7,9 +7,6 @@
 namespace Sim
 {
 
-namespace Sim
-{
-
 class BeamSimulation : public OutputSimulation
 {
     public:

@@ -7,9 +7,6 @@
 namespace Sim
 {
 
-namespace Sim
-{
-
 class ResidualSimulation : public OutputSimulation
 {
     public:

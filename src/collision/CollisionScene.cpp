@@ -243,17 +243,6 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         }
     }
  #endif
-
-
-        if (sg1 < sg2 && sg1 < sg3)       s = p1;
-        else if (sg2 < sg1 && sg2 < sg3)  s = p2;
-        else                                s = p3;
-
-        x = x + alpha * (s - x);
-        
-    }
-
-    return x;
 }
 
 Vec3r CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Vec3r& p1, const Vec3r& p2, const Vec3r& p3) const

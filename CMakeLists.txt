@@ -86,7 +86,7 @@ add_library(BeamSimulation)
 # add_library(InitialDeformationSimulation)
 add_subdirectory("src/simulation")
 
-target_link_libraries(ResidualSimulation Collision Graphics SimObject Solver yaml-cpp)
+target_link_libraries(ResidualSimulation Collision Graphics Geometry SimObject Solver yaml-cpp)
 target_link_libraries(BeamSimulation ResidualSimulation)
 # target_link_libraries(BeamStretchSimulation ResidualSimulation)
 # target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)

@@ -2,16 +2,12 @@
 #define __MESH_HPP
 
 #include "geometry/AABB.hpp"
-<<<<<<< HEAD
-#include <Eigen/Dense>
-=======
 #include "common/types.hpp"
 
 #ifdef HAVE_CUDA
 #include <memory>
 #include "gpu/resource/GPUResource.hpp"
 #endif
->>>>>>> gpu
 
 namespace Geometry
 {

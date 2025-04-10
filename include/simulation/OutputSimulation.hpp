@@ -9,11 +9,6 @@
 namespace Sim
 {
 
-#include <fstream>
-
-namespace Sim
-{
-
 class OutputSimulation : public Simulation
 {
     public:

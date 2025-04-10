@@ -13,6 +13,9 @@
 #include "common/VariadicVectorContainer.hpp"
 #include "common/TypeList.hpp"
 
+#include "geometry/AABB.hpp"
+#include "geometry/Mesh.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #endif

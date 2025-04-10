@@ -51,10 +51,6 @@ class Simulation
         
         Real gAccel() const { return _g_accel; }
 
-        double dt() const { return _time_step; }
-        
-        double gAccel() const { return _g_accel; }
-
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
          */
