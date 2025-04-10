@@ -1,11 +1,11 @@
-name: sim-gpu
+name: sim-cpu
 services:
   dev:
     privileged: true
     tty: true
     build:
       context: "./"
-      dockerfile: "./Dockerfile"
+      dockerfile: "./Dockerfile.CPU"
     environment:
       DISPLAY: ${DISPLAY}
       LD_LIBRARY_PATH: "/usr/local/lib"
