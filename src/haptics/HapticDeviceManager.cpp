@@ -125,7 +125,7 @@ void HapticDeviceManager::setDeviceData(const HDboolean& b1_state, const HDboole
     std::memcpy(_device_data.device_transform, transform, sizeof(HDdouble)*16);
 }
 
-Eigen::Vector3d HapticDeviceManager::position()
+Vec3r HapticDeviceManager::position()
 {
     if (_stale)
     {
@@ -135,7 +135,7 @@ Eigen::Vector3d HapticDeviceManager::position()
     return _position;
 }
 
-Eigen::Matrix3d HapticDeviceManager::orientation()
+Mat3r HapticDeviceManager::orientation()
 {
     if (_stale)
     {

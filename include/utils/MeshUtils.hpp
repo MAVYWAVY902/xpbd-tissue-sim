@@ -5,7 +5,7 @@
 
 #include <filesystem>
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 #include <assimp/Importer.hpp>      // C++ importer interface
 #include <assimp/Exporter.hpp>
@@ -19,7 +19,7 @@
 namespace MeshUtils
 {
 
-void loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& faces);
+void loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<Real, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& faces);
 
 Geometry::Mesh loadSurfaceMeshFromFile(const std::string& filename);
 
@@ -29,15 +29,13 @@ void convertToSTL(const std::string& filename);
 void convertSTLtoMSH(const std::string& filename);
 
 
-void loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems); 
+void loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<Real, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems); 
 
 Geometry::TetMesh loadTetMeshFromGmshFile(const std::string& filename);
 
-void createBeamObjWithOffsetVerts(const std::string& filename, const double l, const double w, const double h);
+void createBeamObj(const std::string& filename, const Real l, const Real w, const Real h,  const int num_subdivisions = 1);
 
-void createBeamObj(const std::string& filename, const double l, const double w, const double h,  const int num_subdivisions = 1);
-
-void createTissueBlock(const std::string& filename, const double l, const double w, const double h, const int num_low_res_subdivisions, const int high_res_multiplier);
+void createTissueBlock(const std::string& filename, const Real l, const Real w, const Real h, const int num_low_res_subdivisions, const int high_res_multiplier);
 
 std::set<unsigned> verticesFromFixedFacesFile(const std::string& filename);
 

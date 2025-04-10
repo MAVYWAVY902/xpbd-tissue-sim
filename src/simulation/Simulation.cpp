@@ -11,6 +11,8 @@
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "simobject/RigidPrimitives.hpp"
 
+#include "simobject/XPBDObjectFactory.hpp"
+
 #include "utils/MeshUtils.hpp"
 
 #include <gmsh.h>
@@ -57,6 +59,12 @@ Simulation::Simulation(const std::string& config_filename)
     _init();
 }
 
+Simulation::Simulation(SimulationConfig&& config)
+{
+    _config = std::make_unique<SimulationConfig>(std::move(config));
+    _init();
+}
+
 Simulation::Simulation()
 {
 
@@ -88,14 +96,16 @@ void Simulation::setup()
     {
         std::unique_ptr<Object> new_obj;
         // try downcasting
-        
+        // TODO: fix this to remove dynamic_cast! maybe move creation to Config class? Idk
         if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
         {
-            new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
+            // new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
+            new_obj = XPBDObjectFactory::createFirstOrderXPBDMeshObject(this, xpbd_config);
         }
         else if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
         {
-            new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
+            // new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
+            new_obj = XPBDObjectFactory::createXPBDMeshObject(this, xpbd_config);
         }
         else if (RigidMeshObjectConfig* rigid_config = dynamic_cast<RigidMeshObjectConfig*>(obj_config.get()))
         {
@@ -159,7 +169,7 @@ void Simulation::update()
     while(_time < _end_time)
     {
         // the elapsed seconds in wall time since the simulation has started
-        double wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
+        Real wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
         // if the simulation is ahead of the current elapsed wall time, stall
         if (_sim_mode == SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
         {
@@ -195,16 +205,15 @@ void Simulation::_timeStep()
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
         // run collision detection
-        // auto t1 = std::chrono::steady_clock::now();
+        auto t1 = std::chrono::steady_clock::now();
         for (auto& obj : _objects)
         {
-            if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
+            if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
                 xpbd_obj->clearCollisionConstraints();
         }
-        
         _collision_scene->collideObjects();
-        // auto t2 = std::chrono::steady_clock::now();
-        // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+        auto t2 = std::chrono::steady_clock::now();
+        // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
 
         
     }
@@ -271,7 +280,7 @@ void Simulation::notifyMouseButtonPressed(int /* button */, int /* action */, in
     // do nothing
 }
 
-void Simulation::notifyMouseMoved(double /* x */, double /* y */)
+void Simulation::notifyMouseMoved(Real /* x */, Real /* y */)
 {
     // do nothing
 }
@@ -292,7 +301,10 @@ int Simulation::run()
     // _viewer->fit_screen();
     // return _viewer->run();
     if (_graphics_scene)
-        return _graphics_scene->run();
+    {
+        _graphics_scene->run();
+        return 0;
+    }
     else
     {
         update_thread.join();

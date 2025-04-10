@@ -5,6 +5,11 @@
 #include "simobject/Object.hpp"
 #include "geometry/SDF.hpp"
 
+#ifdef HAVE_CUDA
+#include "gpu/resource/WritableArrayGPUResource.hpp"
+#include "gpu/GPUStructs.hpp"
+#endif
+
 namespace Sim
 {
     class Simulation;
@@ -52,7 +57,7 @@ class CollisionScene
      * @param p3 - 3rd tringle vertex
      * @returns the closest point on the triangle to the boundary of the SDF - if at this closest point the SDF evaluates to negative, we have a collision!
     */
-    Eigen::Vector3d _frankWolfe(const Geometry::SDF* sdf, const Eigen::Vector3d& p1, const Eigen::Vector3d& p2, const Eigen::Vector3d& p3) const;
+    Vec3r _frankWolfe(const Geometry::SDF* sdf, const Vec3r& p1, const Vec3r& p2, const Vec3r& p3) const;
 
     protected:
     /** Non-owning pointer to the Simulation object that this CollisionScene belongs to */
@@ -60,6 +65,11 @@ class CollisionScene
 
     /** Stores the mesh objects in the scene. */
     std::vector<CollisionObject> _collision_objects;
+
+    #ifdef HAVE_CUDA
+    std::map<Sim::Object*, std::vector<Sim::GPUCollision> > _gpu_collisions;
+    std::map<Sim::Object*, std::unique_ptr<Sim::WritableArrayGPUResource<Sim::GPUCollision> > > _gpu_collision_resources;
+    #endif
 
 
 };

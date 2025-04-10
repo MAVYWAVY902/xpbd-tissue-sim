@@ -120,6 +120,28 @@ RUN ln -s /usr/lib/x86_64-linux-gnu/libglut.so /usr/lib/libglut.so.3
 RUN ln -s /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/libncurses.so.5
 RUN ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/libtinfo.so.5
 
+####### Install NVidia stuff
+
+# RUN apt-get update
+# RUN apt-get install nvidia-driver-570
+
+# install CUDA 12.8
+WORKDIR /thirdparty
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+RUN dpkg -i cuda-keyring_1.1-1_all.deb
+RUN apt-get update
+RUN apt-get -y install cuda-toolkit-12-8
+
+RUN apt-get remove --purge nvidia-* -y
+RUN apt-get install -y nvidia-open
+
+# finish installation by updating path
+RUN export PATH=/usr/local/cuda-12.8/bin${PATH:+:${PATH}}
+RUN export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+
+# clone cuda samples
+RUN git clone https://github.com/NVIDIA/cuda-samples.git
+
 
 WORKDIR /workspace
 

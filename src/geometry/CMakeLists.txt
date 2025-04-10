@@ -11,4 +11,8 @@ target_sources(Geometry
         ${GEOMETRY_INCLUDE_DIR}/TetMesh.hpp
         ${GEOMETRY_SRC_DIR}/Mesh.cpp
         ${GEOMETRY_SRC_DIR}/TetMesh.cpp
+        ${GEOMETRY_SRC_DIR}/SphereSDF.cpp
+        ${GEOMETRY_SRC_DIR}/BoxSDF.cpp
+        ${GEOMETRY_SRC_DIR}/CylinderSDF.cpp
+        ${GEOMETRY_SRC_DIR}/MeshSDF.cpp
 )

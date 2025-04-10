@@ -2,7 +2,10 @@
 #define __RESIDUAL_SIMULATION_HPP
 
 #include "simulation/OutputSimulation.hpp"
-#include <Eigen/Dense>
+#include "common/types.hpp"
+
+namespace Sim
+{
 
 namespace Sim
 {

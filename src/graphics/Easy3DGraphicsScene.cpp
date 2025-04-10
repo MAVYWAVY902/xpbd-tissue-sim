@@ -142,35 +142,35 @@ void Easy3DGraphicsScene::setCameraPerspective()
     _easy3d_viewer->camera()->setType(easy3d::Camera::PERSPECTIVE);
 }
 
-Eigen::Vector3d Easy3DGraphicsScene::cameraViewDirection() const
+Vec3r Easy3DGraphicsScene::cameraViewDirection() const
 {
     easy3d::vec3 view_dir = _easy3d_viewer->camera()->viewDirection();
-    return Eigen::Vector3d(view_dir.x, view_dir.y, view_dir.z);
+    return Vec3r(view_dir.x, view_dir.y, view_dir.z);
 }
-void Easy3DGraphicsScene::setCameraViewDirection(const Eigen::Vector3d& view_dir)
+void Easy3DGraphicsScene::setCameraViewDirection(const Vec3r& view_dir)
 {
     easy3d::vec3 e3d_view_dir(view_dir(0), view_dir(1), view_dir(2));
     _easy3d_viewer->camera()->setViewDirection(e3d_view_dir);
 }
 
-Eigen::Vector3d Easy3DGraphicsScene::cameraUpDirection() const
+Vec3r Easy3DGraphicsScene::cameraUpDirection() const
 {
     easy3d::vec3 up_dir = _easy3d_viewer->camera()->upVector();
-    return Eigen::Vector3d(up_dir.x, up_dir.y, up_dir.z);
+    return Vec3r(up_dir.x, up_dir.y, up_dir.z);
 }
 
-Eigen::Vector3d Easy3DGraphicsScene::cameraRightDirection() const
+Vec3r Easy3DGraphicsScene::cameraRightDirection() const
 {
     easy3d::vec3 right_dir = _easy3d_viewer->camera()->rightVector();
-    return Eigen::Vector3d(right_dir.x, right_dir.y, right_dir.z);
+    return Vec3r(right_dir.x, right_dir.y, right_dir.z);
 }
 
-Eigen::Vector3d Easy3DGraphicsScene::cameraPosition() const
+Vec3r Easy3DGraphicsScene::cameraPosition() const
 {
     easy3d::vec3 camera_position = _easy3d_viewer->camera()->position();
-    return Eigen::Vector3d(camera_position.x, camera_position.y, camera_position.z);
+    return Vec3r(camera_position.x, camera_position.y, camera_position.z);
 }
-void Easy3DGraphicsScene::setCameraPosition(const Eigen::Vector3d& position)
+void Easy3DGraphicsScene::setCameraPosition(const Vec3r& position)
 {
     easy3d::vec3 e3d_position(position(0), position(1), position(2));
     _easy3d_viewer->camera()->setPosition(e3d_position);

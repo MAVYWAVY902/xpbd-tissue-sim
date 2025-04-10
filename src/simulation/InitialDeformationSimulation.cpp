@@ -64,12 +64,12 @@ void InitialDeformationSimulation::setup()
         {
             if (_deformation_type == DeformationType::VOLUMETRIC_EXPANSION)
             {
-                double scaling = std::cbrt(_deformation_factor);
+                Real scaling = std::cbrt(_deformation_factor);
                 elastic_mesh_object->stretch(scaling, scaling, scaling);
             }
             else if (_deformation_type == DeformationType::VOLUMETRIC_COMPRESSION)
             {
-                double scaling = 1/std::cbrt(_deformation_factor);
+                Real scaling = 1/std::cbrt(_deformation_factor);
                 elastic_mesh_object->stretch(scaling, scaling, scaling);
             }
             else if (_deformation_type == DeformationType::COLLAPSE_TO_PLANE)
@@ -101,14 +101,14 @@ void InitialDeformationSimulation::setup()
 
 void InitialDeformationSimulation::printInfo() const
 {
-    double volume_ratio = 1;
+    Real volume_ratio = 1;
     _out_file << _time;
     for (int i = 0; i < _mesh_objects.size(); i++) {
         MeshObject* mesh_object = _mesh_objects[i].get();
 
         MeshObject::VerticesMat velocities = mesh_object->velocities();
-        const double frob_norm = velocities.norm();
-        const double velocity_rms = std::sqrt(frob_norm/velocities.rows());
+        const Real frob_norm = velocities.norm();
+        const Real velocity_rms = std::sqrt(frob_norm/velocities.rows());
 
         if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(mesh_object))
         {

@@ -6,7 +6,10 @@
 #include "config/TissueGraspingSimulationConfig.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/RigidMeshObject.hpp"
-#include <Eigen/Dense>
+#include "common/types.hpp"
+
+namespace Sim
+{
 
 namespace Sim
 {
@@ -25,7 +28,7 @@ class TissueGraspingSimulation : public OutputSimulation
 
     virtual void notifyMouseButtonPressed(int button, int action, int modifiers) override;
 
-    virtual void notifyMouseMoved(double x, double y) override;
+    virtual void notifyMouseMoved(Real x, Real y) override;
 
     /** Notifies the simulation that a key has been pressed in the viewer.
          * @param key : the key that was pressed
@@ -42,10 +45,10 @@ class TissueGraspingSimulation : public OutputSimulation
     std::set<unsigned> _getAllVerticesInGraspingArea();
     void _fixOutsideSurface();
 
-    Eigen::Vector3d _transformInputPosition(const Eigen::Vector3d& input_position);
+    Vec3r _transformInputPosition(const Vec3r& input_position);
 
-    double _grasp_size;
-    double _z_scaling;
+    Real _grasp_size;
+    Real _z_scaling;
     SimulationInputDevice _input_device;
     std::optional<std::string> _fixed_faces_filename;
 
@@ -54,12 +57,12 @@ class TissueGraspingSimulation : public OutputSimulation
 
     bool _grasping;
     Eigen::Vector2d _mouse_pos_2d;
-    Eigen::Vector3d _mouse_pos_3d;
+    Vec3r _mouse_pos_3d;
     std::vector<std::shared_ptr<StaticVertexDriver> > _grasped_vertex_drivers;
     std::shared_ptr<ElasticMeshObject> _tissue_block;
     std::shared_ptr<RigidMeshObject> _grasp_tip;
-    Eigen::Vector3d _grasp_tip_position;
-    Eigen::Matrix3d _grasp_tip_rotation;
+    Vec3r _grasp_tip_position;
+    Mat3r _grasp_tip_rotation;
 
     /** Manages haptic device(s) */
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;

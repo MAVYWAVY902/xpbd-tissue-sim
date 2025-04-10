@@ -1,4 +1,4 @@
-name: sim
+name: sim-gpu
 services:
   dev:
     privileged: true
@@ -12,5 +12,13 @@ services:
     volumes:
       - "./:/workspace"
       - "/tmp/.X11-unix:/tmp/.X11-unix"
+      - "$HOME/.Xauthority:/root/.Xauthority:rw"
     network_mode: "host"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     

@@ -13,7 +13,7 @@ sim-mode: "AFAP"
 # time-step: 3.33e-3 # for FO XPBD
 time-step: 3.33e-5 # for normal XPBD
 fps: 30
-end-time: 1000
+end-time: 10
 objects:
   -
     name: "Cube1"

@@ -9,6 +9,11 @@ First, install the Docker engine (instructions for Ubuntu [here](https://docs.do
 
 Then, install the [Docker compose plugin](https://docs.docker.com/compose/install/linux/#install-using-the-repository).
 
+If using a NVIDIA GPU, install the NVIDIA Container Toolkit (instructions for Linux [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)). Be sure to restart the Docker daemon after installing.
+If not using a GPU, comment out the following lines in `docker-compose.yml`: 
+
+https://github.com/smtobin/XPBD_Sandbox/blob/b773619f3a5930c899f1003c76c69ad102699581/docker-compose.yml#L16C5-L22C34. 
+
 Then, run 
 
 ```
@@ -108,7 +113,7 @@ The decorator design pattern is used to dynamically augment the projection formu
 The `XPBDSolver` base class implements an interface for solving the constraints with its `solve()` class method. It owns a list of `ConstraintProjector`s that it will use to iteratively solve the constraints - i.e. by calling the `project()` method for each `ConstraintProjector` and applying the position updates. How the `XPBDSolver` applies the position updates is up to the derived classes, one solver iteration is contained in the protected method `_solveConstraints()`. For example, `XPBDGaussSeidelSolver` uses a Gauss-Seidel update strategy (as described in the XPBD paper) which updates the positions immediately after projecting each constraint.
 
 ### Config
-The `include/config/` folder contains the `Config` class and its derived classes that parse YAML config files and make the parameters available for object instantiation. The base `Config` class provides the machinery needed (with the help of the [yaml-cpp](https://github.com/jbeder/yaml-cpp) library) to parse a YAML node/subnode and extract expected parameters from it using the `_extractParameter()` templated function. Static default values can be set and used if the YAML parameter is not found. If the extracted parameter is limited to a set of options (i.e. it should be a choice from an enum), `_extractParameterWithOptions()` can be used instead, and we pass in a static map that maps user-specified text to the appropriate value (e.g. from "Gauss-Seidel" to `XPBDSolverType::GAUSS_SEIDEL`).
+The `include/config/` folder contains the `Config` class and its derived classes that parse YAML config files and make the parameters available for object instantiation. The base `Config` class provides the machinery needed (with the help of the [yaml-cpp](https://github.com/jbeder/yaml-cpp) library) to parse a YAML node/subnode and extract expected parameters from it using the `_extractParameter()` templated function. Static default values can be set and used if the YAML parameter is not found. If the extracted parameter is limited to a set of options (i.e. it should be a choice from an enum), `_extractParameterWithOptions()` can be used instead, and we pass in a static map that maps user-specified text to the appropriate value (e.g. from "Gauss-Seidel" to `XPBDObjectSolverType::GAUSS_SEIDEL`).
 
 Classes derived from `Config` correspond to specific objects and have extract additional parameters that correspond specifically to the options of that type of object. For example, `MeshObjectConfig` extract information from the YAML file that is used to set up a `MeshObject`, such as the size, initial position, initial velocity, color, etc.
 

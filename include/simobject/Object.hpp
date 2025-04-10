@@ -3,8 +3,14 @@
 
 #include <string>
 
+#include "common/types.hpp"
+
 #include "geometry/AABB.hpp"
 #include "config/ObjectConfig.hpp"
+
+#ifdef HAVE_CUDA
+#include "gpu/resource/GPUResource.hpp"
+#endif
 
 namespace Sim
 {
@@ -17,11 +23,6 @@ class Object
     Object(const Simulation* sim, const ObjectConfig* config)
         : _name(config->name()), _sim(sim)
     {}
-
-    Object(const Simulation* sim, const std::string& name)
-        : _name(name), _sim(sim)
-    {
-    }
 
     virtual ~Object() = default;
 
@@ -39,6 +40,9 @@ class Object
     /** Returns the name of this object. */
     std::string name() const { return _name; }
 
+    /** The simulation that this object belongs to. */
+    const Simulation* sim() const { return _sim; }
+
     /** Performs any necessary setup for this object.
      * Called after instantiation (i.e. outside the constructor) and before update() is called for the first time.
      */
@@ -55,6 +59,12 @@ class Object
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const = 0;
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() = 0;
+    virtual const HostReadableGPUResource* gpuResource() const { assert(_gpu_resource); return _gpu_resource.get(); }
+    virtual HostReadableGPUResource* gpuResource() { assert(_gpu_resource); return _gpu_resource.get(); }
+ #endif
+
     protected:
     /** Name of the object */
     std::string _name;
@@ -63,6 +73,10 @@ class Object
      * Usefule for querying things like current sim time or time step or acceleration due to gravity.
     */
     const Simulation* _sim;
+
+#ifdef HAVE_CUDA
+    std::unique_ptr<HostReadableGPUResource> _gpu_resource;
+#endif
 };
 
 } // namespace Simulation

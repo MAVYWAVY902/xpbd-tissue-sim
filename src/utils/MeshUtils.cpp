@@ -4,7 +4,7 @@
 #include <fstream>
 #include <sstream>
 
-void MeshUtils::loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& faces)
+void MeshUtils::loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<Real, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& faces)
 {
     Assimp::Importer importer;
 
@@ -149,9 +149,9 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
         vertices.conservativeResize(3, vert_offset + nodeTags.size());
         for (unsigned i = 0; i < nodeTags.size(); i++)
         {
-            vertices(0, vert_offset + i) = nodeCoords[i*3];
-            vertices(1, vert_offset + i) = nodeCoords[i*3 + 1];
-            vertices(2, vert_offset + i) = nodeCoords[i*3 + 2];
+            vertices(0, vert_offset + i) = static_cast<Real>(nodeCoords[i*3]);
+            vertices(1, vert_offset + i) = static_cast<Real>(nodeCoords[i*3 + 1]);
+            vertices(2, vert_offset + i) = static_cast<Real>(nodeCoords[i*3 + 2]);
         }
 
         // Get the mesh elements for the entity (dim, tag):
@@ -205,193 +205,10 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
 
 
 
-void MeshUtils::createBeamObjWithOffsetVerts(const std::string& filename, const double length, const double width, const double height)
+void MeshUtils::createBeamObj(const std::string& filename, const Real length, const Real width, const Real height, const int num_subdivisions)
 {
     // try and discretize so that the elements are roughly cube
-    const double elem_size = std::min(width, height);
-    const int w = static_cast<int>(width/elem_size);
-    const int h = static_cast<int>(height/elem_size);
-    const int l = static_cast<int>(length/elem_size);
-    std::cout << "size in elements: " << h << "x" << w << "x" << l << std::endl;
-    
-    auto aligned_vert_index = [w, h] (int li, int wi, int hi)
-    {
-        return hi + wi*(h+1) + li*(w+1)*(h+1);
-    };
-
-    // auto offset_vert_index = [l, w, h] (int li, int wi, int hi)
-    // {
-    //     return (l+1)*(w+1)*(h+1) + hi + wi*h + li*w*h;
-    // };
-
-    Eigen::Matrix<double, -1, 3> verts((h+1)*(w+1)*(l+1) + (2*h*w + 2*h*l + 2*w*l), 3);
-    for (int li = 0; li < l+1; li++) 
-    {
-        for (int wi = 0; wi < w+1; wi++)
-        {
-            for (int hi = 0; hi < h+1; hi++)
-            {
-                int ind = aligned_vert_index(li, wi, hi);
-                Eigen::Vector3d aligned_vert({wi*elem_size, li*elem_size, hi*elem_size});
-                verts.row(ind) = aligned_vert;
-            }
-        }
-    }
-
-    Eigen::Matrix<int, -1, 3> faces(8*w*h + 8*l*h + 8*l*w, 3);
-    int face_ind = 0;
-    int vert_ind = (h+1)*(w+1)*(l+1);
-    // w*h faces
-    for (int wi = 0; wi < w; wi++)
-    {
-        for (int hi = 0; hi < h; hi++)
-        {
-            Eigen::Vector3d offset_vertf({wi*elem_size + elem_size/2.0, 0, hi*elem_size + elem_size/2.0});
-            verts.row(vert_ind) = offset_vertf;
-            Eigen::Vector3d offset_vertb({wi*elem_size + elem_size/2.0, l*elem_size, hi*elem_size + elem_size/2.0});
-            verts.row(vert_ind+1) = offset_vertb;
-
-            int ff1 = aligned_vert_index(0, wi, hi);
-            int ff2 = aligned_vert_index(0, wi+1, hi);
-            int ff3 = aligned_vert_index(0, wi+1, hi+1);
-            int ff4 = aligned_vert_index(0, wi, hi+1);
-            int ff5 = vert_ind;//offset_vert_index(0, wi, hi);
-
-            Eigen::Vector3i front_face1({ff1, ff2, ff5});
-            Eigen::Vector3i front_face2({ff2, ff3, ff5});
-            Eigen::Vector3i front_face3({ff3, ff4, ff5});
-            Eigen::Vector3i front_face4({ff4, ff1, ff5});
-            faces.row(face_ind) = front_face1;
-            faces.row(face_ind+1) = front_face2;
-            faces.row(face_ind+2) = front_face3;
-            faces.row(face_ind+3) = front_face4;
-
-            int bf1 = aligned_vert_index(l, wi, hi);
-            int bf2 = aligned_vert_index(l, wi+1, hi);
-            int bf3 = aligned_vert_index(l, wi+1, hi+1);
-            int bf4 = aligned_vert_index(l, wi, hi+1);
-            int bf5 = vert_ind+1;//offset_vert_index(l, wi, hi);
-            Eigen::Vector3i back_face1({bf1, bf2, bf5});
-            Eigen::Vector3i back_face2({bf2, bf3, bf5});
-            Eigen::Vector3i back_face3({bf3, bf4, bf5});
-            Eigen::Vector3i back_face4({bf4, bf1, bf5});
-            faces.row(face_ind+4) = back_face1;
-            faces.row(face_ind+5) = back_face2;
-            faces.row(face_ind+6) = back_face3;
-            faces.row(face_ind+7) = back_face4;
-
-            face_ind += 8;
-            vert_ind += 2;
-        }
-    }
-
-    // l*h faces
-    for (int hi = 0; hi < h; hi++)
-    {
-        for (int li = 0; li < l; li++)
-        {
-            Eigen::Vector3d offset_vertr({w*elem_size, li*elem_size + elem_size/2.0, hi*elem_size + elem_size/2.0});
-            verts.row(vert_ind) = offset_vertr;
-            Eigen::Vector3d offset_vertl({0, li*elem_size + elem_size/2.0, hi*elem_size + elem_size/2.0});
-            verts.row(vert_ind+1) = offset_vertl;
-
-            int rf1 = aligned_vert_index(li, w, hi);
-            int rf2 = aligned_vert_index(li+1, w, hi);
-            int rf3 = aligned_vert_index(li+1, w, hi+1);
-            int rf4 = aligned_vert_index(li, w, hi+1);
-            int rf5 = vert_ind;//offset_vert_index(li, w, hi);
-            Eigen::Vector3i right_face1({rf1, rf2, rf5});
-            Eigen::Vector3i right_face2({rf2, rf3, rf5});
-            Eigen::Vector3i right_face3({rf3, rf4, rf5});
-            Eigen::Vector3i right_face4({rf4, rf1, rf5});
-            faces.row(face_ind) = right_face1;
-            faces.row(face_ind+1) = right_face2;
-            faces.row(face_ind+2) = right_face3;
-            faces.row(face_ind+3) = right_face4;
-
-            int lf1 = aligned_vert_index(li, 0, hi);
-            int lf2 = aligned_vert_index(li+1, 0, hi);
-            int lf3 = aligned_vert_index(li+1, 0, hi+1);
-            int lf4 = aligned_vert_index(li, 0, hi+1);
-            int lf5 = vert_ind+1;//offset_vert_index(li, 0, hi);
-            Eigen::Vector3i left_face1({lf1, lf2, lf5});
-            Eigen::Vector3i left_face2({lf2, lf3, lf5});
-            Eigen::Vector3i left_face3({lf3, lf4, lf5});
-            Eigen::Vector3i left_face4({lf4, lf1, lf5});
-            faces.row(face_ind+4) = left_face1;
-            faces.row(face_ind+5) = left_face2;
-            faces.row(face_ind+6) = left_face3;
-            faces.row(face_ind+7) = left_face4;
-
-            face_ind += 8;
-            vert_ind += 2;
-        }
-    }
-
-    // l*w faces
-    for (int li = 0; li < l; li++)
-    {
-        for (int wi = 0; wi < w; wi++)
-        {
-            Eigen::Vector3d offset_vertt({wi*elem_size + elem_size/2.0, li*elem_size + elem_size/2.0, h*elem_size});
-            verts.row(vert_ind) = offset_vertt;
-            Eigen::Vector3d offset_vertb({wi*elem_size + elem_size/2.0, li*elem_size + elem_size/2.0, 0});
-            verts.row(vert_ind+1) = offset_vertb;
-
-            int tf1 = aligned_vert_index(li, wi, h);
-            int tf2 = aligned_vert_index(li, wi+1, h);
-            int tf3 = aligned_vert_index(li+1, wi+1, h);
-            int tf4 = aligned_vert_index(li+1, wi, h);
-            int tf5 = vert_ind;//offset_vert_index(li, wi, h);
-            Eigen::Vector3i top_face1({tf1, tf2, tf5});
-            Eigen::Vector3i top_face2({tf2, tf3, tf5});
-            Eigen::Vector3i top_face3({tf3, tf4, tf5});
-            Eigen::Vector3i top_face4({tf4, tf1, tf5});
-            faces.row(face_ind) = top_face1;
-            faces.row(face_ind+1) = top_face2;
-            faces.row(face_ind+2) = top_face3;
-            faces.row(face_ind+3) = top_face4;
-
-            int bf1 = aligned_vert_index(li, wi, 0);
-            int bf2 = aligned_vert_index(li, wi+1, 0);
-            int bf3 = aligned_vert_index(li+1, wi+1, 0);
-            int bf4 = aligned_vert_index(li+1, wi, 0);
-            int bf5 = vert_ind+1;//offset_vert_index(li, wi, 0);
-            Eigen::Vector3i bottom_face1({bf1, bf2, bf5});
-            Eigen::Vector3i bottom_face2({bf2, bf3, bf5});
-            Eigen::Vector3i bottom_face3({bf3, bf4, bf5});
-            Eigen::Vector3i bottom_face4({bf4, bf1, bf5});
-            faces.row(face_ind+4) = bottom_face1;
-            faces.row(face_ind+5) = bottom_face2;
-            faces.row(face_ind+6) = bottom_face3;
-            faces.row(face_ind+7) = bottom_face4;
-
-            face_ind += 8;
-            vert_ind += 2;
-        }
-    }
-
-    std::ofstream ss(filename);
-    for (int i = 0; i < verts.rows(); i++)
-    {
-        ss << "v " << verts(i,0) << " " << verts(i,1) << " " << verts(i,2) << "\n";
-    }
-
-    for (int i = 0; i < faces.rows(); i++)
-    {
-        ss << "f " << faces(i,0)+1 << " " << faces(i,1)+1 << " " << faces(i,2)+1 << "\n";
-    }
-
-    ss.close();
-
-
-
-}
-
-void MeshUtils::createBeamObj(const std::string& filename, const double length, const double width, const double height, const int num_subdivisions)
-{
-    // try and discretize so that the elements are roughly cube
-    const double elem_size = std::min(width, height) / num_subdivisions;
+    const Real elem_size = std::min(width, height) / num_subdivisions;
     const int w = static_cast<int>(width/elem_size);
     const int h = static_cast<int>(height/elem_size);
     const int l = static_cast<int>(length/elem_size);
@@ -402,7 +219,7 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
         return hi + wi*(h+1) + li*(w+1)*(h+1);
     };
 
-    Eigen::Matrix<double, -1, 3> verts((h+1)*(w+1)*(l+1), 3);
+    Eigen::Matrix<Real, -1, 3> verts((h+1)*(w+1)*(l+1), 3);
     for (int li = 0; li < l+1; li++) 
     {
         for (int wi = 0; wi < w+1; wi++)
@@ -410,7 +227,7 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
             for (int hi = 0; hi < h+1; hi++)
             {
                 int ind = index(li, wi, hi);
-                Eigen::Vector3d vert({wi*elem_size, li*elem_size, hi*elem_size});
+                Vec3r vert({wi*elem_size, li*elem_size, hi*elem_size});
                 verts.row(ind) = vert;
             }
         }
@@ -591,11 +408,11 @@ void MeshUtils::createBeamObj(const std::string& filename, const double length, 
 
 }
 
-void MeshUtils::createTissueBlock(const std::string& filename, const double length, const double width, const double height, const int num_low_res_subdivisions, const int high_res_multiplier)
+void MeshUtils::createTissueBlock(const std::string& filename, const Real length, const Real width, const Real height, const int num_low_res_subdivisions, const int high_res_multiplier)
 {
     // try and discretize so that the elements are roughly cube
-    const double elem_size = std::min(std::min(length, width), height) / num_low_res_subdivisions;
-    const double high_res_elem_size = elem_size / high_res_multiplier;
+    const Real elem_size = std::min(std::min(length, width), height) / num_low_res_subdivisions;
+    const Real high_res_elem_size = elem_size / high_res_multiplier;
     const int w = static_cast<int>(width/elem_size);
     const int h = static_cast<int>(height/elem_size);
     const int l = static_cast<int>(length/elem_size);
@@ -606,8 +423,8 @@ void MeshUtils::createTissueBlock(const std::string& filename, const double leng
         return hi + wi*(h+1) + li*(w+1)*(h+1);
     };
 
-    std::vector<Eigen::Vector3d> verts((h+1)*(w+1)*(l+1));
-    std::vector<Eigen::Vector3d> high_res_verts;
+    std::vector<Vec3r> verts((h+1)*(w+1)*(l+1));
+    std::vector<Vec3r> high_res_verts;
     for (int li = 0; li < l+1; li++) 
     {
         for (int wi = 0; wi < w+1; wi++)
@@ -615,7 +432,7 @@ void MeshUtils::createTissueBlock(const std::string& filename, const double leng
             for (int hi = 0; hi < h+1; hi++)
             {
                 int ind = index(li, wi, hi);
-                Eigen::Vector3d vert({wi*elem_size, li*elem_size, hi*elem_size});
+                Vec3r vert({wi*elem_size, li*elem_size, hi*elem_size});
                 verts.at(ind) = vert;
             }
         }
@@ -695,7 +512,7 @@ void MeshUtils::createTissueBlock(const std::string& filename, const double leng
                 {
                     for (int j = 0; j < high_res_multiplier+1; j++)
                     {
-                        Eigen::Vector3d vert({wi*elem_size + j*high_res_elem_size, li*elem_size + i*high_res_elem_size, height});
+                        Vec3r vert({wi*elem_size + j*high_res_elem_size, li*elem_size + i*high_res_elem_size, height});
                         high_res_verts.push_back(vert);
                     }
                 }
@@ -722,7 +539,7 @@ void MeshUtils::createTissueBlock(const std::string& filename, const double leng
             {
                 for (int i = 0; i < high_res_multiplier+1; i++)
                 {
-                    Eigen::Vector3d vert({(wi+1)*elem_size, li*elem_size + i*high_res_elem_size, height});
+                    Vec3r vert({(wi+1)*elem_size, li*elem_size + i*high_res_elem_size, height});
                     high_res_verts.push_back(vert);
                 }
                 int v00 = verts.size() + high_res_verts.size() - (high_res_multiplier+1);
@@ -864,7 +681,7 @@ void MeshUtils::convertSTLtoMSH(const std::string& filename)
     
 }
 
-void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<double, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems)
+void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Matrix<Real, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& surface_faces, Eigen::Matrix<unsigned, -1, 4>& elems)
 {
     std::cout << "MeshUtils::loadMeshDataFromGmshFile - loading mesh data from " << filename << " as a MeshObject..." << std::endl;
 
