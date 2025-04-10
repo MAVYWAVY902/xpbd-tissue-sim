@@ -76,6 +76,8 @@ struct GPURigidDeformableCollisionConstraint
     __device__ GPURigidDeformableCollisionConstraint() {}
     
     constexpr __host__ __device__ static int numPositions() { return 3; }
+
+    constexpr __host__ __device__ static bool isInequality() { return true; }
     
     __device__ void _loadVertices(const float* vertices, float* x)
     {

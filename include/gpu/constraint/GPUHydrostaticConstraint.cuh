@@ -71,6 +71,8 @@ struct GPUHydrostaticConstraint
 
     constexpr __host__ __device__ static int numPositions() { return 4; }
 
+    constexpr __host__ __device__ static bool isInequality() { return false; }
+
     // __device__ void _loadVertices(float* x)
     // {
     //     x[0] = positions[0].ptr[0];  x[1] = positions[0].ptr[1];  x[2] = positions[0].ptr[2];

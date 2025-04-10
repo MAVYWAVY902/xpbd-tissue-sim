@@ -42,6 +42,11 @@ class ConstraintProjector
     {
     }
 
+    explicit ConstraintProjector()
+        : _valid(false)
+    {   
+    }
+
     void setValidity(bool valid) { _valid = valid; }
     bool isValid() const { return _valid; }
 
@@ -104,6 +109,8 @@ class ConstraintProjector
             Real update_x = positions[i].inv_mass * delC[3*i] * dlam;
             Real update_y = positions[i].inv_mass * delC[3*i+1] * dlam;
             Real update_z = positions[i].inv_mass * delC[3*i+2] * dlam;
+
+            // std::cout << "update: " << update_x << ", " << update_y << ", " << update_z << std::endl;
             
             coordinate_updates_ptr[3*i].ptr = positions[i].position_ptr;
             coordinate_updates_ptr[3*i].update = update_x;

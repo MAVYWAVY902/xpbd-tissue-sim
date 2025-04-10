@@ -177,9 +177,11 @@ __global__ void ProjectConstraints(ConstraintProjector* projectors, int num_proj
     __syncthreads();
 
     ConstraintProjector* bad_proj = proj_smem + threadIdx.x;
-    
-    bad_proj->initialize();
-    bad_proj->project(vertices, new_vertices);
+    if (bad_proj->valid)
+    {
+        bad_proj->initialize();
+        bad_proj->project(vertices, new_vertices);
+    }
 }
 
 template<class ConstraintProjector>
@@ -221,7 +223,7 @@ __host__ void CopyVerticesMemcpy(float* dst_vertices, const float* src_vertices,
 // template <>
 template<bool IsFirstOrder>
 __host__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(const GPUDeviatoricConstraint& constraint1_, const GPUHydrostaticConstraint& constraint2_, float dt_)
-    : dt(dt_), alpha_d(constraint1_.alpha), alpha_h(constraint2_.alpha), gamma(constraint2_.gamma)
+    : dt(dt_), alpha_d(constraint1_.alpha), alpha_h(constraint2_.alpha), gamma(constraint2_.gamma), valid(true)
 {
     for (int i = 0; i < 4; i++)
     {
@@ -239,7 +241,7 @@ __host__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, G
 // template <>
 template<bool IsFirstOrder>
 __host__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector(GPUDeviatoricConstraint&& constraint1_, GPUHydrostaticConstraint&& constraint2_, float dt_)
-    : dt(dt_), alpha_d(constraint1_.alpha), alpha_h(constraint2_.alpha), gamma(constraint2_.gamma)
+    : dt(dt_), alpha_d(constraint1_.alpha), alpha_h(constraint2_.alpha), gamma(constraint2_.gamma), valid(true)
 {
     for (int i = 0; i < 4; i++)
     {
@@ -256,6 +258,7 @@ __host__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, G
 // template<>
 template<bool IsFirstOrder>
 __device__ GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPUHydrostaticConstraint>::GPUCombinedConstraintProjector()
+    : valid(false)
 {
 
 }
@@ -339,8 +342,8 @@ __device__ void GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstr
         alpha_d_tilde = alpha_d / (dt * dt);
     }
 
-    A[0] = alpha_h_tilde;
-    A[3] = alpha_d_tilde;
+    A[0] = alpha_d_tilde;
+    A[3] = alpha_h_tilde;
     A[1] = 0;
     A[2] = 0;
 

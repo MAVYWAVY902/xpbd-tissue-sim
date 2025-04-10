@@ -21,6 +21,7 @@ class XPBDSolver
     public:
     using projector_type_list = TypeList<ConstraintProjectors...>;
     using constraint_type_list = typename ConcatenateTypeLists<typename ConstraintProjectors::constraint_type_list...>::type;
+    constexpr static bool is_first_order = IsFirstOrder;
 
     explicit XPBDSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)
@@ -86,6 +87,13 @@ class XPBDSolver
     /** Returns the number of solver iterations. */
     int numIterations() const { return _num_iter; }
 
+    template<class ProjectorType>
+    void setNumProjectorsOfType(int size)
+    {
+        _constraint_projectors.template get<ProjectorType>().resize(size);
+        
+    }
+
     template<class... Constraints>
     void addConstraintProjector(Real dt, Constraints* ... constraints)
     {
@@ -121,6 +129,47 @@ class XPBDSolver
         // }
             
         _constraint_projectors.template push_back<decltype(projector)>(std::move(projector));
+    }
+
+    template<class... Constraints>
+    void setConstraintProjector(int index, Real dt, Constraints* ... constraints)
+    {
+        auto projector = _createConstraintProjector(dt, constraints...);
+    
+        // check if primary residual is needed for constraint projection
+        // if (options.with_residual)
+        // {
+            // TODO: FIX THIS for the NEW APPROACH!!!
+
+            // _constraints_using_primary_residual = true;
+            // if (WithDistributedPrimaryResidual* wpr = dynamic_cast<WithDistributedPrimaryResidual*>(projector.get()))
+            // {
+            //     wpr->setPrimaryResidual(_primary_residual.data());
+            // }
+        // }
+            
+        _constraint_projectors.template set<decltype(projector)>(index, std::move(projector));
+    }
+
+    template<class Projector>
+    const Projector& getConstraintProjector(int index) const
+    {
+        return _constraint_projectors.template get<Projector>()[index];
+    }
+
+    template<class Projector>
+    void setProjectorValidity(int index, bool is_valid)
+    {
+        _constraint_projectors.template get<Projector>()[index].setValidity(is_valid);
+    }
+
+    template<class Projector>
+    void setAllProjectorsOfTypeInvalid()
+    {
+        _constraint_projectors.template for_each_element<Projector>([](auto& element)
+        {
+            element.setValidity(false);
+        });
     }
 
     protected:

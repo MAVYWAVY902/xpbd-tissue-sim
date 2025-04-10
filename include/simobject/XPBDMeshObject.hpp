@@ -123,10 +123,10 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
     int numConstraintsForPosition(const int index) const;
 
     void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
-                                    const XPBDMeshObject_Base* obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w);
+                                    int face_ind, const Real u, const Real v, const Real w);
 
     void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
-                                       const XPBDMeshObject_Base* deformable_obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w);
+                                       int face_ind, const Real u, const Real v, const Real w);
 
     void clearCollisionConstraints();
 

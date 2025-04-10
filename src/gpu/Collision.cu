@@ -31,7 +31,7 @@ __host__ void launchCollisionKernel(const Sim::HostReadableGPUResource* sdf_reso
         //                                                          mesh_resource->gpuFaces(),
         //                                                          num_faces,
         //                                                          collision_resource->gpuArr());
-        CHECK_CUDA_ERROR(cudaPeekAtLastError());
+        // CHECK_CUDA_ERROR(cudaPeekAtLastError());
         // remove later, but here for testing
         // CHECK_CUDA_ERROR(cudaDeviceSynchronize());
     }

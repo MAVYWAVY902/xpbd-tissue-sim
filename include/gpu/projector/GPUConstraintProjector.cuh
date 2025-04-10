@@ -10,18 +10,20 @@ struct GPUConstraintProjector
     float dt;
     float lambda;
     Constraint constraint;
+    bool valid;
 
     __host__ GPUConstraintProjector(const Constraint& constraint_, float dt_)
-        :  dt(dt_), constraint(constraint_)
+        :  dt(dt_), constraint(constraint_), valid(true)
     {
 
     } 
     __host__ GPUConstraintProjector(Constraint&& constraint_, float dt_)
-        :  dt(dt_), constraint(std::move(constraint_))
+        :  dt(dt_), constraint(std::move(constraint_)), valid(true)
     {
     }
 
-    __device__ GPUConstraintProjector()
+    __host__ __device__ GPUConstraintProjector()
+        : valid(false)
     {
         
     }
@@ -38,6 +40,9 @@ struct GPUConstraintProjector
 
         // evaluate constraint and its gradient
         constraint.evaluateWithGradient(vertices, &C, delC);
+
+        if (Constraint::isInequality() && C > 0)
+            return;
 
         float alpha_tilde;
         if constexpr (IsFirstOrder)
@@ -66,10 +71,13 @@ struct GPUConstraintProjector
         // update positions
         for (int i = 0; i < constraint.numPositions(); i++)
         {
-            float* v_ptr = new_vertices + constraint.positions[i].index;
+            float* v_ptr = new_vertices + 3*constraint.positions[i].index;
             atomicAdd(v_ptr,     constraint.positions[i].inv_mass * delC[3*i] * dlam);
             atomicAdd(v_ptr + 1, constraint.positions[i].inv_mass * delC[3*i+1] * dlam);
             atomicAdd(v_ptr + 2, constraint.positions[i].inv_mass * delC[3*i+2] * dlam);
+
+            // printf("update for pos %i: %f, %f, %f\n", constraint.positions[i].index, constraint.positions[i].inv_mass * delC[3*i] * dlam, 
+            //     constraint.positions[i].inv_mass * delC[3*i+1] * dlam, constraint.positions[i].inv_mass * delC[3*i+2] * dlam);
         }
     }
 };

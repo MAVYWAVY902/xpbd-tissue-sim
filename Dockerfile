@@ -122,6 +122,9 @@ RUN ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/libtinfo.so.5
 
 ####### Install NVidia stuff
 
+# RUN apt-get update
+# RUN apt-get install nvidia-driver-570
+
 # install CUDA 12.8
 WORKDIR /thirdparty
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb

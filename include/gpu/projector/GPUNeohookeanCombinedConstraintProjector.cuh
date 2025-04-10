@@ -16,6 +16,7 @@ struct GPUCombinedConstraintProjector<IsFirstOrder, GPUDeviatoricConstraint, GPU
     float alpha_h;
     float alpha_d;
     float gamma;
+    bool valid;
 
     __host__ GPUCombinedConstraintProjector(const GPUDeviatoricConstraint& constraint1_, const GPUHydrostaticConstraint& constraint2_, float dt_);
     

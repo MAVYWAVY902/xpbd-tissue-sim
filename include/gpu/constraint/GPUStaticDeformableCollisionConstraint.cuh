@@ -69,11 +69,15 @@ struct GPUStaticDeformableCollisionConstraint
         n[0] = collision_normal[0];
         n[1] = collision_normal[1];
         n[2] = collision_normal[2];
+
+        alpha = 0;
     }
 
     __device__ GPUStaticDeformableCollisionConstraint() {}
 
     constexpr __host__ __device__ static int numPositions() { return 3; }
+
+    constexpr __host__ __device__ static bool isInequality() { return true; }
     
     __device__ void _loadVertices(const float* vertices, float* x)
     {
@@ -94,6 +98,7 @@ struct GPUStaticDeformableCollisionConstraint
         }
 
         *C = Vec3Dot(n, diff);
+        // printf("C: %f\n", *C);
     }
 
     __device__ void gradient(const float* /* vertices */, float* delC)
@@ -101,6 +106,8 @@ struct GPUStaticDeformableCollisionConstraint
         delC[0] = bary_coords[0] * n[0];    delC[1] = bary_coords[0] * n[1];    delC[2] = bary_coords[0] * n[2];
         delC[3] = bary_coords[1] * n[0];    delC[4] = bary_coords[1] * n[1];    delC[5] = bary_coords[1] * n[2];
         delC[6] = bary_coords[2] * n[0];    delC[7] = bary_coords[2] * n[1];    delC[8] = bary_coords[2] * n[2];
+
+        // printf("delC: %f, %f, %f, %f, %f, %f, %f, %f, %f\n", delC[0], delC[1], delC[2], delC[3], delC[4], delC[5], delC[6], delC[7], delC[8]);
     }
 
     __device__ void evaluateWithGradient(const float* vertices, float* C, float* delC)

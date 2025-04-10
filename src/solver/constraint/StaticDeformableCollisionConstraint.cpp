@@ -20,6 +20,8 @@ void StaticDeformableCollisionConstraint::evaluate(Real* C) const
 {
     const Vec3r a = _u*Eigen::Map<Vec3r>(_positions[0].position_ptr) + _v*Eigen::Map<Vec3r>(_positions[1].position_ptr) + _w*Eigen::Map<Vec3r>(_positions[2].position_ptr);
     *C = _collision_normal.dot(a - _p);
+
+    // std::cout << "C: " << *C << std::endl;
 }
 
 void StaticDeformableCollisionConstraint::gradient(Real* delC) const
@@ -35,6 +37,9 @@ void StaticDeformableCollisionConstraint::gradient(Real* delC) const
     delC[6] = _w*_collision_normal[0];
     delC[7] = _w*_collision_normal[1];
     delC[8] = _w*_collision_normal[2];
+
+    // std::cout << "delC: " << delC[0] << ", " << delC[1] << ", " << delC[2] << ", " << delC[3] << ", " << delC[4] << ", " << delC[5] << ", " << delC[6] << ", " << delC[7] << ", " << delC[8] << std::endl;
+
 }
 
 void StaticDeformableCollisionConstraint::evaluateWithGradient(Real* C, Real* grad) const

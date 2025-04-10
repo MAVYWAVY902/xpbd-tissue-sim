@@ -29,6 +29,11 @@ class CombinedConstraintProjector
     {
     }
 
+    explicit CombinedConstraintProjector()
+        : _valid(false)
+    {
+    }
+
     void setValidity(bool valid) { _valid = valid; }
     bool isValid() const { return _valid; }
 

@@ -66,12 +66,12 @@ class XPBDParallelJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProje
         _temp_vertices_resource.allocate();
     }
 
-    template<class ProjectorType>
+    template<class CPUProjectorType>
     void setNumProjectorsOfType(int size)
     {
-        _gpu_projectors.template resize<ProjectorType>(size);
+        _gpu_projectors.template get<MonitoredVector<typename CPUProjectorType::GPUConstraintProjectorType>>().resize(size);
         // since the vector's size was changed we need to reallocate the corresponding GPU resource
-        _gpu_projector_resources.template get<ProjectorType>().allocate();
+        _gpu_projector_resources.template get<Sim::MonitoredVectorGPUResource<typename CPUProjectorType::GPUConstraintProjectorType>>().allocate();
         
     }
 
@@ -122,6 +122,38 @@ class XPBDParallelJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProje
         auto projector = this->_createConstraintProjector(dt, constraints...);
         auto gpu_projector = projector.createGPUConstraintProjector();
         _gpu_projectors.template get<MonitoredVector<decltype(gpu_projector)>>().push_back(std::move(gpu_projector));
+    }
+
+    template<class... Constraints>
+    void setConstraintProjector(int index, Real dt, Constraints*... constraints)
+    {
+        auto projector = this->_createConstraintProjector(dt, constraints...);
+        auto gpu_projector = projector.createGPUConstraintProjector();
+        _gpu_projectors.template get<MonitoredVector<decltype(gpu_projector)>>()[index] = gpu_projector;
+    }
+
+    template<class CPUProjectorType>
+    const typename CPUProjectorType::GPUConstraintProjectorType& getConstraintProjector(int index) const
+    {
+        return _gpu_projectors.template get<MonitoredVector<typename CPUProjectorType::GPUConstraintProjectorType>>()[index];
+    }
+
+    template<class CPUProjectorType>
+    void setProjectorValidity(int index, bool is_valid)
+    {
+        _gpu_projectors.template get<MonitoredVector<typename CPUProjectorType::GPUConstraintProjectorType>>()[index].valid = is_valid;
+    }
+
+    template<class CPUProjectorType>
+    void setAllProjectorsOfTypeInvalid()
+    {
+        using VecType = MonitoredVector<typename CPUProjectorType::GPUConstraintProjectorType>;
+
+        VecType& vec = _gpu_projectors.template get<VecType>();
+        for (auto& elem : vec.vec())
+        {
+            elem.valid = false;
+        }
     }
 
     protected:

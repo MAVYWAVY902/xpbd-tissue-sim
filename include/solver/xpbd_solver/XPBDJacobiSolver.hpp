@@ -49,6 +49,14 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
         this->_constraint_projectors.template push_back<decltype(projector)>(std::move(projector));
     }
 
+    // template<class... Constraints>
+    // void setConstraintProjector(int index, Real dt, Constraints* ... constraints)
+    // {
+    //     auto projector = this->_createConstraintProjector(dt, constraints...);
+            
+    //     _constraint_projectors.template set<decltype(projector)>(index, std::move(projector));
+    // }
+
 
     protected:
     /** Implements a Jacobi update strategy for constraint projection.

@@ -174,7 +174,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
     arr_resource->copyFromDevice();
 
     auto t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "GPU part took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
+    // std::cout << "GPU part took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
 
     // Sim::GPUCollision* arr = arr_resource->arr();
     const std::vector<Sim::GPUCollision>& arr = _gpu_collisions[xpbd_obj];
@@ -194,11 +194,11 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
             // std::cout << "surface point: " << surface_point[0] << ", " << surface_point[1] << ", " << surface_point[2] << std::endl;
             if (rigid_obj->isFixed())
             {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_point, normal, xpbd_obj, f[0], f[1], f[2], arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
+                xpbd_obj->addStaticCollisionConstraint(sdf, surface_point, normal, i, arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
             }
             else
             {
-                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_point, normal, xpbd_obj, f[0], f[1], f[2], arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
+                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_point, normal, i, arr[i].bary_coords.x, arr[i].bary_coords.y, arr[i].bary_coords.z);
             }
         }
     }
@@ -206,8 +206,9 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
  #else
     // iterate through faces of mesh
     const Geometry::Mesh::FacesMat& faces = mesh->faces();
-    for (const auto& f : faces.colwise())
+    for (int i = 0; i < faces.cols(); i++)
     {
+        const Eigen::Vector3i& f = faces.col(i);
         const Vec3r& p1 = mesh->vertex(f[0]);
         const Vec3r& p2 = mesh->vertex(f[1]);
         const Vec3r& p3 = mesh->vertex(f[2]);
@@ -230,11 +231,11 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
              
             if (rigid_obj->isFixed())
             {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
+                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
             }
             else
             {
-                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, xpbd_obj, f[0], f[1], f[2], u, v, w);
+                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
             }
             
         }

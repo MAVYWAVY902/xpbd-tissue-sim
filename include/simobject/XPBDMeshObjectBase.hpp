@@ -33,9 +33,9 @@ namespace Sim
         virtual Vec3r vertexPreviousPosition(int index) const = 0;
         virtual int numConstraintsForPosition(const int index) const = 0;
         virtual void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
-            const XPBDMeshObject_Base* obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w) = 0;
+            int face_ind, const Real u, const Real v, const Real w) = 0;
         virtual void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
-            const XPBDMeshObject_Base* deformable_obj, const int v1, const int v2, const int v3, const Real u, const Real v, const Real w) = 0;
+            int face_ind, const Real u, const Real v, const Real w) = 0;
         virtual void clearCollisionConstraints() = 0;
         virtual void removeOldCollisionConstraints(const int threshold) = 0;
     };

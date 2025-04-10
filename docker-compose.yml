@@ -1,4 +1,4 @@
-name: sim
+name: sim-gpu
 services:
   dev:
     privileged: true

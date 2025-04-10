@@ -2,6 +2,7 @@
 #define __VARIADIC_VECTOR_CONTAINER_HPP
 
 #include <vector>
+#include <iostream>
 
 // adapted from this StackOverflow answer: https://stackoverflow.com/a/53112843
 template<class L, class... R> class VariadicVectorContainer;
@@ -58,6 +59,11 @@ class VariadicVectorContainer<L>
     {
         _vec[index] = std::move(elem);
         return _vec[index];
+    }
+
+    void _clear()
+    {
+        _vec.clear();
     }
 
     // internal method for visiting elements
@@ -139,6 +145,25 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
     T& set(int index, T&& elem)
     {
         return this->VariadicVectorContainer<T>::_set(index, std::move(elem));
+    }
+
+    template<class T>
+    void clear()
+    {
+        return this->VariadicVectorContainer<T>::_clear();
+    }
+
+    // visit all elements in one vector
+    template<typename T, typename Visitor>
+    void for_each_element(Visitor&& visitor) const
+    {
+        _visit_elements<T>(std::forward<Visitor>(visitor));
+    }
+
+    template<typename T, typename Visitor>
+    void for_each_element(Visitor&& visitor)
+    {
+        _visit_elements<T>(std::forward<Visitor>(visitor));
     }
 
     // visit all elements across all vectors
