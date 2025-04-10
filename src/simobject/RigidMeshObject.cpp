@@ -11,11 +11,6 @@ RigidMeshObject::RigidMeshObject(const Simulation* sim, const RigidMeshObjectCon
     _density = config->density();
 }
 
-RigidMeshObject::RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density)
-    : RigidObject(sim, name), MeshObject(filename), _density(density)
-{
-}
-
 std::string RigidMeshObject::toString(const int indent) const
 {
     std::string indent_str(indent, '\t');
@@ -43,8 +38,8 @@ void RigidMeshObject::setup()
     // untranslate the copy of the mesh
     mesh_copy.moveTogether(-_p);
     // unrotate the copy of the mesh
-    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(_q));
-    mesh_copy.rotateAbout(Eigen::Vector3d::Zero(), rot_mat);
+    const Mat3r rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(_q));
+    mesh_copy.rotateAbout(Vec3r::Zero(), rot_mat);
     _initial_mesh = std::make_unique<Geometry::Mesh>(mesh_copy);
     std::tie(_m, std::ignore, _I) = mesh_copy.massProperties(_density);
     _I_inv = _I.inverse();
@@ -56,18 +51,19 @@ void RigidMeshObject::update()
 
     // TODO: make this work without the need for _initial_mesh
     // move the mesh accordingly
-    // const Eigen::Vector4d dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q_prev), _q);
-    // const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(dq);
-    // const Eigen::Vector3d dx = _p - _p_prev;
+    // THIS IS WRONG! (for some reason)
+    const Vec4r dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q_prev), _q);
+    const Mat3r rot_mat = GeometryUtils::quatToMat(dq);
+    const Vec3r dx = _p - _p_prev;
 
-    // _mesh->moveTogether(dx);
-    // _mesh->rotateAbout(_p, rot_mat);
+    _mesh->moveTogether(dx);
+    _mesh->rotateAbout(_p, rot_mat);
 
-    // THIS SUCKS! have to copy the initial mesh every time
-    *_mesh = *_initial_mesh;
-    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(_q);
-    _mesh->rotateAbout(Eigen::Vector3d::Zero(), rot_mat);
-    _mesh->moveTogether(_p);
+    // THIS SUCKS! have to copy the initial mesh every time - but it's right
+    // *_mesh = *_initial_mesh;
+    // const Mat3r rot_mat = GeometryUtils::quatToMat(_q);
+    // _mesh->rotateAbout(Vec3r::Zero(), rot_mat);
+    // _mesh->moveTogether(_p);
 
 }
 

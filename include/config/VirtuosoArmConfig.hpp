@@ -35,12 +35,12 @@ class VirtuosoArmConfig : public ObjectConfig
         _extractParameter("base-rotation", node, _base_initial_rotation, DEFAULT_BASE_INITIAL_ROTATION());
     }
 
-    explicit VirtuosoArmConfig(
+    explicit VirtuosoArmConfig( const std::string& name, 
+        const Vec3r& initial_pos, const Vec3r& initial_rot, const Vec3r& initial_velocity, bool collisions,
         double ot_dia, double ot_r_curve, double ot_d_s_length, double it_dia,
-        double ot_rot, double ot_trans, double it_rot, double it_trans,
-        const Eigen::Vector3d& initial_pos, const Eigen::Vector3d& initial_rot 
+        double ot_rot, double ot_trans, double it_rot, double it_trans
     )
-        : ObjectConfig()
+        : ObjectConfig(name, initial_pos, initial_rot, initial_velocity, collisions)
     {
         _ot_diameter.value = ot_dia;
         _ot_r_curvature.value = ot_r_curve;

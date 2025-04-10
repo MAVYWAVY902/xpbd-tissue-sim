@@ -3,7 +3,10 @@
 
 #include "simulation/OutputSimulation.hpp"
 #include "config/InitialDeformationSimulationConfig.hpp"
-#include <Eigen/Dense>
+#include "common/types.hpp"
+
+namespace Sim
+{
 
 namespace Sim
 {
@@ -25,7 +28,7 @@ class InitialDeformationSimulation : public OutputSimulation
     protected:
     std::vector<MeshObject::VerticesMat> initial_vertices;
     DeformationType _deformation_type;
-    double _deformation_factor;
+    Real _deformation_factor;
 };
 
 } // namespace Sim

@@ -54,22 +54,22 @@ class Easy3DGraphicsScene : public GraphicsScene
 
 
     /** Gets the camera view direction. */
-    virtual Eigen::Vector3d cameraViewDirection() const override;
+    virtual Vec3r cameraViewDirection() const override;
     /** Sets the camera view direction */
-    virtual void setCameraViewDirection(const Eigen::Vector3d& view_dir) override;
+    virtual void setCameraViewDirection(const Vec3r& view_dir) override;
 
     /** Gets the camera up direction. */
-    virtual Eigen::Vector3d cameraUpDirection() const override;
+    virtual Vec3r cameraUpDirection() const override;
     /** Sets the camera up direction */
-    virtual void setCameraUpDirection(const Eigen::Vector3d& up_dir) override;
+    virtual void setCameraUpDirection(const Vec3r& up_dir) override;
 
     /** Gets the camera right direction. */
-    virtual Eigen::Vector3d cameraRightDirection() const override;
+    virtual Vec3r cameraRightDirection() const override;
 
     /** Gets the camera position. */
-    virtual Eigen::Vector3d cameraPosition() const override;
+    virtual Vec3r cameraPosition() const override;
     /** Sets the camera position. */
-    virtual void setCameraPosition(const Eigen::Vector3d& position) override;
+    virtual void setCameraPosition(const Vec3r& position) override;
 
     protected:
     void _addAllDrawablesForModel(const easy3d::Model* model);

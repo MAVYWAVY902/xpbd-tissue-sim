@@ -75,7 +75,7 @@ void VirtuosoSimulation::setup()
     // find the XPBDMeshObject (which we're assuming to be the tissue)
     for (auto& obj : _objects)
     {
-        if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
+        if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
         {
             _tissue_obj = xpbd_obj;
             break;
@@ -94,7 +94,10 @@ void VirtuosoSimulation::setup()
     }
 
     // create an object at the tip of the robot to show where grasping is
-    std::unique_ptr<RigidSphere> tip_cursor_ptr = std::make_unique<RigidSphere>(this, "tip cursor", 0.001);
+    // TODO: create visualization object or some class that is not a rigid object but just for visualization
+    RigidSphereConfig cursor_config("tip_cursor", Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0),
+        1.0, 0.002, false, false);
+    std::unique_ptr<RigidSphere> tip_cursor_ptr = std::make_unique<RigidSphere>(this, &cursor_config);
     tip_cursor_ptr->setPosition(_active_arm->tipPosition());
     std::cout << _active_arm->tipPosition() << std::endl;
     _tip_cursor = tip_cursor_ptr.get();

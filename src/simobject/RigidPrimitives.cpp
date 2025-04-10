@@ -20,20 +20,6 @@ RigidSphere::RigidSphere(const Simulation* sim, const RigidSphereConfig* config)
     _I_inv = _I.inverse();
 }
 
-RigidSphere::RigidSphere(const Simulation* sim, const std::string& name, double radius, double density)
-    : RigidObject(sim, name), _radius(radius)
-{
-    // mass is volume * density = 4/3 * pi * r^3 * density
-    _m = 4.0/3.0 * 3.1415 * _radius * _radius * _radius * density;
-
-    // moment of inertia of sphere about axis through its center is 2/5 * m * r^2
-    _I(0,0) = 2.0/5.0 * _m * _radius * _radius;
-    _I(1,1) = 2.0/5.0 * _m * _radius * _radius;
-    _I(2,2) = 2.0/5.0 * _m * _radius * _radius;
-
-    _I_inv = _I.inverse();
-}
-
 std::string RigidSphere::toString(const int indent) const
 {
     // TODO: better toString
@@ -69,14 +55,14 @@ RigidBox::RigidBox(const Simulation* sim, const RigidBoxConfig* config)
 
     _I_inv = _I.inverse();
 
-    _origin_bbox_points.col(0) = Eigen::Vector3d({-_size[0]/2, -_size[1]/2, -_size[2]/2});
-    _origin_bbox_points.col(1) = Eigen::Vector3d({ _size[0]/2, -_size[1]/2, -_size[2]/2});
-    _origin_bbox_points.col(2) = Eigen::Vector3d({ _size[0]/2,  _size[1]/2, -_size[2]/2});
-    _origin_bbox_points.col(3) = Eigen::Vector3d({-_size[0]/2,  _size[1]/2, -_size[2]/2});
-    _origin_bbox_points.col(4) = Eigen::Vector3d({-_size[0]/2, -_size[1]/2,  _size[2]/2});
-    _origin_bbox_points.col(5) = Eigen::Vector3d({ _size[0]/2, -_size[1]/2,  _size[2]/2});
-    _origin_bbox_points.col(6) = Eigen::Vector3d({ _size[0]/2,  _size[1]/2,  _size[2]/2});
-    _origin_bbox_points.col(7) = Eigen::Vector3d({-_size[0]/2,  _size[1]/2,  _size[2]/2});
+    _origin_bbox_points.col(0) = Vec3r({-_size[0]/2, -_size[1]/2, -_size[2]/2});
+    _origin_bbox_points.col(1) = Vec3r({ _size[0]/2, -_size[1]/2, -_size[2]/2});
+    _origin_bbox_points.col(2) = Vec3r({ _size[0]/2,  _size[1]/2, -_size[2]/2});
+    _origin_bbox_points.col(3) = Vec3r({-_size[0]/2,  _size[1]/2, -_size[2]/2});
+    _origin_bbox_points.col(4) = Vec3r({-_size[0]/2, -_size[1]/2,  _size[2]/2});
+    _origin_bbox_points.col(5) = Vec3r({ _size[0]/2, -_size[1]/2,  _size[2]/2});
+    _origin_bbox_points.col(6) = Vec3r({ _size[0]/2,  _size[1]/2,  _size[2]/2});
+    _origin_bbox_points.col(7) = Vec3r({-_size[0]/2,  _size[1]/2,  _size[2]/2});
 }
 
 std::string RigidBox::toString(const int indent) const
@@ -94,15 +80,15 @@ Geometry::AABB RigidBox::boundingBox() const
 {
     // transform the corners of the box into its current coordinates
     // and find the bounding box around that
-    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(_q);
+    const Mat3r rot_mat = GeometryUtils::quatToMat(_q);
     
     // transform the original bounding box (centered at the origin) to the box's current position and orientation
-    Eigen::Matrix<double, 3, 8> transformed_bbox_points = rot_mat * _origin_bbox_points;
+    Eigen::Matrix<Real, 3, 8> transformed_bbox_points = rot_mat * _origin_bbox_points;
     transformed_bbox_points.colwise() += _p;
 
     // found the AABB around the transformed bounding box
-    const Eigen::Vector3d min = transformed_bbox_points.rowwise().minCoeff();
-    const Eigen::Vector3d max = transformed_bbox_points.rowwise().maxCoeff();
+    const Vec3r min = transformed_bbox_points.rowwise().minCoeff();
+    const Vec3r max = transformed_bbox_points.rowwise().maxCoeff();
     return Geometry::AABB(min, max);
 
 }
@@ -127,14 +113,14 @@ RigidCylinder::RigidCylinder(const Simulation* sim, const RigidCylinderConfig* c
 
     _I_inv = _I.inverse();
 
-    _origin_bbox_points.col(0) = Eigen::Vector3d({-_radius, -_radius, -_height/2});
-    _origin_bbox_points.col(1) = Eigen::Vector3d({ _radius, -_radius, -_height/2});
-    _origin_bbox_points.col(2) = Eigen::Vector3d({ _radius,  _radius, -_height/2});
-    _origin_bbox_points.col(3) = Eigen::Vector3d({-_radius,  _radius, -_height/2});
-    _origin_bbox_points.col(4) = Eigen::Vector3d({-_radius, -_radius,  _height/2});
-    _origin_bbox_points.col(5) = Eigen::Vector3d({ _radius, -_radius,  _height/2});
-    _origin_bbox_points.col(6) = Eigen::Vector3d({ _radius,  _radius,  _height/2});
-    _origin_bbox_points.col(7) = Eigen::Vector3d({-_radius,  _radius,  _height/2});
+    _origin_bbox_points.col(0) = Vec3r({-_radius, -_radius, -_height/2});
+    _origin_bbox_points.col(1) = Vec3r({ _radius, -_radius, -_height/2});
+    _origin_bbox_points.col(2) = Vec3r({ _radius,  _radius, -_height/2});
+    _origin_bbox_points.col(3) = Vec3r({-_radius,  _radius, -_height/2});
+    _origin_bbox_points.col(4) = Vec3r({-_radius, -_radius,  _height/2});
+    _origin_bbox_points.col(5) = Vec3r({ _radius, -_radius,  _height/2});
+    _origin_bbox_points.col(6) = Vec3r({ _radius,  _radius,  _height/2});
+    _origin_bbox_points.col(7) = Vec3r({-_radius,  _radius,  _height/2});
 
 }
 
@@ -153,15 +139,15 @@ Geometry::AABB RigidCylinder::boundingBox() const
 {
     // transform the corners of the box into its current coordinates
     // and find the bounding box around that
-    const Eigen::Matrix3d rot_mat = GeometryUtils::quatToMat(_q);
+    const Mat3r rot_mat = GeometryUtils::quatToMat(_q);
     
     // transform the original bounding box (centered at the origin) to the box's current position and orientation
-    Eigen::Matrix<double, 3, 8> transformed_bbox_points = rot_mat * _origin_bbox_points;
+    Eigen::Matrix<Real, 3, 8> transformed_bbox_points = rot_mat * _origin_bbox_points;
     transformed_bbox_points.colwise() += _p;
 
     // found the AABB around the transformed bounding box
-    const Eigen::Vector3d min = transformed_bbox_points.rowwise().minCoeff();
-    const Eigen::Vector3d max = transformed_bbox_points.rowwise().maxCoeff();
+    const Vec3r min = transformed_bbox_points.rowwise().minCoeff();
+    const Vec3r max = transformed_bbox_points.rowwise().maxCoeff();
     return Geometry::AABB(min, max);
 
 }

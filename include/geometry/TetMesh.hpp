@@ -19,8 +19,15 @@ class TetMesh : public Mesh
      */
     TetMesh(const VerticesMat& vertices, const FacesMat& faces, const ElementsMat& elements);
 
+    TetMesh(const TetMesh& other);
+
+    TetMesh(TetMesh&& other);
+
     /** Returns a const-reference to the elements of the mesh. */
     const ElementsMat& elements() const { return _elements; }
+
+    /** Returns a non-const-reference to the elements of the mesh. */
+    ElementsMat& elements() { return _elements; }
 
     /** Returns the number of elements in the mesh. */
     int numElements() const { return _elements.cols(); }
@@ -29,12 +36,16 @@ class TetMesh : public Mesh
     Eigen::Vector4i element(const int index) const { return _elements.col(index); }
 
     /** Returns the volume of the specified element. */
-    double elementVolume(const int index) const;
+    Real elementVolume(const int index) const;
 
     /** Returns the number of edges along with the average edge length in the tetrahedra of the mesh.
      * Note that this is different from averageFaceEdgeLength, which only returns the average edge length in the faces (i.e. the surface) of the mesh.
      */
-    std::pair<int, double> averageTetEdgeLength() const;
+    std::pair<int, Real> averageTetEdgeLength() const;
+
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override;
+ #endif
 
     const std::vector<int>& attachedElementsToVertex(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
 

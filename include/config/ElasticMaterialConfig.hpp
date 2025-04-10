@@ -6,15 +6,15 @@
 class ElasticMaterialConfig : public Config
 {
     /** Static predefined default for density */
-    static std::optional<double>& DEFAULT_DENSITY() { static std::optional<double> density(1000); return density; }
+    static std::optional<Real>& DEFAULT_DENSITY() { static std::optional<Real> density(1000); return density; }
     /** Static predefined default for Young's Modulus */
-    static std::optional<double>& DEFAULT_E() { static std::optional<double> E(3e6); return E; }
+    static std::optional<Real>& DEFAULT_E() { static std::optional<Real> E(3e6); return E; }
     /** Static predefined default for Poisson's ratio */
-    static std::optional<double>& DEFAULT_NU() { static std::optional<double> nu(0.4999); return nu; }
+    static std::optional<Real>& DEFAULT_NU() { static std::optional<Real> nu(0.4999); return nu; }
     /** Static predefined default for coeff of static friction */
-    static std::optional<double>& DEFAULT_MU_S() { static std::optional<double> mu_s(0.5); return mu_s; }
+    static std::optional<Real>& DEFAULT_MU_S() { static std::optional<Real> mu_s(0.5); return mu_s; }
     /** Static predefined efault for coeff of kinetic friction */
-    static std::optional<double>& DEFAULT_MU_K() { static std::optional<double> mu_k(0.2); return mu_k; }
+    static std::optional<Real>& DEFAULT_MU_K() { static std::optional<Real> mu_k(0.2); return mu_k; }
 
     public:
     /** Creates a Config from a YAML node, which consists of the specialized parameters needed for ElasticMaterial
@@ -31,20 +31,30 @@ class ElasticMaterialConfig : public Config
         _extractParameter("mu-k", node, _mu_k, DEFAULT_MU_K());
     }
 
+    explicit ElasticMaterialConfig(const std::string& name, Real density, Real E, Real nu, Real mu_s, Real mu_k)
+        : Config(name)
+    {
+        _density.value = density;
+        _E.value = E;
+        _nu.value = nu;
+        _mu_s.value = mu_s;
+        _mu_k.value = mu_k;
+    }
+
     // Getters
-    double density() const { return _density.value.value(); }
-    double E() const { return _E.value.value(); }
-    double nu() const { return _nu.value.value(); }
-    double muS() const { return _mu_s.value.value(); }
-    double muK() const { return _mu_k.value.value(); }
+    Real density() const { return _density.value.value(); }
+    Real E() const { return _E.value.value(); }
+    Real nu() const { return _nu.value.value(); }
+    Real muS() const { return _mu_s.value.value(); }
+    Real muK() const { return _mu_k.value.value(); }
 
     protected:
     // Parameters
-    ConfigParameter<double> _density;
-    ConfigParameter<double> _E;
-    ConfigParameter<double> _nu;
-    ConfigParameter<double> _mu_s;
-    ConfigParameter<double> _mu_k;
+    ConfigParameter<Real> _density;
+    ConfigParameter<Real> _E;
+    ConfigParameter<Real> _nu;
+    ConfigParameter<Real> _mu_s;
+    ConfigParameter<Real> _mu_k;
 };
 
 #endif

@@ -155,7 +155,7 @@ void HapticDeviceManager::setDeviceData(const HDboolean& b1_state, const HDboole
     _stale = true;
 }
 
-Eigen::Vector3d HapticDeviceManager::position()
+Vec3r HapticDeviceManager::position()
 {
     if (_stale)
     {
@@ -166,7 +166,7 @@ Eigen::Vector3d HapticDeviceManager::position()
     return _position;
 }
 
-Eigen::Matrix3d HapticDeviceManager::orientation()
+Mat3r HapticDeviceManager::orientation()
 {
     if (_stale)
     {

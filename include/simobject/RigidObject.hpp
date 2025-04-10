@@ -1,6 +1,7 @@
 #ifndef __RIGID_OBJECT_HPP
 #define __RIGID_OBJECT_HPP
 
+#include "common/types.hpp"
 #include "simobject/Object.hpp"
 #include "config/RigidObjectConfig.hpp"
 #include "utils/GeometryUtils.hpp"
@@ -12,12 +13,6 @@ class RigidObject : public Object
 {
     public:
     RigidObject(const Simulation* sim, const RigidObjectConfig* config);
-
-    RigidObject(const Simulation* sim, const std::string& name);
-
-    RigidObject(const Simulation* sim, const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation);
-
-    RigidObject(const Simulation* sim, const std::string& name, const Eigen::Vector3d& position, const Eigen::Vector4d& orientation, const double mass, const Eigen::Matrix3d& inertia_mat);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
@@ -35,25 +30,25 @@ class RigidObject : public Object
     virtual void velocityUpdate() override;
     
     /** Getters and setters */
-    virtual void setGlobalLinearVelocity(const Eigen::Vector3d& lin_velocity) { _v = lin_velocity; }
-    Eigen::Vector3d globalLinearVelocity() const { return _v; }
-    Eigen::Vector3d bodyLinearVelocity() const { return GeometryUtils::rotateVectorByQuat(_v, GeometryUtils::inverseQuat(_q)); }
+    virtual void setGlobalLinearVelocity(const Vec3r& lin_velocity) { _v = lin_velocity; }
+    const Vec3r& globalLinearVelocity() const { return _v; }
+    Vec3r bodyLinearVelocity() const { return GeometryUtils::rotateVectorByQuat(_v, GeometryUtils::inverseQuat(_q)); }
 
-    virtual void setGlobalAngularVelocity(const Eigen::Vector3d& ang_velocity) { _w = ang_velocity; }
-    Eigen::Vector3d globalAngularVelocity() const { return _w; }
-    Eigen::Vector3d bodyAngularVelocity() const { return GeometryUtils::rotateVectorByQuat(_w, GeometryUtils::inverseQuat(_q)); }
+    virtual void setGlobalAngularVelocity(const Vec3r& ang_velocity) { _w = ang_velocity; }
+    const Vec3r& globalAngularVelocity() const { return _w; }
+    Vec3r bodyAngularVelocity() const { return GeometryUtils::rotateVectorByQuat(_w, GeometryUtils::inverseQuat(_q)); }
 
-    virtual void setPosition(const Eigen::Vector3d& position) { if (!_fixed) _p = position; }
-    const Eigen::Vector3d& position() const { return _p; }
-    Eigen::Vector3d prevPosition() const { return _p_prev; }
+    virtual void setPosition(const Vec3r& position) { if (!_fixed) _p = position; }
+    const Vec3r& position() const { return _p; }
+    const Vec3r& prevPosition() const { return _p_prev; }
 
-    virtual void setOrientation(const Eigen::Vector4d& orientation) { if (!_fixed) _q = orientation; }
-    const Eigen::Vector4d& orientation() const { return _q; }
-    Eigen::Vector4d prevOrientation() const { return _q_prev; }
+    virtual void setOrientation(const Vec4r& orientation) { if (!_fixed) _q = orientation; }
+    const Vec4r& orientation() const { return _q; }
+    const Vec4r& prevOrientation() const { return _q_prev; }
 
-    double mass() const { return _m; }
-    Eigen::Matrix3d I() const { return _I; }
-    Eigen::Matrix3d invI() const { return _I_inv; }
+    Real mass() const { return _m; }
+    Mat3r I() const { return _I; }
+    Mat3r invI() const { return _I_inv; }
 
     bool isFixed() const { return _fixed; }
 
@@ -61,42 +56,42 @@ class RigidObject : public Object
      * @param f : the force vector in global coordinates
      * @param p : the point at which to apply the force to the rigid body, in global coordinates
      */
-    void applyForceAtPoint(const Eigen::Vector3d& f, const Eigen::Vector3d& p);
+    void applyForceAtPoint(const Vec3r& f, const Vec3r& p);
 
     /** Returns the coordinates of p (which is specified in global coords) w.r.t the current body frame of this rigid object.
      * @param p : the point expressed in world frame coords
      * @returns the point p expressed in the current body-frame coordinates
     */
-    Eigen::Vector3d globalToBody(const Eigen::Vector3d& p) const;
+    Vec3r globalToBody(const Vec3r& p) const;
 
     /** Returns the coordinates of p (which is specified in body-frame coords) w.r.t the global XYZ coordinate system.
      * @param p : a point in body-frame coordinates
      * @returns the point p expressed in world frame coords
     */
-    Eigen::Vector3d bodyToGlobal(const Eigen::Vector3d& p) const;
+    Vec3r bodyToGlobal(const Vec3r& p) const;
 
     protected:
     /** Position of rigid body */
-    Eigen::Vector3d _p;
+    Vec3r _p;
     /** Preious position of rigid body. */
-    Eigen::Vector3d _p_prev;
+    Vec3r _p_prev;
     /** Orientation of rigid body, expressed as a quaternion. */
-    Eigen::Vector4d _q;
+    Vec4r _q;
     /** Previous orientation of rigid body. */
-    Eigen::Vector4d _q_prev;
+    Vec4r _q_prev;
 
     /** Total mass of rigid body. */
-    double _m;
+    Real _m;
     /** Moment of inertia matrix. */
-    Eigen::Matrix3d _I;
+    Mat3r _I;
     /** Inerse of moment of inertia matrix. */
-    Eigen::Matrix3d _I_inv;
+    Mat3r _I_inv;
     
 
     /** Translational velocity of rigid body in the global frame */
-    Eigen::Vector3d _v;
+    Vec3r _v;
     /** Rotational velocity of rigid body in the global frame */
-    Eigen::Vector3d _w;
+    Vec3r _w;
 
     /** If the rigid body is fixed (i.e. can't move or rotate). */
     bool _fixed;

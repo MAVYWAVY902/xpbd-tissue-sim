@@ -53,34 +53,34 @@ void BeamStretchSimulation::setup()
             elastic_mesh_object->fixVerticesWithMinY();
 
             // drag all vertices on the other side of the beam
-            const Eigen::Vector3d& min_coords = elastic_mesh_object->bboxMinCoords();
-            const Eigen::Vector3d& max_coords = elastic_mesh_object->bboxMaxCoords();
+            const Vec3r& min_coords = elastic_mesh_object->bboxMinCoords();
+            const Vec3r& max_coords = elastic_mesh_object->bboxMaxCoords();
             // get all the vertices on the maxY face of the beam
             std::vector<unsigned> free_end_verts = elastic_mesh_object->getVerticesWithY(max_coords(1));
             // create a VertexDriver object for each vertex on the maxY face of the beam
             for (unsigned i = 0; i < free_end_verts.size(); i++)
             {
                 // get the original vertex coordinates
-                Eigen::Vector3d vert = elastic_mesh_object->getVertex(free_end_verts[i]);
+                Vec3r vert = elastic_mesh_object->getVertex(free_end_verts[i]);
 
                 if (vert(0) < min_coords(0) + 7*(max_coords(0)-min_coords(0))/16 ||
                     vert(0) > min_coords(0) + 9*(max_coords(0)-min_coords(0))/16)
                     continue;
 
                 // define the driving function
-                VertexDriver::DriverFunction func = [=] (const double t) {
+                VertexDriver::DriverFunction func = [=] (const Real t) {
                     // stretch in +Y direction by stretching velocity until stretch time is reached
                     if (t <= _stretch_time)
                     {
                         int int_time = static_cast<int>(t*3000);
                         int snapped_time = (int_time / 100) * 100;
-                        double snapped_time_d = snapped_time / 3000.0;
-                        // return Eigen::Vector3d({vert(0), vert(1)+_stretch_velocity*snapped_time_d, vert(2)+_stretch_velocity*snapped_time_d});
-                        return Eigen::Vector3d({vert(0), vert(1)+_stretch_velocity*t, vert(2)+_stretch_velocity*t});
+                        Real snapped_time_d = snapped_time / 3000.0;
+                        // return Vec3r({vert(0), vert(1)+_stretch_velocity*snapped_time_d, vert(2)+_stretch_velocity*snapped_time_d});
+                        return Vec3r({vert(0), vert(1)+_stretch_velocity*t, vert(2)+_stretch_velocity*t});
                     }
                     else
                     {
-                        return Eigen::Vector3d({vert(0), vert(1)+_stretch_velocity*_stretch_time, vert(2)+_stretch_velocity*_stretch_time});
+                        return Vec3r({vert(0), vert(1)+_stretch_velocity*_stretch_time, vert(2)+_stretch_velocity*_stretch_time});
                     }
                     
                 };
@@ -122,23 +122,23 @@ void BeamStretchSimulation::printInfo() const
     }
     }
 
-    double primary_residual = 0;
-    double constraint_residual = 0;
-    double dynamics_residual = 0;
-    double volume_ratio = 1;
-    double velocity_rms = 0;
+    Real primary_residual = 0;
+    Real constraint_residual = 0;
+    Real dynamics_residual = 0;
+    Real volume_ratio = 1;
+    Real velocity_rms = 0;
     _out_file << _time;
     for (auto& mesh_object : _mesh_objects) {
         if (XPBDMeshObject* xpbd = dynamic_cast<XPBDMeshObject*>(mesh_object.get()))
         {
-            Eigen::VectorXd pres_vec = xpbd->solver()->primaryResidual();
+            VecXr pres_vec = xpbd->solver()->primaryResidual();
             primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
-            Eigen::VectorXd cres_vec = xpbd->solver()->constraintResidual();
+            VecXr cres_vec = xpbd->solver()->constraintResidual();
             constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
             // dynamics_residual = elastic_mesh_object->dynamicsResidual();
             // volume_ratio = elastic_mesh_object->volumeRatio();
             MeshObject::VerticesMat velocities = mesh_object->velocities();
-            const double frob_norm = velocities.norm();
+            const Real frob_norm = velocities.norm();
             velocity_rms = std::sqrt(frob_norm/velocities.rows());
         }
         _out_file << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio << " " << velocity_rms;

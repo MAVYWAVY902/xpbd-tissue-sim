@@ -10,7 +10,7 @@
 #include <cassert>
 #include <mutex>
 
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 struct HapticDeviceData
 {
@@ -29,8 +29,8 @@ class HapticDeviceManager
 
     ~HapticDeviceManager();
 
-    Eigen::Vector3d position();
-    Eigen::Matrix3d orientation();
+    Vec3r position();
+    Mat3r orientation();
     bool button1Pressed();
     bool button2Pressed();
 
@@ -50,10 +50,10 @@ class HapticDeviceManager
     private:
     HHD _hHD;
     HapticDeviceData _device_data;
-    Eigen::Vector3d _position;
+    Vec3r _position;
     bool _button1_pressed;
     bool _button2_pressed;
-    Eigen::Matrix3d _orientation;
+    Mat3r _orientation;
     bool _stale;
 
     Eigen::Vector3d _force;

@@ -9,6 +9,7 @@ build/
 CMakeFiles/
 .vscode/
 Makefile
+.deb
 
 # ignore .obj and .stl files
 *.obj

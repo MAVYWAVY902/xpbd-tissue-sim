@@ -12,8 +12,6 @@ class RigidSphere : public RigidObject
     public:
     RigidSphere(const Simulation* sim, const RigidSphereConfig* config);
 
-    RigidSphere(const Simulation* sim, const std::string& name, double radius, double density=1.0);
-
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
     */
@@ -22,14 +20,18 @@ class RigidSphere : public RigidObject
     /** Returns a string with the type of the object. */
     virtual std::string type() const override { return "RigidObject"; }
 
-    double radius() const { return _radius; }
+    Real radius() const { return _radius; }
 
     virtual void setup() override;
 
     virtual Geometry::AABB boundingBox() const override;
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
+
     protected:
-    double _radius;
+    Real _radius;
 
 };
 
@@ -50,15 +52,19 @@ class RigidBox : public RigidObject
     /** Returns a string with the type of the object. */
     virtual std::string type() const override { return "RigidObject"; }
 
-    Eigen::Vector3d size() const { return _size; }
+    Vec3r size() const { return _size; }
 
     virtual void setup() override;
 
     virtual Geometry::AABB boundingBox() const override;
-    
+
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif  
+
     protected:
-    Eigen::Vector3d _size;
-    Eigen::Matrix<double, 3, 8> _origin_bbox_points;
+    Vec3r _size;
+    Eigen::Matrix<Real, 3, 8> _origin_bbox_points;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,18 +83,22 @@ class RigidCylinder : public RigidObject
     /** Returns a string with the type of the object. */
     virtual std::string type() const override { return "RigidObject"; }
 
-    double radius() const { return _radius; }
+    Real radius() const { return _radius; }
 
-    double height() const { return _height; }
+    Real height() const { return _height; }
 
     virtual void setup() override;
 
     virtual Geometry::AABB boundingBox() const override;
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
+
     protected:
-    double _radius;
-    double _height;
-    Eigen::Matrix<double, 3, 8> _origin_bbox_points;
+    Real _radius;
+    Real _height;
+    Eigen::Matrix<Real, 3, 8> _origin_bbox_points;
 };
 
 } //namespace Sim

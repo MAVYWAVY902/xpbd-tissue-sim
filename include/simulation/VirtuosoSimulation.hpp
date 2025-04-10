@@ -53,7 +53,7 @@ class VirtuosoSimulation : public Simulation
 
     protected:
 
-    XPBDMeshObject* _tissue_obj;    // the tissue XPBD object that is being manipulated
+    XPBDMeshObject_Base* _tissue_obj;    // the tissue XPBD object that is being manipulated
     std::optional<std::string> _fixed_faces_filename;   // a .txt filename that lists all the faces that should be held fixed
 
     VirtuosoRobot* _virtuoso_robot; // the Virtuoso robot (includes both arms)

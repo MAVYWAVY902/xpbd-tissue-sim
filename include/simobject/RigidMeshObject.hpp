@@ -14,10 +14,6 @@ class RigidMeshObject : public RigidObject, public MeshObject
     public:
     RigidMeshObject(const Simulation* sim, const RigidMeshObjectConfig* config);
 
-    RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density=1.0);
-
-    // RigidMeshObject(const Simulation* sim, const std::string& name, const std::string& filename, const double density);
-
     virtual std::string type() const override { return "RigidMeshObject"; }
 
     virtual std::string toString(const int indent) const override;
@@ -28,8 +24,12 @@ class RigidMeshObject : public RigidObject, public MeshObject
 
     virtual void update() override;
 
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
+
     protected:
-    double _density;
+    Real _density;
     std::unique_ptr<Geometry::Mesh> _initial_mesh;
 };
 

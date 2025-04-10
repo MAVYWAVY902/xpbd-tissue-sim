@@ -2,7 +2,7 @@
 #define __OUTPUT_SIMULATION_HPP
 
 #include "Simulation.hpp"
-#include <Eigen/Dense>
+#include "common/types.hpp"
 
 #include <fstream>
 
@@ -13,6 +13,8 @@ class OutputSimulation : public Simulation
 {
     public:
     explicit OutputSimulation(const std::string& config_filename);
+
+    ~OutputSimulation();
 
     protected:
     explicit OutputSimulation();
@@ -27,8 +29,8 @@ class OutputSimulation : public Simulation
     virtual void _init() override;
 
     
-    double _print_interval_s;
-    double _last_print_sim_time;
+    Real _print_interval_s;
+    Real _last_print_sim_time;
 
     mutable std::ofstream _out_file;
 };

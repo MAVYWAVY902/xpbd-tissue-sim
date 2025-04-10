@@ -28,6 +28,8 @@ class Simulation
          */
         explicit Simulation(const std::string& config_filename);
 
+        explicit Simulation(SimulationConfig&& config);
+
     protected:
         /** Protected default constructor - only callable from derived objects
          * Assumes that the _config object is set and exists
@@ -38,11 +40,16 @@ class Simulation
         virtual std::string toString(const int indent) const;
         virtual std::string type() const { return "Simulation"; }
 
-        double time() const { return _time; }
+        /** Adds a MeshObject to the simulation. Will add its Drawables to the Viewer as well.
+         * @param mesh_obj : the MeshObject being added  
+        */        
+        // void addObject(std::shared_ptr<MeshObject> mesh_obj);
 
-        double dt() const { return _time_step; }
+        Real time() const { return _time; }
+
+        Real dt() const { return _time_step; }
         
-        double gAccel() const { return _g_accel; }
+        Real gAccel() const { return _g_accel; }
 
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
@@ -66,9 +73,9 @@ class Simulation
 
         virtual void notifyMouseButtonPressed(int button, int action, int modifiers);
 
-        virtual void notifyMouseMoved(double x, double y);
+        virtual void notifyMouseMoved(Real x, Real y);
 
-        virtual void notifyMouseScrolled(double dx, double dy);
+        virtual void notifyMouseScrolled(Real dx, Real dy);
     
     protected:
         /** Helper to add an object to the simulation (used by derived Simulation classes)
@@ -99,21 +106,21 @@ class Simulation
         SimulationMode _sim_mode;
 
         /** Current sim time */
-        double _time;
+        Real _time;
         /** The time step to take */
-        double _time_step;
+        Real _time_step;
         /** End time of the simulation */
-        double _end_time;
+        Real _end_time;
         /** Number of time steps taken */
         size_t _steps_taken;
         /** Acceleration due to gravity */
-        double _g_accel;
+        Real _g_accel;
         /** Time to wait inbetween viewer updates (in ms). This is 1/fps */
         int _viewer_refresh_time;
         /** Time to wait inbetween collision checks (in seconds). This is 1/collision_rate */
-        double _time_between_collision_checks;
+        Real _time_between_collision_checks;
 
-        double _last_collision_detection_time;
+        Real _last_collision_detection_time;
 
         /** storage of all Objects in the simulation */
         std::vector<std::unique_ptr<Object>> _objects;

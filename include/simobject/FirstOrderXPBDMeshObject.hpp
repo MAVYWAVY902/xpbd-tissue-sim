@@ -6,8 +6,10 @@
 
 namespace Sim
 {
+template<typename SolverType, typename ConstraintTypeList> class FirstOrderXPBDMeshObject;
 
-class FirstOrderXPBDMeshObject : public XPBDMeshObject
+template<typename SolverType, typename... ConstraintTypes>
+class FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>
 {
     public:
     explicit FirstOrderXPBDMeshObject(const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config);
@@ -17,16 +19,25 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
 
     virtual void setup() override;
 
-    double vertexDamping(const unsigned index) const { return 1.0/_inv_B[index]; }
+   //  Real vertexDamping(const unsigned index) const { return 1.0/_inv_B[index]; }
 
-    double vertexInvDamping(const unsigned index) const { return _inv_B[index]; }
+   //  Real vertexInvDamping(const unsigned index) const { return _inv_B[index]; }
 
-    virtual void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Eigen::Vector3d& p, const Eigen::Vector3d& n,
-                                    const XPBDMeshObject* obj, const int v1, const int v2, const int v3, const double u, const double v, const double w) override;
+   void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
+      int face_ind, const Real u, const Real v, const Real w);
+   
+   void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+      int face_ind, const Real u, const Real v, const Real w);
 
-    virtual void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Eigen::Vector3d& rigid_body_point, const Eigen::Vector3d& collision_normal,
-                                       const Sim::XPBDMeshObject* deformable_obj, const int v1, const int v2, const int v3, const double u, const double v, const double w) override;
-                                       
+ #ifdef HAVE_CUDA
+   //  virtual void createGPUResource() override { assert(0); /* not implemented */ }
+ #endif
+
+    protected:
+    /** Creates constraints according to the constraint type.
+     */
+    void _createElasticConstraints();
+                                 
     protected:
     /** Moves the vertices in the absence of constraints.
      * i.e. according to their current velocities and the forces applied to them
@@ -37,9 +48,9 @@ class FirstOrderXPBDMeshObject : public XPBDMeshObject
     virtual void _calculatePerVertexQuantities() override;
 
     protected:
-    double _damping_multiplier;
+    Real _damping_multiplier;
 
-    std::vector<double> _inv_B;
+    std::vector<Real> _inv_B;
 
 };
 

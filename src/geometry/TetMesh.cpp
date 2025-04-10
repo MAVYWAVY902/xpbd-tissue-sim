@@ -2,6 +2,10 @@
 
 #include <set>
 
+#ifdef HAVE_CUDA
+#include "gpu/resource/TetMeshGPUResource.hpp"
+#endif
+
 namespace Geometry
 {
 
@@ -20,15 +24,27 @@ TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const Eleme
     }
 }
 
-double TetMesh::elementVolume(const int index) const
+TetMesh::TetMesh(const TetMesh& other)
+    : Mesh(other)
+{
+    _elements = other._elements;
+}
+
+TetMesh::TetMesh(TetMesh&& other)
+    : Mesh(other)
+{
+    _elements = std::move(other._elements);
+}
+
+Real TetMesh::elementVolume(const int index) const
 {
     const Eigen::Vector4i& elem = element(index);
-    const Eigen::Vector3d& v1 = vertex(elem[0]);
-    const Eigen::Vector3d& v2 = vertex(elem[1]);
-    const Eigen::Vector3d& v3 = vertex(elem[2]);
-    const Eigen::Vector3d& v4 = vertex(elem[3]);
+    const Vec3r& v1 = vertex(elem[0]);
+    const Vec3r& v2 = vertex(elem[1]);
+    const Vec3r& v3 = vertex(elem[2]);
+    const Vec3r& v4 = vertex(elem[3]);
 
-    Eigen::Matrix3d X;
+    Mat3r X;
     X.col(0) = (v1 - v4);
     X.col(1) = (v2 - v4);
     X.col(2) = (v3 - v4);
@@ -36,7 +52,7 @@ double TetMesh::elementVolume(const int index) const
     return std::abs(X.determinant() / 6.0);
 }
 
-std::pair<int, double> TetMesh::averageTetEdgeLength() const
+std::pair<int, Real> TetMesh::averageTetEdgeLength() const
 {
     std::set<std::pair<int, int>> edges;
 
@@ -48,13 +64,13 @@ std::pair<int, double> TetMesh::averageTetEdgeLength() const
             return std::pair<int, int>(v1, v2);
     };
 
-    double total_length = 0;
+    Real total_length = 0;
     for (const auto& elem : _elements.colwise())
     {
-        const Eigen::Vector3d& v1 = vertex(elem(0));
-        const Eigen::Vector3d& v2 = vertex(elem(1));
-        const Eigen::Vector3d& v3 = vertex(elem(2));
-        const Eigen::Vector3d& v4 = vertex(elem(3));
+        const Vec3r& v1 = vertex(elem(0));
+        const Vec3r& v2 = vertex(elem(1));
+        const Vec3r& v3 = vertex(elem(2));
+        const Vec3r& v4 = vertex(elem(3));
 
         std::pair<int, int> e1 = make_edge(elem(0), elem(1));
         std::pair<int, int> e2 = make_edge(elem(0), elem(2));
@@ -96,7 +112,15 @@ std::pair<int, double> TetMesh::averageTetEdgeLength() const
         }
     }
 
-    return std::pair<int,double>(edges.size(), total_length/edges.size());
+    return std::pair<int,Real>(edges.size(), total_length/edges.size());
 }
+
+#ifdef HAVE_CUDA
+void TetMesh::createGPUResource()
+{
+    _gpu_resource = std::make_unique<Sim::TetMeshGPUResource>(this);
+    _gpu_resource->allocate();
+}
+#endif
 
 } // namespace Geometry

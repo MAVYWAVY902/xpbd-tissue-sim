@@ -33,6 +33,8 @@ class MeshObject
 
     const Geometry::Mesh* mesh() const { return _mesh.get(); }
 
+    Geometry::Mesh* mesh() { return _mesh.get(); }
+
     protected:
     void _loadAndConfigureMesh()
     {
@@ -50,15 +52,13 @@ class MeshObject
             _mesh->resize(_initial_size.value());
         }
 
-        const Eigen::Vector3d center_of_mass = _mesh->massCenter();
+        const Vec3r center_of_mass = _mesh->massCenter();
 
         // move center of mass of the mesh to the specified initial position
         _mesh->moveTogether(-center_of_mass + _initial_position);
 
         // then do rigid transformation - rotation and translation
         _mesh->rotateAbout(_initial_position, _initial_rotation);
-        
-        
     }
 
     virtual void _loadMeshFromFile(const std::string& fname)
@@ -76,10 +76,10 @@ class MeshObject
 
     private:
     std::string _filename;
-    Eigen::Vector3d _initial_position;
-    Eigen::Vector3d _initial_rotation;
-    std::optional<Eigen::Vector3d> _initial_size;
-    std::optional<double> _max_size;
+    Vec3r _initial_position;
+    Vec3r _initial_rotation;
+    std::optional<Vec3r> _initial_size;
+    std::optional<Real> _max_size;
     
 
 };
@@ -97,6 +97,7 @@ class TetMeshObject : public MeshObject
     }
 
     const Geometry::TetMesh* tetMesh() const { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
+    Geometry::TetMesh* tetMesh() { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
 
     protected:
     virtual void _loadMeshFromFile(const std::string& fname)

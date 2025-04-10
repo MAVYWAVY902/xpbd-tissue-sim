@@ -1,7 +1,7 @@
 #include "simulation/TissueGraspingSimulation.hpp"
 #include "utils/MeshUtils.hpp"
 
-#include "solver/XPBDSolver.hpp"
+#include "solver/xpbd_solver/XPBDSolver.hpp"
 
 namespace Sim
 {
@@ -25,7 +25,7 @@ TissueGraspingSimulation::TissueGraspingSimulation(const std::string& config_fil
     _input_device = tissue_grasping_simulation_config->inputDevice().value();
     _fixed_faces_filename = tissue_grasping_simulation_config->fixedFacesFilename();
 
-    _grasp_tip_rotation = Eigen::Matrix3d::Identity();
+    _grasp_tip_rotation = Mat3r::Identity();
 
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
@@ -54,7 +54,7 @@ void TissueGraspingSimulation::setup()
 
     for (auto& obj : _objects)
     {
-        if (XPBDMeshObject* xpbd_obj = dynamic_cast<XPBDMeshObject*>(obj.get()))
+        if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
         {
             _tissue_obj = xpbd_obj;
             break;
@@ -74,9 +74,9 @@ void TissueGraspingSimulation::setup()
 
     /** Hack! Hard-coded. Uncomment for tissue pull. */
     // fix left-most third of bottom face
-    // double smallest_edge_length = _tissue_block->smallestEdgeLength();
-    // const Eigen::Vector3d& min_coords = _tissue_block->bboxMinCoords();
-    // const Eigen::Vector3d& max_coords = _tissue_block->bboxMaxCoords();
+    // Real smallest_edge_length = _tissue_obj->smallestEdgeLength();
+    // const Vec3r& min_coords = _tissue_obj->bboxMinCoords();
+    // const Vec3r& max_coords = _tissue_obj->bboxMaxCoords();
     // int x_steps = static_cast<int>((max_coords(0) - min_coords(0)) / smallest_edge_length) + 1;
     // int y_steps = static_cast<int>((max_coords(1) - min_coords(1)) / smallest_edge_length) + 1;
 
@@ -85,10 +85,10 @@ void TissueGraspingSimulation::setup()
     // {
     //     for (int yi = 0; yi < y_steps/3; yi++)
     //     {
-    //         double x = xi*smallest_edge_length + min_coords(0);
-    //         double y = yi*smallest_edge_length + min_coords(1);
-    //         unsigned v1 = _tissue_block->getClosestSurfaceVertex(x, y, min_coords(2));
-    //         _tissue_block->fixVertex(v1);
+    //         Real x = xi*smallest_edge_length + min_coords(0);
+    //         Real y = yi*smallest_edge_length + min_coords(1);
+    //         unsigned v1 = _tissue_obj->getClosestSurfaceVertex(x, y, min_coords(2));
+    //         _tissue_obj->fixVertex(v1);
     //     }
     // }
     
@@ -162,13 +162,13 @@ void TissueGraspingSimulation::_timeStep()
         // std::ofstream obj_file("../output/mesh_output/mesh_" + std::to_string(_time) + ".obj");
         // if (obj_file.is_open())
         // {
-        //     MeshObject::VerticesMat verts = _tissue_block->vertices();
+        //     MeshObject::VerticesMat verts = _tissue_obj->vertices();
         //     for (const auto& v : verts.rowwise())
         //     {
         //         obj_file << "v " << v << std::endl;
         //     }
             
-        //     MeshObject::FacesMat faces = _tissue_block->faces();
+        //     MeshObject::FacesMat faces = _tissue_obj->faces();
         //     for (const auto& f : faces.rowwise())
         //     {
         //         obj_file << "f " << f(0)+1 << " " << f(1)+1 << " " << f(2)+1 << std::endl;
@@ -201,7 +201,7 @@ void TissueGraspingSimulation::notifyMouseButtonPressed(int button, int action, 
     Simulation::notifyMouseButtonPressed(button, action, modifiers);
 }
 
-void TissueGraspingSimulation::notifyMouseMoved(double x, double y)
+void TissueGraspingSimulation::notifyMouseMoved(Real x, Real y)
 {
     
     if (_input_device != SimulationInputDevice::MOUSE)
@@ -211,7 +211,7 @@ void TissueGraspingSimulation::notifyMouseMoved(double x, double y)
 
     bool found;
     // easy3d::vec3 mouse_pt = _viewer->point_under_pixel(x, y, found);
-    Eigen::Vector3d new_mouse_pos(0,0,0);
+    Vec3r new_mouse_pos(0,0,0);
     // new_mouse_pos(0) = mouse_pt.x;
     // new_mouse_pos(1) = mouse_pt.y;
     // new_mouse_pos(2) = mouse_pt.z;
@@ -265,39 +265,23 @@ void TissueGraspingSimulation::notifyKeyPressed(int key, int action, int modifie
         // _viewer->camera()->setViewDirection(easy3d::vec3(-0.713113, -0.0129693, -0.70093));
 
         // save tissue vertices, faces, elements
-        // std::ofstream vertices_file("vertices_" + std::to_string(_time) + ".txt");
-        // if (vertices_file.is_open())
-        // {
-        //     vertices_file << _tissue_block->vertices() << std::endl;
-        // }
+        std::ofstream vertices_file("vertices_" + std::to_string(_time) + ".txt");
+        if (vertices_file.is_open())
+        {
+            vertices_file << _tissue_obj->mesh()->vertices() << std::endl;
+        }
 
-        // std::ofstream faces_file("faces_" + std::to_string(_time) + ".txt");
-        // if (faces_file.is_open())
-        // {
-        //     faces_file << _tissue_block->faces() << std::endl;
-        // }
+        std::ofstream faces_file("faces_" + std::to_string(_time) + ".txt");
+        if (faces_file.is_open())
+        {
+            faces_file << _tissue_obj->mesh()->faces() << std::endl;
+        }
 
-        // std::ofstream elements_file("elements_" + std::to_string(_time) + ".txt");
-        // if (elements_file.is_open())
-        // {
-        //     elements_file << _tissue_block->faces() << std::endl;
-        // }
-
-        // std::ofstream obj_file("mesh_" + std::to_string(_time) + ".obj");
-        // if (obj_file.is_open())
-        // {
-        //     MeshObject::VerticesMat verts = _tissue_block->vertices();
-        //     for (const auto& v : verts.rowwise())
-        //     {
-        //         obj_file << "v " << v << std::endl;
-        //     }
-            
-        //     MeshObject::FacesMat faces = _tissue_block->faces();
-        //     for (const auto& f : faces.rowwise())
-        //     {
-        //         obj_file << "f " << f(0)+1 << " " << f(1)+1 << " " << f(2)+1 << std::endl;
-        //     }
-        // }
+        std::ofstream elements_file("elements_" + std::to_string(_time) + ".txt");
+        if (elements_file.is_open())
+        {
+            elements_file << _tissue_obj->mesh()->faces() << std::endl;
+        }
 
         
     }
@@ -317,7 +301,7 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
     // {
     //     for (const auto& vd : _grasped_vertex_drivers)
     //     {
-    //         _tissue_block->removeVertexDriver(vd->vertexIndex());
+    //         _tissue_obj->removeVertexDriver(vd->vertexIndex());
     //     }
     //     _grasped_vertex_drivers.clear();
 
@@ -328,13 +312,13 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
     //     std::set<unsigned> vertices_to_grasp;// = _getAllVerticesInGraspingArea();
     //     if (_input_device == SimulationInputDevice::MOUSE)
     //     {
-    //         unsigned v = _tissue_block->getClosestSurfaceVertex(_mouse_pos_3d(0), _mouse_pos_3d(1), _mouse_pos_3d(2));
-    //         if (!_tissue_block->vertexFixed(v))
+    //         unsigned v = _tissue_obj->getClosestSurfaceVertex(_mouse_pos_3d(0), _mouse_pos_3d(1), _mouse_pos_3d(2));
+    //         if (!_tissue_obj->vertexFixed(v))
     //             vertices_to_grasp.insert(v);
     //     }
     //     if (_input_device == SimulationInputDevice::HAPTIC)
     //     {
-    //         // unsigned v = _tissue_block->getClosestSurfaceVertex(_grasp_tip_position(0), _grasp_tip_position(1), _grasp_tip_position(2));
+    //         // unsigned v = _tissue_obj->getClosestSurfaceVertex(_grasp_tip_position(0), _grasp_tip_position(1), _grasp_tip_position(2));
             
     //         for (int theta = 0; theta < 360; theta+=30)
     //         {
@@ -345,11 +329,11 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
     //                     const double x = _grasp_tip_position(0) + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
     //                     const double y = _grasp_tip_position(1) + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
     //                     const double z = _grasp_tip_position(2) + p*std::cos(phi*M_PI/180);
-    //                     unsigned v = _tissue_block->getClosestVertex(x, y, z);
+    //                     unsigned v = _tissue_obj->getClosestVertex(x, y, z);
 
     //                     // make sure v is inside sphere
-    //                     if ((_grasp_tip_position - _tissue_block->getVertex(v)).norm() <= _grasp_size)
-    //                         if (!_tissue_block->vertexFixed(v))
+    //                     if ((_grasp_tip_position - _tissue_obj->getVertex(v)).norm() <= _grasp_size)
+    //                         if (!_tissue_obj->vertexFixed(v))
     //                             vertices_to_grasp.insert(v);
     //                 }
     //             }
@@ -363,11 +347,11 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
     //     {
     //         // grab middle vertex and lift it up
             
-    //         Eigen::Vector3d vertex_pos = _tissue_block->getVertex(v);
+    //         Eigen::Vector3d vertex_pos = _tissue_obj->getVertex(v);
 
 
     //         std::shared_ptr<StaticVertexDriver> vd = std::make_shared<StaticVertexDriver>("tissue grasping", v, vertex_pos);
-    //         _tissue_block->addVertexDriver(vd);
+    //         _tissue_obj->addVertexDriver(vd);
 
     //         _grasped_vertex_drivers.push_back(vd);
     //     }
@@ -385,8 +369,8 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
 
 //     const int num_steps = _grasp_size / step;
 
-//     const Eigen::Vector3d& min_coords = _tissue_block->bboxMinCoords();
-//     const Eigen::Vector3d& max_coords = _tissue_block->bboxMaxCoords();
+//     const Eigen::Vector3d& min_coords = _tissue_obj->bboxMinCoords();
+//     const Eigen::Vector3d& max_coords = _tissue_obj->bboxMaxCoords();
 //     Eigen::Vector3d vertex_grab_pos({min_coords(0) + (max_coords(0)-min_coords(0))*0.5, 
 //                                     min_coords(1) + (max_coords(1)-min_coords(1))*0.5,
 //                                     max_coords(2)});
@@ -397,7 +381,7 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
 //         {
 //             // grab middle vertex and lift it up
             
-//             unsigned vertex_ind = _tissue_block->getClosestVertex(vertex_grab_pos(0) - _grasp_size/2 + i*step, vertex_grab_pos(1) - _grasp_size/2 + j*step, vertex_grab_pos(2));
+//             unsigned vertex_ind = _tissue_obj->getClosestVertex(vertex_grab_pos(0) - _grasp_size/2 + i*step, vertex_grab_pos(1) - _grasp_size/2 + j*step, vertex_grab_pos(2));
 
 //             vertices_to_grasp.insert(vertex_ind);
 //         }
@@ -406,23 +390,23 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
 //     return vertices_to_grasp;
 // }
 
-Eigen::Vector3d TissueGraspingSimulation::_transformInputPosition(const Eigen::Vector3d& input_position)
+Vec3r TissueGraspingSimulation::_transformInputPosition(const Vec3r& input_position)
 {
-    Eigen::Vector4d input_position_h(input_position(0), input_position(1), input_position(2), 1);
+    Vec4r input_position_h(input_position(0), input_position(1), input_position(2), 1);
 
     Eigen::Matrix4d T_OC = Eigen::Matrix4d::Identity();
     T_OC(0,0) = -1;
     T_OC(2,2) = -1;
     T_OC(2,3) = 0.2; // distance
 
-    Eigen::Vector3d view_dir_easy3d = _graphics_scene->cameraViewDirection();
-    Eigen::Vector3d up_vec_easy3d = _graphics_scene->cameraUpDirection();
-    Eigen::Vector3d right_vec_easy3d = -_graphics_scene->cameraRightDirection();
-    Eigen::Vector3d camera_position_easy3d = _graphics_scene->cameraPosition();
-    Eigen::Vector4d view_dir(view_dir_easy3d[0], view_dir_easy3d[1], view_dir_easy3d[2], 0);
-    Eigen::Vector4d up_vec(up_vec_easy3d[0], up_vec_easy3d[1], up_vec_easy3d[2], 0);
-    Eigen::Vector4d right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2], 0);
-    Eigen::Vector4d camera_position(camera_position_easy3d[0], camera_position_easy3d[1], camera_position_easy3d[2], 1);
+    Vec3r view_dir_easy3d = _graphics_scene->cameraViewDirection();
+    Vec3r up_vec_easy3d = _graphics_scene->cameraUpDirection();
+    Vec3r right_vec_easy3d = -_graphics_scene->cameraRightDirection();
+    Vec3r camera_position_easy3d = _graphics_scene->cameraPosition();
+    Vec4r view_dir(view_dir_easy3d[0], view_dir_easy3d[1], view_dir_easy3d[2], 0);
+    Vec4r up_vec(up_vec_easy3d[0], up_vec_easy3d[1], up_vec_easy3d[2], 0);
+    Vec4r right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2], 0);
+    Vec4r camera_position(camera_position_easy3d[0], camera_position_easy3d[1], camera_position_easy3d[2], 1);
 
     Eigen::Matrix4d T_CW;
     T_CW.col(0) = right_vec;
@@ -430,9 +414,9 @@ Eigen::Vector3d TissueGraspingSimulation::_transformInputPosition(const Eigen::V
     T_CW.col(2) = view_dir;
     T_CW.col(3) = camera_position;
 
-    Eigen::Vector4d transformed_position_h = T_CW * T_OC * input_position_h;
+    Vec4r transformed_position_h = T_CW * T_OC * input_position_h;
 
-    return Eigen::Vector3d(transformed_position_h[0], transformed_position_h[1], transformed_position_h[2]);
+    return Vec3r(transformed_position_h[0], transformed_position_h[1], transformed_position_h[2]);
 
 }
 
