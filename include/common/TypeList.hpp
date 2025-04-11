@@ -37,4 +37,22 @@ struct ConcatenateTypeLists<TypeList<Types1...>, TypeList<Types2...>, RestLists.
 
 
 
+///////////////////////////////////////////////////////////////////////////
+// Checking if TypeList contains a given type
+///////////////////////////////////////////////////////////////////////////
+template<typename T, typename List>
+struct TypeListContains;
+
+template<typename T, typename... Types>
+struct TypeListContains<T, TypeList<Types...>>
+{
+    static constexpr bool value = (std::is_same_v<T, Types> || ...);
+};
+
+// helper metafunction
+template <typename T, typename List>
+constexpr bool type_list_contains_v = TypeListContains<T, List>::value;
+
+
+
 #endif // __TYPE_LIST_HPP

@@ -63,14 +63,14 @@ void TissueGraspingSimulation::setup()
     
     assert(_tissue_obj);
 
-    if (_fixed_faces_filename.has_value())
-    {
-        std::set<unsigned> vertices = MeshUtils::verticesFromFixedFacesFile(_fixed_faces_filename.value());
-        for (const auto& v : vertices)
-        {
-            _tissue_obj->fixVertex(v);
-        }
-    }
+    // if (_fixed_faces_filename.has_value())
+    // {
+    //     std::set<unsigned> vertices = MeshUtils::verticesFromFixedFacesFile(_fixed_faces_filename.value());
+    //     for (const auto& v : vertices)
+    //     {
+    //         _tissue_obj->fixVertex(v);
+    //     }
+    // }
 
     /** Hack! Hard-coded. Uncomment for tissue pull. */
     // fix left-most third of bottom face

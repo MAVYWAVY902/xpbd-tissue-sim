@@ -37,7 +37,7 @@ void createBeamObj(const std::string& filename, const Real l, const Real w, cons
 
 void createTissueBlock(const std::string& filename, const Real l, const Real w, const Real h, const int num_low_res_subdivisions, const int high_res_multiplier);
 
-std::set<unsigned> verticesFromFixedFacesFile(const std::string& filename);
+void verticesAndFacesFromFixedFacesFile(const std::string& filename, std::set<int>& vertices, std::vector<int>& faces);
 
 }
 

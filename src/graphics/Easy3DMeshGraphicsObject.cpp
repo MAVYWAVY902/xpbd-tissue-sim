@@ -96,13 +96,33 @@ std::vector<unsigned int> Easy3DMeshGraphicsObject::facesAsFlatList() const
 {
     // each face (triangle) has 3 vertices
     const Geometry::Mesh::FacesMat& faces = _mesh->faces();
-    std::vector<unsigned int> faces_flat_list(_mesh->numFaces()*3);
+    std::vector<unsigned int> faces_flat_list;
+    faces_flat_list.reserve(_mesh->numFaces()*3);
 
-    // iterate through faces and add them to 1D list
-    for (const auto& face : faces.colwise())
+    bool has_draw_property = _mesh->hasFaceProperty<bool>("draw");
+
+    if (has_draw_property)
     {
-        faces_flat_list.insert(faces_flat_list.end(), {static_cast<unsigned>(face(0)), static_cast<unsigned>(face(1)), static_cast<unsigned>(face(2))});
+        const std::vector<bool>& draw_face = _mesh->getFaceProperty<bool>("draw").properties();
+        // iterate through faces and add them to 1D list
+        for (int i = 0; i < _mesh->numFaces(); i++)
+        {
+            if (!draw_face[i])
+                continue;
+            
+            const Vec3i& face = _mesh->face(i); 
+            faces_flat_list.insert(faces_flat_list.end(), {static_cast<unsigned>(face(0)), static_cast<unsigned>(face(1)), static_cast<unsigned>(face(2))});
+        }
     }
+    else
+    {
+        // iterate through faces and add them to 1D list
+        for (const auto& face : faces.colwise())
+        {
+            faces_flat_list.insert(faces_flat_list.end(), {static_cast<unsigned>(face(0)), static_cast<unsigned>(face(1)), static_cast<unsigned>(face(2))});
+        }
+    }
+    
 
     return faces_flat_list;
 }
@@ -112,14 +132,35 @@ std::vector<unsigned int> Easy3DMeshGraphicsObject::edgesAsFlatList() const
 {
     // TODO: filter duplicate edges
     const Geometry::Mesh::FacesMat& faces = _mesh->faces();
-    std::vector<unsigned int> edges_flat_list(_mesh->numFaces()*6);
+    std::vector<unsigned int> edges_flat_list;
+    edges_flat_list.reserve(_mesh->numFaces()*6);
 
-    // iterate through faces and add each edge to 1D list
-    for (const auto& face : faces.colwise())
+    bool has_draw_property = _mesh->hasFaceProperty<bool>("draw");
+
+    if (has_draw_property)
     {
-        edges_flat_list.insert(edges_flat_list.end(), {static_cast<unsigned>(face(0)), static_cast<unsigned>(face(1)),
-            static_cast<unsigned>(face(1)), static_cast<unsigned>(face(2)),
-            static_cast<unsigned>(face(0)), static_cast<unsigned>(face(2))});
+        const std::vector<bool>& draw_face = _mesh->getFaceProperty<bool>("draw").properties();
+        // iterate through faces and add them to 1D list
+        for (int i = 0; i < _mesh->numFaces(); i++)
+        {
+            if (!draw_face[i])
+                continue;
+            
+            const Vec3i& face = _mesh->face(i); 
+            edges_flat_list.insert(edges_flat_list.end(), {static_cast<unsigned>(face(0)), static_cast<unsigned>(face(1)),
+                static_cast<unsigned>(face(1)), static_cast<unsigned>(face(2)),
+                static_cast<unsigned>(face(0)), static_cast<unsigned>(face(2))});
+        }
+    }
+    else
+    {
+        // iterate through faces and add each edge to 1D list
+        for (const auto& face : faces.colwise())
+        {
+            edges_flat_list.insert(edges_flat_list.end(), {static_cast<unsigned>(face(0)), static_cast<unsigned>(face(1)),
+                static_cast<unsigned>(face(1)), static_cast<unsigned>(face(2)),
+                static_cast<unsigned>(face(0)), static_cast<unsigned>(face(2))});
+        }
     }
 
     return edges_flat_list;

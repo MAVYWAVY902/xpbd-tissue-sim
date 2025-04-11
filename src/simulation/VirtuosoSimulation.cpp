@@ -16,6 +16,7 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
     VirtuosoSimulationConfig* virtuoso_sim_config = dynamic_cast<VirtuosoSimulationConfig*>(_config.get());
     _input_device = virtuoso_sim_config->inputDevice();
     _fixed_faces_filename = virtuoso_sim_config->fixedFacesFilename();
+    _tumor_faces_filename = virtuoso_sim_config->tumorFacesFilename();
     _goal_filename = virtuoso_sim_config->goalFilename();
 
     if (_input_device == SimulationInputDevice::HAPTIC)
@@ -87,11 +88,19 @@ void VirtuosoSimulation::setup()
 
     if (_fixed_faces_filename.has_value())
     {
-        std::set<unsigned> vertices = MeshUtils::verticesFromFixedFacesFile(_fixed_faces_filename.value());
+        std::set<int> vertices;
+        std::vector<int> faces;
+        MeshUtils::verticesAndFacesFromFixedFacesFile(_fixed_faces_filename.value(), vertices, faces);
         for (const auto& v : vertices)
         {
             _tissue_obj->fixVertex(v);
         }
+    }
+
+    if (_tumor_faces_filename.has_value())
+    {
+        std::set<int> vertices;
+        MeshUtils::verticesAndFacesFromFixedFacesFile(_tumor_faces_filename.value(), vertices, _tumor_faces);
     }
 
     // create an object at the tip of the robot to show where grasping is
@@ -105,8 +114,15 @@ void VirtuosoSimulation::setup()
     {
         RigidMeshObjectConfig goal_config("goal_mesh", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
             1.0, false, true, false,
-            _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(1.0, 0.0, 0.0, 0.0), std::nullopt);
+            _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
         _goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
+        _goal_obj->mesh()->addFaceProperty<bool>("draw", false);
+        
+        Geometry::MeshProperty<bool>& draw_face_property = _goal_obj->mesh()->getFaceProperty<bool>("draw");
+        for (const auto& face_index : _tumor_faces)
+        {
+            draw_face_property.set(face_index, true);
+        }
 
         // align meshes
         const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);

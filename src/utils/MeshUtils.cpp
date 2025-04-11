@@ -788,24 +788,23 @@ void MeshUtils::loadMeshDataFromGmshFile(const std::string& filename, Eigen::Mat
 
 }
 
-std::set<unsigned> MeshUtils::verticesFromFixedFacesFile(const std::string& filename)
+void MeshUtils::verticesAndFacesFromFixedFacesFile(const std::string& filename, std::set<int>& vertices, std::vector<int>& faces)
 {
     std::ifstream infile(filename);
     std::string line;
 
-    std::set<unsigned> vertices;
     while (std::getline(infile, line))
     {
         std::istringstream iss(line);
-        unsigned a, v1, v2, v3, f;
+        int a, v1, v2, v3, f;
         if (!(iss >> a >> v1 >> v2 >> v3 >> f)) { break; }
 
         // add vertex indices to set
         vertices.insert(v1);
         vertices.insert(v2);
         vertices.insert(v3);
-    }
 
-    return vertices;
+        faces.push_back(f);
+    }
     
 }

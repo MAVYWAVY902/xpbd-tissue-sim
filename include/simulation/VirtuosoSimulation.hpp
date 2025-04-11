@@ -56,6 +56,9 @@ class VirtuosoSimulation : public Simulation
     XPBDMeshObject_Base* _tissue_obj;    // the tissue XPBD object that is being manipulated
     std::optional<std::string> _fixed_faces_filename;   // a .txt filename that lists all the faces that should be held fixed
 
+    std::optional<std::string> _tumor_faces_filename;   // a .txt filename that lists all the faces that are part of the tumor
+    std::vector<int> _tumor_faces;  // list of face indices corresponding to the tumor
+
     std::optional<std::string> _goal_filename;      // a .obj filename that has a deformed tissue mesh that represents the goal
     RigidMeshObject* _goal_obj;          // the goal state of the tissue surface
 

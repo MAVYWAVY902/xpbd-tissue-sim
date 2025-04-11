@@ -321,7 +321,7 @@ Vec3r Mesh::massCenter() const
     return center_of_mass;
 }
 
-void Mesh::writeMeshToObjFile(const std::string& filename)
+void Mesh::writeMeshToObjFile(const std::string& filename) const
 {
     std::ofstream obj_file(filename);
     if (obj_file.is_open())
