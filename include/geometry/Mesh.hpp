@@ -151,6 +151,11 @@ class Mesh
      * Uses the same algorithm as massProperties(), but without calculating the moment of inertia.
     */
     Vec3r massCenter() const;
+
+    /** Writes the mesh to .obj file.
+     * Only writes vertices and faces.
+     */
+    void writeMeshToObjFile(const std::string& filename);
     
  #ifdef HAVE_CUDA
     virtual void createGPUResource();

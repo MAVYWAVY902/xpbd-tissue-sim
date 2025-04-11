@@ -2,6 +2,7 @@
 
 #include <set>
 #include <iostream>
+#include <fstream>
 
 #ifdef HAVE_CUDA
 #include "gpu/resource/MeshGPUResource.hpp"
@@ -318,6 +319,23 @@ Vec3r Mesh::massCenter() const
     }
 
     return center_of_mass;
+}
+
+void Mesh::writeMeshToObjFile(const std::string& filename)
+{
+    std::ofstream obj_file(filename);
+    if (obj_file.is_open())
+    {
+        for (const auto& v : _vertices.colwise())
+        {
+            obj_file << "v " << v[0] << " " << v[1] << " " << v[2] << std::endl;
+        }
+        
+        for (const auto& f : _faces.colwise())
+        {
+            obj_file << "f " << f[0]+1 << " " << f[1]+1 << " " << f[2]+1 << std::endl;
+        }
+    }
 }
 
 #ifdef HAVE_CUDA

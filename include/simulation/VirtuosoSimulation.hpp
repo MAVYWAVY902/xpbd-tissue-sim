@@ -4,13 +4,13 @@
 #include "simulation/Simulation.hpp"
 #include "simobject/VirtuosoRobot.hpp"
 #include "simobject/VirtuosoArm.hpp"
+#include "simobject/RigidMeshObject.hpp"
+#include "simobject/RigidPrimitives.hpp"
+#include "simobject/XPBDMeshObject.hpp"
 
 #include "config/VirtuosoSimulationConfig.hpp"
 
 #include "haptics/HapticDeviceManager.hpp"
-
-#include "simobject/RigidPrimitives.hpp"
-#include "simobject/XPBDMeshObject.hpp"
 
 #include <map>
 
@@ -55,6 +55,9 @@ class VirtuosoSimulation : public Simulation
 
     XPBDMeshObject_Base* _tissue_obj;    // the tissue XPBD object that is being manipulated
     std::optional<std::string> _fixed_faces_filename;   // a .txt filename that lists all the faces that should be held fixed
+
+    std::optional<std::string> _goal_filename;      // a .obj filename that has a deformed tissue mesh that represents the goal
+    RigidMeshObject* _goal_obj;          // the goal state of the tissue surface
 
     VirtuosoRobot* _virtuoso_robot; // the Virtuoso robot (includes both arms)
     VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assuming only one input device)

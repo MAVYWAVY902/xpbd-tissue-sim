@@ -24,6 +24,10 @@ class RigidMeshObject : public RigidObject, public MeshObject
 
     virtual void update() override;
 
+    virtual void setPosition(const Vec3r& position) override;
+
+    virtual void setOrientation(const Vec4r& orientation) override;
+
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override { assert(0); /* not implemented */ }
  #endif

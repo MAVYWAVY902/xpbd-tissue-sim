@@ -16,6 +16,7 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
     VirtuosoSimulationConfig* virtuoso_sim_config = dynamic_cast<VirtuosoSimulationConfig*>(_config.get());
     _input_device = virtuoso_sim_config->inputDevice();
     _fixed_faces_filename = virtuoso_sim_config->fixedFacesFilename();
+    _goal_filename = virtuoso_sim_config->goalFilename();
 
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
@@ -94,13 +95,28 @@ void VirtuosoSimulation::setup()
     }
 
     // create an object at the tip of the robot to show where grasping is
-    // TODO: create visualization object or some class that is not a rigid object but just for visualization
-    RigidSphereConfig cursor_config("tip_cursor", Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0),
+    RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
         1.0, 0.002, false, true, false);
     _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
     _tip_cursor->setPosition(_active_arm->tipPosition());
 
-    std::cout << "cursor pos: " << _tip_cursor->position() << std::endl;
+    // create a goal visualization object that the user tries to match
+    if (_goal_filename.has_value())
+    {
+        RigidMeshObjectConfig goal_config("goal_mesh", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+            1.0, false, true, false,
+            _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(1.0, 0.0, 0.0, 0.0), std::nullopt);
+        _goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
+
+        // align meshes
+        const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);
+        const Vec3r& v0_f0_goal_obj = _goal_obj->mesh()->vertex(_goal_obj->mesh()->face(0)[0]);
+
+        _goal_obj->setPosition( _goal_obj->position() + (v0_f0_tissue_obj - v0_f0_goal_obj) );
+
+        // std::cout << "Difference: " << v0_f0_goal_obj - v0_f0_tissue_obj << std::endl;
+    }
+    
 }
 
 void VirtuosoSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
@@ -137,11 +153,11 @@ void VirtuosoSimulation::notifyMouseMoved(double x, double y)
             // camera plane defined by camera up direction and camera right direction
             // changes in mouse y position = changes along camera up direction
             // changes in mouse x position = changes along camera right direction
-            const Eigen::Vector3d up_vec = _graphics_scene->cameraUpDirection();
-            const Eigen::Vector3d right_vec = _graphics_scene->cameraRightDirection();
+            const Vec3r up_vec = _graphics_scene->cameraUpDirection();
+            const Vec3r right_vec = _graphics_scene->cameraRightDirection();
             
-            const Eigen::Vector3d current_tip_position = _tip_cursor->position();
-            const Eigen::Vector3d offset = right_vec*dx + up_vec*-dy; // negate dy since increasing dy is actually opposite of camera frame up vec
+            const Vec3r current_tip_position = _tip_cursor->position();
+            const Vec3r offset = right_vec*dx + up_vec*-dy; // negate dy since increasing dy is actually opposite of camera frame up vec
             _moveCursor(offset*scaling);
         }
     }
@@ -183,8 +199,8 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
             _graphics_scene->setCameraPosition(cam_transform.translation());
 
             // find view dir
-            const Eigen::Vector3d& z_axis_pt = cam_transform.rotMat() * Eigen::Vector3d(0,0,1) + cam_transform.translation();
-            const Eigen::Vector3d& y_axis_pt = cam_transform.rotMat() * Eigen::Vector3d(0,1,0) + cam_transform.translation();
+            const Vec3r& z_axis_pt = cam_transform.rotMat() * Vec3r(0,0,1) + cam_transform.translation();
+            const Vec3r& y_axis_pt = cam_transform.rotMat() * Vec3r(0,1,0) + cam_transform.translation();
             _graphics_scene->setCameraViewDirection(z_axis_pt - cam_transform.translation());
             _graphics_scene->setCameraUpDirection(y_axis_pt - cam_transform.translation());
             _graphics_scene->setCameraFOV(80.0 * M_PI / 180.0);
@@ -195,6 +211,13 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
     {
         std::cout << "Toggling grasping..." << std::endl;
         _toggleTissueGrasping();
+    }
+
+    // if 'B' is pressed, save the tissue mesh to file
+    if (key == 66 && action == 1)
+    {
+        const std::string filename = "tissue_mesh_" + std::to_string(_time) + "_s.obj";
+        _tissue_obj->mesh()->writeMeshToObjFile(filename);
     }
 
     Simulation::notifyKeyPressed(key, action, modifiers);
@@ -208,19 +231,19 @@ void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
         if (_keys_held[32] > 0) // space bar = clutch
         {
             const double scaling = 0.0005;
-            const Eigen::Vector3d view_dir = _graphics_scene->cameraViewDirection();
+            const Vec3r view_dir = _graphics_scene->cameraViewDirection();
 
-            const Eigen::Vector3d current_tip_position = _tip_cursor->position();
-            const Eigen::Vector3d offset = view_dir*dy;
+            const Vec3r current_tip_position = _tip_cursor->position();
+            const Vec3r offset = view_dir*dy;
             _moveCursor(offset*scaling);
         }
     }
     
 }
 
-void VirtuosoSimulation::_moveCursor(const Eigen::Vector3d& dp)
+void VirtuosoSimulation::_moveCursor(const Vec3r& dp)
 {
-    const Eigen::Vector3d current_tip_position = _tip_cursor->position();
+    const Vec3r current_tip_position = _tip_cursor->position();
     _tip_cursor->setPosition(current_tip_position + dp);
     _active_arm->setTipPosition(_tip_cursor->position());
 }
@@ -236,10 +259,10 @@ void VirtuosoSimulation::_toggleTissueGrasping()
     else
     {
         // std::set<unsigned> vertices_to_grasp;
-        std::map<int, Eigen::Vector3d> vertices_to_grasp;
+        std::map<int, Vec3r> vertices_to_grasp;
 
         // quick and dirty way to find all vertices in a sphere
-        const Eigen::Vector3d tip_pos = _tip_cursor->position();
+        const Vec3r tip_pos = _tip_cursor->position();
         for (int theta = 0; theta < 360; theta+=30)
         {
             for (int phi = 0; phi < 360; phi+=30)
@@ -249,13 +272,13 @@ void VirtuosoSimulation::_toggleTissueGrasping()
                     const double x = tip_pos[0] + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
                     const double y = tip_pos[1] + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
                     const double z = tip_pos[2] + p*std::cos(phi*M_PI/180);
-                    int v = _tissue_obj->mesh()->getClosestVertex(Eigen::Vector3d(x, y, z));
+                    int v = _tissue_obj->mesh()->getClosestVertex(Vec3r(x, y, z));
 
                     // make sure v is inside sphere
                     if ((tip_pos - _tissue_obj->mesh()->vertex(v)).norm() <= _tip_cursor->radius())
                         if (!_tissue_obj->vertexFixed(v))
                         {
-                            const Eigen::Vector3d attachment_offset = (_tissue_obj->mesh()->vertex(v) - tip_pos) * 0.5;
+                            const Vec3r attachment_offset = (_tissue_obj->mesh()->vertex(v) - tip_pos) * 0.5;
                             vertices_to_grasp[v] = attachment_offset;
                         }
                 }
@@ -280,16 +303,16 @@ void VirtuosoSimulation::_updateGraphics()
 {
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
-        Eigen::Vector3d cur_pos = _haptic_device_manager->position();
+        Vec3r cur_pos = _haptic_device_manager->position();
         bool button1_pressed = _haptic_device_manager->button1Pressed();
         bool button2_pressed = _haptic_device_manager->button2Pressed();
         
         if (button2_pressed)
         {
-            Eigen::Vector3d dx = cur_pos - _last_haptic_pos;
+            Vec3r dx = cur_pos - _last_haptic_pos;
 
             // transform dx from haptic input frame to global coordinates
-            Eigen::Vector3d dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
+            Vec3r dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
             _moveCursor(dx_sim*0.0001);
         }
 
@@ -306,22 +329,22 @@ void VirtuosoSimulation::_updateGraphics()
 
         if (_grasping)
         {
-            Eigen::Vector3d total_force = Eigen::Vector3d::Zero();
+            Vec3r total_force = Vec3r::Zero();
             for (const auto& v : _grasped_vertices)
             {
                 total_force += _tissue_obj->elasticForceAtVertex(v);
             }
             std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
 
-            // const Eigen::Vector3d force = 1000*(_initial_grasp_pos - _tip_cursor->position());
+            // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
 
             // transform force from global coordinates into haptic input frame
-            const Eigen::Vector3d haptic_force = GeometryUtils::Rx(-M_PI/2.0) * total_force;
+            const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * total_force;
             _haptic_device_manager->setForce(haptic_force);
         }
         else
         {
-            _haptic_device_manager->setForce(Eigen::Vector3d::Zero());
+            _haptic_device_manager->setForce(Vec3r::Zero());
         }
         
     }

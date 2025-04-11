@@ -67,4 +67,37 @@ void RigidMeshObject::update()
 
 }
 
+void RigidMeshObject::setPosition(const Vec3r& position)
+{
+    if (_fixed)
+        return;
+
+    
+
+    // TODO: make this work without the need for _initial_mesh
+    // move the mesh accordingly
+    // THIS IS WRONG! (for some reason)
+    const Vec3r dx = position - _p;
+    _mesh->moveTogether(dx);
+
+
+    _p = position;
+}
+
+void RigidMeshObject::setOrientation(const Vec4r& orientation)
+{
+    if (_fixed)
+        return;
+        
+    // TODO: make this work without the need for _initial_mesh
+    // move the mesh accordingly
+    // THIS IS WRONG! (for some reason)
+    const Vec4r dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q), orientation).normalized();
+    const Mat3r rot_mat = GeometryUtils::quatToMat(dq);
+
+    _mesh->rotateAbout(_p, rot_mat);
+
+    _q = orientation;
+}
+
 } // namespace Simulation

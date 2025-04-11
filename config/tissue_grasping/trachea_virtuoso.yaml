@@ -3,6 +3,7 @@ name: "Virtuoso Trachea"
 # Tissue grasping simulation-specific parameters
 input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 fixed-faces-filename: "../resource/tissue/tracheal_tumor_v2_fixed_faces.txt"
+goal-filename: "./tissue_mesh_117.209340_s.obj"
 
 g-accel: 0 # m/s2
 # sim-mode: "Visualization"
@@ -44,7 +45,7 @@ objects:
     collisions: false
     draw-faces: true
     draw-points: true
-    draw-edges: true
+    draw-edges: false
 
   -
     name: "Robot"

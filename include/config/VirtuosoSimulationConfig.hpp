@@ -29,14 +29,17 @@ class VirtuosoSimulationConfig : public SimulationConfig
     {
         _extractParameterWithOptions("input-device", node, _input_device, INPUT_DEVICE_OPTIONS(), DEFAULT_INPUT_DEVICE());
         _extractParameter("fixed-faces-filename", node, _fixed_faces_filename);
+        _extractParameter("goal-filename", node, _goal_filename);
     }
 
     SimulationInputDevice inputDevice() const { return _input_device.value.value(); }
     std::optional<std::string> fixedFacesFilename() const { return _fixed_faces_filename.value; }
+    std::optional<std::string> goalFilename() const { return _goal_filename.value; }
 
     protected:
     ConfigParameter<SimulationInputDevice> _input_device;
     ConfigParameter<std::string> _fixed_faces_filename; 
+    ConfigParameter<std::string> _goal_filename;
 };
 
 
