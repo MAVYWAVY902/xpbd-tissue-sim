@@ -192,6 +192,14 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
         }
     }
 
+    if (_input_device == SimulationInputDevice::KEYBOARD && key == 32 && action == 1)
+    {
+        std::cout << "Toggling grasping..." << std::endl;
+        _toggleTissueGrasping();
+    }
+
+    Simulation::notifyKeyPressed(key, action, modifiers);
+
 }
 
 void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
@@ -367,7 +375,7 @@ void VirtuosoSimulation::_timeStep()
             const double cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
         }
-        
+        _tip_cursor->setPosition(_active_arm->tipPosition());
     }
     
 

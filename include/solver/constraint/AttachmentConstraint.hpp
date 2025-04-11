@@ -3,6 +3,8 @@
 
 #include "solver/constraint/Constraint.hpp"
 
+#include <iostream>
+
 #ifdef HAVE_CUDA
 #include "gpu/constraint/GPUAttachmentConstraint.cuh"
 #endif
@@ -14,7 +16,7 @@ class AttachmentConstraint : public Constraint
 {
     public:
     constexpr static int NUM_POSITIONS = 1;
-    constexpr static int NUM_COORDINATES = 12;
+    constexpr static int NUM_COORDINATES = 4;
 
     explicit AttachmentConstraint(int v_ind, Real* v_ptr, Real m, const Eigen::Vector3d* attached_pos_ptr, const Eigen::Vector3d& attachment_offset);
 

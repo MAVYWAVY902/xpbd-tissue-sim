@@ -175,6 +175,7 @@ class XPBDSolver
     template<class Projector>
     void clearProjectorsOfType()
     {
+        std::cout << "Clearing projectors..." << std::endl;
         _constraint_projectors.template clear<Projector>();
     }
 

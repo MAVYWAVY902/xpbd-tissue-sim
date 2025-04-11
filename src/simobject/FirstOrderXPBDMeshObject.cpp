@@ -56,10 +56,12 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_create
 {
     // TODO: think about this... we need to resize each vector initially so that pointers to constraints are still valid...
     // alternative: use vector unique_ptr<Constraint> 
+    // another TODO: this code is duplicated from XPBDMeshObject - really probably shouldn't have it in two places
     this->_constraints.template reserve<Solver::HydrostaticConstraint>(this->tetMesh()->numElements());
     this->_constraints.template reserve<Solver::DeviatoricConstraint>(this->tetMesh()->numElements());
     this->_constraints.template reserve<Solver::StaticDeformableCollisionConstraint>(this->_mesh->numFaces());
     this->_constraints.template reserve<Solver::RigidDeformableCollisionConstraint>(this->_mesh->numFaces());
+    this->_constraints.template reserve<Solver::AttachmentConstraint>(this->_mesh->numVertices());
 
     // create constraint(s) for each element
     for (int i = 0; i < this->tetMesh()->numElements(); i++)

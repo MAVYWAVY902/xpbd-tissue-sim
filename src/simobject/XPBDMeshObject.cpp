@@ -363,12 +363,21 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_projectConstrain
     // }
 
     // TODO: remove
+    // for (int i = 0; i < _mesh->numVertices(); i++)
+    // {
+    //     const Vec3r& v = _mesh->vertex(i);
+    //     if (v[2] < 0)
+    //     {
+    //         _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
+    //     }
+    // }
+
+    // TODO: replace with constraints?
     for (int i = 0; i < _mesh->numVertices(); i++)
     {
-        const Vec3r& v = _mesh->vertex(i);
-        if (v[2] < 0)
+        if (vertexFixed(i))
         {
-            _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
+            _mesh->setVertex(i, _previous_vertices.col(i));
         }
     }
 
@@ -398,16 +407,20 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::velocityUpdate()
 template<typename SolverType, typename... ConstraintTypes>
 Vec3r XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::elasticForceAtVertex(int index)
 {
+    // std::cout << "Getting attached elements..." << std::endl;
     // get elements attached to the vertex in the mesh
-    const std::vector<int> _attached_elements = tetMesh()->attachedElementsToVertex(index);
-    Eigen::Vector3d total_force = Eigen::Vector3d::Zero();
+    const std::vector<int>& _attached_elements = tetMesh()->attachedElementsToVertex(index);
+
+    // std::cout << "Looping through attached elements..." << std::endl;
+    Vec3r total_force = Vec3r::Zero();
     for (const auto& elem_index : _attached_elements)
     {
+        // std::cout << "Elastic force for element " << elem_index << std::endl;
         total_force += _constraints.template get<Solver::HydrostaticConstraint>()[elem_index].elasticForce(index);
         total_force += _constraints.template get<Solver::DeviatoricConstraint>()[elem_index].elasticForce(index);
     }
 
-    std::cout << "Total elastic force at vertex: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
+    // std::cout << "Total elastic force at vertex: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
 
     return total_force;
 }

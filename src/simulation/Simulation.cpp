@@ -240,10 +240,10 @@ void Simulation::_timeStep()
         
     }
 
-    // for (auto& obj : _objects)
-    // {
-    //     obj->update();
-    // }
+    for (auto& obj : _objects)
+    {
+        obj->update();
+    }
 
     // update each object's velocities
     for (auto& obj : _objects)

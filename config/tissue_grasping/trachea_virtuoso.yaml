@@ -1,13 +1,13 @@
 name: "Virtuoso Trachea"
 
 # Tissue grasping simulation-specific parameters
-input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
+input-device: "Keyboard" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 fixed-faces-filename: "../resource/tissue/tracheal_tumor_v2_fixed_faces.txt"
 
 g-accel: 0 # m/s2
-sim-mode: "Visualization"
+# sim-mode: "Visualization"
 # sim-mode: "Frame-by-frame"
-# sim-mode: "AFAP"
+sim-mode: "AFAP"
 time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
 collision-rate: 1
