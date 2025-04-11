@@ -317,55 +317,6 @@ void VirtuosoSimulation::_toggleTissueGrasping()
 
 void VirtuosoSimulation::_updateGraphics()
 {
-    if (_input_device == SimulationInputDevice::HAPTIC)
-    {
-        Vec3r cur_pos = _haptic_device_manager->position();
-        bool button1_pressed = _haptic_device_manager->button1Pressed();
-        bool button2_pressed = _haptic_device_manager->button2Pressed();
-        
-        if (button2_pressed)
-        {
-            Vec3r dx = cur_pos - _last_haptic_pos;
-
-            // transform dx from haptic input frame to global coordinates
-            Vec3r dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
-            _moveCursor(dx_sim*0.0001);
-        }
-
-        if (!_grasping && button1_pressed)
-        {
-            _toggleTissueGrasping();
-        }
-        else if (_grasping && !button1_pressed)
-        {
-            _toggleTissueGrasping();
-        }
-
-        _last_haptic_pos = cur_pos;
-
-        if (_grasping)
-        {
-            Vec3r total_force = Vec3r::Zero();
-            for (const auto& v : _grasped_vertices)
-            {
-                total_force += _tissue_obj->elasticForceAtVertex(v);
-            }
-            std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
-
-            // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
-
-            // transform force from global coordinates into haptic input frame
-            const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * total_force;
-            _haptic_device_manager->setForce(haptic_force);
-        }
-        else
-        {
-            _haptic_device_manager->setForce(Vec3r::Zero());
-        }
-        
-    }
-
-    // std::cout << "cursor pos: " << _tip_cursor->position() << std::endl;
 
     Simulation::_updateGraphics();
 }
@@ -416,6 +367,54 @@ void VirtuosoSimulation::_timeStep()
             _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
         }
         _tip_cursor->setPosition(_active_arm->tipPosition());
+    }
+
+    if (_input_device == SimulationInputDevice::HAPTIC)
+    {
+        Vec3r cur_pos = _haptic_device_manager->position();
+        bool button1_pressed = _haptic_device_manager->button1Pressed();
+        bool button2_pressed = _haptic_device_manager->button2Pressed();
+        
+        if (button2_pressed)
+        {
+            Vec3r dx = cur_pos - _last_haptic_pos;
+
+            // transform dx from haptic input frame to global coordinates
+            Vec3r dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
+            _moveCursor(dx_sim*0.0001);
+        }
+
+        if (!_grasping && button1_pressed)
+        {
+            _toggleTissueGrasping();
+        }
+        else if (_grasping && !button1_pressed)
+        {
+            _toggleTissueGrasping();
+        }
+
+        _last_haptic_pos = cur_pos;
+
+        if (_grasping)
+        {
+            Vec3r total_force = Vec3r::Zero();
+            for (const auto& v : _grasped_vertices)
+            {
+                total_force += _tissue_obj->elasticForceAtVertex(v);
+            }
+            std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
+
+            // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
+
+            // transform force from global coordinates into haptic input frame
+            const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * total_force;
+            _haptic_device_manager->setForce(haptic_force);
+        }
+        else
+        {
+            _haptic_device_manager->setForce(Vec3r::Zero());
+        }
+        
     }
     
 

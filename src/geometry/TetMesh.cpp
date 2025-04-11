@@ -28,12 +28,14 @@ TetMesh::TetMesh(const TetMesh& other)
     : Mesh(other)
 {
     _elements = other._elements;
+    _attached_elements_to_vertex = other._attached_elements_to_vertex;
 }
 
 TetMesh::TetMesh(TetMesh&& other)
     : Mesh(other)
 {
     _elements = std::move(other._elements);
+    _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);
 }
 
 Real TetMesh::elementVolume(const int index) const

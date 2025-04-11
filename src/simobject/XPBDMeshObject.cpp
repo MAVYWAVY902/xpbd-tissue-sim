@@ -407,7 +407,6 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::velocityUpdate()
 template<typename SolverType, typename... ConstraintTypes>
 Vec3r XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::elasticForceAtVertex(int index)
 {
-    // std::cout << "Getting attached elements..." << std::endl;
     // get elements attached to the vertex in the mesh
     const std::vector<int>& _attached_elements = tetMesh()->attachedElementsToVertex(index);
 
