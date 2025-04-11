@@ -78,11 +78,11 @@ class Simulation
         virtual void notifyMouseScrolled(Real dx, Real dy);
     
     protected:
-        /** Helper to add an object to the simulation (used by derived Simulation classes)
-         * Assumes that the object HAS NOT BEEN SETUP YET (i.e. setup() has not been called for the new object)
-         * 
+        /** Helper to add an object to the simulation given an ObjectConfig.
+         * Will create an object (RigidMeshObject, RigidSphere, XPBDMeshObject, etc.) depending on the type of ObjectConfig given.
+         * Adds the object to the appropriate part of the simulation (i.e. to the CollisionScene if collisions are enabled, GraphicsScene if graphics are enabled, etc.)
         */        
-       void _addObject(std::unique_ptr<Object> new_obj, bool with_collisions=false);
+       Object* _addObjectFromConfig(const ObjectConfig* obj_config);
 
         /** Time step the simulation */
         virtual void _timeStep();
@@ -122,8 +122,15 @@ class Simulation
 
         Real _last_collision_detection_time;
 
-        /** storage of all Objects in the simulation */
+        /** storage of all Objects in the simulation.
+         * These objects will evolve in time through the update() method that they all provide
+         */
         std::vector<std::unique_ptr<Object>> _objects;
+
+        /** storage of objects in the simulation that are purely visual (i.e. no physics involved, just graphics)
+         * update() will NOT get called on these objects.
+         */
+        std::vector<std::unique_ptr<Object>> _graphics_only_objects;
 
         std::unique_ptr<CollisionScene> _collision_scene;
 

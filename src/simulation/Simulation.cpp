@@ -85,91 +85,90 @@ std::string Simulation::toString(const int indent) const
     return  ss.str();
 }
 
-void Simulation::_addObject(std::unique_ptr<Object> new_obj, bool collisions)
+Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
 {
+    std::unique_ptr<Object> new_obj;
+    // try downcasting
+    // TODO: fix this to remove dynamic_cast! maybe move creation to Config class? Idk
+    if (const FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<const FirstOrderXPBDMeshObjectConfig*>(obj_config))
+    {
+        // new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
+        new_obj = XPBDObjectFactory::createFirstOrderXPBDMeshObject(this, xpbd_config);
+    }
+    else if (const XPBDMeshObjectConfig* xpbd_config = dynamic_cast<const XPBDMeshObjectConfig*>(obj_config))
+    {
+        // new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
+        new_obj = XPBDObjectFactory::createXPBDMeshObject(this, xpbd_config);
+    }
+    else if (const RigidMeshObjectConfig* rigid_config = dynamic_cast<const RigidMeshObjectConfig*>(obj_config))
+    {
+        new_obj = std::make_unique<RigidMeshObject>(this, rigid_config);
+    }
+    else if (const RigidSphereConfig* rigid_config = dynamic_cast<const RigidSphereConfig*>(obj_config))
+    {
+        new_obj = std::make_unique<RigidSphere>(this, rigid_config);
+    }
+    else if (const RigidBoxConfig* rigid_config = dynamic_cast<const RigidBoxConfig*>(obj_config))
+    {
+        new_obj = std::make_unique<RigidBox>(this, rigid_config);
+    }
+    else if (const RigidCylinderConfig* rigid_config = dynamic_cast<const RigidCylinderConfig*>(obj_config))
+    {
+        new_obj = std::make_unique<RigidCylinder>(this, rigid_config);
+    }
+    else if (const VirtuosoArmConfig* virtuoso_config = dynamic_cast<const VirtuosoArmConfig*>(obj_config))
+    {
+        new_obj = std::make_unique<VirtuosoArm>(this, virtuoso_config);
+    }
+    else if (const VirtuosoRobotConfig* virtuoso_config = dynamic_cast<const VirtuosoRobotConfig*>(obj_config))
+    {
+        new_obj = std::make_unique<VirtuosoRobot>(this, virtuoso_config);
+    }
+    else
+    {
+        // downcasting failed for some reason, halt
+        std::cerr << "Unknown config type!" << std::endl;
+        assert(0);
+    }
+
     // set up the new object
     new_obj->setup();
-        
+    
     // add the new object to the collision scene if collisions are enabled
-    if (collisions)
+    if (obj_config->collisions() && !obj_config->graphicsOnly())
     {
-        _collision_scene->addObject(new_obj.get());
+        _collision_scene->addObject(new_obj.get(), obj_config);
     }
     // add the new object to the graphics scene to be visualized
     if (_graphics_scene)
     {
-        _graphics_scene->addObject(new_obj.get());
+        _graphics_scene->addObject(new_obj.get(), obj_config);
     }
 
-    _objects.push_back(std::move(new_obj));
+    // if we get to here, we have successfully created a new MeshObject of some kind
+    // so add the new object to the simulation
+    if (obj_config->graphicsOnly())
+    {
+        _graphics_only_objects.push_back(std::move(new_obj));
+        return _graphics_only_objects.back().get();
+    }
+        
+    else
+    {
+        _objects.push_back(std::move(new_obj));
+        return _objects.back().get();   
+    }
+        
+    
 }
 
 void Simulation::setup()
 {   
     for (const auto& obj_config : _config->objectConfigs())
     {
-        std::unique_ptr<Object> new_obj;
-        // try downcasting
-        // TODO: fix this to remove dynamic_cast! maybe move creation to Config class? Idk
-        if (FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<FirstOrderXPBDMeshObjectConfig*>(obj_config.get()))
-        {
-            // new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
-            new_obj = XPBDObjectFactory::createFirstOrderXPBDMeshObject(this, xpbd_config);
-        }
-        else if (XPBDMeshObjectConfig* xpbd_config = dynamic_cast<XPBDMeshObjectConfig*>(obj_config.get()))
-        {
-            // new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
-            new_obj = XPBDObjectFactory::createXPBDMeshObject(this, xpbd_config);
-        }
-        else if (RigidMeshObjectConfig* rigid_config = dynamic_cast<RigidMeshObjectConfig*>(obj_config.get()))
-        {
-            new_obj = std::make_unique<RigidMeshObject>(this, rigid_config);
-        }
-        else if (RigidSphereConfig* rigid_config = dynamic_cast<RigidSphereConfig*>(obj_config.get()))
-        {
-            new_obj = std::make_unique<RigidSphere>(this, rigid_config);
-        }
-        else if (RigidBoxConfig* rigid_config = dynamic_cast<RigidBoxConfig*>(obj_config.get()))
-        {
-            new_obj = std::make_unique<RigidBox>(this, rigid_config);
-        }
-        else if (RigidCylinderConfig* rigid_config = dynamic_cast<RigidCylinderConfig*>(obj_config.get()))
-        {
-            new_obj = std::make_unique<RigidCylinder>(this, rigid_config);
-        }
-        else if (VirtuosoArmConfig* virtuoso_config = dynamic_cast<VirtuosoArmConfig*>(obj_config.get()))
-        {
-            new_obj = std::make_unique<VirtuosoArm>(this, virtuoso_config);
-        }
-        else if (VirtuosoRobotConfig* virtuoso_config = dynamic_cast<VirtuosoRobotConfig*>(obj_config.get()))
-        {
-            new_obj = std::make_unique<VirtuosoRobot>(this, virtuoso_config);
-        }
-        else
-        {
-            // downcasting failed for some reason, halt
-            std::cerr << "Unknown config type!" << std::endl;
-            assert(0);
-        }
-
-        // set up the new object
-        new_obj->setup();
-        
-        // add the new object to the collision scene if collisions are enabled
-        if (obj_config->collisions())
-        {
-            _collision_scene->addObject(new_obj.get(), obj_config.get());
-        }
-        // add the new object to the graphics scene to be visualized
-        if (_graphics_scene)
-        {
-            _graphics_scene->addObject(new_obj.get(), obj_config.get());
-        }
-
-        // if we get to here, we have successfully created a new MeshObject of some kind
-        // so add the new object to the simulation
-        _objects.push_back(std::move(new_obj));
+        _addObjectFromConfig(obj_config.get());
     }
+        
 
     // add text that displays the current Sim Time   
     if (_graphics_scene)

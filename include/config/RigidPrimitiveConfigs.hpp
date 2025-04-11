@@ -17,8 +17,8 @@ class RigidSphereConfig : public RigidObjectConfig
 
     explicit RigidSphereConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
         const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, Real radius,
-        bool collisions, bool fixed)
-        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, fixed)
+        bool collisions, bool graphics_only, bool fixed)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed)
     {
         _radius.value = radius;
     }
@@ -46,8 +46,8 @@ class RigidBoxConfig : public RigidObjectConfig
 
     explicit RigidBoxConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
         const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, const Vec3r& size,
-        bool collisions, bool fixed)
-        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, fixed)
+        bool collisions, bool graphics_only, bool fixed)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed)
     {
         _size.value = size;
     }
@@ -76,8 +76,8 @@ class RigidCylinderConfig : public RigidObjectConfig
 
     explicit RigidCylinderConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
         const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, Real radius, Real height,
-        bool collisions, bool fixed)
-        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, fixed)
+        bool collisions, bool graphics_only, bool fixed)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed)
     {
         _radius.value = radius;
         _height.value = height;

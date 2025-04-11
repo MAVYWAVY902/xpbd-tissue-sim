@@ -36,11 +36,11 @@ class VirtuosoArmConfig : public ObjectConfig
     }
 
     explicit VirtuosoArmConfig( const std::string& name, 
-        const Vec3r& initial_pos, const Vec3r& initial_rot, const Vec3r& initial_velocity, bool collisions,
+        const Vec3r& initial_pos, const Vec3r& initial_rot, const Vec3r& initial_velocity, bool collisions, bool graphics_only,
         double ot_dia, double ot_r_curve, double ot_d_s_length, double it_dia,
         double ot_rot, double ot_trans, double it_rot, double it_trans
     )
-        : ObjectConfig(name, initial_pos, initial_rot, initial_velocity, collisions)
+        : ObjectConfig(name, initial_pos, initial_rot, initial_velocity, collisions, graphics_only)
     {
         _ot_diameter.value = ot_dia;
         _ot_r_curvature.value = ot_r_curve;

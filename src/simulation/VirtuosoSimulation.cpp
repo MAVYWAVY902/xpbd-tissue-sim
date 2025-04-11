@@ -96,12 +96,11 @@ void VirtuosoSimulation::setup()
     // create an object at the tip of the robot to show where grasping is
     // TODO: create visualization object or some class that is not a rigid object but just for visualization
     RigidSphereConfig cursor_config("tip_cursor", Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0),
-        1.0, 0.002, false, false);
-    std::unique_ptr<RigidSphere> tip_cursor_ptr = std::make_unique<RigidSphere>(this, &cursor_config);
-    tip_cursor_ptr->setPosition(_active_arm->tipPosition());
-    std::cout << _active_arm->tipPosition() << std::endl;
-    _tip_cursor = tip_cursor_ptr.get();
-    _addObject(std::move(tip_cursor_ptr));
+        1.0, 0.002, false, true, false);
+    _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
+    _tip_cursor->setPosition(_active_arm->tipPosition());
+
+    std::cout << "cursor pos: " << _tip_cursor->position() << std::endl;
 }
 
 void VirtuosoSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
@@ -326,6 +325,8 @@ void VirtuosoSimulation::_updateGraphics()
         }
         
     }
+
+    // std::cout << "cursor pos: " << _tip_cursor->position() << std::endl;
 
     Simulation::_updateGraphics();
 }
