@@ -132,6 +132,35 @@ void VirtuosoSimulation::setup()
 
         // std::cout << "Difference: " << v0_f0_goal_obj - v0_f0_tissue_obj << std::endl;
     }
+
+    // add text that describe the controls
+    // if (_graphics_scene)
+    // {
+    //     std::string input_str, instructions_str;
+    //     if (_input_device == SimulationInputDevice::HAPTIC)
+    //     {
+    //         input_str = "Haptic";
+    //         instructions_str = "Controls:\nButton 1 - grasp all nodes in sphere\nButton2 - move active arm";
+    //     }
+    //     else if (_input_device == SimulationInputDevice::MOUSE)
+    //     {
+    //         input_str = "Mouse";
+    //         instructions_str = "Controls:\nLeft Mouse Button - grasp all nodes in sphere\nSpace - move active arm";
+    //     }
+    //     else if (_input_device == SimulationInputDevice::KEYBOARD)
+    //     {
+    //         input_str = "Keyboard";
+    //         instructions_str = "Controls:\nQWER/ASDF - forwards/backwards control of joint variables";
+    //     }
+    //     std::string common_instructions_str = "Alt - switch active arm\nTab - switch to endoscope view\nZ - show/hide goal\nX - when goal is shown, calculate score";
+    //     std::stringstream ss;
+    //     ss << "Virtuoso Grasping Demo: " << input_str << " Input" << std::endl;
+    //     ss << instructions_str << "\n" << common_instructions_str << std::endl;
+
+    //     std::cout << "viewer width: " << _graphics_scene->viewer()->width() << std::endl;
+
+    //     _graphics_scene->viewer()->addText("instructions", ss.str(), _graphics_scene->viewer()->width() - 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
+    // }
     
 }
 

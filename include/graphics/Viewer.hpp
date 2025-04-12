@@ -142,6 +142,12 @@ class Viewer
      */
     virtual void update() = 0;
 
+    /** Width of the viewer window. */
+    virtual int width() const = 0;
+
+    /** Height of the viewer window. */
+    virtual int height() const = 0;
+
     protected:
 
     // NOTE: the key, action, modifiers, arguments are from the Easy3D keyboard and mouse events. Subject to change as more graphics backends are added.
