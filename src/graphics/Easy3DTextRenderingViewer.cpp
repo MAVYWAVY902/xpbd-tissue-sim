@@ -8,7 +8,6 @@ Easy3DTextRenderingViewer::Easy3DTextRenderingViewer(const std::string& title)
       Graphics::Viewer(title),
       _text_renderer(nullptr)
 {
-
 }
 
 void Easy3DTextRenderingViewer::update()

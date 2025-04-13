@@ -10,6 +10,7 @@ typedef float Real;
 typedef double Real;
 #endif
 
+typedef Eigen::Vector<Real, 2> Vec2r;
 typedef Eigen::Vector<Real, 3> Vec3r;
 typedef Eigen::Vector<int, 3> Vec3i;
 typedef Eigen::Vector<Real, 4> Vec4r;

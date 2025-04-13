@@ -34,7 +34,7 @@ class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
     virtual void update() override;
 
     /** Width of the viewer window. */
-    virtual int width() const override { std::cout << easy3d::Viewer::framebuffer_width() << std::endl; return easy3d::Viewer::width(); }
+    virtual int width() const override { return easy3d::Viewer::width(); }
 
     /** Height of the viewer window. */
     virtual int height() const override { return easy3d::Viewer::height(); }

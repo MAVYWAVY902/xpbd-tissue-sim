@@ -18,6 +18,8 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
     _fixed_faces_filename = virtuoso_sim_config->fixedFacesFilename();
     _tumor_faces_filename = virtuoso_sim_config->tumorFacesFilename();
     _goal_filename = virtuoso_sim_config->goalFilename();
+    _goal_active = false;
+    _current_score = 0;
 
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
@@ -97,11 +99,7 @@ void VirtuosoSimulation::setup()
         }
     }
 
-    if (_tumor_faces_filename.has_value())
-    {
-        std::set<int> vertices;
-        MeshUtils::verticesAndFacesFromFixedFacesFile(_tumor_faces_filename.value(), vertices, _tumor_faces);
-    }
+    
 
     // create an object at the tip of the robot to show where grasping is
     RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
@@ -117,12 +115,6 @@ void VirtuosoSimulation::setup()
             _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
         _goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
         _goal_obj->mesh()->addFaceProperty<bool>("draw", false);
-        
-        Geometry::MeshProperty<bool>& draw_face_property = _goal_obj->mesh()->getFaceProperty<bool>("draw");
-        for (const auto& face_index : _tumor_faces)
-        {
-            draw_face_property.set(face_index, true);
-        }
 
         // align meshes
         const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);
@@ -131,6 +123,12 @@ void VirtuosoSimulation::setup()
         _goal_obj->setPosition( _goal_obj->position() + (v0_f0_tissue_obj - v0_f0_goal_obj) );
 
         // std::cout << "Difference: " << v0_f0_goal_obj - v0_f0_tissue_obj << std::endl;
+    }
+
+    if (_tumor_faces_filename.has_value())
+    {
+        std::set<int> vertices;
+        MeshUtils::verticesAndFacesFromFixedFacesFile(_tumor_faces_filename.value(), vertices, _tumor_faces);
     }
 
     // add text that describe the controls
@@ -157,10 +155,13 @@ void VirtuosoSimulation::setup()
     //     ss << "Virtuoso Grasping Demo: " << input_str << " Input" << std::endl;
     //     ss << instructions_str << "\n" << common_instructions_str << std::endl;
 
-    //     std::cout << "viewer width: " << _graphics_scene->viewer()->width() << std::endl;
-
-    //     _graphics_scene->viewer()->addText("instructions", ss.str(), _graphics_scene->viewer()->width() - 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
+    //     _graphics_scene->viewer()->addText("instructions", ss.str(), 200.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::CENTER, Graphics::Viewer::Font::MAO, std::array<float,3>({0.7,0.7,0.7}), 0.5f, true);
     // }
+
+    if (_goal_obj)
+    {
+        _graphics_scene->viewer()->addText("score", "Current score: ", 10.0f, 35.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
+    }
     
 }
 
@@ -263,6 +264,23 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
     {
         const std::string filename = "tissue_mesh_" + std::to_string(_time) + "_s.obj";
         _tissue_obj->mesh()->writeMeshToObjFile(filename);
+    }
+
+    // if 'Z' is pressed, toggle the goal
+    if (key == 90 && action == 1)
+    {
+        _toggleGoal();
+    }
+
+    // if 'X' is pressed, goal is active (and exists)
+    if (key == 88 && action == 1 && _goal_obj && _goal_active)
+    {
+        _current_score = _calculateScore();
+        if (_graphics_scene)
+        {
+            const std::string new_score_text = "Current Score: " + std::to_string(_current_score);
+            _graphics_scene->viewer()->editText("score", new_score_text);
+        }
     }
 
     Simulation::notifyKeyPressed(key, action, modifiers);
@@ -431,7 +449,6 @@ void VirtuosoSimulation::_timeStep()
             {
                 total_force += _tissue_obj->elasticForceAtVertex(v);
             }
-            std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
 
             // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
 
@@ -448,6 +465,41 @@ void VirtuosoSimulation::_timeStep()
     
 
     Simulation::_timeStep();
+}
+
+void VirtuosoSimulation::_toggleGoal()
+{
+    // toggle class variable
+    _goal_active = !_goal_active;
+
+    // update draw property
+    Geometry::MeshProperty<bool>& draw_face_property = _goal_obj->mesh()->getFaceProperty<bool>("draw");
+    for (const auto& face_index : _tumor_faces)
+    {
+        draw_face_property.set(face_index, _goal_active);
+    }
+}
+
+int VirtuosoSimulation::_calculateScore()
+{
+    assert(_goal_obj && "Cannot calculate score when goal obj does not exist!");
+
+    double total_mse = 0;
+    for (const auto& face_index : _tumor_faces)
+    {
+        const Vec3i& tissue_face = _tissue_obj->mesh()->face(face_index);
+        const Vec3r& tissue_v1 = _tissue_obj->mesh()->vertex(tissue_face[0]);
+        const Vec3r& tissue_v2 = _tissue_obj->mesh()->vertex(tissue_face[1]);
+        const Vec3r& tissue_v3 = _tissue_obj->mesh()->vertex(tissue_face[2]);
+
+        const Vec3i& goal_face = _goal_obj->mesh()->face(face_index);
+        const Vec3r& goal_v1 = _goal_obj->mesh()->vertex(goal_face[0]);
+        const Vec3r& goal_v2 = _goal_obj->mesh()->vertex(goal_face[1]);
+        const Vec3r& goal_v3 = _goal_obj->mesh()->vertex(goal_face[2]);
+        total_mse += (tissue_v1 - goal_v1).squaredNorm() + (tissue_v2 - goal_v2).squaredNorm() + (tissue_v3 - goal_v3).squaredNorm();
+    }
+
+    return std::max(0, 10000 - static_cast<int>(100000*total_mse));
 }
 
 } // namespace Sim

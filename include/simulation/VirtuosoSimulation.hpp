@@ -47,9 +47,13 @@ class VirtuosoSimulation : public Simulation
     
     void _timeStep() override;
 
-    void _moveCursor(const Eigen::Vector3d& dp);
+    void _moveCursor(const Vec3r& dp);
 
     void _toggleTissueGrasping();
+
+    void _toggleGoal();
+
+    int _calculateScore();
 
     protected:
 
@@ -58,6 +62,8 @@ class VirtuosoSimulation : public Simulation
 
     std::optional<std::string> _tumor_faces_filename;   // a .txt filename that lists all the faces that are part of the tumor
     std::vector<int> _tumor_faces;  // list of face indices corresponding to the tumor
+
+    int _current_score;
 
     bool _goal_active;
     std::optional<std::string> _goal_filename;      // a .obj filename that has a deformed tissue mesh that represents the goal
@@ -74,11 +80,11 @@ class VirtuosoSimulation : public Simulation
     SimulationInputDevice _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)
 
     /** MOUSE INPUT */
-    Eigen::Vector2d _last_mouse_pos;    // tracks the last mouse position (used in when mouse input is used to control the arms)
+    Vec2r _last_mouse_pos;    // tracks the last mouse position (used in when mouse input is used to control the arms)
 
     /** HAPTIC INPUT */
-    Eigen::Vector3d _initial_grasp_pos; // initial grasping position (used to calculate dummy forces)
-    Eigen::Vector3d _last_haptic_pos;   // tracks the last haptic posiion
+    Vec3r _initial_grasp_pos; // initial grasping position (used to calculate dummy forces)
+    Vec3r _last_haptic_pos;   // tracks the last haptic posiion
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;    // manages haptic device and provides an interface to their state
 
     /** KEYBOARD INPUT */
