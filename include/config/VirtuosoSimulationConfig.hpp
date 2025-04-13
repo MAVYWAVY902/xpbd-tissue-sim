@@ -7,7 +7,8 @@ enum SimulationInputDevice
 {
     MOUSE,
     KEYBOARD,
-    HAPTIC
+    HAPTIC,
+    DOUBLE_HAPTIC
 };
 
 class VirtuosoSimulationConfig : public SimulationConfig
@@ -19,7 +20,8 @@ class VirtuosoSimulationConfig : public SimulationConfig
     {
         static std::map<std::string, SimulationInputDevice> input_device_options{{"Mouse", SimulationInputDevice::MOUSE},
                                                                                  {"Keyboard", SimulationInputDevice::KEYBOARD},
-                                                                                 {"Haptic", SimulationInputDevice::HAPTIC}};
+                                                                                 {"Haptic", SimulationInputDevice::HAPTIC},
+                                                                                 {"Double Haptic", SimulationInputDevice::DOUBLE_HAPTIC}};
         return input_device_options;
     }
 
@@ -32,6 +34,9 @@ class VirtuosoSimulationConfig : public SimulationConfig
         _extractParameter("tumor-faces-filename", node, _tumor_faces_filename);
         _extractParameter("goal-filename", node, _goal_filename);
         _extractParameter("goals-folder", node, _goals_folder);
+
+        _extractParameter("device-name1", node, _device_name1);
+        _extractParameter("device-name2", node, _device_name2);
     }
 
     SimulationInputDevice inputDevice() const { return _input_device.value.value(); }
@@ -40,12 +45,18 @@ class VirtuosoSimulationConfig : public SimulationConfig
     std::optional<std::string> goalFilename() const { return _goal_filename.value; }
     std::optional<std::string> goalsFolder() const { return _goals_folder.value; }
 
+    std::optional<std::string> deviceName1() const { return _device_name1.value; }
+    std::optional<std::string> deviceName2() const { return _device_name2.value; }
+
     protected:
     ConfigParameter<SimulationInputDevice> _input_device;
     ConfigParameter<std::string> _fixed_faces_filename;
     ConfigParameter<std::string> _tumor_faces_filename; 
     ConfigParameter<std::string> _goal_filename;
     ConfigParameter<std::string> _goals_folder;
+
+    ConfigParameter<std::string> _device_name1;
+    ConfigParameter<std::string> _device_name2;
 };
 
 

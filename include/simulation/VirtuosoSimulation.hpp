@@ -77,6 +77,7 @@ class VirtuosoSimulation : public Simulation
     VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assuming only one input device)
     
     RigidSphere* _tip_cursor;       // spherical object for visualizing grasp area 
+    RigidSphere* _tip_cursor2;      // spherical object for visualizing grasp area for arm 2 
     bool _grasping;                 // whether or not we are actively grasping the tissue
     std::vector<int> _grasped_vertices; // indexes of the grasped vertices in the tissue mesh
 

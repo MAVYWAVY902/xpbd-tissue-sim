@@ -28,8 +28,26 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
-        _haptic_device_manager = std::make_unique<HapticDeviceManager>();
+        if (virtuoso_sim_config->deviceName1().has_value())
+        {
+            _haptic_device_manager = std::make_unique<HapticDeviceManager>(virtuoso_sim_config->deviceName1().value());
+        }
+        else
+        {
+            _haptic_device_manager = std::make_unique<HapticDeviceManager>();
+        }
+        
         _last_haptic_pos = _haptic_device_manager->position(_haptic_device_manager->deviceHandles()[0]);
+    }
+    if (_input_device == SimulationInputDevice::DOUBLE_HAPTIC)
+    {
+        assert(virtuoso_sim_config->deviceName1().has_value() && "Must specify device name 1!");
+        assert(virtuoso_sim_config->deviceName2().has_value() && "Must specify device name 2!");
+
+        std::string device_name1 = virtuoso_sim_config->deviceName1().value();
+        std::string device_name2 = virtuoso_sim_config->deviceName2().value();
+        std::cout << BOLD << "Initializing haptic devices with names " << device_name1 << " and " << device_name2 << "..." << std::endl;
+        _haptic_device_manager = std::make_unique<HapticDeviceManager>(device_name1, device_name2);
     }
     if (_input_device == SimulationInputDevice::MOUSE)
     {
@@ -105,11 +123,30 @@ void VirtuosoSimulation::setup()
 
     
 
-    // create an object at the tip of the robot to show where grasping is
-    RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
-        1.0, 0.002, false, true, false);
-    _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
-    _tip_cursor->setPosition(_active_arm->tipPosition());
+    
+
+    if (_input_device == SimulationInputDevice::DOUBLE_HAPTIC)
+    {
+        // create an object at the tip of the robot to show where grasping is
+        RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+            1.0, 0.002, false, true, false);
+        _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
+        _tip_cursor->setPosition(_virtuoso_robot->arm1()->tipPosition());
+        
+        RigidSphereConfig cursor_config2("tip_cursor2", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+            1.0, 0.002, false, true, false);
+        _tip_cursor2 = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config2));
+        _tip_cursor->setPosition(_virtuoso_robot->arm2()->tipPosition());
+    }
+    else
+    {
+        // create an object at the tip of the robot to show where grasping is
+        RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+            1.0, 0.002, false, true, false);
+        _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
+        _tip_cursor->setPosition(_active_arm->tipPosition());
+    }
+    
 
     // create a goal visualization object that the user tries to match
     if (_goals_folder.has_value())
@@ -196,7 +233,7 @@ void VirtuosoSimulation::setup()
 
     if (_goal_objs.size() > 0)
     {
-        _graphics_scene->viewer()->addText("score", "Current score: ", 10.0f, 35.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
+        _graphics_scene->viewer()->addText("score", "Current Score: ", 10.0f, 35.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
     }
     
 }
@@ -259,7 +296,7 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
     }
 
     // when 'ALT' is pressed, switch which arm is active
-    if (key == 342 && action == 1)
+    if (_input_device != SimulationInputDevice::DOUBLE_HAPTIC && key == 342 && action == 1)
     {
         if (_virtuoso_robot->hasArm2() && _active_arm == _virtuoso_robot->arm1())
         {
@@ -461,6 +498,8 @@ void VirtuosoSimulation::_timeStep()
     {
         HHD handle = _haptic_device_manager->deviceHandles()[0];
         Vec3r cur_pos = _haptic_device_manager->position(handle);
+
+        std::cout << "cur pos: " << cur_pos << std::endl;
         bool button1_pressed = _haptic_device_manager->button1Pressed(handle);
         bool button2_pressed = _haptic_device_manager->button2Pressed(handle);
         
