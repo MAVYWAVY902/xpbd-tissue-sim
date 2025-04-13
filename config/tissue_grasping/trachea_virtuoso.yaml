@@ -2,9 +2,10 @@ name: "Virtuoso Trachea"
 
 # Tissue grasping simulation-specific parameters
 input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
-fixed-faces-filename: "../resource/tissue/tracheal_tumor_v2_fixed_faces.txt"
-tumor-faces-filename: "../resource/tissue/tumor_faces_new.txt"
-goal-filename: "./tissue_mesh_74.841750_s.obj"
+fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
+tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"
+# goal-filename: "../resource/demos/trachea_virtuoso/goals/goal1.obj"
+goals-folder: "../resource/demos/trachea_virtuoso/goals/"
 
 g-accel: 0 # m/s2
 # sim-mode: "Visualization"
@@ -22,7 +23,7 @@ objects:
     # type: "XPBDMeshObject"
     type: "FirstOrderXPBDMeshObject"
     # filename: "../resource/cube/cube8.msh"
-    filename: "../resource/tissue/tracheal_tumor_v2.msh"
+    filename: "../resource/demos/trachea_virtuoso/trachea_with_tumor.msh"
     material:
       name: "Soft Tissue"
       density: 1000

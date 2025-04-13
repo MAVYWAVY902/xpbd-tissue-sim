@@ -52,6 +52,7 @@ class VirtuosoSimulation : public Simulation
     void _toggleTissueGrasping();
 
     void _toggleGoal();
+    void _changeGoal();
 
     int _calculateScore();
 
@@ -67,7 +68,10 @@ class VirtuosoSimulation : public Simulation
 
     bool _goal_active;
     std::optional<std::string> _goal_filename;      // a .obj filename that has a deformed tissue mesh that represents the goal
-    RigidMeshObject* _goal_obj;          // the goal state of the tissue surface
+    std::optional<std::string> _goals_folder;       // a folder path that has .obj files representing goal tissue states
+    // RigidMeshObject* _goal_obj;          // the goal state of the tissue surface
+    std::vector<RigidMeshObject*> _goal_objs;   // vector of tissue goal states
+    int _goal_obj_ind;
 
     VirtuosoRobot* _virtuoso_robot; // the Virtuoso robot (includes both arms)
     VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assuming only one input device)

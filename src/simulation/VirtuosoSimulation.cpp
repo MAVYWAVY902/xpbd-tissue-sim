@@ -2,6 +2,9 @@
 
 #include "utils/GeometryUtils.hpp"
 
+#include <filesystem>
+#include <stdlib.h>
+
 namespace Sim
 {
 
@@ -18,6 +21,7 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
     _fixed_faces_filename = virtuoso_sim_config->fixedFacesFilename();
     _tumor_faces_filename = virtuoso_sim_config->tumorFacesFilename();
     _goal_filename = virtuoso_sim_config->goalFilename();
+    _goals_folder = virtuoso_sim_config->goalsFolder();
     _goal_active = false;
     _current_score = 0;
 
@@ -108,19 +112,51 @@ void VirtuosoSimulation::setup()
     _tip_cursor->setPosition(_active_arm->tipPosition());
 
     // create a goal visualization object that the user tries to match
-    if (_goal_filename.has_value())
+    if (_goals_folder.has_value())
+    {
+        for (const auto & entry : std::filesystem::directory_iterator(_goals_folder.value()))
+        {
+            RigidMeshObjectConfig goal_config(entry.path(), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+                1.0, false, true, false,
+                entry.path(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
+            RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
+            goal_obj->mesh()->addFaceProperty<bool>("draw", false);
+            // align meshes
+            const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);
+            const Vec3r& v0_f0_goal_obj = goal_obj->mesh()->vertex(goal_obj->mesh()->face(0)[0]);
+
+            goal_obj->setPosition( goal_obj->position() + (v0_f0_tissue_obj - v0_f0_goal_obj) );
+
+            _goal_objs.push_back(goal_obj);
+
+            std::cout << entry.path() << std::endl;
+        }
+        
+        // get a random goal obj to start
+        _goal_obj_ind = rand() % _goal_objs.size();
+        // _goal_obj_ind = 0;
+        // get all goal .objs in the folder
+        // RigidMeshObjectConfig goal_config("goal_mesh", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+        //     1.0, false, true, false,
+        //     _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
+    }
+    
+    else if (_goal_filename.has_value())
     {
         RigidMeshObjectConfig goal_config("goal_mesh", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
             1.0, false, true, false,
             _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
-        _goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
-        _goal_obj->mesh()->addFaceProperty<bool>("draw", false);
+        RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
+        goal_obj->mesh()->addFaceProperty<bool>("draw", false);
 
         // align meshes
         const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);
-        const Vec3r& v0_f0_goal_obj = _goal_obj->mesh()->vertex(_goal_obj->mesh()->face(0)[0]);
+        const Vec3r& v0_f0_goal_obj = goal_obj->mesh()->vertex(goal_obj->mesh()->face(0)[0]);
 
-        _goal_obj->setPosition( _goal_obj->position() + (v0_f0_tissue_obj - v0_f0_goal_obj) );
+        goal_obj->setPosition( goal_obj->position() + (v0_f0_tissue_obj - v0_f0_goal_obj) );
+
+        _goal_objs.push_back(goal_obj);
+        _goal_obj_ind = 0;
 
         // std::cout << "Difference: " << v0_f0_goal_obj - v0_f0_tissue_obj << std::endl;
     }
@@ -158,7 +194,7 @@ void VirtuosoSimulation::setup()
     //     _graphics_scene->viewer()->addText("instructions", ss.str(), 200.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::CENTER, Graphics::Viewer::Font::MAO, std::array<float,3>({0.7,0.7,0.7}), 0.5f, true);
     // }
 
-    if (_goal_obj)
+    if (_goal_objs.size() > 0)
     {
         _graphics_scene->viewer()->addText("score", "Current score: ", 10.0f, 35.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
     }
@@ -255,7 +291,6 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
 
     if (_input_device == SimulationInputDevice::KEYBOARD && key == 32 && action == 1)
     {
-        std::cout << "Toggling grasping..." << std::endl;
         _toggleTissueGrasping();
     }
 
@@ -267,13 +302,13 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
     }
 
     // if 'Z' is pressed, toggle the goal
-    if (key == 90 && action == 1)
+    if (key == 90 && action == 1 && _goal_objs.size() > 0)
     {
         _toggleGoal();
     }
 
     // if 'X' is pressed, goal is active (and exists)
-    if (key == 88 && action == 1 && _goal_obj && _goal_active)
+    if (key == 88 && action == 1 && _goal_objs.size() > 0 && _goal_active)
     {
         _current_score = _calculateScore();
         if (_graphics_scene)
@@ -281,6 +316,12 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
             const std::string new_score_text = "Current Score: " + std::to_string(_current_score);
             _graphics_scene->viewer()->editText("score", new_score_text);
         }
+    }
+
+    // if 'C' is pressed, change goals
+    if (key == 67 && action == 1 && _goal_objs.size() > 0)
+    {
+        _changeGoal();
     }
 
     Simulation::notifyKeyPressed(key, action, modifiers);
@@ -341,7 +382,7 @@ void VirtuosoSimulation::_toggleTissueGrasping()
                     if ((tip_pos - _tissue_obj->mesh()->vertex(v)).norm() <= _tip_cursor->radius())
                         if (!_tissue_obj->vertexFixed(v))
                         {
-                            const Vec3r attachment_offset = (_tissue_obj->mesh()->vertex(v) - tip_pos) * 0.5;
+                            const Vec3r attachment_offset = (_tissue_obj->mesh()->vertex(v) - tip_pos) * 1.0;
                             vertices_to_grasp[v] = attachment_offset;
                         }
                 }
@@ -452,6 +493,8 @@ void VirtuosoSimulation::_timeStep()
 
             // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
 
+            std::cout << "TOTOAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
+
             // transform force from global coordinates into haptic input frame
             const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * total_force;
             _haptic_device_manager->setForce(haptic_force);
@@ -469,21 +512,48 @@ void VirtuosoSimulation::_timeStep()
 
 void VirtuosoSimulation::_toggleGoal()
 {
+    if (_goal_objs.size() == 0)
+        return;
+
     // toggle class variable
     _goal_active = !_goal_active;
 
     // update draw property
-    Geometry::MeshProperty<bool>& draw_face_property = _goal_obj->mesh()->getFaceProperty<bool>("draw");
+    Geometry::MeshProperty<bool>& draw_face_property = _goal_objs[_goal_obj_ind]->mesh()->getFaceProperty<bool>("draw");
     for (const auto& face_index : _tumor_faces)
     {
         draw_face_property.set(face_index, _goal_active);
     }
 }
 
+void VirtuosoSimulation::_changeGoal()
+{
+    // update draw property
+    Geometry::MeshProperty<bool>& draw_face_property_old = _goal_objs[_goal_obj_ind]->mesh()->getFaceProperty<bool>("draw");
+    for (const auto& face_index : _tumor_faces)
+    {
+        draw_face_property_old.set(face_index, false);
+    }
+
+    // increment goal object index
+    _goal_obj_ind++;
+    if (_goal_obj_ind >= _goal_objs.size())
+        _goal_obj_ind = 0;
+    
+    // show the new goal
+    Geometry::MeshProperty<bool>& draw_face_property_new = _goal_objs[_goal_obj_ind]->mesh()->getFaceProperty<bool>("draw");
+    for (const auto& face_index : _tumor_faces)
+    {
+        draw_face_property_new.set(face_index, _goal_active);
+    }
+    
+}
+
 int VirtuosoSimulation::_calculateScore()
 {
-    assert(_goal_obj && "Cannot calculate score when goal obj does not exist!");
+    assert(_goal_objs.size() > 0 && "Cannot calculate score when goal obj does not exist!");
 
+    RigidMeshObject* goal_obj = _goal_objs[_goal_obj_ind];
     double total_mse = 0;
     for (const auto& face_index : _tumor_faces)
     {
@@ -492,10 +562,10 @@ int VirtuosoSimulation::_calculateScore()
         const Vec3r& tissue_v2 = _tissue_obj->mesh()->vertex(tissue_face[1]);
         const Vec3r& tissue_v3 = _tissue_obj->mesh()->vertex(tissue_face[2]);
 
-        const Vec3i& goal_face = _goal_obj->mesh()->face(face_index);
-        const Vec3r& goal_v1 = _goal_obj->mesh()->vertex(goal_face[0]);
-        const Vec3r& goal_v2 = _goal_obj->mesh()->vertex(goal_face[1]);
-        const Vec3r& goal_v3 = _goal_obj->mesh()->vertex(goal_face[2]);
+        const Vec3i& goal_face = goal_obj->mesh()->face(face_index);
+        const Vec3r& goal_v1 = goal_obj->mesh()->vertex(goal_face[0]);
+        const Vec3r& goal_v2 = goal_obj->mesh()->vertex(goal_face[1]);
+        const Vec3r& goal_v3 = goal_obj->mesh()->vertex(goal_face[2]);
         total_mse += (tissue_v1 - goal_v1).squaredNorm() + (tissue_v2 - goal_v2).squaredNorm() + (tissue_v3 - goal_v3).squaredNorm();
     }
 

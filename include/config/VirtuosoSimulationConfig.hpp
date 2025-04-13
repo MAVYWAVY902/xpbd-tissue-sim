@@ -31,18 +31,21 @@ class VirtuosoSimulationConfig : public SimulationConfig
         _extractParameter("fixed-faces-filename", node, _fixed_faces_filename);
         _extractParameter("tumor-faces-filename", node, _tumor_faces_filename);
         _extractParameter("goal-filename", node, _goal_filename);
+        _extractParameter("goals-folder", node, _goals_folder);
     }
 
     SimulationInputDevice inputDevice() const { return _input_device.value.value(); }
     std::optional<std::string> fixedFacesFilename() const { return _fixed_faces_filename.value; }
     std::optional<std::string> tumorFacesFilename() const { return _tumor_faces_filename.value; }
     std::optional<std::string> goalFilename() const { return _goal_filename.value; }
+    std::optional<std::string> goalsFolder() const { return _goals_folder.value; }
 
     protected:
     ConfigParameter<SimulationInputDevice> _input_device;
     ConfigParameter<std::string> _fixed_faces_filename;
     ConfigParameter<std::string> _tumor_faces_filename; 
     ConfigParameter<std::string> _goal_filename;
+    ConfigParameter<std::string> _goals_folder;
 };
 
 
