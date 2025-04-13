@@ -89,7 +89,9 @@ class VirtuosoSimulation : public Simulation
     /** HAPTIC INPUT */
     Vec3r _initial_grasp_pos; // initial grasping position (used to calculate dummy forces)
     Vec3r _last_haptic_pos;   // tracks the last haptic posiion
-    std::unique_ptr<HapticDeviceManager> _haptic_device_manager;    // manages haptic device and provides an interface to their state
+    std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
+    // std::unique_ptr<HapticDeviceManager> _haptic_device1;    // manages haptic device and provides an interface to their state
+    // std::unique_ptr<HapticDeviceManager> _haptic_device2;    // second haptic device (only used in the "Double Haptic" input mode)
 
     Vec3r _last_force;  // the last force sent to the haptic device (used for smoothing)
 

@@ -29,7 +29,7 @@ VirtuosoSimulation::VirtuosoSimulation(const std::string& config_filename)
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
         _haptic_device_manager = std::make_unique<HapticDeviceManager>();
-        _last_haptic_pos = _haptic_device_manager->position();
+        _last_haptic_pos = _haptic_device_manager->position(_haptic_device_manager->deviceHandles()[0]);
     }
     if (_input_device == SimulationInputDevice::MOUSE)
     {
@@ -459,9 +459,10 @@ void VirtuosoSimulation::_timeStep()
 
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
-        Vec3r cur_pos = _haptic_device_manager->position();
-        bool button1_pressed = _haptic_device_manager->button1Pressed();
-        bool button2_pressed = _haptic_device_manager->button2Pressed();
+        HHD handle = _haptic_device_manager->deviceHandles()[0];
+        Vec3r cur_pos = _haptic_device_manager->position(handle);
+        bool button1_pressed = _haptic_device_manager->button1Pressed(handle);
+        bool button2_pressed = _haptic_device_manager->button2Pressed(handle);
         
         if (button2_pressed)
         {
@@ -500,13 +501,13 @@ void VirtuosoSimulation::_timeStep()
 
             // transform force from global coordinates into haptic input frame
             const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * new_force;
-            _haptic_device_manager->setForce(haptic_force);
+            _haptic_device_manager->setForce(handle, haptic_force);
 
             _last_force = new_force;
         }
         else
         {
-            _haptic_device_manager->setForce(Vec3r::Zero());
+            _haptic_device_manager->setForce(handle, Vec3r::Zero());
         }
         
     }
