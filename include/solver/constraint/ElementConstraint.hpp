@@ -50,6 +50,8 @@ class ElementConstraint : public Constraint
         _volume = std::abs(X.determinant()/6);
     }
 
+    Real restVolume() const { return _volume; }
+
     protected:
 
     /** Compute the deformation gradient and return it, using the 4 positions referenced by this constraint.

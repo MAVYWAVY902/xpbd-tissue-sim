@@ -91,6 +91,8 @@ class VirtuosoSimulation : public Simulation
     Vec3r _last_haptic_pos;   // tracks the last haptic posiion
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;    // manages haptic device and provides an interface to their state
 
+    Vec3r _last_force;  // the last force sent to the haptic device (used for smoothing)
+
     /** KEYBOARD INPUT */
     constexpr static double IT_ROT_RATE = 3; // rad/s
     constexpr static double IT_TRANS_RATE = 0.005; // m/s

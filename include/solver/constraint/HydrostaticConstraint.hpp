@@ -72,6 +72,11 @@ class HydrostaticConstraint : public ElementConstraint
         Real X[9];
         _computeF(F, X);
         _evaluate(C, F);
+
+        // if (*C > 1000)
+        // {
+        //     std::cout << "C > 1000! F=\n" << F[0] << ", " << F[1] << ", " << F[2] << "\n" << F[3] << ", " << F[4] << ", " << F[5] << "\n" << F[6] << ", " << F[7] << ", " << F[8] << std::endl;
+        // }
         _gradient(grad, F);
     }
 
@@ -96,6 +101,7 @@ class HydrostaticConstraint : public ElementConstraint
         
         Vec3r grad = Eigen::Map<Vec3r>(delC + 3*pos_index);
 
+        // std::cout << "grad: " << grad[0] << ", " << grad[1] << ", " << grad[2] << "  1/alpha: " << 1.0/_alpha << "  C: " << C << std::endl;
         return -grad * (1.0/_alpha) * C;
     }
 

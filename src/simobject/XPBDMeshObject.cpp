@@ -415,9 +415,21 @@ Vec3r XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::elasticForceAtVe
     for (const auto& elem_index : _attached_elements)
     {
         // std::cout << "Elastic force for element " << elem_index << std::endl;
-        total_force += _constraints.template get<Solver::HydrostaticConstraint>()[elem_index].elasticForce(index);
-        total_force += _constraints.template get<Solver::DeviatoricConstraint>()[elem_index].elasticForce(index);
+        const Vec3r& dev_force = _constraints.template get<Solver::DeviatoricConstraint>()[elem_index].elasticForce(index);
+        const Vec3r& hyd_force = _constraints.template get<Solver::HydrostaticConstraint>()[elem_index].elasticForce(index);
+
+        // TODO: THIS IS A HACK THAT WILL PROBABLY BITE ME IN THE ASS LATER
+        // for some reason, very small elements produce incorrect forces (they are very large, probably due to machine precision limits) - which messes up force feedback in the Haptic demos
+        // need to find a better fix than this
+        if (_constraints.template get<Solver::DeviatoricConstraint>()[elem_index].restVolume() > 1e-10) 
+            total_force += dev_force + hyd_force;
+        // else
+        //     std::cout << "LARGE FORCE ELEMENT VOLUME: " << _constraints.template get<Solver::DeviatoricConstraint>()[elem_index].restVolume() << std::endl;
+        // std::cout << "Forces at element " << elem_index << ": (" << dev_force[0] << ", " << dev_force[1] << ", " << dev_force[2] << ") Hyd: ("<< hyd_force[0] << ", " << hyd_force[1] << ", " << hyd_force[2] << ")" << std::endl;
+        
     }
+
+    // std::cout << ""
 
     // std::cout << "Total elastic force at vertex: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
 
