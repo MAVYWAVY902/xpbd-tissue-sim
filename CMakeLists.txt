@@ -104,6 +104,9 @@ target_link_libraries(BeamTest BeamSimulation)
 add_executable(VirtuosoTest src/exec/virtuoso_main.cpp)
 target_link_libraries(VirtuosoTest VirtuosoSimulation)
 
+add_executable(VirtuosoTracheaDemo src/exec/demos/virtuoso_trachea_demo.cpp)
+target_link_libraries(VirtuosoTracheaDemo VirtuosoSimulation)
+
 # add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
 # target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
 

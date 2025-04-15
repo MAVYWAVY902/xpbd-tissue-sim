@@ -22,8 +22,6 @@ class VirtuosoSimulation : public Simulation
     public:
     VirtuosoSimulation(const VirtuosoSimulationConfig* config);
 
-    VirtuosoSimulation();
-
     virtual std::string type() const override { return "VirtuosoSimulation"; }
 
     virtual void setup() override;

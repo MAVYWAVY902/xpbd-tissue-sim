@@ -40,7 +40,6 @@ class RigidObject : public Object
 
     virtual void setPosition(const Vec3r& position) { if (!_fixed) _p = position; }
     const Vec3r& position() const { return _p; }
-    const Vec3r* positionPtr() const  { return &_p; }
     const Vec3r& prevPosition() const { return _p_prev; }
 
     virtual void setOrientation(const Vec4r& orientation) { if (!_fixed) _q = orientation; }

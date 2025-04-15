@@ -26,8 +26,6 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config)
 
     _recomputeCoordinateFrames();
 
-    std::cout << "Tip position: " << tipPosition() << std::endl;
-
 }
 
 std::string VirtuosoArm::toString(const int indent) const

@@ -57,6 +57,7 @@ void VirtuosoTissueGraspingSimulation::setup()
     // create a goal visualization object that the user tries to match
     if (_goals_folder.has_value())
     {
+        std::cout << "Loading goals..." << std::endl;
         for (const auto & entry : std::filesystem::directory_iterator(_goals_folder.value()))
         {
             RigidMeshObjectConfig goal_config(entry.path(), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
@@ -64,7 +65,8 @@ void VirtuosoTissueGraspingSimulation::setup()
                 entry.path(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
             RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
             goal_obj->mesh()->addFaceProperty<bool>("draw", false);
-            // align meshes
+            
+            // align meshes based on the first face (the meshes are loaded and moved about their center of mass, which may be different between the two)
             const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);
             const Vec3r& v0_f0_goal_obj = goal_obj->mesh()->vertex(goal_obj->mesh()->face(0)[0]);
 
@@ -87,7 +89,7 @@ void VirtuosoTissueGraspingSimulation::setup()
         RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
         goal_obj->mesh()->addFaceProperty<bool>("draw", false);
 
-        // align meshes
+        // align meshes based on the first face (the meshes are loaded and moved about their center of mass, which may be different between the two)
         const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);
         const Vec3r& v0_f0_goal_obj = goal_obj->mesh()->vertex(goal_obj->mesh()->face(0)[0]);
 
@@ -186,7 +188,6 @@ void VirtuosoTissueGraspingSimulation::_toggleTissueGrasping()
 
         // quick and dirty way to find all vertices in a sphere
         const Vec3r tip_pos = _tip_cursor->position();
-        std::cout << tip_pos << std::endl;
         for (int theta = 0; theta < 360; theta+=30)
         {
             for (int phi = 0; phi < 360; phi+=30)
@@ -212,12 +213,10 @@ void VirtuosoTissueGraspingSimulation::_toggleTissueGrasping()
         for (const auto& [v, offset] : vertices_to_grasp)
         {
             // _tissue_obj->addAttachmentConstraint(v, &_dummy, offset);
-            _tissue_obj->addAttachmentConstraint(v, _tip_cursor->positionPtr(), offset);
+            _tissue_obj->addAttachmentConstraint(v, &_tip_cursor->position(), offset);
             
             _grasped_vertices.push_back(v);
         }
-
-        std::cout << *(_tip_cursor->positionPtr()) << std::endl;
 
         _grasping = true;
     }

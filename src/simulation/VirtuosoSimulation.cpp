@@ -13,6 +13,7 @@ VirtuosoSimulation::VirtuosoSimulation(const VirtuosoSimulationConfig* config)
 {
     _input_device = config->inputDevice();
 
+    // initialize the haptic device if using haptic device input
     if (_input_device == SimulationInputDevice::HAPTIC)
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
@@ -22,10 +23,10 @@ VirtuosoSimulation::VirtuosoSimulation(const VirtuosoSimulationConfig* config)
     }
     if (_input_device == SimulationInputDevice::MOUSE)
     {
-        _graphics_scene->viewer()->enableMouseInteraction(false);
+        _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
     }
 
-    // initialize the keys map with the relevant keycodes
+    // initialize the keys map with relevant keycodes for controlling the Virtuoso robot with the keyboard
     int key_codes[] = {
         32, // space bar
         81, // Q
@@ -43,16 +44,11 @@ VirtuosoSimulation::VirtuosoSimulation(const VirtuosoSimulationConfig* config)
         _keys_held[key_codes[i]] = 0;
 }
 
-// VirtuosoSimulation::VirtuosoSimulation()
-//     : Simulation()
-// {
-// }
-
 void VirtuosoSimulation::setup()
 {
     Simulation::setup();
     
-    // find the VirtuosoRobot object
+    // find the VirtuosoRobot object - necessary for Virtuoso simulation controls
     for (auto& obj : _objects)
     {
         if (VirtuosoRobot* robot = dynamic_cast<VirtuosoRobot*>(obj.get()))
@@ -62,7 +58,7 @@ void VirtuosoSimulation::setup()
         }
     }
 
-    assert(_virtuoso_robot);
+    assert(_virtuoso_robot && "No VirtuosoRobot found in the sim! (add one to the config file)");
 
     // set the active arm to be arm1
     _active_arm = _virtuoso_robot->arm1();
@@ -74,9 +70,7 @@ void VirtuosoSimulation::setup()
         1.0, 0.002, false, true, false);
     _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
     assert(_tip_cursor);
-    std::cout << _tip_cursor->position() << std::endl;
     _tip_cursor->setPosition(_active_arm->tipPosition());
-    std::cout << _tip_cursor->position() << std::endl;
 }
 
 void VirtuosoSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
@@ -164,6 +158,7 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
 
 void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
 {
+    // when using mouse input, mouse scrolling moves the robot tip in and out of the page
     if (_input_device == SimulationInputDevice::MOUSE)
     {
         if (_keys_held[32] > 0) // space bar = clutch
@@ -176,11 +171,14 @@ void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
             _moveCursor(offset*scaling);
         }
     }
+
+    Simulation::notifyMouseScrolled(dx, dy);
     
 }
 
 void VirtuosoSimulation::_moveCursor(const Vec3r& dp)
 {
+    // move the tip cursor and the active arm tip position
     const Vec3r current_tip_position = _tip_cursor->position();
     _tip_cursor->setPosition(current_tip_position + dp);
     _active_arm->setTipPosition(_tip_cursor->position());
