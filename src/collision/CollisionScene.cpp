@@ -228,7 +228,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         // std::cout << "v2: " << p2[0] << ", " << p2[1] << ", " << p2[2] << "\tdist: " << sdf->evaluate(p2) << std::endl;
         // std::cout << "v3: " << p3[0] << ", " << p3[1] << ", " << p3[2] << "\tdist: " << sdf->evaluate(p3) << std::endl;
         const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
-        const double distance = sdf->evaluate(x);
+        const Real distance = sdf->evaluate(x);
         if (distance <= 1e-4)
         {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
             // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
@@ -256,12 +256,12 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         }
 
         // TODO: check each vertex in the mesh separately instead of inside the faces loop
-        const double distance_p1 = sdf->evaluate(p1);
+        const Real distance_p1 = sdf->evaluate(p1);
         if (distance_p1 <= 1e-4)
         {
             const auto [u, v, w] = GeometryUtils::barycentricCoords(p1, p1, p2, p3);
-            const Eigen::Vector3d grad = sdf->gradient(p1);
-            const Eigen::Vector3d surface_x = p1 - grad*distance;
+            const Vec3r grad = sdf->gradient(p1);
+            const Vec3r surface_x = p1 - grad*distance;
 
             if (!rigid_obj)
             {
@@ -277,12 +277,12 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
             }
         }
 
-        const double distance_p2 = sdf->evaluate(p2);
+        const Real distance_p2 = sdf->evaluate(p2);
         if (distance_p2 <= 1e-4)
         {
             const auto [u, v, w] = GeometryUtils::barycentricCoords(p2, p1, p2, p3);
-            const Eigen::Vector3d grad = sdf->gradient(p2);
-            const Eigen::Vector3d surface_x = p2 - grad*distance;
+            const Vec3r grad = sdf->gradient(p2);
+            const Vec3r surface_x = p2 - grad*distance;
 
             if (!rigid_obj)
             {
@@ -298,12 +298,12 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
             }
         }
 
-        const double distance_p3 = sdf->evaluate(p3);
+        const Real distance_p3 = sdf->evaluate(p3);
         if (distance_p3 <= 1e-4)
         {
             const auto [u, v, w] = GeometryUtils::barycentricCoords(p3, p1, p2, p3);
-            const Eigen::Vector3d grad = sdf->gradient(p3);
-            const Eigen::Vector3d surface_x = p3 - grad*distance;
+            const Vec3r grad = sdf->gradient(p3);
+            const Vec3r surface_x = p3 - grad*distance;
 
             if (!rigid_obj)
             {
@@ -325,9 +325,9 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
 Vec3r CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Vec3r& p1, const Vec3r& p2, const Vec3r& p3) const
 {
     // find starting iterate - the triangle vertex with the smallest value of SDF
-    const double d_p1 = sdf->evaluate(p1);
-    const double d_p2 = sdf->evaluate(p2);
-    const double d_p3 = sdf->evaluate(p3);
+    const Real d_p1 = sdf->evaluate(p1);
+    const Real d_p2 = sdf->evaluate(p2);
+    const Real d_p3 = sdf->evaluate(p3);
 
     // std::cout << "p1: " << p1[0] << ", " << p1[1] << ", " << p1[2] << std::endl;
     // std::cout << "p2: " << p2[0] << ", " << p2[1] << ", " << p2[2] << std::endl;
@@ -362,13 +362,13 @@ Vec3r CollisionScene::_frankWolfe(const Geometry::SDF* sdf, const Vec3r& p1, con
     Vec3r s;
     for (int i = 0; i < 32; i++)
     {
-        const double alpha = 2.0/(i+3);
+        const Real alpha = 2.0/(i+3);
         const Vec3r& gradient = sdf->gradient(x);
         // std::cout << "x: " << x[0] << ", " << x[1] << ", " << x[2] << std::endl;
         // std::cout << "gradient: " << gradient[0] << ", " << gradient[1] << ", " << gradient[2] << std::endl;
-        const double sg1 = p1.dot(gradient);
-        const double sg2 = p2.dot(gradient);
-        const double sg3 = p3.dot(gradient);
+        const Real sg1 = p1.dot(gradient);
+        const Real sg2 = p2.dot(gradient);
+        const Real sg3 = p3.dot(gradient);
 
         if (sg1 < sg2 && sg1 < sg3)       s = p1;
         else if (sg2 < sg1 && sg2 < sg3)  s = p2;

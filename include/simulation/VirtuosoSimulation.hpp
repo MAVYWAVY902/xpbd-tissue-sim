@@ -60,10 +60,10 @@ class VirtuosoSimulation : public Simulation
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
 
     /** KEYBOARD INPUT */
-    constexpr static double IT_ROT_RATE = 3; // rad/s
-    constexpr static double IT_TRANS_RATE = 0.005; // m/s
-    constexpr static double OT_ROT_RATE = 3; // rad/s
-    constexpr static double OT_TRANS_RATE = 0.005; // m/s
+    constexpr static Real IT_ROT_RATE = 3; // rad/s
+    constexpr static Real IT_TRANS_RATE = 0.005; // m/s
+    constexpr static Real OT_ROT_RATE = 3; // rad/s
+    constexpr static Real OT_TRANS_RATE = 0.005; // m/s
 
     std::map<int, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
 };

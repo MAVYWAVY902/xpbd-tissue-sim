@@ -91,9 +91,9 @@ void VirtuosoSimulation::notifyMouseMoved(double x, double y)
     {
         if (_keys_held[32] > 0) // space bar = clutch
         {
-            const double scaling = 0.00005;
-            double dx = x - _last_mouse_pos[0];
-            double dy = y - _last_mouse_pos[1];
+            const Real scaling = 0.00005;
+            Real dx = x - _last_mouse_pos[0];
+            Real dy = y - _last_mouse_pos[1];
 
             // camera plane defined by camera up direction and camera right direction
             // changes in mouse y position = changes along camera up direction
@@ -163,7 +163,7 @@ void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
     {
         if (_keys_held[32] > 0) // space bar = clutch
         {
-            const double scaling = 0.0005;
+            const Real scaling = 0.0005;
             const Vec3r view_dir = _graphics_scene->cameraViewDirection();
 
             const Vec3r current_tip_position = _tip_cursor->position();
@@ -196,43 +196,43 @@ void VirtuosoSimulation::_timeStep()
     {
         if (_keys_held[81] > 0) // Q = CCW inner tube rotation
         {
-            const double cur_rot = _active_arm->innerTubeRotation();
+            const Real cur_rot = _active_arm->innerTubeRotation();
             _active_arm->setInnerTubeRotation(cur_rot + IT_ROT_RATE*dt());
 
         }
         if (_keys_held[87] > 0) // W = CCW outer tube rotation
         {
-            const double cur_rot = _active_arm->outerTubeRotation();
+            const Real cur_rot = _active_arm->outerTubeRotation();
             _active_arm->setOuterTubeRotation(cur_rot + OT_ROT_RATE*dt());
         }
         if (_keys_held[69] > 0) // E = inner tube extension
         {
-            const double cur_trans = _active_arm->innerTubeTranslation();
+            const Real cur_trans = _active_arm->innerTubeTranslation();
             _active_arm->setInnerTubeTranslation(cur_trans + IT_TRANS_RATE*dt());
         }
         if (_keys_held[82] > 0) // R = outer tube extension
         {
-            const double cur_trans = _active_arm->outerTubeTranslation();
+            const Real cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans + OT_TRANS_RATE*dt());
         }
         if (_keys_held[65] > 0) // A = CW inner tube rotation
         {
-            const double cur_rot = _active_arm->innerTubeRotation();
+            const Real cur_rot = _active_arm->innerTubeRotation();
             _active_arm->setInnerTubeRotation(cur_rot - IT_ROT_RATE*dt()); 
         }
         if (_keys_held[83] > 0) // S = CW outer tube rotation
         {
-            const double cur_rot = _active_arm->outerTubeRotation();
+            const Real cur_rot = _active_arm->outerTubeRotation();
             _active_arm->setOuterTubeRotation(cur_rot - OT_ROT_RATE*dt());
         }
         if (_keys_held[68] > 0) // D = inner tube retraction
         {
-            const double cur_trans = _active_arm->innerTubeTranslation();
+            const Real cur_trans = _active_arm->innerTubeTranslation();
             _active_arm->setInnerTubeTranslation(cur_trans - IT_TRANS_RATE*dt());
         }
         if (_keys_held[70] > 0) // F = outer tube retraction
         {
-            const double cur_trans = _active_arm->outerTubeTranslation();
+            const Real cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
         }
         _tip_cursor->setPosition(_active_arm->tipPosition());

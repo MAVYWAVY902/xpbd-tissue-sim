@@ -7,11 +7,11 @@
 class VirtuosoRobotConfig : public ObjectConfig
 {
     public:
-    static std::optional<double>& DEFAULT_ENDOSCOPE_DIAMETER() { static std::optional<double> e_dia(8.67e-3); return e_dia; }
-    static std::optional<double>& DEFAULT_ENDOSCOPE_LENGTH() { static std::optional<double> e_l(0.05); return e_l; }
-    static std::optional<double>& DEFAULT_ARM_SEPARATION_DISTANCE() { static std::optional<double> dist(3.05e-3); return dist; }
-    static std::optional<double>& DEFAULT_OPTIC_VERTICAL_DISTANCE() { static std::optional<double> dist(3.24e-3); return dist; }
-    static std::optional<double>& DEFAULT_OPTIC_TILT() { static std::optional<double> tilt_deg(30); return tilt_deg; }
+    static std::optional<Real>& DEFAULT_ENDOSCOPE_DIAMETER() { static std::optional<Real> e_dia(8.67e-3); return e_dia; }
+    static std::optional<Real>& DEFAULT_ENDOSCOPE_LENGTH() { static std::optional<Real> e_l(0.05); return e_l; }
+    static std::optional<Real>& DEFAULT_ARM_SEPARATION_DISTANCE() { static std::optional<Real> dist(3.05e-3); return dist; }
+    static std::optional<Real>& DEFAULT_OPTIC_VERTICAL_DISTANCE() { static std::optional<Real> dist(3.24e-3); return dist; }
+    static std::optional<Real>& DEFAULT_OPTIC_TILT() { static std::optional<Real> tilt_deg(30); return tilt_deg; }
 
     explicit VirtuosoRobotConfig(const YAML::Node& node)
         : ObjectConfig(node)
@@ -55,18 +55,18 @@ class VirtuosoRobotConfig : public ObjectConfig
     }
 
     const std::vector<std::unique_ptr<VirtuosoArmConfig>>& armConfigs() const { return _arm_configs; }
-    double endoscopeDiameter() const { return _endoscope_diameter.value.value(); }
-    double endoscopeLength() const { return _endoscope_length.value.value(); }
-    double armSeparationDistance() const { return _arm_separation_dist.value.value(); }
-    double opticVerticalDistance() const { return _optic_vertical_dist.value.value(); }
-    double opticTilt() const { return _optic_tilt.value.value(); }
+    Real endoscopeDiameter() const { return _endoscope_diameter.value.value(); }
+    Real endoscopeLength() const { return _endoscope_length.value.value(); }
+    Real armSeparationDistance() const { return _arm_separation_dist.value.value(); }
+    Real opticVerticalDistance() const { return _optic_vertical_dist.value.value(); }
+    Real opticTilt() const { return _optic_tilt.value.value(); }
 
     protected:
-    ConfigParameter<double> _endoscope_diameter;
-    ConfigParameter<double> _endoscope_length;
-    ConfigParameter<double> _arm_separation_dist;
-    ConfigParameter<double> _optic_vertical_dist;
-    ConfigParameter<double> _optic_tilt;
+    ConfigParameter<Real> _endoscope_diameter;
+    ConfigParameter<Real> _endoscope_length;
+    ConfigParameter<Real> _arm_separation_dist;
+    ConfigParameter<Real> _optic_vertical_dist;
+    ConfigParameter<Real> _optic_tilt;
 
     std::vector<std::unique_ptr<VirtuosoArmConfig>> _arm_configs;
 };

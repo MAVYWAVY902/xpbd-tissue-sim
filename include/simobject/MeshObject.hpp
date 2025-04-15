@@ -23,14 +23,6 @@ class MeshObject
         _max_size = mesh_config->maxSize();
     }
 
-    MeshObject(const std::string& filename)
-    {
-        _filename = filename;
-
-        _initial_position = Eigen::Vector3d(0,0,0);
-        _initial_rotation = Eigen::Vector3d(0,0,0);
-    }
-
     const Geometry::Mesh* mesh() const { return _mesh.get(); }
 
     Geometry::Mesh* mesh() { return _mesh.get(); }

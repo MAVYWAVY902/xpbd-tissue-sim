@@ -9,6 +9,9 @@
 #include "config/VirtuosoArmConfig.hpp"
 #include "config/VirtuosoRobotConfig.hpp"
 
+#include <optional>
+#include <string>
+
 
 /** Enum defining the different ways the simulation can be run 
  * VISUALIZATION: if simulation is running faster than real-time, slow down updates so that sim time = wall time
@@ -40,7 +43,7 @@ class SimulationConfig : public Config
     /** Static predefined default for acceleration due to gravity */
     static std::optional<Real>& DEFAULT_G_ACCEL() { static std::optional<Real> g_accel(9.81); return g_accel; }
     /** Static predefined default for simulation description */
-    static std::optional<std::string>& DEFAULT_DESCRIPTION() { static std::optional<std::string> description(""); return description; }
+    static std::optional<std::string>& DEFAULT_DESCRIPTION() { static std::optional<std::string> description("fart"); return description; }
     /** Static predefined default for simulation FPS */
     static std::optional<Real>& DEFAULT_FPS() { static std::optional<Real> fps(30.0); return fps; }
 
@@ -76,6 +79,9 @@ class SimulationConfig : public Config
         _extractParameterWithOptions("visualization", node, _visualization, VISUALIZATION_OPTIONS(), DEFAULT_VISUALIZATION());
         _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
         _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
+
+        std::cout << "description has value? " << _description.value.has_value() << std::endl;
+
         _extractParameter("fps", node, _fps, DEFAULT_FPS());
         _extractParameter("collision-rate", node, _collision_rate, DEFAULT_COLLISION_RATE());
 
@@ -115,6 +121,8 @@ class SimulationConfig : public Config
             _object_configs.push_back(std::move(config));
             
         }
+
+        std::cout << "description has value? " << _description.value.has_value() << std::endl;
     }
 
     explicit SimulationConfig(const std::string& name, const std::string& description,
@@ -137,26 +145,26 @@ class SimulationConfig : public Config
     SimulationConfig(SimulationConfig&& other) = default;
 
     // Getters
-    std::optional<Real> timeStep() const { return _time_step.value; }
-    std::optional<Real> endTime() const { return _end_time.value; }
-    std::optional<SimulationMode> simMode() const { return _sim_mode.value; }
-    std::optional<Visualization> visualization() const { return _visualization.value; }
-    std::optional<Real> gAccel() const { return _g_accel.value; }
-    std::optional<std::string> description() const { return _description.value; }
-    std::optional<Real> fps() const { return _fps.value; }
-    std::optional<Real> collisionRate() const { return _collision_rate.value; }
+    Real timeStep() const { return _time_step.value.value(); }
+    Real endTime() const { return _end_time.value.value(); }
+    SimulationMode simMode() const { return _sim_mode.value.value(); }
+    Visualization visualization() const { return _visualization.value.value(); }
+    Real gAccel() const { return _g_accel.value.value(); }
+    std::string description() const { std::cout << "description has value? " << _description.value.has_value() << std::endl; return _description.value.value(); }
+    Real fps() const { return _fps.value.value(); }
+    Real collisionRate() const { return _collision_rate.value.value(); }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const std::vector<std::unique_ptr<ObjectConfig> >& objectConfigs() const { return _object_configs; }
 
     protected:
     // Parameters
+    ConfigParameter<std::string> _description;
     ConfigParameter<Real> _time_step;
     ConfigParameter<Real> _end_time;
     ConfigParameter<SimulationMode> _sim_mode; 
     ConfigParameter<Visualization> _visualization;
     ConfigParameter<Real> _g_accel;
-    ConfigParameter<std::string> _description;
     ConfigParameter<Real> _fps;
     ConfigParameter<Real> _collision_rate;
 

@@ -13,14 +13,14 @@ Vec3r rotateVectorByQuat(const Vec3r& v, const Vec4r& quat);
 Vec4r inverseQuat(const Vec4r& quat);
 Vec4r eulXYZ2Quat(const Real x, const Real y, const Real z);
 
-Eigen::Matrix3d Rz(double theta);
-Eigen::Matrix3d Ry(double theta);
-Eigen::Matrix3d Rx(double theta);
+Mat3r Rz(Real theta);
+Mat3r Ry(Real theta);
+Mat3r Rx(Real theta);
 
-Eigen::Vector3d Vee_SO3(const Eigen::Matrix3d& mat);
-Eigen::Matrix3d Bracket_so3(const Eigen::Vector3d& vec);
-Eigen::Vector<double,6> Vee_SE3(const Eigen::Matrix4d& mat);
-Eigen::Matrix4d Bracket_se3(const Eigen::Vector<double,6>& vec);
+Vec3r Vee_SO3(const Mat3r& mat);
+Mat3r Bracket_so3(const Vec3r& vec);
+Vec6r Vee_SE3(const Mat4r& mat);
+Mat4r Bracket_se3(const Vec6r& vec);
 
 }
 

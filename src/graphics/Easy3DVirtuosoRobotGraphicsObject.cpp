@@ -13,7 +13,7 @@ Easy3DVirtuosoRobotGraphicsObject::Easy3DVirtuosoRobotGraphicsObject(const std::
 {
     _e3d_mesh = easy3d::SurfaceMeshFactory::cylinder(30, _virtuoso_robot->endoscopeDiameter()/2.0, _virtuoso_robot->endoscopeLength());
     const Geometry::TransformationMatrix& endoscope_transform = _virtuoso_robot->endoscopeFrame().transform();
-    const Eigen::Matrix3d& rot_mat = endoscope_transform.rotMat();
+    const Mat3r& rot_mat = endoscope_transform.rotMat();
     easy3d::Mat3<float> e3d_rot_mat;
     e3d_rot_mat(0,0) = rot_mat(0,0); e3d_rot_mat(0,1) = rot_mat(0,1); e3d_rot_mat(0,2) = rot_mat(0,2);
     e3d_rot_mat(1,0) = rot_mat(1,0); e3d_rot_mat(1,1) = rot_mat(1,1); e3d_rot_mat(1,2) = rot_mat(1,2);

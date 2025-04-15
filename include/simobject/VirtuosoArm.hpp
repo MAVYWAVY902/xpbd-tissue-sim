@@ -52,22 +52,22 @@ class VirtuosoArm : public Object
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const override;
 
-    double innerTubeDiameter() const { return _it_dia; }
-    double innerTubeTranslation() const { return _it_translation; }
-    double innerTubeRotation() const { return _it_rotation; }
+    Real innerTubeDiameter() const { return _it_dia; }
+    Real innerTubeTranslation() const { return _it_translation; }
+    Real innerTubeRotation() const { return _it_rotation; }
 
-    double outerTubeDiameter() const { return _ot_dia; }
-    double outerTubeRadiusOfCurvature() const { return _ot_r_curvature; }
-    double outerTubeTranslation() const { return _ot_translation; }
-    double outerTubeRotation() const { return _ot_rotation; }
-    double outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
+    Real outerTubeDiameter() const { return _ot_dia; }
+    Real outerTubeRadiusOfCurvature() const { return _ot_r_curvature; }
+    Real outerTubeTranslation() const { return _ot_translation; }
+    Real outerTubeRotation() const { return _ot_rotation; }
+    Real outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
 
-    void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
-    void setInnerTubeRotation(double r) { _it_rotation = r; _recomputeCoordinateFrames(); }
-    void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
-    void setOuterTubeRotation(double r) { _ot_rotation = r; _recomputeCoordinateFrames(); }
-    void setBasePosition(const Eigen::Vector3d& pos) { _arm_base_position = pos; _recomputeCoordinateFrames(); }
-    void setBaseRotation(const Eigen::Matrix3d& rot_mat) { _arm_base_rotation = rot_mat; _recomputeCoordinateFrames();}
+    void setInnerTubeTranslation(Real t) { _it_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
+    void setInnerTubeRotation(Real r) { _it_rotation = r; _recomputeCoordinateFrames(); }
+    void setOuterTubeTranslation(Real t) { _ot_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
+    void setOuterTubeRotation(Real r) { _ot_rotation = r; _recomputeCoordinateFrames(); }
+    void setBasePosition(const Vec3r& pos) { _arm_base_position = pos; _recomputeCoordinateFrames(); }
+    void setBaseRotation(const Mat3r& rot_mat) { _arm_base_rotation = rot_mat; _recomputeCoordinateFrames();}
 
     const Geometry::CoordinateFrame& armBaseFrame() const { return _arm_base_frame; }
     const Geometry::CoordinateFrame& outerTubeStartFrame() const { return _ot_frames[0]; }
@@ -79,15 +79,19 @@ class VirtuosoArm : public Object
     const OuterTubeFramesArray& outerTubeFrames() const { return _ot_frames; }
     const InnerTubeFramesArray& innerTubeFrames() const { return _it_frames; }
 
-    Eigen::Vector3d tipPosition() const;
-    void setTipPosition(const Eigen::Vector3d& new_position);
+    Vec3r tipPosition() const;
+    void setTipPosition(const Vec3r& new_position);
 
-    void setActuatorValues(double ot_rotation, double ot_translation, double it_rotation, double it_translation);
+    void setActuatorValues(Real ot_rotation, Real ot_translation, Real it_rotation, Real it_translation);
+
+    #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+    #endif
 
     private:
     void _recomputeCoordinateFrames();
 
-    Geometry::TransformationMatrix _computeTipTransform(double ot_rot, double ot_trans, double it_rot, double it_trans);
+    Geometry::TransformationMatrix _computeTipTransform(Real ot_rot, Real ot_trans, Real it_rot, Real it_trans);
 
     /** Computes the new joint positions given a change in tip position, using only the analytical Jacobian.
      * The Jacobian used is the analytical derivative of the tip transformation matrix (i.e. not a numerical Jacobian)
@@ -95,7 +99,7 @@ class VirtuosoArm : public Object
      * 
      * Note: this method easily breaks when the Jacobian becomes singular or the commanded position is outside the reachable workspace of the robot.
      */
-    void _jacobianDifferentialInverseKinematics(const Eigen::Vector3d& dx);
+    void _jacobianDifferentialInverseKinematics(const Vec3r& dx);
 
     /** Computes the new joint positions given a change in tip position, using a hybrid approach combining analytical geometry and the analytical Jacobian.
      * The outer tube rotation is given by the angle of the commanded position in cylindrical coordinates (i.e. easily solved for analytically).
@@ -106,40 +110,40 @@ class VirtuosoArm : public Object
      * Note: this method is more robust to the singularity while maintaining the favorable properties of Jacobian-based inverse kinematics.
      * Another note: the Jacobian used also does not incorporate applied forces. 
      */
-    void _hybridDifferentialInverseKinematics(const Eigen::Vector3d& dx);
+    void _hybridDifferentialInverseKinematics(const Vec3r& dx);
 
     /** Computes the spatial Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
      * Used in the 3DOF positional differential inverse kinematics.
      * 
      * (The only joint variables that affect tip position are outer tube rotation, outer tube translation, inner tube translation)
      */
-    Eigen::Matrix<double,6,3> _3DOFSpatialJacobian();
+    Eigen::Matrix<Real,6,3> _3DOFSpatialJacobian();
 
     /** Computes the spatial Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
      * Uses a NUMERICAL approach - varies each joint variable and computes the change in the tip transform.
      */
-    Eigen::Matrix<double,6,3> _3DOFNumericalSpatialJacobian();
+    Eigen::Matrix<Real,6,3> _3DOFNumericalSpatialJacobian();
 
     /** Computes the hybrid Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
      * This is a 3x3 matrix (J_a) that relates the velocity of the tip position in the world frame (p_dot) to the actuator velocities (q_dot):
      *      p_dot = J_a * q_dot
      */
-    Eigen::Matrix3d _3DOFAnalyticalHybridJacobian();
+    Mat3r _3DOFAnalyticalHybridJacobian();
 
     private:
-    double _it_dia; // inner tube diameter, in m
-    double _ot_dia; // outer tube diameter, in m
+    Real _it_dia; // inner tube diameter, in m
+    Real _ot_dia; // outer tube diameter, in m
     // TODO: change to radius of curvature
-    double _ot_r_curvature; // outer tube radius of curvature, in m
+    Real _ot_r_curvature; // outer tube radius of curvature, in m
 
-    double _it_translation; // translation of the inner tube. Right now, assuming that when translation=0, inner tube is fully retracted
-    double _it_rotation;    // rotation of inner tube. Right now, assuming angle is measured CCW from positive x-axis 
-    double _ot_translation; // translation of the outer tube. Right now, assuming that when translation=0, outer tube is fully retracted
-    double _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
-    double _ot_distal_straight_length; // the length of the straight section on the distal part of the outer tube
+    Real _it_translation; // translation of the inner tube. Right now, assuming that when translation=0, inner tube is fully retracted
+    Real _it_rotation;    // rotation of inner tube. Right now, assuming angle is measured CCW from positive x-axis 
+    Real _ot_translation; // translation of the outer tube. Right now, assuming that when translation=0, outer tube is fully retracted
+    Real _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
+    Real _ot_distal_straight_length; // the length of the straight section on the distal part of the outer tube
 
-    Eigen::Vector3d _arm_base_position;
-    Eigen::Matrix3d _arm_base_rotation;
+    Vec3r _arm_base_position;
+    Mat3r _arm_base_rotation;
 
 
     Geometry::CoordinateFrame _arm_base_frame;        // coordinate frame at the tool channel (where it leaves the endoscope)

@@ -59,15 +59,15 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
     int num_ot_vertices = (ot_frames.size() * _OT_TUBULAR_RES + 2);
     int num_it_vertices = (it_frames.size() * _IT_TUBULAR_RES + 2);
 
-    const double ot_r = _virtuoso_arm->outerTubeDiameter() / 2.0;
-    const double it_r = _virtuoso_arm->innerTubeDiameter() / 2.0;
-    const double ot_trans = _virtuoso_arm->outerTubeTranslation();
-    const double it_trans = _virtuoso_arm->innerTubeTranslation();
+    const Real ot_r = _virtuoso_arm->outerTubeDiameter() / 2.0;
+    const Real it_r = _virtuoso_arm->innerTubeDiameter() / 2.0;
+    const Real ot_trans = _virtuoso_arm->outerTubeTranslation();
+    const Real it_trans = _virtuoso_arm->innerTubeTranslation();
     for (unsigned fi = 0; fi < ot_frames.size(); fi++)
     {
         for (int i = 0; i < _OT_TUBULAR_RES; i++)
         {
-            double angle = i * 2 * 3.1415 / _OT_TUBULAR_RES;
+            Real angle = i * 2 * 3.1415 / _OT_TUBULAR_RES;
             _e3d_mesh.add_vertex(easy3d::vec3(ot_r * std::cos(angle), ot_r * std::sin(angle), fi*ot_trans/(ot_frames.size() - 1)));
         }
     }
@@ -80,7 +80,7 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
     {
         for (int i = 0; i < _IT_TUBULAR_RES; i++)
         {
-            double angle = i* 2 * 3.1415 / _IT_TUBULAR_RES;
+            Real angle = i* 2 * 3.1415 / _IT_TUBULAR_RES;
             _e3d_mesh.add_vertex(easy3d::vec3(it_r * std::cos(angle), it_r * std::sin(angle), ot_trans + fi*it_trans/(it_frames.size() - 1)));
         }
     }
@@ -164,33 +164,33 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = _virtuoso_arm->innerTubeFrames();
 
     // make an "outer tube" circle in the XY plane
-    double ot_r = _virtuoso_arm->outerTubeDiameter() / 2.0;
-    std::array<Eigen::Vector3d, _OT_TUBULAR_RES> ot_circle_pts;
+    Real ot_r = _virtuoso_arm->outerTubeDiameter() / 2.0;
+    std::array<Vec3r, _OT_TUBULAR_RES> ot_circle_pts;
     for (int i = 0; i < _OT_TUBULAR_RES; i++)
     {
-        double angle = i * 2 * 3.1415 / _OT_TUBULAR_RES;
-        Eigen::Vector3d circle_pt(ot_r * std::cos(angle), ot_r * std::sin(angle), 0.0);
+        Real angle = i * 2 * 3.1415 / _OT_TUBULAR_RES;
+        Vec3r circle_pt(ot_r * std::cos(angle), ot_r * std::sin(angle), 0.0);
         ot_circle_pts[i] = circle_pt;
     }
 
     // make an "inner tube" circle in the XY plane
-    double it_r = _virtuoso_arm->innerTubeDiameter() / 2.0;
-    std::array<Eigen::Vector3d, _IT_TUBULAR_RES> it_circle_pts;
+    Real it_r = _virtuoso_arm->innerTubeDiameter() / 2.0;
+    std::array<Vec3r, _IT_TUBULAR_RES> it_circle_pts;
     for (int i = 0; i < _IT_TUBULAR_RES; i++)
     {
-        double angle = i * 2 * 3.1415 / _IT_TUBULAR_RES;
-        Eigen::Vector3d circle_pt(it_r * std::cos(angle), it_r * std::sin(angle), 0.0);
+        Real angle = i * 2 * 3.1415 / _IT_TUBULAR_RES;
+        Vec3r circle_pt(it_r * std::cos(angle), it_r * std::sin(angle), 0.0);
         it_circle_pts[i] = circle_pt;
     } 
 
     // outer tube
     for (unsigned fi = 0; fi < ot_frames.size(); fi++)
     {
-        const Eigen::Matrix3d rot_mat = ot_frames[fi].transform().rotMat();
-        const Eigen::Vector3d translation = ot_frames[fi].transform().translation();
+        const Mat3r rot_mat = ot_frames[fi].transform().rotMat();
+        const Vec3r translation = ot_frames[fi].transform().translation();
         for (unsigned pi = 0; pi < ot_circle_pts.size(); pi++)
         {
-            Eigen::Vector3d transformed_pt = rot_mat * ot_circle_pts[pi] + translation;
+            Vec3r transformed_pt = rot_mat * ot_circle_pts[pi] + translation;
             _e3d_mesh.points()[fi*_OT_TUBULAR_RES + pi] = easy3d::vec3(transformed_pt[0], transformed_pt[1], transformed_pt[2]);
         }
     }
@@ -202,11 +202,11 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     int it_index_offset = ot_frames.size()*_OT_TUBULAR_RES + 2;
     for (unsigned fi = 0; fi < it_frames.size(); fi++)
     {
-        const Eigen::Matrix3d rot_mat = it_frames[fi].transform().rotMat();
-        const Eigen::Vector3d translation = it_frames[fi].transform().translation();
+        const Mat3r rot_mat = it_frames[fi].transform().rotMat();
+        const Vec3r translation = it_frames[fi].transform().translation();
         for (unsigned pi = 0; pi < it_circle_pts.size(); pi++)
         {
-            Eigen::Vector3d transformed_pt = rot_mat * it_circle_pts[pi] + translation;
+            Vec3r transformed_pt = rot_mat * it_circle_pts[pi] + translation;
             _e3d_mesh.points()[it_index_offset + fi*_IT_TUBULAR_RES + pi] = easy3d::vec3(transformed_pt[0], transformed_pt[1], transformed_pt[2]);
         }
     }

@@ -29,7 +29,7 @@ class Simulation
         /** Protected default constructor - only callable from derived objects
          * Assumes that the _config object is set and exists
          */
-        explicit Simulation();
+        // explicit Simulation();
     
     public:
         virtual std::string toString(const int indent) const;

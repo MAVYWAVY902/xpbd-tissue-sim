@@ -30,9 +30,9 @@ class VirtuosoRobot : public Object
     VirtuosoArm* arm1() { return _arm1.get(); }
     VirtuosoArm* arm2() { return _arm2.get(); }
 
-    double endoscopeLength() const { return _endoscope_length; }
-    double endoscopeDiameter() const { return _endoscope_dia; }
-    double armSeparationDistance() const { return _arm_separation_dist; }
+    Real endoscopeLength() const { return _endoscope_length; }
+    Real endoscopeDiameter() const { return _endoscope_dia; }
+    Real armSeparationDistance() const { return _arm_separation_dist; }
 
     const Geometry::CoordinateFrame& endoscopeFrame() const { return _endoscope_frame; }
     const Geometry::CoordinateFrame& VBFrame() const { return _VB_frame; }
@@ -57,12 +57,15 @@ class VirtuosoRobot : public Object
 
     virtual void velocityUpdate() override;
 
+    #ifdef HAVE_CUDA
+    virtual void createGPUResource() override { assert(0); /* not implemented */ }
+    #endif
     private:
-    double _endoscope_dia;              // diameter (in m) of the endoscope
-    double _endoscope_length;           // length (in m) of the endoscope
-    double _arm_separation_dist;        // horizontal distance (in m) between the centers of the two arms
-    double _optic_vertical_dist;        // vertical distance (in m) between the centers of the arms and the optic
-    double _optic_tilt;            // rotation (in rad) of the optic around the positive X axis
+    Real _endoscope_dia;              // diameter (in m) of the endoscope
+    Real _endoscope_length;           // length (in m) of the endoscope
+    Real _arm_separation_dist;        // horizontal distance (in m) between the centers of the two arms
+    Real _optic_vertical_dist;        // vertical distance (in m) between the centers of the arms and the optic
+    Real _optic_tilt;            // rotation (in rad) of the optic around the positive X axis
 
     // frame at the center of the end of the endoscope
     // Z points forward away from the endoscope (aligned with initial arm Z axes)

@@ -83,10 +83,10 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
     Vec3r _last_force;  // the last force sent to the haptic device (used for smoothing)
 
     /** KEYBOARD INPUT */
-    constexpr static double IT_ROT_RATE = 3; // rad/s
-    constexpr static double IT_TRANS_RATE = 0.005; // m/s
-    constexpr static double OT_ROT_RATE = 3; // rad/s
-    constexpr static double OT_TRANS_RATE = 0.005; // m/s
+    constexpr static Real IT_ROT_RATE = 3; // rad/s
+    constexpr static Real IT_TRANS_RATE = 0.005; // m/s
+    constexpr static Real OT_ROT_RATE = 3; // rad/s
+    constexpr static Real OT_TRANS_RATE = 0.005; // m/s
 
     std::map<int, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
 };

@@ -28,25 +28,26 @@ namespace Sim
 Simulation::Simulation(const SimulationConfig* config)
     : _config(config)
 {
+    std::cout << "config ptr: " << config << ", " << _config << std::endl;
     // initialize gmsh
     gmsh::initialize();
 
     // set simulation properties based on YAML file
     _name = _config->name();
-    _description = _config->description().value();
-    _time_step = _config->timeStep().value();
-    _end_time = _config->endTime().value();
+    _description = _config->description();
+    _time_step = _config->timeStep();
+    _end_time = _config->endTime();
     _time = 0;
-    _g_accel = _config->gAccel().value();
-    _viewer_refresh_time = 1/_config->fps().value()*1000;
-    _time_between_collision_checks = 1.0/_config->collisionRate().value();
+    _g_accel = _config->gAccel();
+    _viewer_refresh_time = 1/_config->fps()*1000;
+    _time_between_collision_checks = 1.0/_config->collisionRate();
 
     // set the Simulation mode from the YAML config
-    _sim_mode = _config->simMode().value();
+    _sim_mode = _config->simMode();
 
     // initialize the graphics scene according to the type specified by the user
     // if "None", don't create a graphics scene
-    if (_config->visualization().value() == Visualization::EASY3D)
+    if (_config->visualization() == Visualization::EASY3D)
     {
         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
         _graphics_scene->init();
@@ -57,11 +58,6 @@ Simulation::Simulation(const SimulationConfig* config)
     // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
     _collision_scene = std::make_unique<CollisionScene>(this);
     _last_collision_detection_time = 0;
-}
-
-Simulation::Simulation()
-{
-
 }
 
 std::string Simulation::toString(const int indent) const

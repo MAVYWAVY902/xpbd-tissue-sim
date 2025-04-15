@@ -178,7 +178,7 @@ void Easy3DGraphicsScene::setCameraPerspective()
     _easy3d_viewer->camera()->setType(easy3d::Camera::PERSPECTIVE);
 }
 
-void Easy3DGraphicsScene::setCameraFOV(double fov)
+void Easy3DGraphicsScene::setCameraFOV(Real fov)
 {
     _easy3d_viewer->camera()->setFieldOfView(fov);
 }

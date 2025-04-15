@@ -1,26 +1,14 @@
 name: "blah"
 visualization: "Easy3D"
-g-accel: 0 # m/s2
+g-accel: 9.81 # m/s2
 # sim-mode: "Frame-by-frame"
 sim-mode: "Visualization"
 # sim-mode: "AFAP"
-time-step: 1e-3
+time-step: 5e-4
 collision-rate: 10100
 fps: 30
-end-time: 100
+end-time: 5
 objects:
-
-  -
-    name: "Arm1"
-    type: "VirtuosoArm"
-    outer-tube-diameter: 1.5e-1
-    outer-tube-curvature: 1e-0
-    outer-tube-translation: 1e-1
-    outer-tube-rotation: 45
-    inner-tube-diameter: 1e-1
-    inner-tube-translation: 2e-2
-    outer-tube-position: [0, 0, 0]
-    collisions: true
 
   -
     name: "Cube1"
@@ -47,7 +35,7 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 1
-    position: [0, 0, 1]
+    position: [0, 0, 2]
     velocity: [0, 0, 0.0]
     rotation: [0, 0, 0]
     num-solver-iters: 10
@@ -76,15 +64,15 @@ objects:
   #   fixed: true
   #   collisions: true
 
-  # -
-  #   name: "sphere"
-  #   type: "RigidSphere"
-  #   radius: 0.5
-  #   density: 10000
-  #   position: [0, 0, 1]
-  #   velocity: [0, 0, 0]
-  #   fixed: false
-  #   collisions: true
+  -
+    name: "sphere"
+    type: "RigidSphere"
+    radius: 0.5
+    density: 10000
+    position: [0, 0, 1]
+    velocity: [0, 0, 0]
+    fixed: true
+    collisions: true
 
   # - name: "box2"
   #   type: "RigidBox"

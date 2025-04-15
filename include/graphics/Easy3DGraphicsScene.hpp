@@ -50,7 +50,7 @@ class Easy3DGraphicsScene : public GraphicsScene
     virtual void setCameraPerspective() override;
 
     /** Sets the FOV of the camera (FOV in radians). */
-    virtual void setCameraFOV(double fov) override;
+    virtual void setCameraFOV(Real fov) override;
 
 
     /** Gets the camera view direction. */

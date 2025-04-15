@@ -12,23 +12,23 @@ class TransformationMatrix
 {
     public:
     explicit TransformationMatrix()
-        : _matrix(Eigen::Matrix4d::Identity())
+        : _matrix(Mat4r::Identity())
     {}
 
-    explicit TransformationMatrix(const Eigen::Matrix3d& rot_mat, const Eigen::Vector3d& origin)
-        : _matrix(Eigen::Matrix4d::Identity())
+    explicit TransformationMatrix(const Mat3r& rot_mat, const Vec3r& origin)
+        : _matrix(Mat4r::Identity())
     {
         _matrix.block<3, 3>(0,0) = rot_mat;
         _matrix.block<3, 1>(0,3) = origin;
     }
 
-    explicit TransformationMatrix(const Eigen::Matrix4d& t_mat)
+    explicit TransformationMatrix(const Mat4r& t_mat)
         : _matrix(t_mat)
     {}
 
     TransformationMatrix operator*(const TransformationMatrix& other) const
     {
-        const Eigen::Matrix4d res = _matrix * other._matrix;
+        const Mat4r res = _matrix * other._matrix;
         return TransformationMatrix(res);
     }
 
@@ -39,37 +39,37 @@ class TransformationMatrix
 
     TransformationMatrix operator+(const TransformationMatrix& other) const
     {
-        const Eigen::Matrix4d res = _matrix + other._matrix;
+        const Mat4r res = _matrix + other._matrix;
         return TransformationMatrix(res);
     }
 
     TransformationMatrix operator-(const TransformationMatrix& other) const
     {
-        const Eigen::Matrix4d res = _matrix - other._matrix;
+        const Mat4r res = _matrix - other._matrix;
         return TransformationMatrix(res);
     }
 
-    const Eigen::Matrix4d& asMatrix() const { return _matrix; }
+    const Mat4r& asMatrix() const { return _matrix; }
 
-    Eigen::Vector3d translation() const { return _matrix.block<3, 1>(0,3); }
-    void setTranslation(const Eigen::Vector3d& new_trans) { _matrix.block<3, 1>(0,3) = new_trans; }
+    Vec3r translation() const { return _matrix.block<3, 1>(0,3); }
+    void setTranslation(const Vec3r& new_trans) { _matrix.block<3, 1>(0,3) = new_trans; }
 
-    Eigen::Matrix3d rotMat() const { return _matrix.block<3,3>(0,0); }
+    Mat3r rotMat() const { return _matrix.block<3,3>(0,0); }
 
     TransformationMatrix inverse() const
     {
         return TransformationMatrix(rotMat().transpose(), -rotMat().transpose()*translation());
     }
 
-    Eigen::Matrix<double,6,6> adjoint() const
+    Mat6r adjoint() const
     {
-        Eigen::Matrix<double,6,6> mat;
-        mat << rotMat(), Eigen::Matrix3d::Zero(), GeometryUtils::Bracket_so3(translation())*rotMat(), rotMat();
+        Mat6r mat;
+        mat << rotMat(), Mat3r::Zero(), GeometryUtils::Bracket_so3(translation())*rotMat(), rotMat();
         return mat;
     }
 
     private:
-    Eigen::Matrix4d _matrix;
+    Mat4r _matrix;
 };
 
 } // namespace Geometry

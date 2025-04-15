@@ -140,6 +140,12 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_compile_definitions(Solver PRIVATE HAVE_CUDA)
     target_compile_definitions(ResidualSimulation PRIVATE HAVE_CUDA)
     target_compile_definitions(BeamSimulation PRIVATE HAVE_CUDA)
+    target_compile_definitions(VirtuosoSimulation PRIVATE HAVE_CUDA)
+
+    target_compile_definitions(Test PRIVATE HAVE_CUDA)
+    target_compile_definitions(BeamTest PRIVATE HAVE_CUDA)
+    target_compile_definitions(VirtuosoTest PRIVATE HAVE_CUDA)
+    target_compile_definitions(VirtuosoTracheaDemo PRIVATE HAVE_CUDA)
 
     # target_compile_options(GPU PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
     #                    -G

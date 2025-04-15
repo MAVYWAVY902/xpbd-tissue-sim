@@ -3,7 +3,7 @@
 namespace Solver
 {
 
-AttachmentConstraint::AttachmentConstraint(int v_ind, Real* v_ptr, Real m, const Eigen::Vector3d* attached_pos_ptr, const Eigen::Vector3d& attachment_offset)
+AttachmentConstraint::AttachmentConstraint(int v_ind, Real* v_ptr, Real m, const Vec3r* attached_pos_ptr, const Vec3r& attachment_offset)
 : Constraint(std::vector<PositionReference>({
     PositionReference(v_ind, v_ptr, m)
     })), _attached_pos_ptr(attached_pos_ptr), _attachment_offset(attachment_offset)
