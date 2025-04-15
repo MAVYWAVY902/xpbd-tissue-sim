@@ -23,12 +23,7 @@ namespace Sim
 class Simulation
 {
     public:
-        /** Creates a Simulation object with specified name and default parameters.
-         * @param name : the name of the Simulation
-         */
-        explicit Simulation(const std::string& config_filename);
-
-        explicit Simulation(SimulationConfig&& config);
+        explicit Simulation(const SimulationConfig* config);
 
     protected:
         /** Protected default constructor - only callable from derived objects
@@ -73,9 +68,9 @@ class Simulation
 
         virtual void notifyMouseButtonPressed(int button, int action, int modifiers);
 
-        virtual void notifyMouseMoved(Real x, Real y);
+        virtual void notifyMouseMoved(double x, double y);
 
-        virtual void notifyMouseScrolled(Real dx, Real dy);
+        virtual void notifyMouseScrolled(double dx, double dy);
     
     protected:
         /** Helper to add an object to the simulation given an ObjectConfig.
@@ -90,11 +85,9 @@ class Simulation
         /** Update graphics in the sim */
         virtual void _updateGraphics();
 
-        virtual void _init();
-
     protected:
         /** YAML config dictionary for setting up the simulation */
-        std::unique_ptr<SimulationConfig> _config;
+        const SimulationConfig* _config;
 
         /** Name of the simulation */
         std::string _name;

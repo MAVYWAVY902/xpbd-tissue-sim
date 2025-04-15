@@ -4,6 +4,8 @@
 #include "Simulation.hpp"
 #include "common/types.hpp"
 
+#include "config/OutputSimulationConfig.hpp"
+
 #include <fstream>
 
 namespace Sim
@@ -12,7 +14,7 @@ namespace Sim
 class OutputSimulation : public Simulation
 {
     public:
-    explicit OutputSimulation(const std::string& config_filename);
+    explicit OutputSimulation(const OutputSimulationConfig* config);
 
     ~OutputSimulation();
 
@@ -25,8 +27,6 @@ class OutputSimulation : public Simulation
 
     protected:
     virtual void _timeStep() override;
-
-    virtual void _init() override;
 
     
     Real _print_interval_s;

@@ -9,8 +9,8 @@
 namespace Sim
 {
 
-ResidualSimulation::ResidualSimulation(const std::string& config_filename)
-    : OutputSimulation(config_filename)
+ResidualSimulation::ResidualSimulation(const ResidualSimulationConfig* config)
+    : OutputSimulation(config)
 {
     _out_file << "Residual Simulation\n";
 }

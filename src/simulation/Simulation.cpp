@@ -24,7 +24,9 @@
 namespace Sim
 {
 
-void Simulation::_init()
+
+Simulation::Simulation(const SimulationConfig* config)
+    : _config(config)
 {
     // initialize gmsh
     gmsh::initialize();
@@ -55,18 +57,6 @@ void Simulation::_init()
     // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
     _collision_scene = std::make_unique<CollisionScene>(this);
     _last_collision_detection_time = 0;
-}
-
-Simulation::Simulation(const std::string& config_filename)
-{
-    _config = std::make_unique<SimulationConfig>(YAML::LoadFile(config_filename));
-    _init();
-}
-
-Simulation::Simulation(SimulationConfig&& config)
-{
-    _config = std::make_unique<SimulationConfig>(std::move(config));
-    _init();
 }
 
 Simulation::Simulation()
@@ -300,7 +290,7 @@ void Simulation::notifyMouseButtonPressed(int /* button */, int /* action */, in
     // do nothing
 }
 
-void Simulation::notifyMouseMoved(Real /* x */, Real /* y */)
+void Simulation::notifyMouseMoved(double /* x */, double /* y */)
 {
     // do nothing
 }
