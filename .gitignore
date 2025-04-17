@@ -11,6 +11,10 @@ CMakeFiles/
 Makefile
 .deb
 
+# ignore ROS directories
+install/
+log/
+
 # ignore .obj and .stl files
 *.obj
 *.stl
