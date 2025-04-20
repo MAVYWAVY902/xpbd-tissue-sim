@@ -13,9 +13,4 @@ target_sources(Solver
         ${SOLVER_SRC_DIR}/constraint/AttachmentConstraint.cpp
 
         ${SOLVER_SRC_DIR}/xpbd_projector/CombinedNeohookeanConstraintProjector.cpp
-
-        # ${SOLVER_SRC_DIR}/XPBDSolver.cpp
-        # ${SOLVER_SRC_DIR}/XPBDGaussSeidelSolver.cpp
-        # ${SOLVER_SRC_DIR}/XPBDJacobiSolver.cpp
-        # ${SOLVER_SRC_DIR}/XPBDParallelJacobiSolver.cpp
 )
