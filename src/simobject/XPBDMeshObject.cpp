@@ -68,7 +68,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
     // set size of collision constraint projector vectors
     using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
     using RigidCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
-    _solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(_mesh->numFaces());
+    _solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(_mesh->numFaces() + _mesh->numVertices());
     _solver.template setNumProjectorsOfType<RigidCollisionConstraintType>(_mesh->numFaces());
 
     // initialize the previous vertices matrix once we've loaded the mesh
@@ -132,6 +132,21 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addStaticCollisio
     // xpbd_collision_constraint.num_steps_unused = 0;
 
     // _collision_constraints.push_back(std::move(xpbd_collision_constraint));
+}
+
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addVertexStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n, int vert_ind)
+{
+    
+    Real* v_ptr = _mesh->vertexPointer(vert_ind);
+
+    Real m = vertexMass(vert_ind);
+
+    Solver::StaticDeformableCollisionConstraint& collision_constraint = 
+        _constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, vert_ind, v_ptr, m, vert_ind, v_ptr, m, vert_ind, v_ptr, m, 1, 0, 0);
+
+    // _solver.addConstraintProjector(_sim->dt(), &collision_constraint);
+    _solver.setConstraintProjector(_mesh->numFaces() + vert_ind, _sim->dt(), &collision_constraint);
 }
 
 template<typename SolverType, typename... ConstraintTypes>
@@ -347,6 +362,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_movePositionsIne
 template<typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_projectConstraints()
 {
+    std::cout << "Number of collision constraints: " << _constraints.template get<Solver::StaticDeformableCollisionConstraint>().size() << std::endl;
     _solver.solve();
 
     // TODO: update collision constraints unused

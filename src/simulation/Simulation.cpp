@@ -28,7 +28,6 @@ namespace Sim
 Simulation::Simulation(const SimulationConfig* config)
     : _config(config)
 {
-    std::cout << "config ptr: " << config << ", " << _config << std::endl;
     // initialize gmsh
     gmsh::initialize();
 
@@ -207,6 +206,7 @@ void Simulation::update()
 
 void Simulation::_timeStep()
 {
+    std::cout << "\n===Time step===" << std::endl;
     // auto t1 = std::chrono::steady_clock::now();
 
     if (_time - _last_collision_detection_time > _time_between_collision_checks)

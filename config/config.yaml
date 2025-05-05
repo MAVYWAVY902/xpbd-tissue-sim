@@ -1,13 +1,13 @@
 name: "blah"
 visualization: "Easy3D"
 g-accel: 9.81 # m/s2
-# sim-mode: "Frame-by-frame"
-sim-mode: "Visualization"
+sim-mode: "Frame-by-frame"
+# sim-mode: "Visualization"
 # sim-mode: "AFAP"
-time-step: 5e-4
+time-step: 1e-3
 collision-rate: 10100
 fps: 30
-end-time: 5
+end-time: 500
 objects:
 
   -
@@ -35,13 +35,13 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 1
-    position: [0, 0, 2]
+    position: [0, 0, 2.1]
     velocity: [0, 0, 0.0]
     rotation: [0, 0, 0]
-    num-solver-iters: 10
+    num-solver-iters: 1
     damping-gamma: 2000
     collisions: true
-    damping-multiplier: 50000
+    damping-multiplier: 10000
     solver-type: "Gauss-Seidel"
     # solver-type: "Jacobi"
     # solver-type: "Parallel-Jacobi"

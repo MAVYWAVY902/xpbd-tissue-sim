@@ -23,7 +23,7 @@ VirtuosoSimulation::VirtuosoSimulation(const VirtuosoSimulationConfig* config)
     }
     if (_input_device == SimulationInputDevice::MOUSE)
     {
-        _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
+        // _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
     }
 
     // initialize the keys map with relevant keycodes for controlling the Virtuoso robot with the keyboard

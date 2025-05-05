@@ -26,8 +26,12 @@ class FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : publi
    void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
       int face_ind, const Real u, const Real v, const Real w);
    
+   void addVertexStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n, int vert_ind);
+
    void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
       int face_ind, const Real u, const Real v, const Real w);
+
+   void clearCollisionConstraints();
 
  #ifdef HAVE_CUDA
    //  virtual void createGPUResource() override { assert(0); /* not implemented */ }
@@ -51,6 +55,8 @@ class FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : publi
     Real _damping_multiplier;
 
     std::vector<Real> _inv_B;
+
+    std::vector<bool> _vertices_in_collision;
 
 };
 

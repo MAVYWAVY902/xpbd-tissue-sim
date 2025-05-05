@@ -34,6 +34,7 @@ namespace Sim
         virtual int numConstraintsForPosition(const int index) const = 0;
         virtual void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
             int face_ind, const Real u, const Real v, const Real w) = 0;
+        virtual void addVertexStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n, int vert_ind) = 0;
         virtual void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
             int face_ind, const Real u, const Real v, const Real w) = 0;
         virtual void clearCollisionConstraints() = 0;

@@ -4,6 +4,7 @@
 #include "simobject/MeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/VirtuosoArm.hpp"
+#include "simobject/VirtuosoRobot.hpp"
 #include "geometry/SphereSDF.hpp"
 #include "geometry/BoxSDF.hpp"
 #include "geometry/CylinderSDF.hpp"
@@ -57,6 +58,14 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
     else if (Sim::VirtuosoArm* arm = dynamic_cast<Sim::VirtuosoArm*>(new_obj))
     {
         sdf = std::make_unique<Geometry::VirtuosoArmSDF>(arm);
+    }
+    else if (Sim::VirtuosoRobot* robot = dynamic_cast<Sim::VirtuosoRobot*>(new_obj))
+    {
+        if (robot->hasArm1())
+            addObject(robot->arm1(), nullptr);
+        if (robot->hasArm2())
+            addObject(robot->arm2(), nullptr);
+        return;
     }
 
  #ifdef HAVE_CUDA
@@ -194,7 +203,7 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
     for (int i = 0; i < mesh->numFaces(); i++)
     {
         // std::cout << arr[i].penetration_dist << "\n";
-        if (arr[i].penetration_dist < 0)
+        if (arr[i].penetration_dist <= 1e-4)
         {
             const Vec3i f = mesh->face(i);
             const Vec3r p = mesh->vertex(f[0])*arr[i].bary_coords.x + mesh->vertex(f[1])*arr[i].bary_coords.y + mesh->vertex(f[2])*arr[i].bary_coords.z;
@@ -224,12 +233,12 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         const Vec3r& p1 = mesh->vertex(f[0]);
         const Vec3r& p2 = mesh->vertex(f[1]);
         const Vec3r& p3 = mesh->vertex(f[2]);
-        // std::cout << "v1: " << p1[0] << ", " << p1[1] << ", " << p1[2] << "\tdist: " << sdf->evaluate(p1) << std::endl;
-        // std::cout << "v2: " << p2[0] << ", " << p2[1] << ", " << p2[2] << "\tdist: " << sdf->evaluate(p2) << std::endl;
-        // std::cout << "v3: " << p3[0] << ", " << p3[1] << ", " << p3[2] << "\tdist: " << sdf->evaluate(p3) << std::endl;
+        // std::cout << "v1: i=" << f[0] << "  " << p1[0] << ", " << p1[1] << ", " << p1[2] << "\tdist: " << sdf->evaluate(p1) << std::endl;
+        // std::cout << "v2: i=" << f[1] << "  " << p2[0] << ", " << p2[1] << ", " << p2[2] << "\tdist: " << sdf->evaluate(p2) << std::endl;
+        // std::cout << "v3: i=" << f[2] << "  " << p3[0] << ", " << p3[1] << ", " << p3[2] << "\tdist: " << sdf->evaluate(p3) << std::endl;
         const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
         const Real distance = sdf->evaluate(x);
-        if (distance <= 1e-4)
+        if (distance <= 1e1)
         {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
             // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
             const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
@@ -256,68 +265,68 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         }
 
         // TODO: check each vertex in the mesh separately instead of inside the faces loop
-        const Real distance_p1 = sdf->evaluate(p1);
-        if (distance_p1 <= 1e-4)
-        {
-            const auto [u, v, w] = GeometryUtils::barycentricCoords(p1, p1, p2, p3);
-            const Vec3r grad = sdf->gradient(p1);
-            const Vec3r surface_x = p1 - grad*distance;
+        // const Real distance_p1 = sdf->evaluate(p1);
+        // if (distance_p1 <= 1e-1)
+        // {
+        //     const auto [u, v, w] = GeometryUtils::barycentricCoords(p1, p1, p2, p3);
+        //     const Vec3r grad = sdf->gradient(p1);
+        //     const Vec3r surface_x = p1 - grad*distance;
 
-            if (!rigid_obj)
-            {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
-            }
-            else if (rigid_obj->isFixed())
-            {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
-            }
-            else
-            {
-                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
-            }
-        }
+        //     if (!rigid_obj)
+        //     {
+        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[0]);
+        //     }
+        //     else if (rigid_obj->isFixed())
+        //     {
+        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[0]);
+        //     }
+        //     else
+        //     {
+        //         xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
+        //     }
+        // }
 
-        const Real distance_p2 = sdf->evaluate(p2);
-        if (distance_p2 <= 1e-4)
-        {
-            const auto [u, v, w] = GeometryUtils::barycentricCoords(p2, p1, p2, p3);
-            const Vec3r grad = sdf->gradient(p2);
-            const Vec3r surface_x = p2 - grad*distance;
+        // const Real distance_p2 = sdf->evaluate(p2);
+        // if (distance_p2 <= 1e-1)
+        // {
+        //     const auto [u, v, w] = GeometryUtils::barycentricCoords(p2, p1, p2, p3);
+        //     const Vec3r grad = sdf->gradient(p2);
+        //     const Vec3r surface_x = p2 - grad*distance;
 
-            if (!rigid_obj)
-            {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
-            }
-            else if (rigid_obj->isFixed())
-            {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
-            }
-            else
-            {
-                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
-            }
-        }
+        //     if (!rigid_obj)
+        //     {
+        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[1]);
+        //     }
+        //     else if (rigid_obj->isFixed())
+        //     {
+        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[1]);
+        //     }
+        //     else
+        //     {
+        //         xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
+        //     }
+        // }
 
-        const Real distance_p3 = sdf->evaluate(p3);
-        if (distance_p3 <= 1e-4)
-        {
-            const auto [u, v, w] = GeometryUtils::barycentricCoords(p3, p1, p2, p3);
-            const Vec3r grad = sdf->gradient(p3);
-            const Vec3r surface_x = p3 - grad*distance;
+        // const Real distance_p3 = sdf->evaluate(p3);
+        // if (distance_p3 <= 1e-1)
+        // {
+        //     const auto [u, v, w] = GeometryUtils::barycentricCoords(p3, p1, p2, p3);
+        //     const Vec3r grad = sdf->gradient(p3);
+        //     const Vec3r surface_x = p3 - grad*distance;
 
-            if (!rigid_obj)
-            {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
-            }
-            else if (rigid_obj->isFixed())
-            {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
-            }
-            else
-            {
-                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
-            }
-        }
+        //     if (!rigid_obj)
+        //     {
+        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[2]);
+        //     }
+        //     else if (rigid_obj->isFixed())
+        //     {
+        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[2]);
+        //     }
+        //     else
+        //     {
+        //         xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
+        //     }
+        // }
     }
  #endif
 }

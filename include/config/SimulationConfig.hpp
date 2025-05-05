@@ -79,9 +79,6 @@ class SimulationConfig : public Config
         _extractParameterWithOptions("visualization", node, _visualization, VISUALIZATION_OPTIONS(), DEFAULT_VISUALIZATION());
         _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
         _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
-
-        std::cout << "description has value? " << _description.value.has_value() << std::endl;
-
         _extractParameter("fps", node, _fps, DEFAULT_FPS());
         _extractParameter("collision-rate", node, _collision_rate, DEFAULT_COLLISION_RATE());
 
@@ -121,8 +118,6 @@ class SimulationConfig : public Config
             _object_configs.push_back(std::move(config));
             
         }
-
-        std::cout << "description has value? " << _description.value.has_value() << std::endl;
     }
 
     explicit SimulationConfig(const std::string& name, const std::string& description,
@@ -150,7 +145,7 @@ class SimulationConfig : public Config
     SimulationMode simMode() const { return _sim_mode.value.value(); }
     Visualization visualization() const { return _visualization.value.value(); }
     Real gAccel() const { return _g_accel.value.value(); }
-    std::string description() const { std::cout << "description has value? " << _description.value.has_value() << std::endl; return _description.value.value(); }
+    std::string description() const { return _description.value.value(); }
     Real fps() const { return _fps.value.value(); }
     Real collisionRate() const { return _collision_rate.value.value(); }
 
