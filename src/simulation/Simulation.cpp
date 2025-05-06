@@ -49,8 +49,6 @@ Simulation::Simulation(const SimulationConfig* config)
     if (_config->visualization().value() == Visualization::EASY3D)
     {
         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
-        _graphics_scene->init();
-        _graphics_scene->viewer()->registerSimulation(this);
     }
 
     // initialize the collision scene
@@ -154,17 +152,23 @@ Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
 
 void Simulation::setup()
 {   
+    /** Configure graphics scene... */ 
+    if (_graphics_scene)
+    {
+        _graphics_scene->init();
+        _graphics_scene->viewer()->registerSimulation(this);
+        // add text that displays the current Sim Time  
+        _graphics_scene->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
+    }
+
+    /** Add simulation objects from Config object... */
     for (const auto& obj_config : _config->objectConfigs())
     {
         _addObjectFromConfig(obj_config.get());
     }
         
 
-    // add text that displays the current Sim Time   
-    if (_graphics_scene)
-    {
-        _graphics_scene->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
-    }
+    
 }
 
 void Simulation::update()

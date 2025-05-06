@@ -2,6 +2,7 @@
 #include "std_msgs/msg/string.hpp"
 
 #include <chrono>
+#include <thread>
 
 class SimBridge : public rclcpp::Node
 {

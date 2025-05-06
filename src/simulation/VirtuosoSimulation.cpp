@@ -21,10 +21,6 @@ VirtuosoSimulation::VirtuosoSimulation(const VirtuosoSimulationConfig* config)
         
         _last_haptic_pos = _haptic_device_manager->position(_haptic_device_manager->deviceHandles()[0]);
     }
-    if (_input_device == SimulationInputDevice::MOUSE)
-    {
-        _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
-    }
 
     // initialize the keys map with relevant keycodes for controlling the Virtuoso robot with the keyboard
     int key_codes[] = {
@@ -48,6 +44,11 @@ void VirtuosoSimulation::setup()
 {
     Simulation::setup();
     
+    if (_input_device == SimulationInputDevice::MOUSE)
+    {
+        _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
+    }
+
     // find the VirtuosoRobot object - necessary for Virtuoso simulation controls
     for (auto& obj : _objects)
     {
