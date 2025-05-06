@@ -67,7 +67,7 @@ void VirtuosoSimulation::setup()
     
     // create an object at the tip of the robot to show where grasping is
     RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
-        1.0, 0.002, false, true, false);
+        1.0, 0.0005, false, true, false);
     _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
     assert(_tip_cursor);
     _tip_cursor->setPosition(_active_arm->tipPosition());

@@ -38,7 +38,7 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
     // set size of collision constraint projector vectors
     using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
     using RigidCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
-    this->_solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(this->_mesh->numFaces() + this->_mesh->numVertices());
+    // this->_solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(4*this->_mesh->numFaces() + this->_mesh->numVertices());
     this->_solver.template setNumProjectorsOfType<RigidCollisionConstraintType>(this->_mesh->numFaces());
 
     // initialize the previous vertices matrix once we've loaded the mesh
@@ -139,7 +139,8 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addStat
     Solver::StaticDeformableCollisionConstraint& collision_constraint = 
         this->_constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
-    this->_solver.setConstraintProjector(face_ind, this->_sim->dt(), &collision_constraint); // TODO: accomodate for first-order method
+    this->_solver.addConstraintProjector(this->_sim->dt(), &collision_constraint);
+    // this->_solver.setConstraintProjector(face_ind, this->_sim->dt(), &collision_constraint); // TODO: accomodate for first-order method
 
     // XPBDCollisionConstraint xpbd_collision_constraint;
     // xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -160,10 +161,10 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addVert
     Solver::StaticDeformableCollisionConstraint& collision_constraint = 
         this->_constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, vert_ind, v_ptr, m, vert_ind, v_ptr, m, vert_ind, v_ptr, m, 1, 0, 0);
 
-    // _solver.addConstraintProjector(_sim->dt(), &collision_constraint);
-    this->_solver.setConstraintProjector(this->_mesh->numFaces() + vert_ind, this->_sim->dt(), &collision_constraint);
+    this->_solver.addConstraintProjector(this->_sim->dt(), &collision_constraint);
+    // this->_solver.setConstraintProjector(this->_mesh->numFaces() + vert_ind, this->_sim->dt(), &collision_constraint);
 
-    std::cout << "addVertexStaticCollisionConstraint...vertex = " << vert_ind << std::endl;
+    // std::cout << "addVertexStaticCollisionConstraint...vertex = " << vert_ind << std::endl;
 }
 
 template<typename SolverType, typename... ConstraintTypes>

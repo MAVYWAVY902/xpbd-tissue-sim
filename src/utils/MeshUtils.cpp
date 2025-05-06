@@ -103,6 +103,14 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
 
     std::filesystem::path file_path(filename);
 
+    if (file_path.extension() == ".obj" || file_path.extension() == ".stl")
+    {
+        convertToSTL(filename);
+        convertSTLtoMSH(file_path.replace_extension(".stl"));
+    }
+
+    file_path = file_path.replace_extension(".msh");
+
     // ensure the file is a .msh file
     if (file_path.extension() != ".msh" && file_path.extension() != ".MSH")
     {

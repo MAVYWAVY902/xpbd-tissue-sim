@@ -121,10 +121,10 @@ class ConstraintProjector
             coordinate_updates_ptr[3*i+2].ptr = positions[i].position_ptr+2;
             coordinate_updates_ptr[3*i+2].update = update_z;
 
-            if (positions[i].index == 337)
-            {
-                std::cout << "Index 337 position update: "  << update_x << ", " << update_y << ", " << update_z << std::endl;
-            }
+            // if (positions[i].index == 337)
+            // {
+            //     std::cout << "Index 337 position update: "  << update_x << ", " << update_y << ", " << update_z << std::endl;
+            // }
         }
     }
 

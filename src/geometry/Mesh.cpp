@@ -39,6 +39,25 @@ Mesh::Mesh(Mesh&& other)
  #endif
 }
 
+void Mesh::updateVertexNormals()
+{
+    _vertex_normals = VerticesMat::Zero(3, numVertices());
+    for (int i = 0; i < numFaces(); i++)
+    {
+        const Vec3i& f = face(i);
+        // edge 0->1
+        const Vec3r e01 = vertex(f[1]) - vertex(f[0]);
+        // edge 1->2
+        const Vec3r e12 = vertex(f[2]) - vertex(f[1]);
+        // edge 2->0
+        const Vec3r e20 = vertex(f[2]) - vertex(f[0]);
+
+        _vertex_normals.col(f[0]) += e20.cross(e01);
+        _vertex_normals.col(f[1]) += e01.cross(e12);
+        _vertex_normals.col(f[2]) += e12.cross(e20);
+    }
+}
+
 Real* Mesh::vertexPointer(const int index) const
 {
     assert(index < numVertices());

@@ -22,10 +22,10 @@ void StaticDeformableCollisionConstraint::evaluate(Real* C) const
     const Vec3r a = _u*Eigen::Map<Vec3r>(_positions[0].position_ptr) + _v*Eigen::Map<Vec3r>(_positions[1].position_ptr) + _w*Eigen::Map<Vec3r>(_positions[2].position_ptr);
     *C = _collision_normal.dot(a - _p);
 
-    if (_positions[0].index == 337 || _positions[1].index == 337 || _positions[2].index == 337)
-    {
-        std::cout << "Index 337 collision constraint violation: " << *C << std::endl;
-    }
+    // if (_positions[0].index == 337 || _positions[1].index == 337 || _positions[2].index == 337)
+    // {
+    //     std::cout << "Index 337 collision constraint violation: " << *C << std::endl;
+    // }
 
     // std::cout << "C: " << *C << std::endl;
 }

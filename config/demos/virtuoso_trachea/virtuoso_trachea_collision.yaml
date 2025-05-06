@@ -1,11 +1,14 @@
 name: "Virtuoso Trachea"
 
 # Tissue grasping simulation-specific parameters
-input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
-fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
-tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"
+input-device: "Keyboard" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
+# fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
+# tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"
 # goal-filename: "../resource/demos/trachea_virtuoso/goals/goal1.obj"
 goals-folder: "../resource/demos/trachea_virtuoso/goals/"
+
+fixed-faces-filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined_fixed_faces.txt"
+tumor-faces-filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined_tumor_faces.txt"
 
 # device-name1: "LeftOmni"
 # device-name2: "RightOmni"
@@ -27,7 +30,8 @@ objects:
     # type: "XPBDMeshObject"
     type: "FirstOrderXPBDMeshObject"
     # filename: "../resource/cube/cube8.msh"
-    filename: "../resource/demos/trachea_virtuoso/trachea_with_tumor.msh"
+    # filename: "../resource/demos/trachea_virtuoso/trachea_with_tumor.msh"
+    filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined.msh"
     material:
       name: "Soft Tissue"
       density: 1000
@@ -49,7 +53,7 @@ objects:
     with-residual: false
     with-damping: false
     # damping-multiplier: 400000000
-    damping-multiplier: 400000000
+    damping-multiplier: 2000000000
     collisions: true
     draw-faces: true
     draw-points: true
@@ -74,17 +78,17 @@ objects:
       inner-tube-diameter: 1.04e-3
       inner-tube-translation: 20e-3
 
-    -
-      name: "Arm2"
-      type: "VirtuosoArm"
-      outer-tube-diameter: 1.56e-3
-      outer-tube-radius-of-curvature: 1.5383e-2
-      outer-tube-distal-straight-length: 5e-3
-      outer-tube-translation: 7e-3
-      outer-tube-rotation: -45
-      inner-tube-rotation: 45
-      inner-tube-diameter: 1.04e-3
-      inner-tube-translation: 20e-3
+    # -
+    #   name: "Arm2"
+    #   type: "VirtuosoArm"
+    #   outer-tube-diameter: 1.56e-3
+    #   outer-tube-radius-of-curvature: 1.5383e-2
+    #   outer-tube-distal-straight-length: 5e-3
+    #   outer-tube-translation: 7e-3
+    #   outer-tube-rotation: -45
+    #   inner-tube-rotation: 45
+    #   inner-tube-diameter: 1.04e-3
+    #   inner-tube-translation: 20e-3
 
   
 

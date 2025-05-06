@@ -43,26 +43,26 @@ class XPBDGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjecto
             }
         });
 
-        std::cout << "===Second Projection of Static Collision Cosntraints"  << std::endl;
-        int num_valid = 0;
-        for (auto& proj : this->_constraint_projectors.template get<ConstraintProjector<IsFirstOrder, StaticDeformableCollisionConstraint>>())
-        {
-            if (!proj.isValid())
-                continue;
+        // std::cout << "===Second Projection of Static Collision Cosntraints"  << std::endl;
+        // int num_valid = 0;
+        // for (auto& proj : this->_constraint_projectors.template get<ConstraintProjector<IsFirstOrder, StaticDeformableCollisionConstraint>>())
+        // {
+        //     if (!proj.isValid())
+        //         continue;
             
-            num_valid++;
+        //     num_valid++;
 
-            proj.initialize();
-            proj.project(this->_coordinate_updates.data());
+        //     proj.initialize();
+        //     proj.project(this->_coordinate_updates.data());
 
-            // apply the position updates
-            for (int i = 0; i < proj.numCoordinates(); i++)
-            {
-                if (this->_coordinate_updates[i].ptr)
-                    *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
-            }
-        }
-        std::cout << "Num valid static collision constraint projectors: " << num_valid << std::endl;
+        //     // apply the position updates
+        //     for (int i = 0; i < proj.numCoordinates(); i++)
+        //     {
+        //         if (this->_coordinate_updates[i].ptr)
+        //             *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
+        //     }
+        // }
+        // std::cout << "Num valid static collision constraint projectors: " << num_valid << std::endl;
     }
 };
 

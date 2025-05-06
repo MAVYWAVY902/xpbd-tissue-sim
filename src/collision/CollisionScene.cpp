@@ -233,15 +233,61 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         const Vec3r& p1 = mesh->vertex(f[0]);
         const Vec3r& p2 = mesh->vertex(f[1]);
         const Vec3r& p3 = mesh->vertex(f[2]);
+
+        const int num_samples = 3;
+        for (int si = 0; si <= num_samples; si++)
+        {
+            for (int sj = 0; sj <= num_samples - si; sj++)
+            {
+                const Real u = (Real)(si+1) / (num_samples+2);
+                const Real v = (Real)(sj+1) / (num_samples+2);
+                const Real w = 1 - u - v;
+                const Vec3r x = u*p1 + v*p2 + w*p3;
+                const Real distance = sdf->evaluate(x);
+                if (distance <= 1e-3)
+                {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
+                    // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
+                    const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
+                    const Vec3r grad = sdf->gradient(x);
+                    const Vec3r surface_x = x - grad*distance;
+                    // std::cout << "COLLISION!" << std::endl;
+                    // std::cout << "u: " << u << ", v: " << v << ", w: " << w << std::endl;
+                    // std::cout << "position: " << x[0] << ", " << x[1] << ", " << x[2] << "\tnormal: " << grad[0] << ", " << grad[1] << ", " << grad[2] << std::endl;
+                    // std::cout << "surface position: " << surface_x[0] << ", " << surface_x[1] << ", " << surface_x[2] << std::endl;
+                
+                    if (!rigid_obj)
+                    {
+                        xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
+                    }
+                    else if (rigid_obj->isFixed())
+                    {
+                        xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
+                    }
+                    else
+                    {
+                        xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
+                    }
+                    
+                }
+            }
+        }
+        
         // std::cout << "v1: i=" << f[0] << "  " << p1[0] << ", " << p1[1] << ", " << p1[2] << "\tdist: " << sdf->evaluate(p1) << std::endl;
         // std::cout << "v2: i=" << f[1] << "  " << p2[0] << ", " << p2[1] << ", " << p2[2] << "\tdist: " << sdf->evaluate(p2) << std::endl;
         // std::cout << "v3: i=" << f[2] << "  " << p3[0] << ", " << p3[1] << ", " << p3[2] << "\tdist: " << sdf->evaluate(p3) << std::endl;
-        const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
+        // const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
+        
+    }
+
+    // iterate through vertices
+    for (int i = 0; i < mesh->numVertices(); i++)
+    {
+        const Vec3r x = mesh->vertex(i);
         const Real distance = sdf->evaluate(x);
-        if (distance <= 1e1)
+
+        if (distance <= 1e-3)
         {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
             // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
-            const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
             const Vec3r grad = sdf->gradient(x);
             const Vec3r surface_x = x - grad*distance;
             // std::cout << "COLLISION!" << std::endl;
@@ -251,82 +297,14 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         
             if (!rigid_obj)
             {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
+                xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, i);
             }
             else if (rigid_obj->isFixed())
             {
-                xpbd_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
-            }
-            else
-            {
-                xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
+                xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, i);
             }
             
         }
-
-        // TODO: check each vertex in the mesh separately instead of inside the faces loop
-        // const Real distance_p1 = sdf->evaluate(p1);
-        // if (distance_p1 <= 1e-1)
-        // {
-        //     const auto [u, v, w] = GeometryUtils::barycentricCoords(p1, p1, p2, p3);
-        //     const Vec3r grad = sdf->gradient(p1);
-        //     const Vec3r surface_x = p1 - grad*distance;
-
-        //     if (!rigid_obj)
-        //     {
-        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[0]);
-        //     }
-        //     else if (rigid_obj->isFixed())
-        //     {
-        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[0]);
-        //     }
-        //     else
-        //     {
-        //         xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
-        //     }
-        // }
-
-        // const Real distance_p2 = sdf->evaluate(p2);
-        // if (distance_p2 <= 1e-1)
-        // {
-        //     const auto [u, v, w] = GeometryUtils::barycentricCoords(p2, p1, p2, p3);
-        //     const Vec3r grad = sdf->gradient(p2);
-        //     const Vec3r surface_x = p2 - grad*distance;
-
-        //     if (!rigid_obj)
-        //     {
-        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[1]);
-        //     }
-        //     else if (rigid_obj->isFixed())
-        //     {
-        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[1]);
-        //     }
-        //     else
-        //     {
-        //         xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
-        //     }
-        // }
-
-        // const Real distance_p3 = sdf->evaluate(p3);
-        // if (distance_p3 <= 1e-1)
-        // {
-        //     const auto [u, v, w] = GeometryUtils::barycentricCoords(p3, p1, p2, p3);
-        //     const Vec3r grad = sdf->gradient(p3);
-        //     const Vec3r surface_x = p3 - grad*distance;
-
-        //     if (!rigid_obj)
-        //     {
-        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[2]);
-        //     }
-        //     else if (rigid_obj->isFixed())
-        //     {
-        //         xpbd_obj->addVertexStaticCollisionConstraint(sdf, surface_x, grad, f[2]);
-        //     }
-        //     else
-        //     {
-        //         xpbd_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
-        //     }
-        // }
     }
  #endif
 }
