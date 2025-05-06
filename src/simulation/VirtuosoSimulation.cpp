@@ -23,7 +23,7 @@ VirtuosoSimulation::VirtuosoSimulation(const VirtuosoSimulationConfig* config)
     }
     if (_input_device == SimulationInputDevice::MOUSE)
     {
-        // _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
+        _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
     }
 
     // initialize the keys map with relevant keycodes for controlling the Virtuoso robot with the keyboard
@@ -163,7 +163,7 @@ void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
     {
         if (_keys_held[32] > 0) // space bar = clutch
         {
-            const Real scaling = 0.0005;
+            const Real scaling = 0.0001;
             const Vec3r view_dir = _graphics_scene->cameraViewDirection();
 
             const Vec3r current_tip_position = _tip_cursor->position();

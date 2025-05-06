@@ -234,7 +234,14 @@ void CollisionScene::_collideObjectPair(CollisionObject& c_obj1, CollisionObject
         const Vec3r& p2 = mesh->vertex(f[1]);
         const Vec3r& p3 = mesh->vertex(f[2]);
 
-        const int num_samples = 3;
+        const Real p1p2 = (p2-p1).norm();
+        const Real p1p3 = (p3-p1).norm();
+        const Real p2p3 = (p3-p2).norm();
+
+        const Real max_edge = std::max({p1p2, p1p3, p2p3});
+        const int num_samples = (int)(5*max_edge / 1e-3);
+
+        // const int num_samples = 4;
         for (int si = 0; si <= num_samples; si++)
         {
             for (int sj = 0; sj <= num_samples - si; sj++)

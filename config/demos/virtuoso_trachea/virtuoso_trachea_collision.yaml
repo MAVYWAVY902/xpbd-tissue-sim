@@ -1,14 +1,14 @@
 name: "Virtuoso Trachea"
 
 # Tissue grasping simulation-specific parameters
-input-device: "Keyboard" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
-# fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
-# tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"
+input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
+fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
+tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"
 # goal-filename: "../resource/demos/trachea_virtuoso/goals/goal1.obj"
 goals-folder: "../resource/demos/trachea_virtuoso/goals/"
 
-fixed-faces-filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined_fixed_faces.txt"
-tumor-faces-filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined_tumor_faces.txt"
+# fixed-faces-filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined_fixed_faces.txt"
+# tumor-faces-filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined_tumor_faces.txt"
 
 # device-name1: "LeftOmni"
 # device-name2: "RightOmni"
@@ -30,12 +30,12 @@ objects:
     # type: "XPBDMeshObject"
     type: "FirstOrderXPBDMeshObject"
     # filename: "../resource/cube/cube8.msh"
-    # filename: "../resource/demos/trachea_virtuoso/trachea_with_tumor.msh"
-    filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined.msh"
+    filename: "../resource/demos/trachea_virtuoso/trachea_with_tumor.msh"
+    # filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined.msh"
     material:
       name: "Soft Tissue"
       density: 1000
-      E: 6e4
+      E: 6e5
       nu: 0.49
     color: [1.0, 0.3, 0.2, 1.0]
     draw-points: false
@@ -43,7 +43,7 @@ objects:
     max-size: 0.06
     position: [0,-0.03, 0]
     velocity: [0, 0, 0]
-    rotation: [0, 0, 0]
+    rotation: [0, 180, 0]
     num-solver-iters: 1
     residual-policy: "Never"
     solver-type: "Gauss-Seidel"
@@ -52,8 +52,8 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     with-residual: false
     with-damping: false
-    # damping-multiplier: 400000000
-    damping-multiplier: 2000000000
+    damping-multiplier: 4000000000
+    # damping-multiplier: 20000000000
     collisions: true
     draw-faces: true
     draw-points: true
