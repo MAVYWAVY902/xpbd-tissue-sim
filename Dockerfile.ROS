@@ -1,4 +1,4 @@
-FROM ubuntu:jammy AS build
+FROM ubuntu:noble AS build
 
 #########################
 # Package install
@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
 # create directory for third party software
 WORKDIR /thirdparty
 
-# ROS2 Humble installation
+# ROS2 Jazzy installation
 # Set the locale
 RUN apt-get update && apt-get install -y locales && \
     locale-gen en_US en_US.UTF-8 && \
@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y locales && \
 
 # Set the timezone
 ENV ROS_VERSION=2
-ENV ROS_DISTRO=humble
+ENV ROS_DISTRO=jazzy
 ENV ROS_PYTHON_VERSION=3
 ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -44,7 +44,7 @@ RUN apt-get update && apt-get install -y software-properties-common curl && \
 
     # Install ROS 2 packages
     RUN apt-get update && apt-get upgrade -y && \
-        apt-get install -y ros-humble-desktop 
+        apt-get install -y ros-jazzy-desktop 
 
 # install bootstrap tools
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -61,12 +61,12 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 # bootstrap rosdep
 RUN rosdep init && \
-  rosdep update --rosdistro humble
+  rosdep update --rosdistro jazzy
 
 # Environment setup
-RUN echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc
+RUN echo 'source /opt/ros/jazzy/setup.bash' >> ~/.bashrc
 RUN echo '#!/usr/bin/env bash' > /ros_entrypoint.sh
-RUN echo 'source /opt/ros/humble/setup.bash' >> /ros_entrypoint.sh
+RUN echo 'source /opt/ros/jazzy/setup.bash' >> /ros_entrypoint.sh
 RUN echo 'exec "$@"' >> /ros_entrypoint.sh
 RUN chmod +x /ros_entrypoint.sh
 
