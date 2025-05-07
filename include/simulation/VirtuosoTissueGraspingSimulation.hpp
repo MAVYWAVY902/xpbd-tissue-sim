@@ -29,6 +29,8 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 
     virtual void notifyMouseScrolled(double dx, double dy) override;
 
+    const Geometry::TetMesh* tissueMesh() const { assert(_tissue_obj); return _tissue_obj->tetMesh(); }
+
     protected:
 
     void _updateGraphics() override;

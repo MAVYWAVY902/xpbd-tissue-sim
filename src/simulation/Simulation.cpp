@@ -26,7 +26,7 @@ namespace Sim
 
 
 Simulation::Simulation(const SimulationConfig* config)
-    : _config(config)
+    : _setup(false), _config(config)
 {
     // initialize gmsh
     gmsh::initialize();
@@ -152,6 +152,12 @@ Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
 
 void Simulation::setup()
 {   
+    // make sure we haven't set up already before
+    assert(!_setup);
+
+    _setup = true;
+
+
     /** Configure graphics scene... */ 
     if (_graphics_scene)
     {
@@ -317,8 +323,9 @@ void Simulation::notifyMouseScrolled(double /* dx */, double /* dy */)
 
 int Simulation::run()
 {
-    // first, setup
-    setup();
+    // first, setup if we haven't done so already
+    if (!_setup)
+        setup();
 
     // spwan the update thread
     std::thread update_thread;

@@ -175,6 +175,21 @@ RUN ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/libtinfo.so.5
 RUN export GTDD_HOME=/root/.3dsystems
 
 
+
+####################################
+# Foxglove setup
+####################################
+
+# download and install Foxglove
+WORKDIR /thirdparty
+RUN wget https://get.foxglove.dev/desktop/latest/foxglove-studio-latest-linux-amd64.deb
+RUN apt-get update
+RUN apt-get install foxglove-studio-*.deb
+
+# install rosbridge server package
+RUN apt-get install ros-jazzy-rosbridge-server -y
+
+
 WORKDIR /workspace
 
 CMD "/bin/bash"

@@ -15,12 +15,14 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(shape_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(Eigen3 3.3 REQUIRED)   # find Eigen
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 
 add_executable(sim_bridge src/SimBridge.cpp src/sim_bridge.cpp)
-ament_target_dependencies(sim_bridge rclcpp std_msgs geometry_msgs)
+ament_target_dependencies(sim_bridge rclcpp std_msgs geometry_msgs shape_msgs sensor_msgs)
 target_link_libraries(sim_bridge 
   ResidualSimulation
   VirtuosoSimulation

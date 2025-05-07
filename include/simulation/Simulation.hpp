@@ -109,6 +109,9 @@ class Simulation
         virtual void _updateGraphics();
 
     protected:
+        /** Whether or not the simulation has been setup already with a call to setup()  */
+        bool _setup;
+        
         /** YAML config dictionary for setting up the simulation */
         const SimulationConfig* _config;
 
