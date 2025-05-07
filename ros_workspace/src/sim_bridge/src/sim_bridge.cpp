@@ -5,7 +5,7 @@
 #include "config/VirtuosoSimulationConfig.hpp"
 #include "simulation/VirtuosoSimulation.hpp"
 
-void createAndRunSim(Sim::Simulation* sim)
+void runSim(Sim::Simulation* sim)
 {
     // std::cout << "Sim dt: " << sim->dt() << std::endl;
     sim->run();
@@ -19,9 +19,9 @@ int main(int argc, char ** argv)
     VirtuosoSimulationConfig config(YAML::LoadFile(config_filename));
     Sim::VirtuosoSimulation sim(&config);
 
-    std::thread sim_thread(createAndRunSim, &sim);
+    std::thread sim_thread(runSim, &sim);
 
-    rclcpp::spin(std::make_shared<SimBridge>());
+    rclcpp::spin(std::make_shared<SimBridge>(&sim));
 
     sim_thread.join();
 

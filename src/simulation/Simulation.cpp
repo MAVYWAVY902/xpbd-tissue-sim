@@ -185,6 +185,17 @@ void Simulation::update()
     {
         // the elapsed seconds in wall time since the simulation has started
         Real wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
+        
+        // check if any callbacks need to be called
+        for (auto& cb : _callbacks)
+        {
+            if (wall_time_elapsed_s > cb.next_exec_time)
+            {
+                cb.callback();
+                cb.next_exec_time = cb.next_exec_time + cb.interval;
+            }
+        }
+
         // if the simulation is ahead of the current elapsed wall time, stall
         if (_sim_mode == SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
         {

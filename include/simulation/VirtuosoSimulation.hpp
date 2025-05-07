@@ -34,6 +34,10 @@ class VirtuosoSimulation : public Simulation
 
     virtual void notifyMouseScrolled(double dx, double dy) override;
 
+    const VirtuosoRobot* virtuosoRobot() const { return _virtuoso_robot; }
+    const VirtuosoArm* activeArm() const { return _active_arm; }
+    const Vec3r activeTipPosition() const { return _tip_cursor->position(); }
+
     protected:
 
     void _updateGraphics() override;

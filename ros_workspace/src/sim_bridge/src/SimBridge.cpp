@@ -2,16 +2,22 @@
 
 
 
-SimBridge::SimBridge()
-: rclcpp::Node("sim_bridge"), _count(0)
+SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
+: rclcpp::Node("sim_bridge"), _sim(sim)
 {
-    _publisher = this->create_publisher<std_msgs::msg::String>("topic", 10);
+    _tip_position_publisher = this->create_publisher<geometry_msgs::msg::Point>("tip_position", 10);
     auto timer_callback = 
         [this]() -> void {
-            auto message = std_msgs::msg::String();
-            message.data = "Hellow, world! " + std::to_string(this->_count++);
-            RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-            this->_publisher->publish(message);
+            const Vec3r tip_pos = this->_sim->activeTipPosition();
+
+            auto message = geometry_msgs::msg::Point();
+            message.x = tip_pos[0];
+            message.y = tip_pos[1];
+            message.z = tip_pos[2];
+
+            // RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+            this->_tip_position_publisher->publish(message);
         };
-    _timer = this->create_wall_timer(std::chrono::milliseconds(500), timer_callback);
+
+    _sim->addCallback(0.05, timer_callback);
 }
