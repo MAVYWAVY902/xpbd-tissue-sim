@@ -28,9 +28,5 @@ class SimBridge : public rclcpp::Node
     sensor_msgs::msg::PointCloud2 _mesh_pcl_message;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _mesh_pcl_publisher;
 
-    int _count;
-
-    constexpr static double _publish_rate_Hz = 30;
-
     Sim::VirtuosoSimulation* _sim;
 };

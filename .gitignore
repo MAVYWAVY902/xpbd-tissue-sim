@@ -24,3 +24,6 @@ output/
 
 # ignore all SDF files
 *.sdf
+
+# ignore __pycache__
+__pycache__/

@@ -10,11 +10,14 @@
 SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
 : rclcpp::Node("sim_bridge"), _sim(sim)
 {
+
+    this->declare_parameter("publish_rate_hz", 30.0);
+
     // set up callback to publish frames for arm1 (if it exists)
     if (_sim->virtuosoRobot()->hasArm1())
     {
         std::cout << "Setting up callback for Virtuoso arm 1 frames..." << std::endl;
-        _arm1_frames_publisher = this->create_publisher<geometry_msgs::msg::PoseArray>("arm1_frames", 10);
+        _arm1_frames_publisher = this->create_publisher<geometry_msgs::msg::PoseArray>("/output/arm1_frames", 10);
 
         auto arm1_callback = 
             [this]() -> void {
@@ -68,14 +71,14 @@ SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
                 this->_arm1_frames_publisher->publish(message);
             };
 
-        _sim->addCallback(1.0/_publish_rate_Hz, arm1_callback);
+        _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm1_callback);
     }
 
     // set up callback to publish frames for arm 2 (if it exists)
     if (_sim->virtuosoRobot()->hasArm2())
     {
         std::cout << "Setting up callback for Virtuoso arm 2 frames..." << std::endl;
-        _arm2_frames_publisher = this->create_publisher<geometry_msgs::msg::PoseArray>("arm2_frames", 10);
+        _arm2_frames_publisher = this->create_publisher<geometry_msgs::msg::PoseArray>("/output/arm2_frames", 10);
         auto arm2_callback = 
             [this]() -> void {
                 const Sim::VirtuosoArm* arm2 = this->_sim->virtuosoRobot()->arm2();
@@ -128,13 +131,13 @@ SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
                 this->_arm2_frames_publisher->publish(message);
             };
 
-        _sim->addCallback(1.0/_publish_rate_Hz, arm2_callback);
+        _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm2_callback);
     }
 
     // set up callback to publish mesh
     if (Sim::VirtuosoTissueGraspingSimulation* tissue_sim = dynamic_cast<Sim::VirtuosoTissueGraspingSimulation*>(_sim))
     {
-        _mesh_publisher = this->create_publisher<shape_msgs::msg::Mesh>("tissue_mesh", 3);
+        _mesh_publisher = this->create_publisher<shape_msgs::msg::Mesh>("/output/tissue_mesh", 3);
 
         const Geometry::TetMesh* tissue_mesh = tissue_sim->tissueMesh(); 
 
@@ -168,14 +171,14 @@ SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
                 this->_mesh_publisher->publish(this->_mesh_message);
             };
         
-        _sim->addCallback(_publish_rate_Hz, mesh_callback);
+        _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), mesh_callback);
 
     }
 
     // set up callback to publish mesh vertices as a point cloud
     if (Sim::VirtuosoTissueGraspingSimulation* tissue_sim = dynamic_cast<Sim::VirtuosoTissueGraspingSimulation*>(_sim))
     {
-        _mesh_pcl_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("tissue_mesh_vertices", 3);
+        _mesh_pcl_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/output/tissue_mesh_vertices", 3);
 
         const Geometry::TetMesh* tissue_mesh = tissue_sim->tissueMesh(); 
 
@@ -218,7 +221,7 @@ SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
                 this->_mesh_pcl_publisher->publish(this->_mesh_pcl_message);
             };
         
-        _sim->addCallback(1.0/_publish_rate_Hz, mesh_pcl_callback);
+        _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), mesh_pcl_callback);
 
     }
 }

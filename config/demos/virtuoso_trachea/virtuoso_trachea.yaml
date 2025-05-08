@@ -39,7 +39,7 @@ objects:
     max-size: 0.06
     position: [0, 0, 0]
     velocity: [0, 0, 0]
-    rotation: [0, 0, 0]
+    rotation: [0, 180, 0]
     num-solver-iters: 1
     residual-policy: "Never"
     solver-type: "Gauss-Seidel"

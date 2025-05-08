@@ -32,7 +32,19 @@ int main(int argc, char ** argv)
 {
     rclcpp::init(argc, argv);
 
-    const std::string config_filename = "../config/demos/virtuoso_trachea/virtuoso_trachea.yaml";
+
+    std::string config_filename;
+    for (int i = 1; i < argc; i++)
+    {
+        std::string arg = argv[i];
+        if (arg == "--config-filename" && i+1 < argc)
+        {
+            config_filename = argv[++i];
+        }
+    }
+    std::cout << "Loading config from config filename: " << config_filename << std::endl;
+
+    // const std::string config_filename = "../config/demos/virtuoso_trachea/virtuoso_trachea.yaml";
     VirtuosoTissueGraspingSimulationConfig config(YAML::LoadFile(config_filename));
     Sim::VirtuosoTissueGraspingSimulation sim(&config);
 
