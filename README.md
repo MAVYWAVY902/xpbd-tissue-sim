@@ -9,6 +9,7 @@ A place to prototype and test algorithms and approaches for simulation of highly
   * [Config files](#config-files)
   * [Changing the mesh](#changing-the-mesh)
   * [Creating a new derived `Simulation` class (advanced)](#creating-a-new-derived-simulation-class-advanced)
+* [ROS interface](#ros-interface)
 * [Modifying the code](#modifying-the-code)
 * [Code structure](#code-structure)
   * [Simulation](#simulation)
@@ -111,6 +112,35 @@ The mesh of a simulated deformable object can be changed by simply changing the 
 
 ### Creating a new derived `Simulation` class (advanced)
 If there are specific capabilities not captured by the current simulation types, it is pretty easy to create a new `Simulation` class that provides specific functionality. For an example of how this is done, look at `VirtuosoSimulation`, which extends the base `Simulation` class to add keyboard, mouse, and haptic device control for the Virtuoso robot that is in the simulation.
+
+## ROS interface
+When `docker-compose-ros.yml` is used to build the Docker container, ROS2 Jazzy is installed inside the container. The folder `ros_workspace/` is the ROS workspace folder.
+
+**IMPORTANT:** when using the ROS interface, make sure to `make install` from the `/workspace/build` directory. This is needed so that the ROS node has access to the libraries and headers from the rest of the code.
+
+`sim_bridge` is a provided ROS node specifically designed for simulations where a Virtuoso robot interacts with tissue. The node subscribes to input Virtuoso joint states and relays those to the simulation, and outputs coordinate frames along each Virtuoso arm, as well as the tissue mesh. The list of topics can be found below:
+
+| Topic        | Mapped To | Description | Frame | Type | Notes |
+|--------------|-----------|-------------|-------|------|-------|
+| `/input/arm1_joint_state` | `/ves/left/joint_servo_jp` | Input joint state for the left Virtuoso arm. | N/A | `sensor_msgs/JointState` |   |
+| `/input/arm2_joint_state` | `/ves/right/joint_servo_jp`| Input joint state for the right Virtuoso arm. | N/A | `sensor_msgs/JointState` |  |
+| `/output/arm1_frames` | `/sim/arm1_frames` | Coordinate frames along left Virtuoso arm. | `/world` | `geometry_msgs/PoseArray` |  |
+| `/output/arm2_frames` | `/sim/arm2_frames` | Coordinate frames along backbone of right Virtuoso arm. | `/world` | `geometry_msgs/PoseArray` |  |
+| `/output/tissue_mesh` | `/sim/tissue_mesh` | Output surface mesh (vertices, surface faces) of the deformable tissue mesh. | `/world` | `shape_msgs/Mesh` | This message is not timestamped. All vertices are sent, but only surface faces sent.  |
+| `/output/tissue_mesh_vertices` | `/sim/tissue_mesh_vertices` | Vertices of the deformable tissue mesh. | `/world` | `sensor_msgs/PointCloud2` | Purely for visualization purposes. |
+
+Two launch files are provided:
+* `ros_workspace/launch/sim_bridge.launch.py` - launches the `SimBridge` ROS node by itself.
+* `ros_workspace/launch/sim_bridge_with_rosbridge_server.launch.py` - launches the `SimBridge` ROS node and starts a `rosbridge` WebSocket connection on port 9090 (useful for visualizing with Foxglove).
+
+The launch files provide a few launch arguments/parameters:
+* Parameter `publish_rate_hz` - the publish rate (in Hz) of the output topics of the `SimBridge` node. Default: 30.0 Hz.
+* Launch argument `config_filename` - the absolute path to the config filename to be used to launch the simulation. Default: `/worksapce/config/demos/virtuoso_trachea/virtuoso_trachea.yaml`.
+
+Example usage:
+```
+ros2 launch launch/sim_bridge_with_rosbridge_server.launch.py config_filename:=/workspace/config/demos/virtuoso_trachea/virtuoso_trachea
+```
 
 ## Modifying the code
 The Docker container is set up to share the repo files outside of the container. That means that you can make edits to files **outside** the container and have those changes be reflected **inside** the container! This is nice because then your code editor does not need to be launched from inside the Docker container.
