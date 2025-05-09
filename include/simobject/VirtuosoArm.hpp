@@ -2,14 +2,17 @@
 #define __VIRTUOSO_ARM_HPP
 
 #include "simobject/Object.hpp"
-#include "config/VirtuosoArmConfig.hpp"
 
 #include "geometry/CoordinateFrame.hpp"
 
 #include <array>
 
+class VirtuosoArmConfig;
+
 namespace Sim
 {
+
+class XPBDMeshObject_Base;
 
 class VirtuosoArm : public Object
 {
@@ -22,9 +25,18 @@ class VirtuosoArm : public Object
     constexpr static int MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
     constexpr static int MAX_IT_TRANSLATION = 40e-3;    // maximum inner tube translation (joint limit on Virtuoso system)
 
+    constexpr static double GRASPING_RADIUS = 0.002;    // grasping radius for the grasper tool
+
     public:
     using OuterTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES>;
     using InnerTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_IT_FRAMES>;
+
+    enum ToolType
+    {
+        SPATULA,
+        GRASPER,
+        CAUTERY
+    };
 
     public:
     VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config);
@@ -61,11 +73,13 @@ class VirtuosoArm : public Object
     double outerTubeTranslation() const { return _ot_translation; }
     double outerTubeRotation() const { return _ot_rotation; }
     double outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
+    int toolState() const { return _tool_state; }
 
     void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
     void setInnerTubeRotation(double r) { _it_rotation = r; _recomputeCoordinateFrames(); }
     void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
     void setOuterTubeRotation(double r) { _ot_rotation = r; _recomputeCoordinateFrames(); }
+    void setToolState(int tool) { _tool_state = tool; }
     void setBasePosition(const Eigen::Vector3d& pos) { _arm_base_position = pos; _recomputeCoordinateFrames(); }
     void setBaseRotation(const Eigen::Matrix3d& rot_mat) { _arm_base_rotation = rot_mat; _recomputeCoordinateFrames();}
 
@@ -82,10 +96,26 @@ class VirtuosoArm : public Object
     Eigen::Vector3d tipPosition() const;
     void setTipPosition(const Eigen::Vector3d& new_position);
 
-    void setActuatorValues(double ot_rotation, double ot_translation, double it_rotation, double it_translation);
+    const XPBDMeshObject_Base* toolManipulatedObject() const { return _tool_manipulated_object; }
+    void setToolManipulatedObject(XPBDMeshObject_Base* obj) { _tool_manipulated_object = obj; }
+
+    void setJointState(double ot_rotation, double ot_translation, double it_rotation, double it_translation, int tool);
 
     private:
     void _recomputeCoordinateFrames();
+
+    /** Performs any tool actions, if applicable.
+     * 
+     * For example, if the grasper tool is used and the tool state changes from 0 to 1, we will grasp all mesh vertices in the
+     *   _tool_manipulated_object that are within the grasping radius. When the tool state changes from 1 to 0, we will release these vertices.
+     */
+    void _toolAction();
+
+    void _spatulaToolAction();
+
+    void _grasperToolAction();
+
+    void _cauteryToolAction();
 
     Geometry::TransformationMatrix _computeTipTransform(double ot_rot, double ot_trans, double it_rot, double it_trans);
 
@@ -129,7 +159,6 @@ class VirtuosoArm : public Object
     private:
     double _it_dia; // inner tube diameter, in m
     double _ot_dia; // outer tube diameter, in m
-    // TODO: change to radius of curvature
     double _ot_r_curvature; // outer tube radius of curvature, in m
 
     double _it_translation; // translation of the inner tube. Right now, assuming that when translation=0, inner tube is fully retracted
@@ -137,6 +166,13 @@ class VirtuosoArm : public Object
     double _ot_translation; // translation of the outer tube. Right now, assuming that when translation=0, outer tube is fully retracted
     double _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
     double _ot_distal_straight_length; // the length of the straight section on the distal part of the outer tube
+
+    int _tool_state; // state of the tool (i.e. 1=ON, 0=OFF)
+    int _last_tool_state; // the previous state of the tool (needed so that we know when tool state has changed)
+    ToolType _tool_type; // type of tool used on this arm
+    XPBDMeshObject_Base* _tool_manipulated_object; // the deformable object that this tool is manipulating
+    Eigen::Vector3d _tool_position; // position of the tool in global coordinates (note that this may be different than the inner tube tip position)
+    std::vector<int> _grasped_vertices; // vertices that are actively being grasped
 
     Eigen::Vector3d _arm_base_position;
     Eigen::Matrix3d _arm_base_rotation;

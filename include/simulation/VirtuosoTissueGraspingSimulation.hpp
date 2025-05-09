@@ -29,6 +29,8 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 
     virtual void notifyMouseScrolled(double dx, double dy) override;
 
+    const Geometry::TetMesh* tissueMesh() const { assert(_tissue_obj); return _tissue_obj->tetMesh(); }
+
     protected:
 
     void _updateGraphics() override;
@@ -60,9 +62,6 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
     // RigidMeshObject* _goal_obj;          // the goal state of the tissue surface
     std::vector<RigidMeshObject*> _goal_objs;   // vector of tissue goal states
     int _goal_obj_ind;
-
-    VirtuosoRobot* _virtuoso_robot; // the Virtuoso robot (includes both arms)
-    // VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assu
 
     bool _grasping;                 // whether or not we are actively grasping the tissue
     std::vector<int> _grasped_vertices; // indexes of the grasped vertices in the tissue mesh
