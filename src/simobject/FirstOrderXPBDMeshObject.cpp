@@ -35,6 +35,12 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
 
     this->_solver.setup();
 
+    // set size of collision constraint projector vectors
+    using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
+    using RigidCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
+    this->_solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(this->_mesh->numFaces());
+    this->_solver.template setNumProjectorsOfType<RigidCollisionConstraintType>(this->_mesh->numFaces());
+
     // initialize the previous vertices matrix once we've loaded the mesh
     this->_previous_vertices = this->_mesh->vertices();
     this->_vertex_velocities = Geometry::Mesh::VerticesMat::Zero(3, this->_mesh->numVertices());

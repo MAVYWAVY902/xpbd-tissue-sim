@@ -4,8 +4,13 @@
 #include <vector>
 
 // adapted from this StackOverflow answer: https://stackoverflow.com/a/53112843
+
+/** A class that stores a heterogenous collection of types (similar to std::tuple without all the bells and whistles).
+ * Uses CRTP inheritance to recursively add a private member variable for each type.
+ */
 template<class L, class... R> class VariadicContainer;
 
+// Recursive base case
 template<class L>
 class VariadicContainer<L>
 {
