@@ -1,4 +1,6 @@
+#include "config/VirtuosoArmConfig.hpp"
 #include "simobject/VirtuosoArm.hpp"
+#include "simobject/XPBDMeshObject.hpp"
 
 #include "utils/GeometryUtils.hpp"
 
@@ -19,6 +21,10 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config)
     _ot_translation = config->outerTubeInitialTranslation();
     _ot_rotation = config->outerTubeInitialRotation() * M_PI/180.0;   // convert to radians
     _ot_distal_straight_length = config->outerTubeDistalStraightLength();
+
+    _tool_state = 0;  // default tool state is off
+    _tool_type = config->toolType();
+    _tool_manipulated_object = nullptr;
 
     _arm_base_position = config->baseInitialPosition();
     Eigen::Vector3d initial_rot_xyz = config->baseInitialRotation() * M_PI / 180.0;
@@ -49,12 +55,13 @@ void VirtuosoArm::setTipPosition(const Eigen::Vector3d& new_position)
     _stale_frames = true;
 }
 
-void VirtuosoArm::setActuatorValues(double ot_rotation, double ot_translation, double it_rotation, double it_translation)
+void VirtuosoArm::setJointState(double ot_rotation, double ot_translation, double it_rotation, double it_translation, int tool)
 {
     _ot_rotation = ot_rotation;
     _ot_translation = ot_translation;
     _it_rotation = it_rotation;
     _it_translation = it_translation;
+    _tool_state = tool;
 
     _recomputeCoordinateFrames();
 }
@@ -70,6 +77,8 @@ void VirtuosoArm::update()
     {
         _recomputeCoordinateFrames();
     }
+
+    _toolAction();
 }
 
 void VirtuosoArm::velocityUpdate()
@@ -83,12 +92,84 @@ Geometry::AABB VirtuosoArm::boundingBox() const
     return Geometry::AABB(Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 }
 
+void VirtuosoArm::_toolAction()
+{
+    // if the manipulated object has not been given, do nothing
+    if (!_tool_manipulated_object)
+        return;
+
+    if (_tool_type == ToolType::SPATULA)
+        _spatulaToolAction();
+    else if (_tool_type == ToolType::GRASPER)
+        _grasperToolAction();
+    else if (_tool_type == ToolType::CAUTERY)
+        _cauteryToolAction();
+
+    _last_tool_state = _tool_state;
+}
+
+void VirtuosoArm::_spatulaToolAction()
+{
+    // don't need to do anything for the spatula
+}
+
+void VirtuosoArm::_grasperToolAction()
+{
+    // if tool state has changed from 0 to 1, start grasping vertices inside grasping radius
+    if (_tool_state == 1 && _last_tool_state == 0)
+    {
+        std::map<int, Vec3r> vertices_to_grasp;
+
+        // quick and dirty way to find all vertices in a sphere
+        for (int theta = 0; theta < 360; theta+=30)
+        {
+            for (int phi = 0; phi < 360; phi+=30)
+            {
+                for (double p = 0; p < GRASPING_RADIUS; p+=GRASPING_RADIUS/5.0)
+                {
+                    const double x = _tool_position[0] + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
+                    const double y = _tool_position[1] + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
+                    const double z = _tool_position[2] + p*std::cos(phi*M_PI/180);
+                    int v = _tool_manipulated_object->mesh()->getClosestVertex(Vec3r(x, y, z));
+
+                    // make sure v is inside grasping sphere
+                    if ((_tool_position - _tool_manipulated_object->mesh()->vertex(v)).norm() <= GRASPING_RADIUS)
+                        if (!_tool_manipulated_object->vertexFixed(v))
+                        {
+                            const Vec3r attachment_offset = (_tool_manipulated_object->mesh()->vertex(v) - _tool_position) * 0.9;
+                            vertices_to_grasp[v] = attachment_offset;
+                        }
+                }
+            }
+        }
+
+        for (const auto& [v, offset] : vertices_to_grasp)
+        {
+            _tool_manipulated_object->addAttachmentConstraint(v, &_tool_position, offset);
+            
+            _grasped_vertices.push_back(v);
+        }
+    }
+
+    // if tool state has changed from 1 to 0, stop grasping
+    else if (_tool_state == 0 && _last_tool_state == 1)
+    {
+        _tool_manipulated_object->clearAttachmentConstraints();
+        _grasped_vertices.clear();
+    }
+}
+
+void VirtuosoArm::_cauteryToolAction()
+{
+    // do nothing (for now)
+}
+
 void VirtuosoArm::_recomputeCoordinateFrames()
 {
     // compute arm (base) frame based on current position and orientation
     _arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
 
-    // compute outer tube base frmae
+    // compute outer tube base frame
     // consists of rotating about the current z-axis accordint to outer tube rotation
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Eigen::Vector3d::Zero());
     Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z;
@@ -124,6 +205,9 @@ void VirtuosoArm::_recomputeCoordinateFrames()
     }
 
     _stale_frames = false;
+
+    // for now, the tool position is just the inner tube tip position with no offset
+    _tool_position = _it_frames.back().origin();
 
 }
 

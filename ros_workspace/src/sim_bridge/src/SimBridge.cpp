@@ -225,7 +225,7 @@ SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
 
     }
 
-    // set up subscriber callback to take in joint state
+    // set up subscriber callback to take in joint state for arm 1
     if (_sim->virtuosoRobot()->hasArm1())
     {
         auto arm1_state_callback = 
@@ -238,7 +238,7 @@ SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
         _arm1_joint_state_subscriber = this->create_subscription<sensor_msgs::msg::JointState>("/input/arm1_joint_state", 10, arm1_state_callback);
     }
     
-
+    // set up subscriber callback to take in joint state for arm 2
     if (_sim->virtuosoRobot()->hasArm2())
     {
         auto arm2_state_callback = 

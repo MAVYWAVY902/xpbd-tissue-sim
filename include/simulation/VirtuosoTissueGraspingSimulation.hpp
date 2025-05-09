@@ -63,9 +63,6 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
     std::vector<RigidMeshObject*> _goal_objs;   // vector of tissue goal states
     int _goal_obj_ind;
 
-    VirtuosoRobot* _virtuoso_robot; // the Virtuoso robot (includes both arms)
-    // VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assu
-
     bool _grasping;                 // whether or not we are actively grasping the tissue
     std::vector<int> _grasped_vertices; // indexes of the grasped vertices in the tissue mesh
 

@@ -15,7 +15,8 @@ bool setup_complete = false;
 
 void runSim(Sim::Simulation* sim)
 {
-    // std::cout << "Sim dt: " << sim->dt() << std::endl;
+    // setup MUST be called in this thread
+    // because the OpenGL context MUST be initialized in the same thread
     sim->setup();
 
     // notify the main thread that the simulation has completed setup
@@ -25,6 +26,7 @@ void runSim(Sim::Simulation* sim)
     }
     cv.notify_one();
 
+    // begin running the simulation
     sim->run();
 }
 
@@ -33,6 +35,7 @@ int main(int argc, char ** argv)
     rclcpp::init(argc, argv);
 
 
+    // parse command line arguments for config filename
     std::string config_filename;
     for (int i = 1; i < argc; i++)
     {
@@ -42,20 +45,23 @@ int main(int argc, char ** argv)
             config_filename = argv[++i];
         }
     }
-    std::cout << "Loading config from config filename: " << config_filename << std::endl;
 
-    // const std::string config_filename = "../config/demos/virtuoso_trachea/virtuoso_trachea.yaml";
+    // create the simulation config object from the yaml config file
     VirtuosoTissueGraspingSimulationConfig config(YAML::LoadFile(config_filename));
+    // create the simulation from the config object
     Sim::VirtuosoTissueGraspingSimulation sim(&config);
 
+    // start up the simulation in a separate thread
     std::thread sim_thread(runSim, &sim);
 
     // wait for the simulation to be set up
+    // required for loading meshes, setting up sim objects, etc.
     {
         std::unique_lock<std::mutex> l(mtx);
         cv.wait(l, [] { return setup_complete; });
     }
 
+    // then start up the SimBridge ROS node
     rclcpp::spin(std::make_shared<SimBridge>(&sim));
 
     sim_thread.join();

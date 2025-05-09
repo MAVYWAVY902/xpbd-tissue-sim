@@ -3,6 +3,8 @@
 
 #include "config/ObjectConfig.hpp"
 
+#include "simobject/VirtuosoArm.hpp"
+
 class VirtuosoArmConfig : public ObjectConfig
 {
     public:
@@ -14,6 +16,18 @@ class VirtuosoArmConfig : public ObjectConfig
     static std::optional<double>& DEFAULT_OT_INITIAL_TRANSLATION() { static std::optional<double> ot_trans(0.1); return ot_trans; }
     static std::optional<double>& DEFAULT_OT_INITIAL_ROTATION() { static std::optional<double> ot_rot(0); return ot_rot; }
     static std::optional<double>& DEFAULT_OT_DISTAL_STRAIGHT_LENGTH() { static std::optional<double> ot_l(0); return ot_l; }
+    static std::optional<Sim::VirtuosoArm::ToolType>& DEFAULT_TOOL_TYPE() { static std::optional<Sim::VirtuosoArm::ToolType> tool_type(Sim::VirtuosoArm::ToolType::GRASPER); return tool_type; }
+    /** Static predifined options for the tool type. Maps strings to the ToolType enum. */
+    static std::map<std::string, Sim::VirtuosoArm::ToolType> TOOL_TYPE_OPTIONS()
+    {
+        static std::map<std::string, Sim::VirtuosoArm::ToolType> tool_type_options{
+            {"spatula", Sim::VirtuosoArm::ToolType::SPATULA},
+            {"grasper", Sim::VirtuosoArm::ToolType::GRASPER},
+            {"cautery", Sim::VirtuosoArm::ToolType::CAUTERY}
+        };
+        return tool_type_options;
+    }
+
     static std::optional<Eigen::Vector3d>& DEFAULT_BASE_INITIAL_POSITION() { static std::optional<Eigen::Vector3d> pos({0.0, 0.0, 0.0}); return pos; }
     static std::optional<Eigen::Vector3d>& DEFAULT_BASE_INITIAL_ROTATION() { static std::optional<Eigen::Vector3d> rot({0.0, 0.0, 0.0}); return rot; }
 
@@ -31,6 +45,8 @@ class VirtuosoArmConfig : public ObjectConfig
         _extractParameter("outer-tube-rotation", node, _ot_initial_rotation, DEFAULT_OT_INITIAL_ROTATION());
         _extractParameter("outer-tube-distal-straight-length", node, _ot_distal_straight_length, DEFAULT_OT_DISTAL_STRAIGHT_LENGTH());
 
+        _extractParameterWithOptions("tool-type", node, _tool_type, TOOL_TYPE_OPTIONS(), DEFAULT_TOOL_TYPE());
+
         _extractParameter("base-position", node, _base_initial_position, DEFAULT_BASE_INITIAL_POSITION());
         _extractParameter("base-rotation", node, _base_initial_rotation, DEFAULT_BASE_INITIAL_ROTATION());
     }
@@ -38,7 +54,8 @@ class VirtuosoArmConfig : public ObjectConfig
     explicit VirtuosoArmConfig( const std::string& name, 
         const Vec3r& initial_pos, const Vec3r& initial_rot, const Vec3r& initial_velocity, bool collisions, bool graphics_only,
         double ot_dia, double ot_r_curve, double ot_d_s_length, double it_dia,
-        double ot_rot, double ot_trans, double it_rot, double it_trans
+        double ot_rot, double ot_trans, double it_rot, double it_trans,
+        Sim::VirtuosoArm::ToolType tool_type
     )
         : ObjectConfig(name, initial_pos, initial_rot, initial_velocity, collisions, graphics_only)
     {
@@ -51,6 +68,8 @@ class VirtuosoArmConfig : public ObjectConfig
         _ot_initial_translation.value = ot_trans;
         _it_initial_rotation.value = it_rot;
         _it_initial_translation.value = it_trans;
+
+        _tool_type.value = tool_type; 
 
         _base_initial_position.value = initial_pos;
         _base_initial_rotation.value = initial_rot;
@@ -65,6 +84,9 @@ class VirtuosoArmConfig : public ObjectConfig
     double outerTubeInitialTranslation() const { return _ot_initial_translation.value.value(); }
     double outerTubeInitialRotation() const { return _ot_initial_rotation.value.value(); }
     double outerTubeDistalStraightLength() const { return _ot_distal_straight_length.value.value(); }
+
+    Sim::VirtuosoArm::ToolType toolType() const { return _tool_type.value.value(); }
+
     Eigen::Vector3d baseInitialPosition() const { return _base_initial_position.value.value(); }
     Eigen::Vector3d baseInitialRotation() const { return _base_initial_rotation.value.value(); }
 
@@ -78,6 +100,8 @@ class VirtuosoArmConfig : public ObjectConfig
     ConfigParameter<double> _ot_distal_straight_length;
     ConfigParameter<double> _ot_initial_translation;
     ConfigParameter<double> _ot_initial_rotation;
+
+    ConfigParameter<Sim::VirtuosoArm::ToolType> _tool_type;
 
     ConfigParameter<Eigen::Vector3d> _base_initial_position;
     ConfigParameter<Eigen::Vector3d> _base_initial_rotation;

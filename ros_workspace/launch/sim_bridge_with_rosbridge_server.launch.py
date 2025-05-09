@@ -25,6 +25,8 @@ def generate_launch_description():
         name='sim_bridge',
         output='screen',
         remappings=[
+            ('/input/arm1_joint_state', '/ves/left/joint/servo_jp'),
+            ('/input/arm2_joint_state', '/ves/right/joint/servo_jp'),
             ('/output/arm1_frames', '/sim/arm1_frames'),
             ('/output/arm2_frames', '/sim/arm2_frames'),
             ('/output/tissue_mesh', '/sim/tissue_mesh'),

@@ -285,11 +285,12 @@ void VirtuosoSimulation::_timeStep()
     if (_has_new_arm1_joint_state.load())
     {
         std::lock_guard<std::mutex> l(_arm1_joint_state_mtx);
-        _virtuoso_robot->arm1()->setActuatorValues(
+        _virtuoso_robot->arm1()->setJointState(
             _new_arm1_joint_state.outer_tube_rotation,
             _new_arm1_joint_state.outer_tube_translation,
             _new_arm1_joint_state.inner_tube_rotation,
-            _new_arm1_joint_state.inner_tube_translation
+            _new_arm1_joint_state.inner_tube_translation,
+            _new_arm1_joint_state.tool
         );
         _has_new_arm1_joint_state = false;
     }
@@ -297,11 +298,12 @@ void VirtuosoSimulation::_timeStep()
     if (_has_new_arm2_joint_state.load())
     {
         std::lock_guard<std::mutex> l(_arm2_joint_state_mtx);
-        _virtuoso_robot->arm2()->setActuatorValues(
+        _virtuoso_robot->arm2()->setJointState(
             _new_arm2_joint_state.outer_tube_rotation,
             _new_arm2_joint_state.outer_tube_translation,
             _new_arm2_joint_state.inner_tube_rotation,
-            _new_arm2_joint_state.inner_tube_translation
+            _new_arm2_joint_state.inner_tube_translation,
+            _new_arm2_joint_state.tool
         );
         _has_new_arm2_joint_state = false;
     }
