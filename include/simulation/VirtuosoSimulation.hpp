@@ -13,6 +13,7 @@
 #include "haptics/HapticDeviceManager.hpp"
 
 #include <map>
+#include <atomic>
 
 namespace Sim
 {
@@ -38,7 +39,27 @@ class VirtuosoSimulation : public Simulation
     const VirtuosoArm* activeArm() const { return _active_arm; }
     const Vec3r activeTipPosition() const { return _tip_cursor->position(); }
 
+    void setArm1JointState(double ot_rot, double ot_trans, double it_rot, double it_trans, int tool);
+    void setArm2JointState(double ot_rot, double ot_trans, double it_rot, double it_trans, int tool);
+
     protected:
+
+    struct VirtuosoArmJointState
+    {
+        double outer_tube_rotation;
+        double outer_tube_translation;
+        double inner_tube_rotation;
+        double inner_tube_translation;
+        int tool;
+
+        VirtuosoArmJointState(double ot_rot, double ot_trans, double it_rot, double it_trans, int tool_)
+            : outer_tube_rotation(ot_rot), outer_tube_translation(ot_trans), inner_tube_rotation(it_rot), inner_tube_translation(it_trans), tool(tool_)
+        {}
+
+        VirtuosoArmJointState()
+            : outer_tube_rotation(0.0), outer_tube_translation(0.0), inner_tube_rotation(0.0), inner_tube_translation(0.0), tool(0)
+        {}
+    };
 
     void _updateGraphics() override;
     
@@ -50,6 +71,13 @@ class VirtuosoSimulation : public Simulation
 
     VirtuosoRobot* _virtuoso_robot; // the Virtuoso robot (includes both arms)
     VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assuming only one input device)
+
+    std::mutex _arm1_joint_state_mtx;
+    std::mutex _arm2_joint_state_mtx;
+    std::atomic<bool> _has_new_arm1_joint_state;
+    std::atomic<bool> _has_new_arm2_joint_state;
+    VirtuosoArmJointState _new_arm1_joint_state;
+    VirtuosoArmJointState _new_arm2_joint_state;
 
     
     SimulationInputDevice _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)

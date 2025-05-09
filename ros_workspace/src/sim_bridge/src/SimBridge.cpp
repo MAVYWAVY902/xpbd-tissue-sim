@@ -224,4 +224,101 @@ SimBridge::SimBridge(Sim::VirtuosoSimulation* sim)
         _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), mesh_pcl_callback);
 
     }
+
+    // set up subscriber callback to take in joint state
+    if (_sim->virtuosoRobot()->hasArm1())
+    {
+        auto arm1_state_callback = 
+            [this](sensor_msgs::msg::JointState::UniquePtr msg) -> void {
+                const auto [ot_rot, ot_trans, it_rot, it_trans, tool] = this->_jointMsgToJointState(msg.get());
+
+                this->_sim->setArm1JointState(ot_rot, ot_trans, it_rot, it_trans, tool);
+        };
+
+        _arm1_joint_state_subscriber = this->create_subscription<sensor_msgs::msg::JointState>("/input/arm1_joint_state", 10, arm1_state_callback);
+    }
+    
+
+    if (_sim->virtuosoRobot()->hasArm2())
+    {
+        auto arm2_state_callback = 
+            [this](sensor_msgs::msg::JointState::UniquePtr msg) -> void {
+                const auto [ot_rot, ot_trans, it_rot, it_trans, tool] = this->_jointMsgToJointState(msg.get());
+
+                this->_sim->setArm2JointState(ot_rot, ot_trans, it_rot, it_trans, tool);
+        };
+
+        _arm2_joint_state_subscriber = this->create_subscription<sensor_msgs::msg::JointState>("/input/arm2_joint_state", 10, arm2_state_callback);
+    }
+    
+}
+
+std::tuple<double, double, double, double, int> SimBridge::_jointMsgToJointState(sensor_msgs::msg::JointState* msg) const
+{
+    // joint states must contain five positions: inner rotation, outer rotation, inner
+    // translation, and outer translation, and tool (in any order).
+    if (msg->name.size() != 5) {
+        // joint state doesn't contain the necessary fields; it is malformed.
+        RCLCPP_WARN(
+            get_logger(),
+            "Joint state contains %lu states in 'name'. Valid joint states contain 5 states.",
+            msg->name.size());
+        return std::tuple<double, double, double, double, int>();
+    } else if (msg->position.size() != 5) {
+        // joint state doesn't contain the necessary fields; it is malformed.
+        RCLCPP_WARN(
+            get_logger(),
+            "Joint state contains %lu states in 'position'. Valid joint states contain 5 states.",
+            msg->position.size());
+        return std::tuple<double, double, double, double, int>();
+    }
+
+    bool irSet = false, orSet = false, itSet = false, otSet = false, tSet = false;
+    double ot_rot, ot_trans, it_rot, it_trans;
+    int tool;
+
+    for (uint32_t idx = 0; idx < 5; ++idx) {
+        const auto &name = msg->name[idx];
+        const auto scalar = msg->position[idx];
+
+        if (name == "inner_rotation" || name == "innerRotation" || name == "ir") {
+            irSet = true;
+            it_rot = scalar;
+        } else if (name == "outer_rotation" || name == "outerRotation" || name == "or") {
+            orSet = true;
+            ot_rot = scalar;
+        } else if (name == "inner_translation" || name == "innerTranslation" || name == "it") {
+            itSet = true;
+            it_trans = scalar;
+        } else if (name == "outer_translation" || name == "outerTranslation" || name == "ot") {
+            otSet = true;
+            ot_trans = scalar;
+        } else if (name == "tool") {
+            tSet = true;
+            tool = scalar;
+        } else {
+            // this joint state was referenced incorrectly
+            RCLCPP_WARN(
+            get_logger(), "Attempt to set nonexistent joint '%s' failed.", name.c_str());
+            return std::tuple<double, double, double, double, int>();
+        }
+    }
+
+    // ensure that every joint was set
+    if (irSet == false || orSet == false || itSet == false || otSet == false || tSet == false) {
+        if (irSet == false) {
+            RCLCPP_WARN(get_logger(), "Joint state message did not set inner_rotation joint.");
+        } else if (orSet == false) {
+            RCLCPP_WARN(get_logger(), "Joint state message did not set outer_rotation joint.");
+        } else if (itSet == false) {
+            RCLCPP_WARN(get_logger(), "Joint state message did not set inner_translation joint.");
+        } else if (otSet == false) {
+            RCLCPP_WARN(get_logger(), "Joint state message did not set outer_translation joint.");
+        } else if (tSet == false) {
+            RCLCPP_WARN(get_logger(), "Joint state message did not set tool joint.");
+        }
+        return std::tuple<double, double, double, double, int>();
+    }
+
+    return std::make_tuple(ot_rot, ot_trans, it_rot, it_trans, tool);
 }

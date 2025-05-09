@@ -9,7 +9,7 @@ namespace Sim
 {
 
 VirtuosoSimulation::VirtuosoSimulation(const VirtuosoSimulationConfig* config)
-    : Simulation(config), _virtuoso_robot(nullptr), _active_arm(nullptr)
+    : Simulation(config), _virtuoso_robot(nullptr), _active_arm(nullptr), _has_new_arm1_joint_state(false), _has_new_arm2_joint_state(false)
 {
     _input_device = config->inputDevice();
 
@@ -177,6 +177,27 @@ void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
     
 }
 
+void VirtuosoSimulation::setArm1JointState(double ot_rot, double ot_trans, double it_rot, double it_trans, int tool)
+{
+    assert(_virtuoso_robot && _virtuoso_robot->hasArm1());
+
+    {
+        std::lock_guard<std::mutex> l(_arm1_joint_state_mtx);
+        _new_arm1_joint_state = VirtuosoArmJointState(ot_rot, ot_trans, it_rot, it_trans, tool);
+        _has_new_arm1_joint_state = true;
+    }
+}
+void VirtuosoSimulation::setArm2JointState(double ot_rot, double ot_trans, double it_rot, double it_trans, int tool)
+{
+    assert(_virtuoso_robot && _virtuoso_robot->hasArm2());
+
+    {
+        std::lock_guard<std::mutex> l(_arm2_joint_state_mtx);
+        _new_arm2_joint_state = VirtuosoArmJointState(ot_rot, ot_trans, it_rot, it_trans, tool);
+        _has_new_arm2_joint_state = true;
+    }
+}
+
 void VirtuosoSimulation::_moveCursor(const Vec3r& dp)
 {
     // move the tip cursor and the active arm tip position
@@ -257,6 +278,32 @@ void VirtuosoSimulation::_timeStep()
 
         _last_haptic_pos = cur_pos;
         
+    }
+
+
+    // check if the joint state has been updated externally
+    if (_has_new_arm1_joint_state.load())
+    {
+        std::lock_guard<std::mutex> l(_arm1_joint_state_mtx);
+        _virtuoso_robot->arm1()->setActuatorValues(
+            _new_arm1_joint_state.outer_tube_rotation,
+            _new_arm1_joint_state.outer_tube_translation,
+            _new_arm1_joint_state.inner_tube_rotation,
+            _new_arm1_joint_state.inner_tube_translation
+        );
+        _has_new_arm1_joint_state = false;
+    }
+
+    if (_has_new_arm2_joint_state.load())
+    {
+        std::lock_guard<std::mutex> l(_arm2_joint_state_mtx);
+        _virtuoso_robot->arm2()->setActuatorValues(
+            _new_arm2_joint_state.outer_tube_rotation,
+            _new_arm2_joint_state.outer_tube_translation,
+            _new_arm2_joint_state.inner_tube_rotation,
+            _new_arm2_joint_state.inner_tube_translation
+        );
+        _has_new_arm2_joint_state = false;
     }
     
 
