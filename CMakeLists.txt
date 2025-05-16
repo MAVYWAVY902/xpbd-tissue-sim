@@ -10,9 +10,9 @@ if (HAVE_CUDA AND NOT NO_GPU)
     message("\n-- WE HAVE CUDA! -- \n")
     set(CMAKE_CUDA_ARCHITECTURES "native")
     set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
-    project(MyProject LANGUAGES CXX CUDA)
+    project(XPBDSim LANGUAGES CXX CUDA)
 else ()
-    project(MyProject LANGUAGES CXX)
+    project(XPBDSim LANGUAGES CXX)
 endif()
 
 
@@ -32,16 +32,17 @@ if (HAVE_CUDA AND NOT NO_GPU)
     include_directories("/usr/local/cuda/include")
 endif()
 
-add_library(MeshUtils include/utils/MeshUtils.hpp src/utils/MeshUtils.cpp) # create MeshUtils library
-set_target_properties(MeshUtils PROPERTIES LINKER_LANGUAGE CXX) # make sure the linker knows it's C++
-target_link_libraries(MeshUtils gmsh assimp Eigen3::Eigen) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
-
-add_library(GeometryUtils include/utils/GeometryUtils.hpp src/utils/GeometryUtils.cpp)
-target_link_libraries(GeometryUtils Eigen3::Eigen)
-
 # Collision library
 add_library(Collision)
 add_subdirectory("src/collision")
+
+# Config library
+add_library(Config)
+add_subdirectory("src/config")
+
+# Common library
+add_library(Common)
+add_subdirectory("src/common")
 
 # Graphics library
 add_library(Graphics)
@@ -70,6 +71,11 @@ add_subdirectory("src/solver")
 add_library(SimObject)
 add_subdirectory("src/simobject")
 
+# Utils libraries
+add_library(MeshUtils)
+add_library(GeometryUtils)
+add_subdirectory("src/utils")
+
 # link in necessary libraries
 target_link_libraries(Collision Eigen3::Eigen mesh2sdf Geometry GeometryUtils)
 target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
@@ -77,6 +83,8 @@ target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
 target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Geometry Solver)   # link MeshUtils and Solver libraries
 target_link_libraries(Solver Eigen3::Eigen SimObject)         # link SimObject library
+target_link_libraries(MeshUtils gmsh assimp Eigen3::Eigen) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
+target_link_libraries(GeometryUtils Eigen3::Eigen)
 
 ### Simulation libraries - each has its own executable
 add_library(ResidualSimulation)

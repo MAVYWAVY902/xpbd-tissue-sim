@@ -12,7 +12,7 @@ namespace Sim
 {
 
 VirtuosoTissueGraspingSimulation::VirtuosoTissueGraspingSimulation(const VirtuosoTissueGraspingSimulationConfig* config)
-: VirtuosoSimulation(config), _virtuoso_robot(nullptr), _grasping(false)
+: VirtuosoSimulation(config), _grasping(false)
 {
     // extract parameters from config object
     _input_device = config->inputDevice();
@@ -41,6 +41,14 @@ void VirtuosoTissueGraspingSimulation::setup()
     }
 
     assert(_tissue_obj);
+
+    // once we've found the tissue object, make sure that each virtuoso arm knows that this is the object that they're manipulating
+    // (the VirtuosoArm class handles the grasping logic)
+    if (_virtuoso_robot->hasArm1())
+        _virtuoso_robot->arm1()->setToolManipulatedObject(_tissue_obj);
+    if (_virtuoso_robot->hasArm2())
+        _virtuoso_robot->arm2()->setToolManipulatedObject(_tissue_obj);
+
 
     if (_fixed_faces_filename.has_value())
     {
@@ -124,7 +132,8 @@ void VirtuosoTissueGraspingSimulation::notifyMouseButtonPressed(int button, int 
     
     if (_input_device == SimulationInputDevice::MOUSE && button == 0 && action == 1)
     {
-        _toggleTissueGrasping();
+        // _toggleTissueGrasping();
+        _active_arm->setToolState(!_active_arm->toolState());
     }
 
     VirtuosoSimulation::notifyMouseButtonPressed(button, action, modifiers);
@@ -142,7 +151,8 @@ void VirtuosoTissueGraspingSimulation::notifyKeyPressed(int key, int action, int
     // if input mode is keyboard, space bar grasps
     if (_input_device == SimulationInputDevice::KEYBOARD && key == 32 && action == 1)
     {
-        _toggleTissueGrasping();
+        _active_arm->setToolState(!_active_arm->toolState());
+        // _toggleTissueGrasping();
     }
 
     // if 'B' is pressed, save the tissue mesh to file

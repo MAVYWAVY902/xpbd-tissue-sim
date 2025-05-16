@@ -13,35 +13,34 @@
 namespace Solver
 {
 
-struct ConstraintProjectorOptions
-{
-    bool with_residual;
-    bool with_damping;
-    bool first_order;
-    Real damping_gamma;
-
-    ConstraintProjectorOptions()
-        : with_residual(false), with_damping(false), first_order(false), damping_gamma(0)
-    {}
-};
-
+/** Performs a XPBD constraint projection for a single constraint.
+ *  
+ * IsFirstOrder template parameter indicates if the projection follows the 1st-Order XPBD algorithm
+ * 
+ * Constraint template parameter is the type of constraint being projected (HydrostaticConstraint, DeviatoricConstraint, etc.)
+*/
 template<bool IsFirstOrder, class Constraint>
 class ConstraintProjector
 {
     public:
-    // TODO: implement num_coordinates and MAX_NUM_COORDINATES - for single constraint projector they will be the same
+    /** Number of constraints projected */
     constexpr static int NUM_CONSTRAINTS = 1;
+    /** Maximum number of coordinates involved in the contsraint projection */
     constexpr static int MAX_NUM_COORDINATES = Constraint::NUM_COORDINATES;
 
+    /** List of constraint types being projected (will be a single constraint for this projector) */
     using constraint_type_list = TypeList<Constraint>;
+    /** Whether or not the 1st-Order algorithm is used */
     constexpr static bool is_first_order = IsFirstOrder;
 
     public:
+    /** Constructor */
     explicit ConstraintProjector(Real dt, Constraint* constraint_ptr)
         : _dt(dt), _constraint(constraint_ptr), _valid(true)
     {
     }
 
+    /** Default constructor - projector marked invalid */
     explicit ConstraintProjector()
         : _valid(false)
     {   
@@ -52,18 +51,23 @@ class ConstraintProjector
 
     int numCoordinates() { return MAX_NUM_COORDINATES; }
 
+    /** Initialize the Lagrange multipliers */
     void initialize()
     {
         _lambda = 0;
     }
 
+    /** Perform the XPBD constraint projection
+     * @param coordinate_updates_ptr (OUTPUT) - a (currently empty) array of CoordinateUpdate structs of numCoordinates() size. Stores the resulting state updates from the XPBD projection. 
+     */
     void project(CoordinateUpdate* coordinate_updates_ptr)
     {
+        // evalute the constraint's value and gradient
         Real C;
         Real delC[Constraint::NUM_COORDINATES];
         _constraint->evaluateWithGradient(&C, delC);
 
-        // if inequality constraint, make sure that the constraint should actually be enforce
+        // if inequality constraint, make sure that the constraint should actually be enforced
         if (C > 0 && _constraint->isInequality())
         {
             for (int i = 0; i < Constraint::NUM_COORDINATES; i++) 
@@ -138,10 +142,10 @@ class ConstraintProjector
     #endif
 
     private:
-    Real _dt;
-    Real _lambda;
-    Constraint* _constraint;
-    bool _valid;
+    Real _dt;       // time step of the simulation
+    Real _lambda;   // Lagrange multiplier for the projection
+    Constraint* _constraint;    // the constraint being projected
+    bool _valid;    // whether or not this projector is valid (if invalid, projection will not occur)
     
 
 };

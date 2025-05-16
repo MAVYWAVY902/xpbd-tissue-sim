@@ -5,9 +5,13 @@
 #include <iostream>
 
 // adapted from this StackOverflow answer: https://stackoverflow.com/a/53112843
-template<class L, class... R> class VariadicVectorContainer;
 
-template<class... Types> class VariadicIterator;
+/** A class that stores a heterogeneous collection of vector types (i.e. vectors that each store different types).
+ * The types stored are determined by the template parameters, meaning that it is determined at compile time.
+ * 
+ * Uses CRTP inheritance to recursively add a private member vector variable for each type.
+ */
+template<class L, class... R> class VariadicVectorContainer;
 
 template<class L>
 class VariadicVectorContainer<L>
@@ -179,25 +183,6 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
         _visit_elements<L, R...>(std::forward<Visitor>(visitor));
     }
 
-    // Extension to VariadicVectorContainer for range-based for loop support
-    public:
-    // Iterator related methods
-    VariadicIterator<L, R...> begin() {
-        return VariadicIterator<L, R...>(*this);
-    }
-    
-    VariadicIterator<L, R...> end() {
-        return VariadicIterator<L, R...>(*this, true);
-    }
-    
-    VariadicIterator<L, R...> begin() const {
-        return VariadicIterator<L, R...>(*const_cast<VariadicVectorContainer*>(this));
-    }
-    
-    VariadicIterator<L, R...> end() const {
-        return VariadicIterator<L, R...>(*const_cast<VariadicVectorContainer*>(this), true);
-    }
-
     private:
     // recursive implementation to visit elements of all types
     template<typename T, typename... Ts, typename Visitor>
@@ -219,112 +204,6 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
         if constexpr (sizeof...(Ts) > 0)
         {
             _visit_elements<Ts...>(std::forward<Visitor>(visitor));
-        }
-    }
-};
-
-// Iterator over different types in VariadicVectorContainer
-template<class... Types>
-class VariadicIterator
-{
-    public:
-    using ContainerType = VariadicVectorContainer<Types...>;
-
-    VariadicIterator(ContainerType& container, bool is_end = false)
-        : _container(&container), _current_type(is_end ? sizeof...(Types) : 0), _current_index(0)
-    {
-        if (!is_end)
-        {
-            _skip_empty_vectors();
-        }
-    }
-
-    template<typename Visitor>
-    void visit(Visitor&& visitor) const
-    {
-        _visit_current<0, Visitor, Types...>(std::forward<Visitor>(visitor));
-    }
-
-    VariadicIterator& operator++()
-    {
-        _current_index++;
-        _check_and_advance();
-        return *this;
-    }
-
-    bool operator==(const VariadicIterator& other) const
-    {
-        return _container == other._container && 
-               _current_type == other._current_type && 
-               (_current_type == sizeof...(Types) || _current_index == other._current_index);
-    }
-
-    bool operator !=(const VariadicIterator& other) const
-    {
-        return !(*this == other);
-    }
-
-    private:
-    ContainerType* _container;
-    size_t _current_type;
-    size_t _current_index;
-
-    // cehck if we need to move to the next vector type
-    void _check_and_advance()
-    {
-        if (_current_type < sizeof...(Types))
-        {
-            size_t size = _get_size_of_current_vector();
-            if (_current_index >= size)
-            {
-                _current_type++;
-                _current_index = 0;
-                _skip_empty_vectors();
-            }
-        }
-    }
-
-    // skip empty vectors
-    void _skip_empty_vectors()
-    {
-        while (_current_type < sizeof...(Types) && _get_size_of_current_vector() == 0)
-        {
-            _current_type++;
-        }
-    }
-
-    // get size of current vector
-    size_t _get_size_of_current_vector() const
-    {
-        size_t result = 0;
-        _get_size<0, Types...>(result);
-        return result;
-    }
-
-    template<size_t I, typename T, typename... Ts>
-    void _get_size(size_t& result) const
-    {
-        if (I == _current_type)
-        {
-            result = _container->template get<T>().size();
-        }
-        else if constexpr (sizeof...(Ts) > 0)
-        {
-            _get_size<I+1, Ts...>(result);
-        }
-    }
-
-    // visit the current element based on the current type
-    template<size_t I, typename Visitor, typename T, typename... Ts>
-    void _visit_current(Visitor&& visitor) const 
-    {
-        if (I == _current_type)
-        {
-            visitor(_container->template get<T>()[_current_index]);
-        }
-        else if constexpr (sizeof...(Ts) > 0)
-        {
-            _visit_current<I+1, Visitor, Ts...>(std::forward<Visitor>(visitor));
         }
     }
 };

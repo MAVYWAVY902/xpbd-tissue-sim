@@ -13,6 +13,7 @@
 
 #include <thread>
 #include <optional>
+#include <functional>
 
 namespace Sim
 {
@@ -22,6 +23,18 @@ namespace Sim
  */
 class Simulation
 {
+    public:
+    struct CallbackInfo
+    {
+        std::function<void()> callback;
+        double interval;
+        double next_exec_time;
+
+        CallbackInfo(std::function<void()> cb, double intvl, double start_time)
+            : callback(std::move(cb)), interval(intvl), next_exec_time(start_time + interval)
+        {}
+    };
+
     public:
         explicit Simulation(const SimulationConfig* config);
 
@@ -71,6 +84,16 @@ class Simulation
         virtual void notifyMouseMoved(double x, double y);
 
         virtual void notifyMouseScrolled(double dx, double dy);
+
+        template<typename CallbackT>
+        void addCallback(double interval, CallbackT&& lambda)
+        {
+            std::function<void()> wrapper = [lambda = std::forward<CallbackT>(lambda)]() {
+                lambda();
+            };
+
+            _callbacks.emplace_back(std::move(wrapper), interval, _time);
+        }
     
     protected:
         /** Helper to add an object to the simulation given an ObjectConfig.
@@ -86,6 +109,9 @@ class Simulation
         virtual void _updateGraphics();
 
     protected:
+        /** Whether or not the simulation has been setup already with a call to setup()  */
+        bool _setup;
+        
         /** YAML config dictionary for setting up the simulation */
         const SimulationConfig* _config;
 
@@ -114,6 +140,9 @@ class Simulation
         Real _time_between_collision_checks;
 
         Real _last_collision_detection_time;
+
+        /** scheduled callbacks */
+        std::vector<CallbackInfo> _callbacks;
 
         /** storage of all Objects in the simulation.
          * These objects will evolve in time through the update() method that they all provide

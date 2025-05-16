@@ -26,7 +26,7 @@ namespace Sim
 
 
 Simulation::Simulation(const SimulationConfig* config)
-    : _config(config)
+    : _setup(false), _config(config)
 {
     // initialize gmsh
     gmsh::initialize();
@@ -49,8 +49,6 @@ Simulation::Simulation(const SimulationConfig* config)
     if (_config->visualization() == Visualization::EASY3D)
     {
         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
-        _graphics_scene->init();
-        _graphics_scene->viewer()->registerSimulation(this);
     }
 
     // initialize the collision scene
@@ -149,17 +147,29 @@ Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
 
 void Simulation::setup()
 {   
+    // make sure we haven't set up already before
+    assert(!_setup);
+
+    _setup = true;
+
+
+    /** Configure graphics scene... */ 
+    if (_graphics_scene)
+    {
+        _graphics_scene->init();
+        _graphics_scene->viewer()->registerSimulation(this);
+        // add text that displays the current Sim Time  
+        _graphics_scene->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
+    }
+
+    /** Add simulation objects from Config object... */
     for (const auto& obj_config : _config->objectConfigs())
     {
         _addObjectFromConfig(obj_config.get());
     }
         
 
-    // add text that displays the current Sim Time   
-    if (_graphics_scene)
-    {
-        _graphics_scene->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
-    }
+    
 }
 
 void Simulation::update()
@@ -176,6 +186,17 @@ void Simulation::update()
     {
         // the elapsed seconds in wall time since the simulation has started
         Real wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
+        
+        // check if any callbacks need to be called
+        for (auto& cb : _callbacks)
+        {
+            if (wall_time_elapsed_s > cb.next_exec_time)
+            {
+                cb.callback();
+                cb.next_exec_time = cb.next_exec_time + cb.interval;
+            }
+        }
+
         // if the simulation is ahead of the current elapsed wall time, stall
         if (_sim_mode == SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
         {
@@ -298,8 +319,9 @@ void Simulation::notifyMouseScrolled(double /* dx */, double /* dy */)
 
 int Simulation::run()
 {
-    // first, setup
-    setup();
+    // first, setup if we haven't done so already
+    if (!_setup)
+        setup();
 
     // spwan the update thread
     std::thread update_thread;

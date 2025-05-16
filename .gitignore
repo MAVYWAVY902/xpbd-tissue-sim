@@ -11,6 +11,10 @@ CMakeFiles/
 Makefile
 .deb
 
+# ignore ROS directories
+install/
+log/
+
 # ignore .obj and .stl files
 *.obj
 *.stl
@@ -20,3 +24,6 @@ output/
 
 # ignore all SDF files
 *.sdf
+
+# ignore __pycache__
+__pycache__/

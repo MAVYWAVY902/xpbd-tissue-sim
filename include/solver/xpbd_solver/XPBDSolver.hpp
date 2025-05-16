@@ -15,12 +15,26 @@
 namespace Solver
 {
 
+/** XPBD Solver base class responsible for iterating over constraint projectors and applying their position updates.
+ * Different derived classes will have different ways of doing this:
+ *   i.e. Gauss Seidel solver will apply position updates immediately, Jacobi solver will accumulate position updates and apply them after iterating through all constraints
+ * 
+ * IsFirstOrder template parameter indicates whether the 1st-Order XPBD method is being used.
+ * 
+ * ConstraintProjectors variadic template parameter lists all the types of constraint projectors this solver can project.
+ *   Note that this must be known at compile time - see XPBDTypedefs.hpp for grouped lists of constraint projectors
+ * 
+ * 
+ */
 template<bool IsFirstOrder, typename ...ConstraintProjectors>
 class XPBDSolver
 {
     public:
+    /** List of projector types */
     using projector_type_list = TypeList<ConstraintProjectors...>;
+    /** List of constraint types */
     using constraint_type_list = typename ConcatenateTypeLists<typename ConstraintProjectors::constraint_type_list...>::type;
+    /** Whether or not solver is using 1st-Order projection */
     constexpr static bool is_first_order = IsFirstOrder;
 
     explicit XPBDSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
@@ -31,6 +45,7 @@ class XPBDSolver
 
     ~XPBDSolver() = default;
 
+    /** Performs any one-time setup for the solver. */
     void setup()
     {
         // resize the primary residual vector according to the MeshObject's number of vertices
@@ -87,6 +102,9 @@ class XPBDSolver
     /** Returns the number of solver iterations. */
     int numIterations() const { return _num_iter; }
 
+    /** Allocate space for a specified number of constraint projectors of a specified type.
+     * @param size - the number of constraint projectors to allocate space for
+    */
     template<class ProjectorType>
     void setNumProjectorsOfType(int size)
     {
@@ -94,18 +112,14 @@ class XPBDSolver
         
     }
 
+    /** Creates a projector for the passed in constraints and adds it to the associated projector array.
+     * @param dt - the time step used by the constraint projector (i.e. the simulation time step)
+     * @param constraints - variadic list of constraint pointers (right now, only 1 or 2 constraints are supported)
+     */
     template<class... Constraints>
     void addConstraintProjector(Real dt, Constraints* ... constraints)
     {
         auto projector = _createConstraintProjector(dt, constraints...);
-    
-        // amount of pre-allocated memory required to perform the constraint(s) projection
-        // size_t required_array_size = projector.memoryNeeded() / sizeof(Real);
-        // // make sure that the data buffer of the _data vector is large enough to accomodate the new projector
-        // if (required_array_size > _data.size())
-        // {
-        //     _data.resize(required_array_size);
-        // }
     
         // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
         if (static_cast<unsigned>(projector.numCoordinates()) > _coordinate_updates.size())
@@ -115,66 +129,79 @@ class XPBDSolver
     
         // increase the total number of constraints (needed for the constraint residual size)
         _num_constraints += decltype(projector)::NUM_CONSTRAINTS;
-    
-        // check if primary residual is needed for constraint projection
-        // if (options.with_residual)
-        // {
-            // TODO: FIX THIS for the NEW APPROACH!!!
-
-            // _constraints_using_primary_residual = true;
-            // if (WithDistributedPrimaryResidual* wpr = dynamic_cast<WithDistributedPrimaryResidual*>(projector.get()))
-            // {
-            //     wpr->setPrimaryResidual(_primary_residual.data());
-            // }
-        // }
             
         _constraint_projectors.template push_back<decltype(projector)>(std::move(projector));
     }
 
+    /** Creates a projector for the passed in constraints and puts it at the specified index.
+     * @param index - the index of the new projector in the associated projector array
+     * @param dt - the time step used by the constraint projector (i.e. the simulation time step)
+     * @param constraints - variadic list of constraint pointers (right now, only 1 or 2 constraints are supported)
+     */
     template<class... Constraints>
     void setConstraintProjector(int index, Real dt, Constraints* ... constraints)
     {
         auto projector = _createConstraintProjector(dt, constraints...);
-    
-        // check if primary residual is needed for constraint projection
-        // if (options.with_residual)
-        // {
-            // TODO: FIX THIS for the NEW APPROACH!!!
-
-            // _constraints_using_primary_residual = true;
-            // if (WithDistributedPrimaryResidual* wpr = dynamic_cast<WithDistributedPrimaryResidual*>(projector.get()))
-            // {
-            //     wpr->setPrimaryResidual(_primary_residual.data());
-            // }
-        // }
             
+        // if current constraint projector at this index is invalid, increase total number of constraints
+        if (!_constraint_projectors.template get<decltype(projector)>()[index].isValid())
+            _num_constraints += decltype(projector)::NUM_CONSTRAINTS;
+        
+        // set constraint projector at index
         _constraint_projectors.template set<decltype(projector)>(index, std::move(projector));
     }
 
+    /** Returns the projector at the specified index. */
     template<class Projector>
     const Projector& getConstraintProjector(int index) const
     {
         return _constraint_projectors.template get<Projector>()[index];
     }
 
+    /** Sets the validity of a single projector.
+     * @param index - the index of the projector
+     * @param is_valid - whether the proejctor should be marked valid or invalid
+     */
     template<class Projector>
     void setProjectorValidity(int index, bool is_valid)
     {
-        _constraint_projectors.template get<Projector>()[index].setValidity(is_valid);
+        Projector& projector = _constraint_projectors.template get<Projector>()[index];
+
+        // decrease the total number of constraints if projector is valid
+        if (projector.isValid() && !is_valid)
+            _num_constraints -= Projector::NUM_CONSTRAINTS;
+        else if (!projector.isValid() && is_valid)
+            _num_constraints += Projector::NUM_CONSTRAINTS;
+
+        // set validity of constraint projector
+        projector.setValidity(is_valid);
     }
 
+    /** Marks all projectors of a given type as invalid. */
     template<class Projector>
     void setAllProjectorsOfTypeInvalid()
     {
-        _constraint_projectors.template for_each_element<Projector>([](auto& element)
+        _constraint_projectors.template for_each_element<Projector>([&](auto& element)
         {
+            // decrease the total number of constraints if projector is valid
+            if (element.isValid())
+                _num_constraints -= Projector::NUM_CONSTRAINTS;
+
             element.setValidity(false);
         });
     }
 
+    /** Clears all projectors of a given type. */
     template<class Projector>
     void clearProjectorsOfType()
     {
+        _constraint_projectors.template for_each_element<Projector>([&](auto& element)
+        {
+            // decrease the total number of constraints if projector is valid
+            if (element.isValid())
+                _num_constraints -= Projector::NUM_CONSTRAINTS;
+        });
+
         _constraint_projectors.template clear<Projector>();
     }
 
@@ -195,6 +222,10 @@ class XPBDSolver
     void _calculateConstraintResidual() {}
 
     
+    /** Creates a constraint projector that projects a single constraint
+     * @param dt - the time step used by the constraint projector (i.e. time step of the sim)
+     * @param constraint - a pointer to the constraint to be projected
+    */
     template <class Constraint>
     ConstraintProjector<IsFirstOrder, Constraint> _createConstraintProjector(Real dt, Constraint* constraint)
     {
@@ -203,6 +234,11 @@ class XPBDSolver
         return projector;
     }
 
+    /** Creates a constraint projector that projects two constraints simultaneously
+     * @param dt - the time step used by the constraint projector (i.e. time step of the sim)
+     * @param constraint1 - a pointer to one constraint to be projected
+     * @param constraint2 - a pointer to second consraint to be projected
+    */
     template <class Constraint1, class Constraint2>
     CombinedConstraintProjector<IsFirstOrder, Constraint1, Constraint2> _createConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
     {
@@ -213,7 +249,7 @@ class XPBDSolver
     }
 
     protected:
-    VariadicVectorContainer<ConstraintProjectors...> _constraint_projectors;
+    VariadicVectorContainer<ConstraintProjectors...> _constraint_projectors;    // stores the constraint projectors of different types
 
     Sim::XPBDMeshObject_Base* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
     int _num_iter;                                         // number of solver iterations per solve() call

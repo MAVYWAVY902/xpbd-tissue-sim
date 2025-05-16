@@ -13,22 +13,39 @@
 namespace Solver
 {
 
+/** Performs a XPBD constraint projection for a two constraints simulatenously.
+ * 
+ * IMPORTANT NOTE AND TODO: Right now we assume that Constraint1 and Constraint2 share the exact same coordinates. 
+ *   In general, this may not be the case and we should check for this.
+ *   However, right now the only constraints being projected simultaneously are the Hydrostatic and Deviatoric constraints for the same tetrahedral element, which do in fact share the same coordinates.
+ * 
+ * IsFirstOrder template parameter indicates if the projection follows the 1st-Order XPBD algorithm
+ * 
+ * Constraint1 template parameter is the type of constraint being projected (HydrostaticConstraint, DeviatoricConstraint, etc.)
+ * Constraint2 template parameter is the other type of constraint being projected
+*/
 template<bool IsFirstOrder, class Constraint1, class Constraint2>
 class CombinedConstraintProjector
 {
     public:
+    /** Number of constraints projected */
     constexpr static int NUM_CONSTRAINTS = 2;
+    /** Maximum number of coordinates involved in the constraint projection (may actually be less due to sharing of coordinates between constraints) */
     constexpr static int MAX_NUM_COORDINATES = Constraint1::NUM_COORDINATES + Constraint2::NUM_COORDINATES;
     
+    /** List of constraint types being projected */
     using constraint_type_list = TypeList<Constraint1, Constraint2>;
+    /** Whether or not the 1st-Order algorithm is being used.*/
     constexpr static bool is_first_order = IsFirstOrder;
 
     public:
+    /** Constructor */
     explicit CombinedConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
         : _dt(dt), _constraint1(constraint1), _constraint2(constraint2)
     {
     }
 
+    /** Default constructor - projector marked invalid */
     explicit CombinedConstraintProjector()
         : _valid(false)
     {
@@ -39,12 +56,16 @@ class CombinedConstraintProjector
 
     int numCoordinates() { return Constraint1::NUM_COORDINATES; } // TODO: for now we're assuming that constraint1 and constraint2 share the same coords exactly
 
+    /** Initialize the Lagrange multipliers. */
     void initialize()
     {
         _lambda[0] = 0;
         _lambda[1] = 0;
     }
 
+    /** Perform the XPBD constraint projection
+     * @param coordinate_updates_ptr (OUTPUT) - a (currently empty) array of CoordinateUpdate structs of numCoordinates() size. Stores the resulting state updates from the XPBD projection. 
+     */
     void project(CoordinateUpdate* coordinate_updates_ptr)
     {
         Real C[2];
