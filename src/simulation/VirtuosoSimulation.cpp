@@ -178,6 +178,11 @@ void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
 
 void VirtuosoSimulation::_moveCursor(const Vec3r& dp)
 {
+    // Vec3r dp_clamped = dp;
+    // if (dp.norm() > 1e-5)
+    // {
+    //     dp_clamped = dp * (1e-5 / dp.norm());
+    // }
     // move the tip cursor and the active arm tip position
     const Vec3r current_tip_position = _tip_cursor->position();
     _tip_cursor->setPosition(current_tip_position + dp);
