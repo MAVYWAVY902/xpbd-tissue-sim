@@ -381,14 +381,14 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_projectConstrain
     // }
 
     // TODO: remove
-    for (int i = 0; i < _mesh->numVertices(); i++)
-    {
-        const Vec3r& v = _mesh->vertex(i);
-        if (v[2] < 0)
-        {
-            _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
-        }
-    }
+    // for (int i = 0; i < _mesh->numVertices(); i++)
+    // {
+    //     const Vec3r& v = _mesh->vertex(i);
+    //     if (v[2] < 0)
+    //     {
+    //         _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
+    //     }
+    // }
 
     // TODO: replace with constraints?
     for (int i = 0; i < _mesh->numVertices(); i++)

@@ -25,6 +25,7 @@ list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build") # needed in order to f
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 find_package(Eigen3 3.3 REQUIRED)   # find Eigen
+find_package(embree 4 REQUIRED)
 
 include_directories("./include")
 
@@ -129,6 +130,9 @@ target_link_libraries(VirtuosoTracheaDemo VirtuosoSimulation)
 
 add_executable(VariadicVectorContainerTest src/exec/test/variadic_vector_container_test.cpp)
 target_link_libraries(VariadicVectorContainerTest Eigen3::Eigen)
+
+add_executable(EmbreeTest src/exec/test/embree_test.cpp)
+target_link_libraries(EmbreeTest embree Geometry MeshUtils)
 
 if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject Solver)
