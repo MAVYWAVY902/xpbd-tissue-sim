@@ -17,6 +17,7 @@ set(GEOMETRY_HEADERS
     ${GEOMETRY_INCLUDE_DIR}/MeshSDF.hpp
     ${GEOMETRY_INCLUDE_DIR}/CylinderSDF.hpp
     ${GEOMETRY_INCLUDE_DIR}/VirtuosoArmSDF.hpp
+    ${GEOMETRY_INCLUDE_DIR}/EmbreeManager.hpp
 )
 
 set(GEOMETRY_SOURCES
@@ -26,6 +27,7 @@ set(GEOMETRY_SOURCES
     ${GEOMETRY_SRC_DIR}/BoxSDF.cpp
     ${GEOMETRY_SRC_DIR}/CylinderSDF.cpp
     ${GEOMETRY_SRC_DIR}/MeshSDF.cpp  
+    ${GEOMETRY_SRC_DIR}/EmbreeManager.cpp
 )
 
 target_sources(Geometry

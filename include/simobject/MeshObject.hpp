@@ -4,6 +4,7 @@
 #include "geometry/Mesh.hpp"
 #include "geometry/TetMesh.hpp"
 #include "utils/MeshUtils.hpp"
+#include "config/ObjectConfig.hpp"
 #include "config/MeshObjectConfig.hpp"
 
 namespace Sim
