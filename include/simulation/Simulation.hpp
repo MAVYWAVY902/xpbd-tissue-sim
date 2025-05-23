@@ -8,6 +8,7 @@
 #include "config/SimulationConfig.hpp"
 #include "collision/CollisionScene.hpp"
 #include "graphics/GraphicsScene.hpp"
+#include "geometry/embree/EmbreeScene.hpp"
 
 #include <yaml-cpp/yaml.h>
 
@@ -58,6 +59,10 @@ class Simulation
         Real dt() const { return _time_step; }
         
         Real gAccel() const { return _g_accel; }
+
+        const Graphics::GraphicsScene* graphicsScene() const { return _graphics_scene.get(); }
+        const Geometry::EmbreeScene* embreeScene() const { return _embree_scene.get(); }
+        const CollisionScene* collisionScene() const { return _collision_scene.get(); }
 
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
@@ -157,6 +162,8 @@ class Simulation
         std::unique_ptr<CollisionScene> _collision_scene;
 
         std::unique_ptr<Graphics::GraphicsScene> _graphics_scene;
+
+        std::unique_ptr<Geometry::EmbreeScene> _embree_scene;
 };
 
 } // namespace Sim

@@ -4,6 +4,7 @@
 // #include "simobject/MeshObject.hpp"
 #include "simobject/Object.hpp"
 #include "geometry/SDF.hpp"
+#include "geometry/embree/EmbreeScene.hpp"
 
 #ifdef HAVE_CUDA
 #include "gpu/resource/WritableArrayGPUResource.hpp"
@@ -30,7 +31,7 @@ class CollisionScene
 {
     public:
     /** Constructor - needs a reference back to the simulation to access the time step, current sim time, etc. */
-    explicit CollisionScene(const Sim::Simulation* sim);
+    explicit CollisionScene(const Sim::Simulation* sim, const Geometry::EmbreeScene* embree_scene);
 
     /** Adds a new object to the CollisionScene.
      * Creates a new collision geometry for this object depending on the type. (i.e. for a RigidBox, a BoxSDF is created, for a RigidSphere, a SphereSDF, etc.)
@@ -65,6 +66,12 @@ class CollisionScene
 
     /** Stores the mesh objects in the scene. */
     std::vector<CollisionObject> _collision_objects;
+
+    /** Pointer to the simulation's Embree scene.
+     * Note: The CollisionScene IS NOT RESPONSIBLE for updating the Embree scene. This will be done by the Simulation class.
+     * We assume that before performing any queries to the Embree scene that it is up to date.
+     */
+    const Geometry::EmbreeScene* _embree_scene;
 
     #ifdef HAVE_CUDA
     std::map<Sim::Object*, std::vector<Sim::GPUCollision> > _gpu_collisions;

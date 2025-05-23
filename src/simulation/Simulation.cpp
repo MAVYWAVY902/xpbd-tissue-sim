@@ -51,9 +51,12 @@ Simulation::Simulation(const SimulationConfig* config)
         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
     }
 
+    // initialize the Embree scene
+    _embree_scene = std::make_unique<Geometry::EmbreeScene>();
+
     // initialize the collision scene
     // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
-    _collision_scene = std::make_unique<CollisionScene>(this);
+    _collision_scene = std::make_unique<CollisionScene>(this, _embree_scene.get());
     _last_collision_detection_time = 0;
 }
 
@@ -77,11 +80,19 @@ Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
     {
         // new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
         new_obj = XPBDObjectFactory::createFirstOrderXPBDMeshObject(this, xpbd_config);
+
+        // add tetrahedral mesh objects to Embree scene
+        // TODO: better way to do this?
+        _embree_scene->addObject( dynamic_cast<const Sim::TetMeshObject*>(new_obj.get()) );
     }
     else if (const XPBDMeshObjectConfig* xpbd_config = dynamic_cast<const XPBDMeshObjectConfig*>(obj_config))
     {
         // new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
         new_obj = XPBDObjectFactory::createXPBDMeshObject(this, xpbd_config);
+
+        // add tetrahedral mesh objects to Embree scene
+        // TODO: better way to do this?
+        _embree_scene->addObject( dynamic_cast<const Sim::TetMeshObject*>(new_obj.get()) );
     }
     else if (const RigidMeshObjectConfig* rigid_config = dynamic_cast<const RigidMeshObjectConfig*>(obj_config))
     {
@@ -239,6 +250,10 @@ void Simulation::_timeStep()
             if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
                 xpbd_obj->clearCollisionConstraints();
         }
+        // update the Embree scene before colliding objects
+        _embree_scene->update();
+
+
         _collision_scene->collideObjects();
         auto t2 = std::chrono::steady_clock::now();
         // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
