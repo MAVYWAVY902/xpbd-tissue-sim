@@ -28,8 +28,7 @@ class MeshObject
 
     Geometry::Mesh* mesh() { return _mesh.get(); }
 
-    protected:
-    void _loadAndConfigureMesh()
+    void loadAndConfigureMesh()
     {
         _loadMeshFromFile(_filename);
 
@@ -53,6 +52,8 @@ class MeshObject
         // then do rigid transformation - rotation and translation
         _mesh->rotateAbout(_initial_position, _initial_rotation);
     }
+
+    protected:
 
     virtual void _loadMeshFromFile(const std::string& fname)
     {

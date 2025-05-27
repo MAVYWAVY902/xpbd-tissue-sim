@@ -31,7 +31,7 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
 {
     // TODO: lots of duplicated code here...
 
-    this->_loadAndConfigureMesh();
+    this->loadAndConfigureMesh();
 
     this->_solver.setup();
 

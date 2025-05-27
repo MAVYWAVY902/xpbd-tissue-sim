@@ -61,7 +61,7 @@ Geometry::AABB XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::boundin
 template<typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
 {
-    _loadAndConfigureMesh();
+    loadAndConfigureMesh();
 
     _solver.setup();
 

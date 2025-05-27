@@ -42,7 +42,7 @@ void EmbreeMeshGeometry::copyVertices()
 void EmbreeMeshGeometry::boundsFuncTriangle(const struct RTCBoundsFunctionArguments *args)
 {
     const EmbreeMeshGeometry *geom = static_cast<const EmbreeMeshGeometry *>(args->geometryUserPtr);
-    const int *indices = geom->faceIndices() + 4 * args->primID;
+    const int *indices = geom->faceIndices() + 3 * args->primID;
     const float *v1 = geom->vertices() + 3 * indices[0];
     const float *v2 = geom->vertices() + 3 * indices[1];
     const float *v3 = geom->vertices() + 3 * indices[2];
@@ -109,7 +109,7 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     const Eigen::Vector3f a = Eigen::Map<const Eigen::Vector3f>(a_);
     const Eigen::Vector3f b = Eigen::Map<const Eigen::Vector3f>(b_);
     const Eigen::Vector3f c = Eigen::Map<const Eigen::Vector3f>(c_);
-    Eigen::Vector3f out = Eigen::Map<Eigen::Vector3f>(out_);
+    Eigen::Vector3f out;// = Eigen::Map<Eigen::Vector3f>(out_);
 
     const Eigen::Vector3f ab = b - a;
     const Eigen::Vector3f ac = c - a;
@@ -169,6 +169,7 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     const float v = vb * denom;
     const float w = vc * denom;
     out = a + v * ab + w * ac;
+    out_[0] = out[0]; out_[1] = out[1]; out_[2] = out[2];
     return;
 }
 

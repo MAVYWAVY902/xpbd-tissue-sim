@@ -30,7 +30,7 @@ Geometry::AABB RigidMeshObject::boundingBox() const
 
 void RigidMeshObject::setup()
 {
-    _loadAndConfigureMesh();
+    loadAndConfigureMesh();
 
     // compute mass and inertia properties of mesh - in its REST STATE
     // meaning that we have to calculate the mass properties in the mesh's unrotated state

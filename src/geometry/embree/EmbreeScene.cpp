@@ -7,6 +7,7 @@ namespace Geometry
 {
 
 EmbreeScene::EmbreeScene()
+    : _device(nullptr), _collision_scene(nullptr), _ray_scene(nullptr)
 {
     _device = rtcNewDevice(NULL);
 
@@ -16,26 +17,40 @@ EmbreeScene::EmbreeScene()
         assert(0);
     }
 
-    _scene = rtcNewScene(_device);
-    rtcSetSceneFlags(_scene, RTC_SCENE_FLAG_DYNAMIC);
+    _ray_scene = rtcNewScene(_device);
+    rtcSetSceneFlags(_ray_scene, RTC_SCENE_FLAG_DYNAMIC);
+}
+
+EmbreeScene::~EmbreeScene()
+{
+    if (_collision_scene)
+        rtcReleaseScene(_collision_scene);
+
+    if (_ray_scene)
+        rtcReleaseScene(_ray_scene);
+
+    rtcReleaseDevice(_device);
+    
 }
 
 void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
 {
     // make sure that object has not already been added to Embree scene
-    if (_mesh_embree_geom.count(obj_ptr) > 0)
+    if (_mesh_to_embree_geom.count(obj_ptr) > 0)
         assert(0 && "Object has already been added to Embree scene!");
 
     // create new EmbreeMeshGeometry for the object
-    _mesh_embree_geom.emplace(obj_ptr, obj_ptr->mesh());
-    EmbreeMeshGeometry& geom = _mesh_embree_geom.at(obj_ptr);
+    _embree_mesh_geoms.emplace_back(obj_ptr->mesh());
+    EmbreeMeshGeometry& geom = _embree_mesh_geoms.back();
     geom.copyVertices();
+
+    _mesh_to_embree_geom[obj_ptr] = &geom;
 
     // create Embree user geometry from newly created EmbreeMeshGeometry
     RTCGeometry rtc_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
-    geom.setMeshGeomID( rtcAttachGeometry(_scene, rtc_geom) );
+    geom.setMeshGeomID( rtcAttachGeometry(_ray_scene, rtc_geom) );
 
-    // set BVH build quality to REFT - this will update the BVH rather than do a complete rebuild
+    // set BVH build quality to REFIT - this will update the BVH rather than do a complete rebuild
     rtcSetGeometryBuildQuality(rtc_geom, RTC_BUILD_QUALITY_REFIT);
     rtcSetGeometryUserPrimitiveCount(rtc_geom, obj_ptr->mesh()->numFaces());
     rtcSetGeometryUserData(rtc_geom, &geom);
@@ -47,7 +62,7 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
 
     // commit geometry to scene
     rtcCommitGeometry(rtc_geom);
-    rtcCommitScene(_scene);     // this will build BVH
+    rtcCommitScene(_ray_scene);     // this will build BVH
 
     rtcReleaseGeometry(rtc_geom);
 }
@@ -55,19 +70,31 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
 void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
 {
     // make sure that object has not already been added to Embree scene
-    if (_tet_mesh_embree_geom.count(obj_ptr) > 0)
+    if (_tet_mesh_to_embree_geom.count(obj_ptr) > 0)
         assert(0 && "Object has already been added to Embree scene!");
     
     // create new EmbreeTetMeshGeometry for the object
-    _tet_mesh_embree_geom.emplace(obj_ptr, obj_ptr->tetMesh());
-    EmbreeTetMeshGeometry& geom = _tet_mesh_embree_geom.at(obj_ptr);
+    _embree_tet_mesh_geoms.emplace_back(obj_ptr->tetMesh());
+    EmbreeTetMeshGeometry& geom = _embree_tet_mesh_geoms.back();
+    geom.copyVertices();
+
+    // store the new user geometry by its pointer in the maps
+    _tet_mesh_to_embree_geom[obj_ptr] = &geom;
+    _mesh_to_embree_geom[obj_ptr] = &geom;
+
+    // create a new scene for the TetMesh exclusively for point-in-tetrahedra queries
+    RTCScene tet_mesh_scene = rtcNewScene(_device);
+    rtcSetSceneFlags(tet_mesh_scene, RTC_SCENE_FLAG_DYNAMIC);
+    geom.setTetScene(tet_mesh_scene);
+    
 
     // create Embree user geometry from newly created EmbreeTetMeshGeometry struct
     // we create 2 Embree geometries - one for the volumetric representation and one for the surface of the mesh
     RTCGeometry rtc_mesh_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
-    geom.setMeshGeomID( rtcAttachGeometry(_scene, rtc_mesh_geom) );
+    geom.setMeshGeomID( rtcAttachGeometry(_ray_scene, rtc_mesh_geom) );
+
     RTCGeometry rtc_tet_mesh_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
-    geom.setTetMeshGeomID( rtcAttachGeometry(_scene, rtc_tet_mesh_geom) );
+    geom.setTetMeshGeomID( rtcAttachGeometry(tet_mesh_scene, rtc_tet_mesh_geom) );
 
     // set the BVH build quality to REFIT - this will update the BVH rather than do a complete rebuild
     rtcSetGeometryBuildQuality(rtc_mesh_geom, RTC_BUILD_QUALITY_REFIT);
@@ -89,8 +116,10 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
 
     // commit geometry to scene
     rtcCommitGeometry(rtc_mesh_geom);
+    rtcCommitScene(_ray_scene);     // this will build initial BVH
+
     rtcCommitGeometry(rtc_tet_mesh_geom);
-    rtcCommitScene(_scene);     // this will build initial BVH
+    rtcCommitScene(tet_mesh_scene);
 
     rtcReleaseGeometry(rtc_mesh_geom);
     rtcReleaseGeometry(rtc_tet_mesh_geom);
@@ -98,17 +127,18 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
 
 void EmbreeScene::update()
 {
-    for (auto& [obj_ptr, geom] : _mesh_embree_geom)
+    for (auto& geom : _embree_mesh_geoms)
     {
         geom.copyVertices();
     }
 
-    for (auto& [obj_ptr, geom] : _tet_mesh_embree_geom)
+    for (auto& geom : _embree_tet_mesh_geoms)
     {
         geom.copyVertices();
+        rtcCommitScene(geom.tetScene());
     }
 
-    rtcCommitScene(_scene);
+    rtcCommitScene(_ray_scene);
 }
 
 EmbreeHit EmbreeScene::rayCastSurfaceMesh(const Vec3r& ray_origin, const Vec3r& ray_dir, const Sim::MeshObject* obj_ptr)
@@ -120,14 +150,14 @@ EmbreeHit EmbreeScene::rayCastSurfaceMesh(const Vec3r& ray_origin, const Vec3r& 
     
 EmbreeHit EmbreeScene::closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr)
 {
-    const EmbreeMeshGeometry& geom = _mesh_embree_geom.at(obj_ptr);
-    return _closestPointQuery(point, obj_ptr, &geom);
+    const EmbreeMeshGeometry* geom = _mesh_to_embree_geom.at(obj_ptr);
+    return _closestPointQuery(point, obj_ptr, geom);
 }
 
 EmbreeHit EmbreeScene::closestPointTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr)
 {
-    const EmbreeTetMeshGeometry& geom = _tet_mesh_embree_geom.at(obj_ptr);
-    return _closestPointQuery(point, obj_ptr, &geom);
+    const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
+    return _closestPointQuery(point, obj_ptr, geom);
 }
 
 EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom)
@@ -148,16 +178,18 @@ EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObj
 
     RTCPointQueryContext context;
     rtcInitPointQueryContext(&context);
-    rtcPointQuery(_scene, &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangle, &point_query_data);
+    rtcPointQuery(_ray_scene, &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangle, &point_query_data);
+
+    return point_query_data.result;
 
 }
 
-std::set<EmbreeHit> EmbreeScene::pointQueryTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr)
+std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr)
 {
-    const EmbreeTetMeshGeometry& geom = _tet_mesh_embree_geom.at(obj_ptr);
+    const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
     EmbreePointQueryUserData point_query_data;
     point_query_data.obj_ptr = obj_ptr;
-    point_query_data.geom = &geom;
+    point_query_data.geom = geom;
     
     float p[3];
     p[0] = point[0]; p[1] = point[1]; p[2] = point[2];
@@ -171,7 +203,7 @@ std::set<EmbreeHit> EmbreeScene::pointQueryTetMesh(const Vec3r& point, const Sim
 
     RTCPointQueryContext context;
     rtcInitPointQueryContext(&context);
-    rtcPointQuery(_scene, &query, &context, EmbreeTetMeshGeometry::pointQueryFuncTetrahedra, &point_query_data);
+    rtcPointQuery(geom->tetScene(), &query, &context, nullptr, &point_query_data);
 
     return point_query_data.result;
 }

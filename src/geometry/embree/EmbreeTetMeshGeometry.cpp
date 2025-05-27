@@ -7,17 +7,18 @@ namespace Geometry
 {
 
 EmbreeTetMeshGeometry::EmbreeTetMeshGeometry(const Geometry::TetMesh* tet_mesh)
-    : EmbreeMeshGeometry(tet_mesh), _tet_mesh(tet_mesh)
+    : EmbreeMeshGeometry(tet_mesh), _tet_mesh(tet_mesh), _tet_scene(nullptr)
 {
+}
+
+EmbreeTetMeshGeometry::~EmbreeTetMeshGeometry()
+{
+    if (_tet_scene)
+        rtcReleaseScene(_tet_scene);
 }
 
 bool EmbreeTetMeshGeometry::isPointInTetrahedron(const float p[3], const float *v0, const float *v1, const float *v2, const float *v3)
 {
-    // Define vectors for the tetrahedron faces
-    // float v0[3] = {tet.v0[0], tet.v0[1], tet.v0[2]};
-    // float v1[3] = {tet.v1[0], tet.v1[1], tet.v1[2]};
-    // float v2[3] = {tet.v2[0], tet.v2[1], tet.v2[2]};
-    // float v3[3] = {tet.v3[0], tet.v3[1], tet.v3[2]};
 
     // Helper function to compute normal and check same side
     auto sameSide = [](const float p[3], const float a[3], const float b[3],

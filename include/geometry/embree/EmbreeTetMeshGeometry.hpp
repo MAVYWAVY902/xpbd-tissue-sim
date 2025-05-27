@@ -14,9 +14,14 @@ class EmbreeTetMeshGeometry : public EmbreeMeshGeometry
 
     explicit EmbreeTetMeshGeometry(const Geometry::TetMesh* tet_mesh);
 
+    ~EmbreeTetMeshGeometry();
+
     const TetMesh* tetMesh() const { return _tet_mesh; }
     unsigned tetMeshGeomID() const { return _tet_mesh_geom_id; }
     void setTetMeshGeomID(unsigned id) { _tet_mesh_geom_id = id; }
+
+    RTCScene tetScene() const { return _tet_scene; }
+    void setTetScene(RTCScene scene) { _tet_scene = scene; }
 
     /** Returns a pointer to element indices (4 consecutive indices make up an element) */
     const int* elementIndices() const { return _tet_mesh->elements().data(); }
@@ -29,6 +34,8 @@ class EmbreeTetMeshGeometry : public EmbreeMeshGeometry
     private:
     const Geometry::TetMesh* _tet_mesh;      // the volumetric (tetrahedral) mesh to create the BVH for
     unsigned _tet_mesh_geom_id;                        // Embree geometry ID in the scene
+
+    RTCScene _tet_scene;    // Embree scene specifically for this tet mesh - used for point-in-tetrahedron queries
 };
 
 } // namespace Geometry
