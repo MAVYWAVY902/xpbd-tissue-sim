@@ -24,6 +24,7 @@ namespace Geometry
 
 /** A class for interfacing with the Embree API.
  * TODO: add high-level collision scene for broad-phase collision detection
+ * TODO: replace custom triangle-ray intersection function with native Embree version. Will require using triangle geometry instead of user geometry.
  * 
  * Supports: ray-tracing queries, closest-point queries, point-in-tetrahedron queries (for tetrahedral volume meshes)
  * 
@@ -54,7 +55,7 @@ class EmbreeScene
     /** Updates the Embree scene. */
     void update();
 
-    EmbreeHit rayCastSurfaceMesh(const Vec3r& ray_origin, const Vec3r& ray_dir, const Sim::MeshObject* obj_ptr);
+    EmbreeHit castRay(const Vec3r& ray_origin, const Vec3r& ray_dir);
     
     EmbreeHit closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr);
     EmbreeHit closestPointTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr);
@@ -71,6 +72,9 @@ class EmbreeScene
     /** maps object pointers to their Embree user geometries */ 
     std::map<const Sim::MeshObject*, EmbreeMeshGeometry*> _mesh_to_embree_geom;
     std::map<const Sim::TetMeshObject*, EmbreeTetMeshGeometry*> _tet_mesh_to_embree_geom;
+
+    /** maps Embree geomID back to object pointers */
+    std::map<unsigned, const Sim::MeshObject*> _geomID_to_mesh_obj;
 
     /** Stores all the Embree user geometries */
     std::vector<EmbreeMeshGeometry> _embree_mesh_geoms;

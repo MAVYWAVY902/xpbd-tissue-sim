@@ -75,5 +75,30 @@ int main()
 
     std::cout << "closest point: " << cp_result.hit_point[0] << ", " << cp_result.hit_point[1] << ", " << cp_result.hit_point[2] << std::endl;
 
+    // ray-tracing
+    const Vec3r ray_origin(100, 0.38, 0.31);
+    const Vec3r ray_dir(-1, 0, 0);
+    Geometry::EmbreeHit rt_result = embree_scene.castRay(ray_origin, ray_dir);
+    std::cout << "\n=== Results for ray query for ray (" << ray_origin[0] << ", " << ray_origin[1] << ", " << ray_origin[2] << ") with dir (" << ray_dir[0] << ", " << ray_dir[1] << ", " << ray_dir[2] << ") ===" << std::endl;
+    if (rt_result.obj == nullptr)
+    {
+        std::cout << "  No hit detected!" << std::endl;
+    }
+    else
+    {
+        const Eigen::Vector3i& face = rt_result.obj->mesh()->face(rt_result.prim_index);
+        const Vec3r& v1 = rt_result.obj->mesh()->vertex(face[0]);
+        const Vec3r& v2 = rt_result.obj->mesh()->vertex(face[1]);
+        const Vec3r& v3 = rt_result.obj->mesh()->vertex(face[2]);
+
+        std::cout << "Face v1: " << v1[0] << ", " << v1[1] << ", " << v1[2] << std::endl;
+        std::cout << "Face v2: " << v2[0] << ", " << v2[1] << ", " << v2[2] << std::endl;
+        std::cout << "Face v3: " << v3[0] << ", " << v3[1] << ", " << v3[2] << std::endl;
+
+        std::cout << "hit point: " << rt_result.hit_point[0] << ", " << rt_result.hit_point[1] << ", " << rt_result.hit_point[2] << std::endl;
+    }
+    
+    
+
     return 0;
 }

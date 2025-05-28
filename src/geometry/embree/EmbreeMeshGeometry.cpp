@@ -1,3 +1,5 @@
+#include <embree4/rtcore.h>
+
 #include "geometry/embree/EmbreeMeshGeometry.hpp"
 #include "geometry/embree/EmbreeQueryStructs.hpp"
 #include "geometry/embree/EmbreeTetMeshGeometry.hpp"
@@ -59,7 +61,36 @@ void EmbreeMeshGeometry::boundsFuncTriangle(const struct RTCBoundsFunctionArgume
 
 void EmbreeMeshGeometry::intersectFuncTriangle(const RTCIntersectFunctionNArguments *args)
 {
-    // TODO: triangle-ray intersect function
+    const int* valid = args->valid;
+    const EmbreeMeshGeometry* geom = static_cast<EmbreeMeshGeometry*>(args->geometryUserPtr);
+
+    // only consider the geometry we're interested in
+    // if args->geomId is "invalid", we are interested in all geometry
+    // if (args->geomID != RTC_INVALID_GEOMETRY_ID && args->geomID != geom->meshGeomID())
+    //     return;
+
+    assert(args->N == 1);
+
+    if (!valid[0])
+        return;
+
+    // get vertices of face
+    const int *indices = geom->faceIndices() + 3 * args->primID;
+    const float *v1 = geom->vertices() + 3 * indices[0];
+    const float *v2 = geom->vertices() + 3 * indices[1];
+    const float *v3 = geom->vertices() + 3 * indices[2];
+
+    // loop through cast rays (there may be more than 1 in a batch)
+    RTCRayHit* rayhit = (RTCRayHit*)args->rayhit;
+
+    // test intersection between ray and triangle
+    // this function will update the ray's tfar and the hit's u and v and geometry normal (if there is an intersection)
+    if (_rayTriangleIntersect(&rayhit->ray, &rayhit->hit, v1, v2, v3))
+    {
+        // if there is an intersection, update the hit's primID and geomID for the intersected face
+        rayhit->hit.primID = args->primID;
+        rayhit->hit.geomID = args->geomID;
+    }
 }
 
 bool EmbreeMeshGeometry::pointQueryFuncTriangle(RTCPointQueryFunctionArguments *args)
@@ -105,11 +136,11 @@ bool EmbreeMeshGeometry::pointQueryFuncTriangle(RTCPointQueryFunctionArguments *
 // adapted from: https://github.com/RenderKit/embree/blob/master/tutorials/common/math/closest_point.h
 void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_[3], const float b_[3], const float c_[3], float out_[3])
 {
-    const Eigen::Vector3f p = Eigen::Map<const Eigen::Vector3f>(p_);
-    const Eigen::Vector3f a = Eigen::Map<const Eigen::Vector3f>(a_);
-    const Eigen::Vector3f b = Eigen::Map<const Eigen::Vector3f>(b_);
-    const Eigen::Vector3f c = Eigen::Map<const Eigen::Vector3f>(c_);
-    Eigen::Vector3f out;// = Eigen::Map<Eigen::Vector3f>(out_);
+    Eigen::Map<const Eigen::Vector3f> p(p_);
+    Eigen::Map<const Eigen::Vector3f> a(a_);
+    Eigen::Map<const Eigen::Vector3f> b(b_);
+    Eigen::Map<const Eigen::Vector3f> c(c_);
+    Eigen::Map<Eigen::Vector3f> out(out_);
 
     const Eigen::Vector3f ab = b - a;
     const Eigen::Vector3f ac = c - a;
@@ -169,8 +200,65 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     const float v = vb * denom;
     const float w = vc * denom;
     out = a + v * ab + w * ac;
-    out_[0] = out[0]; out_[1] = out[1]; out_[2] = out[2];
+    // out_[0] = out[0]; out_[1] = out[1]; out_[2] = out[2];
     return;
+}
+
+bool EmbreeMeshGeometry::_rayTriangleIntersect(RTCRay* ray, RTCHit* hit,
+    const float a_[3], const float b_[3], const float c_[3])
+{
+    // Eigen::Map<const Eigen::Vector3f> ray_origin(ray_origin_);
+    // Eigen::Map<const Eigen::Vector3f> ray_dir(ray_dir_);
+    const Eigen::Vector3f ray_origin(ray->org_x, ray->org_y, ray->org_z);
+    const Eigen::Vector3f ray_dir(ray->dir_x, ray->dir_y, ray->dir_z);
+
+    Eigen::Map<const Eigen::Vector3f> a(a_);
+    Eigen::Map<const Eigen::Vector3f> b(b_);
+    Eigen::Map<const Eigen::Vector3f> c(c_);
+
+    constexpr float epsilon = std::numeric_limits<float>::epsilon();
+
+    const Eigen::Vector3f edge1 = b - a;
+    const Eigen::Vector3f edge2 = c - a;
+    const Eigen::Vector3f ray_cross_e2 = ray_dir.cross(edge2);
+    const float det = edge1.dot(ray_cross_e2);
+
+    if (det > -epsilon && det < epsilon)
+        return false;
+    
+    const float inv_det = 1.0 / det;
+    const Eigen::Vector3f s = ray_origin - a;
+    const float v = inv_det * s.dot(ray_cross_e2);
+
+    if ( (v < 0 && std::abs(v) > epsilon) || (v > 1 && std::abs(v - 1) > epsilon) )
+        return false;
+
+    const Eigen::Vector3f s_cross_e1 = s.cross(edge1);
+    const float w = inv_det * ray_dir.dot(s_cross_e1);
+
+    if ( (w < 0 && std::abs(w) > epsilon) || (w + v > 1 && std::abs(w + v - 1) > epsilon) )
+        return false;
+    
+    const float t = inv_det * edge2.dot(s_cross_e1);
+
+    if (t >= ray->tnear && t <= ray->tfar)
+    {
+        ray->tfar = t;
+        hit->u = (1-v-w);
+        hit->v = v;
+
+        // compute normal
+        const Eigen::Vector3f n = edge1.cross(edge2);
+        hit->Ng_x = n[0];
+        hit->Ng_y = n[1];
+        hit->Ng_z = n[2];
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 } // namespace Geometry

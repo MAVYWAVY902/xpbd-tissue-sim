@@ -49,6 +49,7 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
     // create Embree user geometry from newly created EmbreeMeshGeometry
     RTCGeometry rtc_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
     geom.setMeshGeomID( rtcAttachGeometry(_ray_scene, rtc_geom) );
+    _geomID_to_mesh_obj[geom.meshGeomID()] = obj_ptr;
 
     // set BVH build quality to REFIT - this will update the BVH rather than do a complete rebuild
     rtcSetGeometryBuildQuality(rtc_geom, RTC_BUILD_QUALITY_REFIT);
@@ -92,6 +93,7 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     // we create 2 Embree geometries - one for the volumetric representation and one for the surface of the mesh
     RTCGeometry rtc_mesh_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
     geom.setMeshGeomID( rtcAttachGeometry(_ray_scene, rtc_mesh_geom) );
+    _geomID_to_mesh_obj[geom.meshGeomID()] = obj_ptr;
 
     RTCGeometry rtc_tet_mesh_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
     geom.setTetMeshGeomID( rtcAttachGeometry(tet_mesh_scene, rtc_tet_mesh_geom) );
@@ -141,11 +143,49 @@ void EmbreeScene::update()
     rtcCommitScene(_ray_scene);
 }
 
-EmbreeHit EmbreeScene::rayCastSurfaceMesh(const Vec3r& ray_origin, const Vec3r& ray_dir, const Sim::MeshObject* obj_ptr)
+EmbreeHit EmbreeScene::castRay(const Vec3r& ray_origin, const Vec3r& ray_dir)
 {
-    // TODO
-    EmbreeHit hit;
-    return hit;
+    RTCRayHit rayhit;
+    rayhit.ray.org_x = ray_origin[0];
+    rayhit.ray.org_y = ray_origin[1];
+    rayhit.ray.org_z = ray_origin[2];
+
+    rayhit.ray.dir_x = ray_dir[0];
+    rayhit.ray.dir_y = ray_dir[1];
+    rayhit.ray.dir_z = ray_dir[2];
+
+    rayhit.ray.tnear = 0;
+    rayhit.ray.tfar = std::numeric_limits<float>::infinity();
+    rayhit.ray.flags = 0;
+    rayhit.ray.time = 0;
+    rayhit.ray.mask = -1;
+
+    rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+    rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
+
+    rtcIntersect1(_ray_scene, &rayhit, nullptr);
+
+    // check if we have a hit
+    if (rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
+    {
+        const Sim::MeshObject* obj = _geomID_to_mesh_obj[rayhit.hit.geomID];
+        const Vec3i& f = obj->mesh()->face(rayhit.hit.primID);
+        const Vec3r& v1 = obj->mesh()->vertex(f[0]);
+        const Vec3r& v2 = obj->mesh()->vertex(f[1]);
+        const Vec3r& v3 = obj->mesh()->vertex(f[2]);
+
+        EmbreeHit hit;
+        hit.obj = obj;
+        hit.prim_index = rayhit.hit.primID;
+        hit.hit_point = v1*rayhit.hit.u + v2*rayhit.hit.v + v3*(1 - rayhit.hit.u - rayhit.hit.v);
+        return hit;
+    }
+    else
+    {
+        EmbreeHit hit;
+        hit.obj = nullptr;
+        return hit;
+    }
 }
     
 EmbreeHit EmbreeScene::closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr)

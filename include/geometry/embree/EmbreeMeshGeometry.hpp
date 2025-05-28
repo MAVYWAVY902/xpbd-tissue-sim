@@ -38,6 +38,12 @@ class EmbreeMeshGeometry
 
     static void _closestPointTriangle(const float p_in[3], const float v0[3], const float v1[3], const float v2[3], float p_out[3]);
 
+    /** Performs a ray-triangle intersection test.
+     * Returns whether or not there is a hit. If there is a hit, the distance and hit_point outputs are filled out.
+     */
+    static bool _rayTriangleIntersect(RTCRay* ray, RTCHit* hit,
+    const float a_[3], const float b_[3], const float c_[3]);
+
     const Geometry::Mesh* _mesh;
     std::vector<float> _vertex_buffer;
     unsigned _mesh_geom_id;
