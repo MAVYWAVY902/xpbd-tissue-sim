@@ -52,8 +52,8 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     with-residual: false
     with-damping: false
-    damping-multiplier: 4000000000
-    # damping-multiplier: 20000000000
+    # damping-multiplier: 4000000000
+    damping-multiplier: 20000000000
     collisions: true
     draw-faces: true
     draw-points: true

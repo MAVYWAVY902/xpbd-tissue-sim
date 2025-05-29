@@ -80,10 +80,6 @@ Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
     {
         // new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
         new_obj = XPBDObjectFactory::createFirstOrderXPBDMeshObject(this, xpbd_config);
-
-        // add tetrahedral mesh objects to Embree scene
-        // TODO: better way to do this?
-        _embree_scene->addObject( dynamic_cast<const Sim::TetMeshObject*>(new_obj.get()) );
     }
     else if (const XPBDMeshObjectConfig* xpbd_config = dynamic_cast<const XPBDMeshObjectConfig*>(obj_config))
     {
@@ -127,6 +123,20 @@ Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
 
     // set up the new object
     new_obj->setup();
+
+    // add tetrahedral mesh objects to Embree scene
+    // TODO: better way to do this?
+    if (const Sim::TetMeshObject* tet_mesh_obj = dynamic_cast<const Sim::TetMeshObject*>(new_obj.get()))
+    {
+        if (obj_config->collisions() && !obj_config->graphicsOnly())
+            _embree_scene->addObject( tet_mesh_obj );
+    }
+    else if (const Sim::MeshObject* mesh_obj = dynamic_cast<const Sim::MeshObject*>(new_obj.get()))
+    {
+        if (obj_config->collisions() && !obj_config->graphicsOnly())
+            _embree_scene->addObject( mesh_obj );
+    }
+        
     
     // add the new object to the collision scene if collisions are enabled
     if (obj_config->collisions() && !obj_config->graphicsOnly())
@@ -251,16 +261,21 @@ void Simulation::_timeStep()
                 xpbd_obj->clearCollisionConstraints();
         }
         // update the Embree scene before colliding objects
+        auto embree_t1 = std::chrono::steady_clock::now();
         _embree_scene->update();
+        auto embree_t2 = std::chrono::steady_clock::now();
+        std::cout << "Embree update took " << std::chrono::duration_cast<std::chrono::microseconds>(embree_t2 - embree_t1).count() << " us\n";
 
 
         _collision_scene->collideObjects();
         auto t2 = std::chrono::steady_clock::now();
-        // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
+        std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
 
         
     }
 
+    
+    // auto update_t1 = std::chrono::steady_clock::now();
     for (auto& obj : _objects)
     {
         obj->update();
@@ -271,6 +286,8 @@ void Simulation::_timeStep()
     {
         obj->velocityUpdate();
     }
+    // auto update_t2 = std::chrono::steady_clock::now();
+    // std::cout << "Update took " << std::chrono::duration_cast<std::chrono::microseconds>(update_t2 - update_t1).count() << " us\n";
 
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
