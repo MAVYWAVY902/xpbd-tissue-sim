@@ -1,17 +1,19 @@
 #ifndef __SIMULATION_CONFIG_HPP
 #define __SIMULATION_CONFIG_HPP
 
-#include "config/ObjectConfig.hpp"
-#include "config/XPBDMeshObjectConfig.hpp"
-#include "config/FirstOrderXPBDMeshObjectConfig.hpp"
-#include "config/RigidMeshObjectConfig.hpp"
-#include "config/RigidPrimitiveConfigs.hpp"
-#include "config/VirtuosoArmConfig.hpp"
-#include "config/VirtuosoRobotConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
+#include "config/simobject/XPBDMeshObjectConfig.hpp"
+#include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
+#include "config/simobject/RigidMeshObjectConfig.hpp"
+#include "config/simobject/RigidPrimitiveConfigs.hpp"
+#include "config/simobject/VirtuosoArmConfig.hpp"
+#include "config/simobject/VirtuosoRobotConfig.hpp"
 
 #include <optional>
 #include <string>
 
+namespace Config
+{
 
 /** Enum defining the different ways the simulation can be run 
  * VISUALIZATION: if simulation is running faster than real-time, slow down updates so that sim time = wall time
@@ -167,5 +169,7 @@ class SimulationConfig : public Config
     std::vector<std::unique_ptr<ObjectConfig>> _object_configs;
 
 };
+
+} // namespace Config
 
 #endif // __SIMULATION_CONFIG_HPP

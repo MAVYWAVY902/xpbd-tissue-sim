@@ -3,6 +3,9 @@
 
 #include "config/Config.hpp"
 
+namespace Config
+{
+
 class ElasticMaterialConfig : public Config
 {
     /** Static predefined default for density */
@@ -56,5 +59,7 @@ class ElasticMaterialConfig : public Config
     ConfigParameter<Real> _mu_s;
     ConfigParameter<Real> _mu_k;
 };
+
+} // namespace Config
 
 #endif

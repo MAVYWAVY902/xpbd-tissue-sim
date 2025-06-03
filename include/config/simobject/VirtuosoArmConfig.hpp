@@ -1,9 +1,12 @@
 #ifndef __VIRTUOSO_ARM_CONFIG_HPP
 #define __VIRTUOSO_ARM_CONFIG_HPP
 
-#include "config/ObjectConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
 
 #include "simobject/VirtuosoArm.hpp"
+
+namespace Config
+{
 
 class VirtuosoArmConfig : public ObjectConfig
 {
@@ -107,5 +110,7 @@ class VirtuosoArmConfig : public ObjectConfig
     ConfigParameter<Eigen::Vector3d> _base_initial_rotation;
 
 };
+
+} // namespace Config
 
 #endif // __VIRTUOSO_ARM_CONFIG_HPP

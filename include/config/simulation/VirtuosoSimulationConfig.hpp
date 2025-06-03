@@ -1,7 +1,10 @@
 #ifndef __VIRTUOSO_SIMULATION_CONFIG_HPP
 #define __VIRTUOSO_SIMULATION_CONFIG_HPP
 
-#include "config/SimulationConfig.hpp"
+#include "config/simulation/SimulationConfig.hpp"
+
+namespace Config
+{
 
 enum SimulationInputDevice
 {
@@ -35,6 +38,8 @@ class VirtuosoSimulationConfig : public SimulationConfig
     protected:
     ConfigParameter<SimulationInputDevice> _input_device;
 };
+
+} // namespace Config
 
 
 #endif // __VIRTUOSO_SIMULATION_CONFIG_HPP

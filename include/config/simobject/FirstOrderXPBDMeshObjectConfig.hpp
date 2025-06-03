@@ -1,7 +1,10 @@
 #ifndef __FIRST_ORDER_XPBD_MESH_OBJECT_CONFIG_HPP
 #define __FIRST_ORDER_XPBD_MESH_OBJECT_CONFIG_HPP
 
-#include "config/XPBDMeshObjectConfig.hpp"
+#include "config/simobject/XPBDMeshObjectConfig.hpp"
+
+namespace Config
+{
 
 class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
 {
@@ -44,5 +47,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
     protected:
     ConfigParameter<Real> _damping_multiplier;
 };
+
+} // namespace Config
 
 #endif // __FIRST_ORDER_XPBD_MESH_OBJECT_CONFIG_HPP

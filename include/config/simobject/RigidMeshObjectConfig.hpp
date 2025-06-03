@@ -1,9 +1,12 @@
 #ifndef __RIGID_MESH_OBJECT_CONFIG_HPP
 #define __RIGID_MESH_OBJECT_CONFIG_HPP
 
-#include "config/RigidObjectConfig.hpp"
-#include "config/MeshObjectConfig.hpp"
+#include "config/simobject/RigidObjectConfig.hpp"
+#include "config/simobject/MeshObjectConfig.hpp"
 
+namespace Config
+{
+    
 class RigidMeshObjectConfig : public RigidObjectConfig, public MeshObjectConfig
 {
     public:
@@ -31,5 +34,7 @@ class RigidMeshObjectConfig : public RigidObjectConfig, public MeshObjectConfig
     protected:
     ConfigParameter<std::string> _sdf_filename;
 };
+
+} // namespace Config
 
 #endif // __RIGID_MESH_OBJECT_CONFIG

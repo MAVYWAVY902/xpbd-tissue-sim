@@ -1,13 +1,16 @@
 #ifndef __XPBD_MESH_OBJECT_CONFIG_HPP
 #define __XPBD_MESH_OBJECT_CONFIG_HPP
 
-#include "config/ObjectConfig.hpp"
-#include "config/MeshObjectConfig.hpp"
-#include "config/ElasticMaterialConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
+#include "config/simobject/MeshObjectConfig.hpp"
+#include "config/simobject/ElasticMaterialConfig.hpp"
 
 #include "common/XPBDTypedefs.hpp"
 
 #include <memory>
+
+namespace Config
+{
 
 class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 {
@@ -127,5 +130,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
     std::unique_ptr<ElasticMaterialConfig> _material_config;
 };
+
+} // namespace Config
 
 #endif // __XPBD_MESH_OBJECT_CONFIG_HPP

@@ -3,7 +3,14 @@
 
 #include "config/Config.hpp"
 
-class Simulation;
+namespace Sim
+{
+    class Simulation;
+}
+
+
+namespace Config
+{
 
 class ObjectConfig : public Config
 {
@@ -53,8 +60,10 @@ class ObjectConfig : public Config
     ConfigParameter<Vec3r> _initial_velocity;
     ConfigParameter<Vec3r> _initial_rotation;
 
-    const Simulation* _sim;
+    const Sim::Simulation* _sim;
 
 };
+
+} // namespace Config
 
 #endif // __OBJECT_CONFIG_HPP

@@ -1,7 +1,10 @@
 #ifndef __VIRTUOSO_TISSUE_GRASPING_TISSUE_SIMULATION_CONFIG_HPP
 #define __VIRTUOSO_TISSUE_GRASPING_TISSUE_SIMULATION_CONFIG_HPP
 
-#include "config/VirtuosoSimulationConfig.hpp"
+#include "config/simulation/VirtuosoSimulationConfig.hpp"
+
+namespace Config
+{
 
 class VirtuosoTissueGraspingSimulationConfig : public VirtuosoSimulationConfig
 {
@@ -37,5 +40,7 @@ class VirtuosoTissueGraspingSimulationConfig : public VirtuosoSimulationConfig
     ConfigParameter<std::string> _device_name1;
     ConfigParameter<std::string> _device_name2;
 };
+
+} // namespace Config
 
 #endif // __VIRTUOSO_TISSUE_GRASPING_TISSUE_SIMULATION_CONFIG_HPP

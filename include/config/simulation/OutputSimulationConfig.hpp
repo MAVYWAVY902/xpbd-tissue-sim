@@ -1,7 +1,10 @@
 #ifndef __OUTPUT_SIMULATION_CONFIG_HPP
 #define __OUTPUT_SIMULATION_CONFIG_HPP
 
-#include "SimulationConfig.hpp"
+#include "config/simulation/SimulationConfig.hpp"
+
+namespace Config
+{
 
 class OutputSimulationConfig : public SimulationConfig
 {
@@ -25,5 +28,7 @@ class OutputSimulationConfig : public SimulationConfig
     ConfigParameter<Real> _print_interval; // s
     ConfigParameter<std::string> _output_folder;
 };
+
+} // namespace Config
 
 #endif // __OUTPUT_SIMULATION_CONFIG_HPP

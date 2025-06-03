@@ -1,7 +1,10 @@
 #ifndef __INITIAL_DEFORMATION_SIMULATION_CONFIG_HPP
 #define __INITIAL_DEFORMATION_SIMULATION_CONFIG_HPP
 
-#include "OutputSimulationConfig.hpp"
+#include "config/simulationOutputSimulationConfig.hpp"
+
+namespace Config
+{
 
 enum class DeformationType
 {
@@ -48,5 +51,7 @@ class InitialDeformationSimulationConfig : public OutputSimulationConfig
     /** The type of initial deformation to perform. */
     ConfigParameter<DeformationType> _deformation_type;
 };
+
+} // namespace Config
 
 #endif // __INITIAL_DEFORMATION_SIMULATION_CONFIG_HPP

@@ -1,8 +1,11 @@
 #ifndef __VIRTUOSO_ROBOT_CONFIG_HPP
 #define __VIRTUOSO_ROBOT_CONFIG_HPP
 
-#include "config/ObjectConfig.hpp"
-#include "config/VirtuosoArmConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
+#include "config/simobject/VirtuosoArmConfig.hpp"
+
+namespace Config
+{
 
 class VirtuosoRobotConfig : public ObjectConfig
 {
@@ -70,5 +73,7 @@ class VirtuosoRobotConfig : public ObjectConfig
 
     std::vector<std::unique_ptr<VirtuosoArmConfig>> _arm_configs;
 };
+
+} // namespace Config
 
 #endif // __VIRTUOSO_ROBOT_CONFIG_HPP

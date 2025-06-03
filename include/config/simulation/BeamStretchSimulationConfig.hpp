@@ -1,7 +1,10 @@
 #ifndef __BEAM_STRETCH_SIMULATION_CONFIG_HPP
 #define __BEAM_STRETCH_SIMULATION_CONFIG_HPP
 
-#include "OutputSimulationConfig.hpp"
+#include "config/simulation/OutputSimulationConfig.hpp"
+
+namespace Config
+{
 
 class BeamStretchSimulationConfig : public OutputSimulationConfig
 {
@@ -29,5 +32,7 @@ class BeamStretchSimulationConfig : public OutputSimulationConfig
     /** The amount of time to stretch the beam. */
     ConfigParameter<Real> _stretch_time; // in s
 };
+
+} // namespace Config
 
 #endif // __BEAM_STRETCH_SIMULATION_CONFIG_HPP

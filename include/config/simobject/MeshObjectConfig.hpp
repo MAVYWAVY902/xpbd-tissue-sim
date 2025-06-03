@@ -3,6 +3,9 @@
 
 #include "config/Config.hpp"
 
+namespace Config
+{
+
 class MeshObjectConfig
 {
     public:
@@ -57,5 +60,7 @@ class MeshObjectConfig
     ConfigParameter<Vec3r> _size;
 
 };
+
+} // namespace Config
 
 #endif // __MESH_OBJECT_CONFIG_HPP

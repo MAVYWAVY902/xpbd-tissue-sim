@@ -1,7 +1,10 @@
 #ifndef __RESIDUAL_SIMULATION_CONFIG_HPP
 #define __RESIDUAL_SIMULATION_CONFIG_HPP
 
-#include "config/OutputSimulationConfig.hpp"
+#include "config/simulation/OutputSimulationConfig.hpp"
+
+namespace Config
+{
 
 class ResidualSimulationConfig : public OutputSimulationConfig
 {
@@ -10,5 +13,7 @@ class ResidualSimulationConfig : public OutputSimulationConfig
         : OutputSimulationConfig(node)
     {}
 };
+
+} // namespace Config
 
 #endif // __RESIDUAL_SIMULATION_CONFIG_HPP

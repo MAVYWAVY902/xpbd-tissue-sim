@@ -1,7 +1,10 @@
 #ifndef __RIGID_PRIMITIVE_CONFIGS_HPP
 #define __RIGID_PRIMITIVE_CONFIGS_HPP
 
-#include "config/RigidObjectConfig.hpp"
+#include "config/simobject/RigidObjectConfig.hpp"
+
+namespace Config
+{
 
 class RigidSphereConfig : public RigidObjectConfig
 {
@@ -90,5 +93,7 @@ class RigidCylinderConfig : public RigidObjectConfig
     ConfigParameter<Real> _radius;
     ConfigParameter<Real> _height;
 };
+
+} // namespace Config
 
 #endif // __RIGID_PRIMITIVE_CONFIGS_HPP

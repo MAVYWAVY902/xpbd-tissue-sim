@@ -1,7 +1,11 @@
 #ifndef __RIGID_OBJECT_CONFIG_HPP
 #define __RIGID_OBJECT_CONFIG_HPP
 
-#include "config/ObjectConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
+
+namespace Config
+{
+
 
 class RigidObjectConfig : public ObjectConfig
 {
@@ -39,5 +43,7 @@ class RigidObjectConfig : public ObjectConfig
     ConfigParameter<bool> _fixed;
 
 };
+
+} // namespace config
 
 #endif // __RIGID_OBJECT_CONFIG_HPP
