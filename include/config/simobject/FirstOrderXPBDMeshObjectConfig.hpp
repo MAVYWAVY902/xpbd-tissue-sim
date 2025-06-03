@@ -8,6 +8,9 @@ namespace Config
 
 class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
 {
+    public:
+    using ObjectType = Sim::XPBDMeshObject_Base;
+
     static std::optional<Real>& DEFAULT_DAMPING_MULTIPLIER() { static std::optional<Real> damping(1); return damping; }
 
     public:
@@ -41,6 +44,8 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
     {
         _damping_multiplier.value = damping_multiplier;
     }
+
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
 
     std::optional<Real> dampingMultiplier() const { return _damping_multiplier.value; }
 

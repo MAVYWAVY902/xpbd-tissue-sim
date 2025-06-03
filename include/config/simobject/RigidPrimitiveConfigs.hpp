@@ -3,11 +3,20 @@
 
 #include "config/simobject/RigidObjectConfig.hpp"
 
+namespace Sim
+{
+    class RigidSphere;
+    class RigidBox;
+    class RigidCylinder;
+}
+
 namespace Config
 {
 
 class RigidSphereConfig : public RigidObjectConfig
 {
+    public:
+    using ObjectType = Sim::RigidSphere;
 
     public:
     static std::optional<Real>& DEFAULT_RADIUS() { static std::optional<Real> r(1); return r; }
@@ -26,6 +35,9 @@ class RigidSphereConfig : public RigidObjectConfig
         _radius.value = radius;
     }
 
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
+
+
     Real radius() const { return _radius.value.value(); }
 
     protected:
@@ -38,6 +50,9 @@ class RigidSphereConfig : public RigidObjectConfig
 
 class RigidBoxConfig : public RigidObjectConfig
 {
+    public:
+    using ObjectType = Sim::RigidBox;
+
     public:
     static std::optional<Vec3r>& DEFAULT_SIZE() { static std::optional<Vec3r> size({1,1,1}); return size; }
 
@@ -55,6 +70,8 @@ class RigidBoxConfig : public RigidObjectConfig
         _size.value = size;
     }
 
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
+
     Vec3r size() const { return _size.value.value(); }
 
     protected:
@@ -66,6 +83,9 @@ class RigidBoxConfig : public RigidObjectConfig
 
 class RigidCylinderConfig : public RigidObjectConfig
 {
+    public:
+    using ObjectType = Sim::RigidCylinder;
+
     public:
     static std::optional<Real>& DEFAULT_RADIUS() { static std::optional<Real> r(1); return r; }
     static std::optional<Real>& DEFAULT_HEIGHT() { static std::optional<Real> h(1); return h; }
@@ -85,6 +105,8 @@ class RigidCylinderConfig : public RigidObjectConfig
         _radius.value = radius;
         _height.value = height;
     }
+
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
 
     Real radius() const { return _radius.value.value(); }
     Real height() const { return _height.value.value(); }

@@ -5,11 +5,19 @@
 
 #include "simobject/VirtuosoArm.hpp"
 
+namespace Sim
+{
+    class VirtuosoArm;
+}
+
 namespace Config
 {
 
 class VirtuosoArmConfig : public ObjectConfig
 {
+    public:
+    using ObjectType = Sim::VirtuosoArm;
+
     public:
     static std::optional<double>& DEFAULT_OT_DIAMETER() { static std::optional<double> ot_dia(0.15); return ot_dia; }
     static std::optional<double>& DEFUALT_OT_R_CURVATURE() { static std::optional<double> ot_curv(0.15); return ot_curv; }
@@ -77,6 +85,8 @@ class VirtuosoArmConfig : public ObjectConfig
         _base_initial_position.value = initial_pos;
         _base_initial_rotation.value = initial_rot;
     }
+
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
 
     // Getters and setters
     double innerTubeDiameter() const { return _it_diameter.value.value(); }

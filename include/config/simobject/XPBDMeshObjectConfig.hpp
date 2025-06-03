@@ -9,11 +9,19 @@
 
 #include <memory>
 
+namespace Sim
+{
+    class XPBDMeshObject_Base;
+}
+
 namespace Config
 {
 
 class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 {
+    public:
+    using ObjectType = Sim::XPBDMeshObject_Base;
+
     /** Static predefined default for the number of solver iterations */
     static std::optional<int>& DEFAULT_NUM_SOLVER_ITERS() { static std::optional<int> num_solver_iters(1); return num_solver_iters; }
     /** Static predefined default for solve mode */
@@ -106,6 +114,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         _damping_gamma.value = damping_gamma;
         _residual_policy.value = residual_policy;
     }
+
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
 
     // Getters
     std::optional<int> numSolverIters() const { return _num_solver_iters.value; }

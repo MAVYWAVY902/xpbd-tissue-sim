@@ -4,11 +4,19 @@
 #include "config/simobject/RigidObjectConfig.hpp"
 #include "config/simobject/MeshObjectConfig.hpp"
 
+namespace Sim
+{
+    class RigidMeshObject;
+}
+
 namespace Config
 {
     
 class RigidMeshObjectConfig : public RigidObjectConfig, public MeshObjectConfig
 {
+    public:
+    using ObjectType = Sim::RigidMeshObject;
+
     public:
 
     explicit RigidMeshObjectConfig(const YAML::Node& node)
@@ -28,6 +36,8 @@ class RigidMeshObjectConfig : public RigidObjectConfig, public MeshObjectConfig
     {
         _sdf_filename.value = sdf_filename;
     }
+
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
     std::optional<std::string> sdfFilename() const { return _sdf_filename.value; }
 

@@ -6,6 +6,7 @@
 namespace Sim
 {
     class Simulation;
+    class Object;
 }
 
 
@@ -15,7 +16,9 @@ namespace Config
 class ObjectConfig : public Config
 {
     public:
+    using ObjectType = Sim::Object;
 
+    public:
     static std::optional<Vec3r>& DEFAULT_POSITION() { static std::optional<Vec3r> pos({0,0,0}); return pos; }
     static std::optional<Vec3r>& DEFAULT_VELOCITY() { static std::optional<Vec3r> vel({0,0,0}); return vel; }
     static std::optional<Vec3r>& DEFAULT_ROTATION() { static std::optional<Vec3r> rot({0,0,0}); return rot; }
@@ -44,6 +47,8 @@ class ObjectConfig : public Config
         _collisions.value = collisions;
         _graphics_only.value = graphics_only;
     }
+
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const = 0;
     
     bool collisions() const { return _collisions.value.value(); }
     bool graphicsOnly() const { return _graphics_only.value.value(); }

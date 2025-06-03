@@ -31,6 +31,12 @@ set(CONFIG_HEADERS
 )
 
 set(CONFIG_SOURCES
+    ${CONFIG_SRC_DIR}/simobject/FirstOrderXPBDMeshObjectConfig.cpp
+    ${CONFIG_SRC_DIR}/simobject/RigidMeshObjectConfig.cpp
+    ${CONFIG_SRC_DIR}/simobject/RigidPrimitiveConfigs.cpp
+    ${CONFIG_SRC_DIR}/simobject/VirtuosoArmConfig.cpp
+    ${CONFIG_SRC_DIR}/simobject/VirtuosoRobotConfig.cpp
+    ${CONFIG_SRC_DIR}/simobject/XPBDMeshObjectConfig.cpp
 )
 
 target_sources(Config

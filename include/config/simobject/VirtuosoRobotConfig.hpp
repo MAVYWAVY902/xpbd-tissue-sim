@@ -4,11 +4,20 @@
 #include "config/simobject/ObjectConfig.hpp"
 #include "config/simobject/VirtuosoArmConfig.hpp"
 
+namespace Sim
+{
+    class Object;
+    class VirtuosoRobot : public Object {};
+}
+
 namespace Config
 {
 
 class VirtuosoRobotConfig : public ObjectConfig
 {
+    public:
+    using ObjectType = Sim::VirtuosoRobot;
+
     public:
     static std::optional<Real>& DEFAULT_ENDOSCOPE_DIAMETER() { static std::optional<Real> e_dia(8.67e-3); return e_dia; }
     static std::optional<Real>& DEFAULT_ENDOSCOPE_LENGTH() { static std::optional<Real> e_l(0.05); return e_l; }
@@ -56,6 +65,8 @@ class VirtuosoRobotConfig : public ObjectConfig
             
         }
     }
+
+    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
 
     const std::vector<std::unique_ptr<VirtuosoArmConfig>>& armConfigs() const { return _arm_configs; }
     Real endoscopeDiameter() const { return _endoscope_diameter.value.value(); }
