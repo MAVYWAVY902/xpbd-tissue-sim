@@ -2,7 +2,7 @@
 #define __BEAM_SIMULATION_HPP
 
 #include "simulation/OutputSimulation.hpp"
-#include "config/BeamSimulationConfig.hpp"
+#include "config/simulation/BeamSimulationConfig.hpp"
 #include "common/types.hpp"
 
 namespace Sim
@@ -12,7 +12,7 @@ class BeamSimulation : public OutputSimulation
 {
     public:
 
-    explicit BeamSimulation(const BeamSimulationConfig* config);
+    explicit BeamSimulation(const Config::BeamSimulationConfig* config);
 
     virtual std::string type() const override { return "BeamSimulation"; }
 

@@ -1,6 +1,8 @@
 #include "geometry/BoxSDF.hpp"
 #include "utils/GeometryUtils.hpp"
 
+#include "simobject/RigidPrimitives.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/resource/BoxSDFGPUResource.hpp"
 #endif

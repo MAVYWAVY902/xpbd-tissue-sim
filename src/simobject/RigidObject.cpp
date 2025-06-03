@@ -5,7 +5,7 @@
 namespace Sim
 {
 
-RigidObject::RigidObject(const Simulation* sim, const RigidObjectConfig* config)
+RigidObject::RigidObject(const Simulation* sim, const ConfigType* config)
     : Object(sim, config)
 {
     _p = config->initialPosition();

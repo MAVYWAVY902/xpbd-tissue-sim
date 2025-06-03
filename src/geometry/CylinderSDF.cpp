@@ -1,6 +1,8 @@
 #include "geometry/CylinderSDF.hpp"
 #include "utils/GeometryUtils.hpp"
 
+#include "simobject/RigidPrimitives.hpp"
+
 
 #ifdef HAVE_CUDA
 #include "gpu/resource/CylinderSDFGPUResource.hpp"

@@ -81,6 +81,9 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
    #ifdef HAVE_CUDA
     friend class XPBDMeshObjectGPUResource;
    #endif
+    public:
+    using SDFType = Geometry::DeformableMeshSDF;
+    using ConfigType = Config::XPBDMeshObjectConfig;
 
     public:
     /** Creates a new XPBDMeshObject from a YAML config node
@@ -88,7 +91,7 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
      * @param config : the YAML node dictionary describing the parameters for the new XPBDMeshObject
      */
     // TODO: parameter pack in constructor for ConstraintTypes type deduction. Maybe move this to XPBDMeshObjectConfig?
-    explicit XPBDMeshObject(const Simulation* sim, const XPBDMeshObjectConfig* config);
+    explicit XPBDMeshObject(const Simulation* sim, const ConfigType* config);
 
     virtual ~XPBDMeshObject();
 
@@ -126,6 +129,9 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
 
     /** Returns the AABB around this object. */
     virtual Geometry::AABB boundingBox() const override;
+
+    virtual void createSDF() override;
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
 
     /** Returns the number of constraints that share the position at the specified index.
      * This is the factor by which to scale the residual in the distributed primary residual update methods.
@@ -211,6 +217,9 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
     // std::vector<std::unique_ptr<Solver::CollisionConstraint>> _collision_constraints;
     // std::vector<int> _collision_constraint_projector_indices;
     // std::vector<XPBDCollisionConstraint> _collision_constraints;
+
+    /** Signed Distance Field for the deformable object. Must be created explicitly with createSDF(). */
+    std::optional<SDFType> _sdf;
 };
 
 } // namespace Sim

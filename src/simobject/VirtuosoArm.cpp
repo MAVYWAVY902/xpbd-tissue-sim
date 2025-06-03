@@ -1,6 +1,7 @@
-#include "config/VirtuosoArmConfig.hpp"
 #include "simobject/VirtuosoArm.hpp"
 #include "simobject/XPBDMeshObject.hpp"
+
+#include "config/simobject/VirtuosoArmConfig.hpp"
 
 #include "utils/GeometryUtils.hpp"
 
@@ -9,7 +10,7 @@
 namespace Sim 
 {
 
-VirtuosoArm::VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config)
+VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
     : Object(sim, config), _ot_frames(), _it_frames()
 {
     _it_dia = config->innerTubeDiameter();

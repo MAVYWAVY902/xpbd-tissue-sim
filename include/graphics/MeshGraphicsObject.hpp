@@ -3,7 +3,7 @@
 
 #include "graphics/GraphicsObject.hpp"
 #include "geometry/Mesh.hpp"
-#include "config/MeshObjectConfig.hpp"
+#include "config/simobject/MeshObjectConfig.hpp"
 
 #include "common/types.hpp"
 
@@ -33,7 +33,7 @@ class MeshGraphicsObject : public GraphicsObject
      * @param mesh_object : the simulation MeshObject to get mesh information from
      * @param mesh_object_config : the MeshObjectConfig file to get additional parameters from
      */
-    explicit MeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const MeshObjectConfig* mesh_object_config);
+    explicit MeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const Config::MeshObjectConfig* mesh_object_config);
 
     virtual ~MeshGraphicsObject();
 

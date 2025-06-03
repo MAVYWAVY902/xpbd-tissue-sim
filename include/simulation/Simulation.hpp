@@ -5,7 +5,7 @@
 
 #include "simobject/Object.hpp"
 
-#include "config/SimulationConfig.hpp"
+#include "config/simulation/SimulationConfig.hpp"
 #include "collision/CollisionScene.hpp"
 #include "graphics/GraphicsScene.hpp"
 #include "geometry/embree/EmbreeScene.hpp"
@@ -37,7 +37,7 @@ class Simulation
     };
 
     public:
-        explicit Simulation(const SimulationConfig* config);
+        explicit Simulation(const Config::SimulationConfig* config);
 
     protected:
         /** Protected default constructor - only callable from derived objects
@@ -105,7 +105,7 @@ class Simulation
          * Will create an object (RigidMeshObject, RigidSphere, XPBDMeshObject, etc.) depending on the type of ObjectConfig given.
          * Adds the object to the appropriate part of the simulation (i.e. to the CollisionScene if collisions are enabled, GraphicsScene if graphics are enabled, etc.)
         */        
-       Object* _addObjectFromConfig(const ObjectConfig* obj_config);
+       Object* _addObjectFromConfig(const Config::ObjectConfig* obj_config);
 
         /** Time step the simulation */
         virtual void _timeStep();
@@ -118,7 +118,7 @@ class Simulation
         bool _setup;
         
         /** YAML config dictionary for setting up the simulation */
-        const SimulationConfig* _config;
+        const Config::SimulationConfig* _config;
 
         /** Name of the simulation */
         std::string _name;
@@ -127,7 +127,7 @@ class Simulation
         std::string _description;
 
         /** How the simulation should be run */
-        SimulationMode _sim_mode;
+        Config::SimulationMode _sim_mode;
 
         /** Current sim time */
         Real _time;

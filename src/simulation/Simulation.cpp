@@ -1,10 +1,10 @@
 #include "simulation/Simulation.hpp"
-#include "config/RigidMeshObjectConfig.hpp"
-#include "config/XPBDMeshObjectConfig.hpp"
-#include "config/FirstOrderXPBDMeshObjectConfig.hpp"
-#include "config/RigidPrimitiveConfigs.hpp"
-#include "config/VirtuosoArmConfig.hpp"
-#include "config/VirtuosoRobotConfig.hpp"
+#include "config/simobject/RigidMeshObjectConfig.hpp"
+#include "config/simobject/XPBDMeshObjectConfig.hpp"
+#include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
+#include "config/simobject/RigidPrimitiveConfigs.hpp"
+#include "config/simobject/VirtuosoArmConfig.hpp"
+#include "config/simobject/VirtuosoRobotConfig.hpp"
 
 #include "graphics/Easy3DGraphicsScene.hpp"
 
@@ -25,7 +25,7 @@ namespace Sim
 {
 
 
-Simulation::Simulation(const SimulationConfig* config)
+Simulation::Simulation(const Config::SimulationConfig* config)
     : _setup(false), _config(config)
 {
     // initialize gmsh
@@ -46,7 +46,7 @@ Simulation::Simulation(const SimulationConfig* config)
 
     // initialize the graphics scene according to the type specified by the user
     // if "None", don't create a graphics scene
-    if (_config->visualization() == Visualization::EASY3D)
+    if (_config->visualization() == Config::Visualization::EASY3D)
     {
         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
     }
@@ -71,17 +71,17 @@ std::string Simulation::toString(const int indent) const
     return  ss.str();
 }
 
-Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
+Object* Simulation::_addObjectFromConfig(const Config::ObjectConfig* obj_config)
 {
     std::unique_ptr<Object> new_obj;
     // try downcasting
     // TODO: fix this to remove dynamic_cast! maybe move creation to Config class? Idk
-    if (const FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<const FirstOrderXPBDMeshObjectConfig*>(obj_config))
+    if (const Config::FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<const Config::FirstOrderXPBDMeshObjectConfig*>(obj_config))
     {
         // new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
         new_obj = XPBDObjectFactory::createFirstOrderXPBDMeshObject(this, xpbd_config);
     }
-    else if (const XPBDMeshObjectConfig* xpbd_config = dynamic_cast<const XPBDMeshObjectConfig*>(obj_config))
+    else if (const Config::XPBDMeshObjectConfig* xpbd_config = dynamic_cast<const Config::XPBDMeshObjectConfig*>(obj_config))
     {
         // new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
         new_obj = XPBDObjectFactory::createXPBDMeshObject(this, xpbd_config);
@@ -90,27 +90,27 @@ Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
         // TODO: better way to do this?
         _embree_scene->addObject( dynamic_cast<const Sim::TetMeshObject*>(new_obj.get()) );
     }
-    else if (const RigidMeshObjectConfig* rigid_config = dynamic_cast<const RigidMeshObjectConfig*>(obj_config))
+    else if (const Config::RigidMeshObjectConfig* rigid_config = dynamic_cast<const Config::RigidMeshObjectConfig*>(obj_config))
     {
         new_obj = std::make_unique<RigidMeshObject>(this, rigid_config);
     }
-    else if (const RigidSphereConfig* rigid_config = dynamic_cast<const RigidSphereConfig*>(obj_config))
+    else if (const Config::RigidSphereConfig* rigid_config = dynamic_cast<const Config::RigidSphereConfig*>(obj_config))
     {
         new_obj = std::make_unique<RigidSphere>(this, rigid_config);
     }
-    else if (const RigidBoxConfig* rigid_config = dynamic_cast<const RigidBoxConfig*>(obj_config))
+    else if (const Config::RigidBoxConfig* rigid_config = dynamic_cast<const Config::RigidBoxConfig*>(obj_config))
     {
         new_obj = std::make_unique<RigidBox>(this, rigid_config);
     }
-    else if (const RigidCylinderConfig* rigid_config = dynamic_cast<const RigidCylinderConfig*>(obj_config))
+    else if (const Config::RigidCylinderConfig* rigid_config = dynamic_cast<const Config::RigidCylinderConfig*>(obj_config))
     {
         new_obj = std::make_unique<RigidCylinder>(this, rigid_config);
     }
-    else if (const VirtuosoArmConfig* virtuoso_config = dynamic_cast<const VirtuosoArmConfig*>(obj_config))
+    else if (const Config::VirtuosoArmConfig* virtuoso_config = dynamic_cast<const Config::VirtuosoArmConfig*>(obj_config))
     {
         new_obj = std::make_unique<VirtuosoArm>(this, virtuoso_config);
     }
-    else if (const VirtuosoRobotConfig* virtuoso_config = dynamic_cast<const VirtuosoRobotConfig*>(obj_config))
+    else if (const Config::VirtuosoRobotConfig* virtuoso_config = dynamic_cast<const Config::VirtuosoRobotConfig*>(obj_config))
     {
         new_obj = std::make_unique<VirtuosoRobot>(this, virtuoso_config);
     }
@@ -219,7 +219,7 @@ void Simulation::update()
         }
 
         // if the simulation is ahead of the current elapsed wall time, stall
-        if (_sim_mode == SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
+        if (_sim_mode == Config::SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
         {
             continue;
         }
@@ -322,7 +322,7 @@ void Simulation::notifyKeyPressed(int /* key */, int action, int /* modifiers */
     // action = 2 ==> key hold event
     
     // if key is pressed down or held, we want to time step
-    if (_sim_mode == SimulationMode::FRAME_BY_FRAME && action > 0)
+    if (_sim_mode == Config::SimulationMode::FRAME_BY_FRAME && action > 0)
     {
         _timeStep();
         _updateGraphics();
@@ -357,7 +357,7 @@ int Simulation::run()
 
     // spwan the update thread
     std::thread update_thread;
-    if (_sim_mode != SimulationMode::FRAME_BY_FRAME)
+    if (_sim_mode != Config::SimulationMode::FRAME_BY_FRAME)
     {
         update_thread = std::thread(&Simulation::update, this);
     }

@@ -4,10 +4,14 @@
 #include "simobject/Object.hpp"
 
 #include "geometry/CoordinateFrame.hpp"
+#include "geometry/VirtuosoArmSDF.hpp"
 
 #include <array>
 
-class VirtuosoArmConfig;
+namespace Config
+{
+    class VirtuosoArmConfig;
+}
 
 namespace Sim
 {
@@ -28,6 +32,9 @@ class VirtuosoArm : public Object
     constexpr static double GRASPING_RADIUS = 0.002;    // grasping radius for the grasper tool
 
     public:
+    using ConfigType = Config::VirtuosoArmConfig;
+    using SDFType = Geometry::VirtuosoArmSDF;
+    
     using OuterTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES>;
     using InnerTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_IT_FRAMES>;
 
@@ -39,7 +46,7 @@ class VirtuosoArm : public Object
     };
 
     public:
-    VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config);
+    VirtuosoArm(const Simulation* sim, const ConfigType* config);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
@@ -63,6 +70,9 @@ class VirtuosoArm : public Object
 
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const override;
+
+    virtual void createSDF() override { _sdf = SDFType(this); };
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
 
     Real innerTubeDiameter() const { return _it_dia; }
     Real innerTubeTranslation() const { return _it_translation; }
@@ -184,6 +194,9 @@ class VirtuosoArm : public Object
     InnerTubeFramesArray _it_frames;  // coordinate frames along the backbone of the inner tube
 
     bool _stale_frames;     // true if the joint variables have been updated and the coordinate frames need to be recomputed
+
+    /** Signed Distance Field for the Virtuoso arm. Must be created explicitly with createSDF(). */
+    std::optional<SDFType> _sdf;
 
 
 };

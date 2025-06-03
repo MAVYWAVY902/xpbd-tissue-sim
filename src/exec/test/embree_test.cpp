@@ -1,5 +1,5 @@
-#include "config/ObjectConfig.hpp"
-#include "config/MeshObjectConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
+#include "config/simobject/MeshObjectConfig.hpp"
 
 #include "geometry/TetMesh.hpp"
 #include "geometry/embree/EmbreeScene.hpp"
@@ -22,10 +22,10 @@ int main()
     gmsh::initialize();
     // load mesh
     // Geometry::TetMesh tet_mesh = MeshUtils::loadTetMeshFromGmshFile("../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined.msh");
-    MeshObjectConfig mesh_config("../resource/cube/cube8.msh", 1, std::nullopt,
+    Config::MeshObjectConfig mesh_config("../resource/cube/cube8.msh", 1, std::nullopt,
         false, false, true, Vec4r(0,0,0,0));
 
-    ObjectConfig object_config("test", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), true, false);
+    Config::ObjectConfig object_config("test", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), true, false);
 
     Sim::TetMeshObject mesh_obj(&mesh_config, &object_config);
     mesh_obj.loadAndConfigureMesh();

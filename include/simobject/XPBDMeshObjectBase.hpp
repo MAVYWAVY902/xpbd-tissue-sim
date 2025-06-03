@@ -5,11 +5,17 @@
 #include "simobject/MeshObject.hpp"
 #include "simobject/ElasticMaterial.hpp"
 #include "simobject/RigidObject.hpp"
+
 #include "geometry/SDF.hpp"
+#include "geometry/DeformableMeshSDF.hpp"
+
 #include "common/XPBDEnumTypes.hpp"
 
 // TODO: resolve circular dependenciees! Too many bandaids everywhere
-class XPBDMeshObjectConfig;
+namespace Config
+{
+    class XPBDMeshObjectConfig;
+}
 
 namespace Sim
 {
@@ -17,7 +23,11 @@ namespace Sim
     class XPBDMeshObject_Base : public Object, public TetMeshObject
     {
         public:
-        explicit XPBDMeshObject_Base(const Simulation* sim, const XPBDMeshObjectConfig* config);
+        using SDFType = Geometry::DeformableMeshSDF;
+        using ConfigType = Config::XPBDMeshObjectConfig;
+
+        public:
+        explicit XPBDMeshObject_Base(const Simulation* sim, const ConfigType* config);
 
         virtual ~XPBDMeshObject_Base() {}
 

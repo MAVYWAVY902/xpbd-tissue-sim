@@ -2,7 +2,7 @@
 #define __FIRST_ORDER_XPBD_MESH_OBJECT_HPP
 
 #include "simobject/XPBDMeshObject.hpp"
-#include "config/FirstOrderXPBDMeshObjectConfig.hpp"
+#include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
 
 namespace Sim
 {
@@ -12,7 +12,10 @@ template<typename SolverType, typename... ConstraintTypes>
 class FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>
 {
     public:
-    explicit FirstOrderXPBDMeshObject(const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config);
+    using ConfigType = Config::FirstOrderXPBDMeshObjectConfig;
+
+    public:
+    explicit FirstOrderXPBDMeshObject(const Simulation* sim, const ConfigType* config);
 
     virtual std::string toString(const int indent) const override;
     virtual std::string type() const override { return "FirstOrderXPBDMeshObject"; }

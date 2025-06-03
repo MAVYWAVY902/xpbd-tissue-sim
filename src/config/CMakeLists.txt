@@ -7,27 +7,27 @@ set(CONFIG_INCLUDE_DIR "../../include/config")
 set(CONFIG_SRC_DIR "./")
 
 set(CONFIG_HEADERS
-    ${CONFIG_INCLUDE_DIR}/BeamSimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/BeamStretchSimulationConfig.hpp
     ${CONFIG_INCLUDE_DIR}/Config.hpp
-    ${CONFIG_INCLUDE_DIR}/ElasticMaterialConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/FirstOrderXPBDMeshObjectConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/InitialDeformationSimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/MeshObjectConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/ObjectConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/OutputSimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/ResidualSimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/RigidMeshObjectConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/RigidObjectConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/RigidPrimitiveConfigs.hpp
-    ${CONFIG_INCLUDE_DIR}/SimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/StaticLoadingSimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/TissueGraspingSimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/VirtuosoArmConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/VirtuosoRobotConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/VirtuosoSimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/VirtuosoTissueGraspingSimulationConfig.hpp
-    ${CONFIG_INCLUDE_DIR}/XPBDMeshObjectConfig.hpp
+
+    ${CONFIG_INCLUDE_DIR}/simulation/BeamSimulationConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simulation/BeamStretchSimulationConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simulation/InitialDeformationSimulationConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simulation/OutputSimulationConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simulation/ResidualSimulationConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simulation/SimulationConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simulation/VirtuosoSimulationConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simulation/VirtuosoTissueGraspingSimulationConfig.hpp
+    
+    ${CONFIG_INCLUDE_DIR}/simobject/ElasticMaterialConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simobject/FirstOrderXPBDMeshObjectConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simobject/MeshObjectConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simobject/ObjectConfig.hpp    
+    ${CONFIG_INCLUDE_DIR}/simobject/RigidMeshObjectConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simobject/RigidObjectConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simobject/RigidPrimitiveConfigs.hpp
+    ${CONFIG_INCLUDE_DIR}/simobject/VirtuosoArmConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simobject/VirtuosoRobotConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simobject/XPBDMeshObjectConfig.hpp
 )
 
 set(CONFIG_SOURCES

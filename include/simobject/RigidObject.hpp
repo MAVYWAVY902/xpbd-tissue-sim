@@ -3,7 +3,7 @@
 
 #include "common/types.hpp"
 #include "simobject/Object.hpp"
-#include "config/RigidObjectConfig.hpp"
+#include "config/simobject/RigidObjectConfig.hpp"
 #include "utils/GeometryUtils.hpp"
 
 namespace Sim
@@ -11,8 +11,12 @@ namespace Sim
 
 class RigidObject : public Object
 {
+    // public typedefs
     public:
-    RigidObject(const Simulation* sim, const RigidObjectConfig* config);
+    using ConfigType = Config::RigidObjectConfig;
+    
+    public:
+    RigidObject(const Simulation* sim, const ConfigType* config);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string

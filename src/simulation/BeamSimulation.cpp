@@ -10,7 +10,7 @@
 namespace Sim
 {
 
-BeamSimulation::BeamSimulation(const BeamSimulationConfig* config)
+BeamSimulation::BeamSimulation(const Config::BeamSimulationConfig* config)
     : OutputSimulation(config)
 {
     _out_file << "Cantilever Beam Simulation\n";

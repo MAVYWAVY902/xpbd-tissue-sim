@@ -2,7 +2,7 @@
 #define __VIRTUOSO_TISSUE_GRASPING_SIMULATION_HPP
 
 #include "simulation/VirtuosoSimulation.hpp"
-#include "config/VirtuosoTissueGraspingSimulationConfig.hpp"
+#include "config/simulation/VirtuosoTissueGraspingSimulationConfig.hpp"
 
 namespace Sim
 {
@@ -10,7 +10,7 @@ namespace Sim
 class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 {
     public:
-    VirtuosoTissueGraspingSimulation(const VirtuosoTissueGraspingSimulationConfig* config);
+    VirtuosoTissueGraspingSimulation(const Config::VirtuosoTissueGraspingSimulationConfig* config);
 
     virtual std::string type() const override { return "VirtuosoTissueGraspingSimulation"; }
 
@@ -65,9 +65,6 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 
     bool _grasping;                 // whether or not we are actively grasping the tissue
     std::vector<int> _grasped_vertices; // indexes of the grasped vertices in the tissue mesh
-
-    
-    SimulationInputDevice _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)
 
     /** MOUSE INPUT */
     Vec2r _last_mouse_pos;    // tracks the last mouse position (used in when mouse input is used to control the arms)

@@ -55,14 +55,14 @@ class EmbreeScene
     /** Updates the Embree scene. */
     void update();
 
-    EmbreeHit castRay(const Vec3r& ray_origin, const Vec3r& ray_dir);
+    EmbreeHit castRay(const Vec3r& ray_origin, const Vec3r& ray_dir) const;
     
-    EmbreeHit closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr);
-    EmbreeHit closestPointTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr);
-    std::set<EmbreeHit> pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr);
+    EmbreeHit closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr) const;
+    EmbreeHit closestPointTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const;
+    std::set<EmbreeHit> pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const;
 
     private:
-    EmbreeHit _closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom);
+    EmbreeHit _closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const;
 
     /** Embree device and scene */
     RTCDevice _device;

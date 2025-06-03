@@ -9,15 +9,21 @@
 #include <Mesh2SDF/MeshSDF.hpp>
 
 #include "geometry/SDF.hpp"
-#include "simobject/RigidMeshObject.hpp"
-#include "config/RigidMeshObjectConfig.hpp"
+#include "geometry/AABB.hpp"
+#include "config/simobject/RigidMeshObjectConfig.hpp"
+
+namespace Sim
+{
+   class RigidMeshObject;
+}
 
 namespace Geometry
 {
+
 class MeshSDF : public SDF
 {
     public:
-    MeshSDF(const Sim::RigidMeshObject* mesh_obj, const RigidMeshObjectConfig* config);
+    MeshSDF(const Sim::RigidMeshObject* mesh_obj, const Config::RigidMeshObjectConfig* config);
 
     virtual Real evaluate(const Vec3r& x) const override;
 

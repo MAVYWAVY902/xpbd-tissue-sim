@@ -3,18 +3,18 @@
 namespace Sim
 {
 
-VirtuosoRobot::VirtuosoRobot(const Simulation* sim, const VirtuosoRobotConfig* config)
-    : Object(sim, config), _arm1(nullptr), _arm2(nullptr)
+VirtuosoRobot::VirtuosoRobot(const Simulation* sim, const ConfigType* config)
+    : Object(sim, config), _arm1(), _arm2()
 {
     for (const auto& arm_config : config->armConfigs())
     {
         if (!_arm1)
         {
-            _arm1 = std::make_unique<VirtuosoArm>(sim, arm_config.get());
+            _arm1 = VirtuosoArm(sim, arm_config.get());
         }
         else if (!_arm2)
         {
-            _arm2 = std::make_unique<VirtuosoArm>(sim, arm_config.get());
+            _arm2 = VirtuosoArm(sim, arm_config.get());
         }
         else
         {

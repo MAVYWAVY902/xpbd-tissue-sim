@@ -6,7 +6,8 @@
 #include "common/types.hpp"
 
 #include "geometry/AABB.hpp"
-#include "config/ObjectConfig.hpp"
+#include "geometry/SDF.hpp"
+#include "config/simobject/ObjectConfig.hpp"
 
 #ifdef HAVE_CUDA
 #include "gpu/resource/GPUResource.hpp"
@@ -19,8 +20,12 @@ class Simulation;
 
 class Object
 {
+    // public typedefs
     public:
-    Object(const Simulation* sim, const ObjectConfig* config)
+    using ConfigType = Config::ObjectConfig;
+
+    public:
+    Object(const Simulation* sim, const ConfigType* config)
         : _name(config->name()), _sim(sim)
     {}
 
@@ -59,6 +64,9 @@ class Object
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const = 0;
 
+    virtual void createSDF() = 0;
+    virtual const Geometry::SDF* SDF() const = 0;
+
  #ifdef HAVE_CUDA
     virtual void createGPUResource() = 0;
     virtual const HostReadableGPUResource* gpuResource() const { assert(_gpu_resource); return _gpu_resource.get(); }
@@ -70,7 +78,7 @@ class Object
     std::string _name;
 
     /** Pointer to the Simulation object that created this Object.
-     * Usefule for querying things like current sim time or time step or acceleration due to gravity.
+     * Useful for querying things like current sim time, sim time step, or acceleration due to gravity.
     */
     const Simulation* _sim;
 

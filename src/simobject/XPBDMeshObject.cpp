@@ -21,7 +21,7 @@
 namespace Sim
 {
 
-XPBDMeshObject_Base::XPBDMeshObject_Base(const Simulation* sim, const XPBDMeshObjectConfig* config)
+XPBDMeshObject_Base::XPBDMeshObject_Base(const Simulation* sim, const ConfigType* config)
     : Object(sim, config), TetMeshObject(config, config)
 {}
 
@@ -29,7 +29,7 @@ XPBDMeshObject_Base::XPBDMeshObject_Base(const Simulation* sim, const XPBDMeshOb
 ////////////////////////////////////////////////////////////////////////////////////
 
 template<typename SolverType, typename ...ConstraintTypes>
-XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject(const Simulation* sim, const XPBDMeshObjectConfig* config)
+XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject(const Simulation* sim, const ConfigType* config)
     : XPBDMeshObject_Base(sim, config), _material(config->materialConfig()),
         _solver(this, config->numSolverIters().value(), config->residualPolicy().value())
 {
@@ -56,6 +56,12 @@ template<typename SolverType, typename... ConstraintTypes>
 Geometry::AABB XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::boundingBox() const
 {
     return _mesh->boundingBox();
+}
+
+template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::createSDF()
+{
+    _sdf = SDFType(this, _sim->embreeScene());
 }
 
 template<typename SolverType, typename... ConstraintTypes>

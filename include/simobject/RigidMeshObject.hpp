@@ -3,16 +3,24 @@
 
 #include "simobject/RigidObject.hpp"
 #include "simobject/MeshObject.hpp"
+
 #include "geometry/Mesh.hpp"
-#include "config/RigidMeshObjectConfig.hpp"
+#include "geometry/MeshSDF.hpp"
+
+#include "config/simobject/RigidMeshObjectConfig.hpp"
 
 namespace Sim
 {
 
 class RigidMeshObject : public RigidObject, public MeshObject
 {
+    // public typedefs
     public:
-    RigidMeshObject(const Simulation* sim, const RigidMeshObjectConfig* config);
+    using SDFType = Geometry::MeshSDF;
+    using ConfigType = Config::RigidMeshObjectConfig;
+
+    public:
+    RigidMeshObject(const Simulation* sim, const ConfigType* config);
 
     virtual std::string type() const override { return "RigidMeshObject"; }
 
@@ -28,6 +36,10 @@ class RigidMeshObject : public RigidObject, public MeshObject
 
     virtual void setOrientation(const Vec4r& orientation) override;
 
+    /** TODO: propogate the config object somehow so that we can pass on the SDF filename */
+    virtual void createSDF() override { _sdf = SDFType(this, nullptr); };
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
+
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override { assert(0); /* not implemented */ }
  #endif
@@ -35,6 +47,9 @@ class RigidMeshObject : public RigidObject, public MeshObject
     protected:
     Real _density;
     std::unique_ptr<Geometry::Mesh> _initial_mesh;
+
+    /** Signed Distance Field for the mesh. Must be created explicitly with createSDF(). */
+    std::optional<SDFType> _sdf;
 };
 
 } // namespace Simulation

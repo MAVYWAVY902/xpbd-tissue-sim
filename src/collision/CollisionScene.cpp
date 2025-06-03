@@ -2,6 +2,7 @@
 #include "simulation/Simulation.hpp"
 #include "simobject/RigidPrimitives.hpp"
 #include "simobject/MeshObject.hpp"
+#include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/VirtuosoArm.hpp"
 #include "simobject/VirtuosoRobot.hpp"
@@ -28,7 +29,7 @@ CollisionScene::CollisionScene(const Sim::Simulation* sim, const Geometry::Embre
 
 }
 
-void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
+void CollisionScene::addObject(Sim::Object* new_obj, const Config::ObjectConfig* config)
 {
     // create a SDF for the new object, if applicable
     // TODO: move this SDF creation process to RigidObject
@@ -47,7 +48,7 @@ void CollisionScene::addObject(Sim::Object* new_obj, const ObjectConfig* config)
     }
     else if (Sim::RigidMeshObject* mesh_obj = dynamic_cast<Sim::RigidMeshObject*>(new_obj))
     {
-        if ( const RigidMeshObjectConfig* obj_config = dynamic_cast<const RigidMeshObjectConfig*>(config) )
+        if ( const Config::RigidMeshObjectConfig* obj_config = dynamic_cast<const Config::RigidMeshObjectConfig*>(config) )
         {
             sdf = std::make_unique<Geometry::MeshSDF>(mesh_obj, obj_config);
         }

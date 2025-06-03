@@ -143,7 +143,7 @@ void EmbreeScene::update()
     rtcCommitScene(_ray_scene);
 }
 
-EmbreeHit EmbreeScene::castRay(const Vec3r& ray_origin, const Vec3r& ray_dir)
+EmbreeHit EmbreeScene::castRay(const Vec3r& ray_origin, const Vec3r& ray_dir) const
 {
     RTCRayHit rayhit;
     rayhit.ray.org_x = ray_origin[0];
@@ -168,7 +168,7 @@ EmbreeHit EmbreeScene::castRay(const Vec3r& ray_origin, const Vec3r& ray_dir)
     // check if we have a hit
     if (rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
     {
-        const Sim::MeshObject* obj = _geomID_to_mesh_obj[rayhit.hit.geomID];
+        const Sim::MeshObject* obj = _geomID_to_mesh_obj.at(rayhit.hit.geomID);
         const Vec3i& f = obj->mesh()->face(rayhit.hit.primID);
         const Vec3r& v1 = obj->mesh()->vertex(f[0]);
         const Vec3r& v2 = obj->mesh()->vertex(f[1]);
@@ -188,19 +188,19 @@ EmbreeHit EmbreeScene::castRay(const Vec3r& ray_origin, const Vec3r& ray_dir)
     }
 }
     
-EmbreeHit EmbreeScene::closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr)
+EmbreeHit EmbreeScene::closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr) const
 {
     const EmbreeMeshGeometry* geom = _mesh_to_embree_geom.at(obj_ptr);
     return _closestPointQuery(point, obj_ptr, geom);
 }
 
-EmbreeHit EmbreeScene::closestPointTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr)
+EmbreeHit EmbreeScene::closestPointTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const
 {
     const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
     return _closestPointQuery(point, obj_ptr, geom);
 }
 
-EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom)
+EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const
 {
     EmbreeClosestPointQueryUserData point_query_data;
     point_query_data.obj_ptr = obj_ptr;
@@ -224,7 +224,7 @@ EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObj
 
 }
 
-std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr)
+std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const
 {
     const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
     EmbreePointQueryUserData point_query_data;

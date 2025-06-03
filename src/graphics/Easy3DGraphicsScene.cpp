@@ -5,7 +5,7 @@
 #include "graphics/Easy3DCylinderGraphicsObject.hpp"
 #include "graphics/Easy3DVirtuosoArmGraphicsObject.hpp"
 #include "graphics/Easy3DVirtuosoRobotGraphicsObject.hpp"
-#include "config/MeshObjectConfig.hpp"
+#include "config/simobject/MeshObjectConfig.hpp"
 
 #include "simobject/MeshObject.hpp"
 #include "simobject/RigidPrimitives.hpp"
@@ -65,7 +65,7 @@ int Easy3DGraphicsScene::run()
     return _easy3d_viewer->run();
 }
 
-int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const ObjectConfig* obj_config)
+int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config)
 {
 
     // make sure object with name doesn't already exist in the scene
@@ -81,7 +81,7 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const ObjectConfig* o
     if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(obj))
     {
         // if the downcast was successful, we should be able to downcast the ObjectConfig object to a MeshObjectConfig
-        const MeshObjectConfig* mo_config = dynamic_cast<const MeshObjectConfig*>(obj_config);
+        const Config::MeshObjectConfig* mo_config = dynamic_cast<const Config::MeshObjectConfig*>(obj_config);
         assert(mo_config);
 
         // create a new MeshGraphicsObject for visualizing this MeshObject

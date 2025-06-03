@@ -1,10 +1,12 @@
 #ifndef __VIRTUOSO_ROBOT_HPP
 #define __VIRTUOSO_ROBOT_HPP
 
-#include "config/VirtuosoRobotConfig.hpp"
+#include "config/simobject/VirtuosoRobotConfig.hpp"
 
 #include "simobject/Object.hpp"
 #include "simobject/VirtuosoArm.hpp"
+
+#include "geometry/VirtuosoRobotSDF.hpp"
 
 namespace Sim
 {
@@ -12,7 +14,11 @@ namespace Sim
 class VirtuosoRobot : public Object
 {
     public:
-    explicit VirtuosoRobot(const Simulation* sim, const VirtuosoRobotConfig* config);
+    using SDFType = Geometry::VirtuosoRobotSDF;
+    using ConfigType = Config::VirtuosoRobotConfig;
+
+    public:
+    explicit VirtuosoRobot(const Simulation* sim, const ConfigType* config);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
@@ -22,13 +28,13 @@ class VirtuosoRobot : public Object
     /** Returns a string with the type of the object. */
     virtual std::string type() const override { return "VirtuosoRobot"; }
 
-    bool hasArm1() const { return (_arm1 != nullptr); }
-    bool hasArm2() const { return (_arm2 != nullptr); }
-    int numArms() const { return (_arm1 != nullptr) + (_arm2 != nullptr); }
-    const VirtuosoArm* arm1() const { return _arm1.get(); }
-    const VirtuosoArm* arm2() const { return _arm2.get(); }
-    VirtuosoArm* arm1() { return _arm1.get(); }
-    VirtuosoArm* arm2() { return _arm2.get(); }
+    bool hasArm1() const { return _arm1.has_value(); }
+    bool hasArm2() const { return _arm2.has_value(); }
+    int numArms() const { return _arm1.has_value() + _arm2.has_value(); }
+    const VirtuosoArm* arm1() const { return _arm1.has_value() ? &_arm1.value() : nullptr; }
+    const VirtuosoArm* arm2() const { return _arm2.has_value() ? &_arm2.value() : nullptr; }
+    VirtuosoArm* arm1() { return _arm1.has_value() ? &_arm1.value() : nullptr; }
+    VirtuosoArm* arm2() { return _arm2.has_value() ? &_arm2.value() : nullptr; }
 
     Real endoscopeLength() const { return _endoscope_length; }
     Real endoscopeDiameter() const { return _endoscope_dia; }
@@ -44,6 +50,10 @@ class VirtuosoRobot : public Object
         // TODO: valid AABB
         return Geometry::AABB(0,0,0,1,1,1);
     }
+
+    virtual void createSDF() override { _sdf = SDFType(this); }
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
+    
 
     /** Performs any necessary setup for this object.
      * Called after instantiation (i.e. outside the constructor) and before update() is called for the first time.
@@ -76,8 +86,11 @@ class VirtuosoRobot : public Object
     Geometry::CoordinateFrame _VR_frame;    // frame of the base of the right Virtuoso arm
     Geometry::CoordinateFrame _cam_frame;   // frame of the camera
 
-    std::unique_ptr<VirtuosoArm> _arm1;
-    std::unique_ptr<VirtuosoArm> _arm2;
+    std::optional<VirtuosoArm> _arm1;
+    std::optional<VirtuosoArm> _arm2;
+
+    /** Signed Distance Field for the Virtuoso robot. Must be created explicitly with createSDF(). */
+    std::optional<SDFType> _sdf;
 };
 
 } // namespace Sim

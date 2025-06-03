@@ -4,16 +4,20 @@
 #include "geometry/Mesh.hpp"
 #include "geometry/TetMesh.hpp"
 #include "utils/MeshUtils.hpp"
-#include "config/ObjectConfig.hpp"
-#include "config/MeshObjectConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
+#include "config/simobject/MeshObjectConfig.hpp"
 
 namespace Sim
 {
 
 class MeshObject
 {
+    // public typedefs
     public:
-    MeshObject(const MeshObjectConfig* mesh_config, const ObjectConfig* obj_config)
+    using ConfigType = Config::MeshObjectConfig;
+
+    public:
+    MeshObject(const ConfigType* mesh_config, const Config::ObjectConfig* obj_config)
     {
         _filename = mesh_config->filename();
 
@@ -84,7 +88,7 @@ class MeshObject
 class TetMeshObject : public MeshObject
 {
     public:
-    TetMeshObject(const MeshObjectConfig* mesh_config, const ObjectConfig* obj_config)
+    TetMeshObject(const ConfigType* mesh_config, const Config::ObjectConfig* obj_config)
         : MeshObject(mesh_config, obj_config)
     {
 

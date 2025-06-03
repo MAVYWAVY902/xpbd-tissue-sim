@@ -5,8 +5,8 @@
 #include "graphics/Easy3DTextRenderingViewer.hpp"
 
 #include "simobject/Object.hpp"
-#include "config/MeshObjectConfig.hpp"
-#include "config/ObjectConfig.hpp"
+#include "config/simobject/MeshObjectConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
 
 namespace Graphics
 {
@@ -41,7 +41,7 @@ class Easy3DGraphicsScene : public GraphicsScene
      * @param obj_config : the MeshObjectConfig that contains visualization parameters (e.g. coloring, draw points, etc.)
      * @returns the index of the provided object in the _graphics_objects array (can be used to fetch it in the future)
      */
-    virtual int addObject(const Sim::Object* obj, const ObjectConfig* obj_config=nullptr) override;
+    virtual int addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config=nullptr) override;
 
     /** Sets the camera mode to Orthographic */
     virtual void setCameraOrthographic() override;

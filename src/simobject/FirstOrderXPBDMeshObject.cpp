@@ -5,7 +5,7 @@ namespace Sim
 {
 
 template<typename SolverType, typename... ConstraintTypes>
-FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::FirstOrderXPBDMeshObject(const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config)
+FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::FirstOrderXPBDMeshObject(const Simulation* sim, const ConfigType* config)
     : XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>(sim, config)
 {
     std::cout << "FirstOrderXPBDMeshObject constructor! " << std::endl;

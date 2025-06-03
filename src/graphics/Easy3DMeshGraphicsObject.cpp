@@ -13,7 +13,7 @@ Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, cons
     _init();
 }
 
-Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const MeshObjectConfig* mesh_object_config)
+Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::MeshObjectConfig* mesh_object_config)
     : MeshGraphicsObject(name, mesh, mesh_object_config)
 {
     _init();

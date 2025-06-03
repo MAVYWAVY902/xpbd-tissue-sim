@@ -10,7 +10,7 @@ MeshGraphicsObject::MeshGraphicsObject(const std::string& name, const Geometry::
     _draw_edges = true;
 }
 
-MeshGraphicsObject::MeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const MeshObjectConfig* mesh_object_config)
+MeshGraphicsObject::MeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::MeshObjectConfig* mesh_object_config)
     : GraphicsObject(name), _mesh(mesh)
 {
     _draw_faces = mesh_object_config->drawFaces();
