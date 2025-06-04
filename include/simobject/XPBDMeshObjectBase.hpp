@@ -6,7 +6,6 @@
 #include "simobject/ElasticMaterial.hpp"
 #include "simobject/RigidObject.hpp"
 
-#include "geometry/SDF.hpp"
 #include "geometry/DeformableMeshSDF.hpp"
 
 #include "common/XPBDEnumTypes.hpp"

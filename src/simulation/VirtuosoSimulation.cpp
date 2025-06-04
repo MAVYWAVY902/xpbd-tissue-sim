@@ -50,16 +50,10 @@ void VirtuosoSimulation::setup()
     }
 
     // find the VirtuosoRobot object - necessary for Virtuoso simulation controls
-    for (auto& obj : _objects)
-    {
-        if (VirtuosoRobot* robot = dynamic_cast<VirtuosoRobot*>(obj.get()))
-        {
-            _virtuoso_robot = robot;
-            break;
-        }
-    }
+    auto& _virtuoso_robot_objs = _objects.template get<std::unique_ptr<VirtuosoRobot>>();
+    assert((_virtuoso_robot_objs.size() == 1) && "There must be exactly 1 VirtuosoRobot in the sim!");
+    _virtuoso_robot = _virtuoso_robot_objs.front().get();
 
-    assert(_virtuoso_robot && "No VirtuosoRobot found in the sim! (add one to the config file)");
 
     // set the active arm to be arm1
     _active_arm = _virtuoso_robot->arm1();
@@ -69,7 +63,7 @@ void VirtuosoSimulation::setup()
     // create an object at the tip of the robot to show where grasping is
     Config::RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
         1.0, 0.0005, false, true, false);
-    _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
+    _tip_cursor = _addObjectFromConfig(&cursor_config);
     assert(_tip_cursor);
     _tip_cursor->setPosition(_active_arm->tipPosition());
 }

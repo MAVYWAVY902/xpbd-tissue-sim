@@ -1,8 +1,11 @@
 #ifndef __VARIADIC_VECTOR_CONTAINER_HPP
 #define __VARIADIC_VECTOR_CONTAINER_HPP
 
+#include "common/TypeList.hpp"
+
 #include <vector>
 #include <iostream>
+#include <memory>
 
 // adapted from this StackOverflow answer: https://stackoverflow.com/a/53112843
 
@@ -212,7 +215,6 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
 //////////////////////////////////////////////////////////////////////////
 // Construct VariadicVectorContainer from TypeList
 //////////////////////////////////////////////////////////////////////////
-#include "common/TypeList.hpp"
 
 template<typename List>
 struct VariadicVectorContainerFromTypeList;

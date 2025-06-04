@@ -33,6 +33,7 @@ EmbreeScene::~EmbreeScene()
     
 }
 
+template<>
 void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
 {
     // make sure that object has not already been added to Embree scene
@@ -68,6 +69,7 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
     rtcReleaseGeometry(rtc_geom);
 }
 
+template<>
 void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
 {
     // make sure that object has not already been added to Embree scene

@@ -5,29 +5,29 @@
 namespace Geometry
 {
 
-DeformableMeshSDF::DeformableMeshSDF(const Sim::TetMeshObject* mesh_obj, const EmbreeScene* embree_scene)
-    : _mesh_obj(mesh_obj), _embree_scene(embree_scene)
-{
-    // if (config && config->sdfFilename().has_value())
-    // {
-    //     _from_file = true;
-    //     // load SDF from file
-    //     _sdf = mesh2sdf::MeshSDF(config->sdfFilename().value());
-    // }
-    // else
-    // {
-        // calculate the SDF at the mesh's un-transformed state
-        // if the corresponding TetMeshObject to this SDF has an initial rotation, the mesh is already rotated, which will throw off the SDF
-        // Geometry::Mesh mesh_copy(*(mesh_obj->mesh()));
-        // // untranslate the copy of the mesh
-        // mesh_copy.moveTogether(-mesh_obj->position());
-        // // unrotate the copy of the mesh
-        // const Mat3r rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(mesh_obj->orientation()));
-        // mesh_copy.rotateAbout(Vec3r::Zero(), rot_mat);
-        // // compute the SDF
-        // _sdf = mesh2sdf::MeshSDF(mesh_copy.vertices(), mesh_copy.faces(), 128, 5, true);
-    // }
-}
+// DeformableMeshSDF::DeformableMeshSDF(const Sim::TetMeshObject* mesh_obj, const EmbreeScene* embree_scene)
+//     : _mesh_obj(mesh_obj), _embree_scene(embree_scene)
+// {
+//     // if (config && config->sdfFilename().has_value())
+//     // {
+//     //     _from_file = true;
+//     //     // load SDF from file
+//     //     _sdf = mesh2sdf::MeshSDF(config->sdfFilename().value());
+//     // }
+//     // else
+//     // {
+//         // calculate the SDF at the mesh's un-transformed state
+//         // if the corresponding TetMeshObject to this SDF has an initial rotation, the mesh is already rotated, which will throw off the SDF
+//         // Geometry::Mesh mesh_copy(*(mesh_obj->mesh()));
+//         // // untranslate the copy of the mesh
+//         // mesh_copy.moveTogether(-mesh_obj->position());
+//         // // unrotate the copy of the mesh
+//         // const Mat3r rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(mesh_obj->orientation()));
+//         // mesh_copy.rotateAbout(Vec3r::Zero(), rot_mat);
+//         // // compute the SDF
+//         // _sdf = mesh2sdf::MeshSDF(mesh_copy.vertices(), mesh_copy.faces(), 128, 5, true);
+//     // }
+// }
 
 Real DeformableMeshSDF::evaluate(const Vec3r& x) const
 {

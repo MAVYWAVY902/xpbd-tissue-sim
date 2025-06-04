@@ -31,16 +31,9 @@ void VirtuosoTissueGraspingSimulation::setup()
     VirtuosoSimulation::setup();
 
     // find the XPBDMeshObject (which we're assuming to be the tissue)
-    for (auto& obj : _objects)
-    {
-        if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
-        {
-            _tissue_obj = xpbd_obj;
-            break;
-        }
-    }
-
-    assert(_tissue_obj);
+    auto& xpbd_objs = _objects.template get<std::unique_ptr<XPBDMeshObject_Base>>();
+    assert((xpbd_objs.size() > 0) && "There must be at least 1 XPBDMeshObject or FirstOrderXPBDMeshObject in the simulation (there is no tissue object!).");
+    _tissue_obj = xpbd_objs.front().get();
 
     // once we've found the tissue object, make sure that each virtuoso arm knows that this is the object that they're manipulating
     // (the VirtuosoArm class handles the grasping logic)

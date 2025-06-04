@@ -10,11 +10,11 @@ VirtuosoRobot::VirtuosoRobot(const Simulation* sim, const ConfigType* config)
     {
         if (!_arm1)
         {
-            _arm1 = VirtuosoArm(sim, arm_config.get());
+            _arm1 = VirtuosoArm(sim, &arm_config);
         }
         else if (!_arm2)
         {
-            _arm2 = VirtuosoArm(sim, arm_config.get());
+            _arm2 = VirtuosoArm(sim, &arm_config);
         }
         else
         {

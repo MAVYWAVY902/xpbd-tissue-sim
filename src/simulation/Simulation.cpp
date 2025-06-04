@@ -89,10 +89,11 @@ void Simulation::setup()
     }
 
     /** Add simulation objects from Config object... */
-    for (const auto& obj_config : _config->objectConfigs())
+    auto& object_configs = _config->objectConfigs();
+    object_configs.for_each_element([this](const auto& config)
     {
-        _addObjectFromConfig(obj_config.get());
-    }
+        this->_addObjectFromConfig(&config);
+    });
         
 
     
@@ -160,10 +161,10 @@ void Simulation::_timeStep()
     {
         // run collision detection
         auto t1 = std::chrono::steady_clock::now();
-        for (auto& obj : _objects)
+        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        for (auto& obj : xpbd_mesh_objs)
         {
-            if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
-                xpbd_obj->clearCollisionConstraints();
+            obj->clearCollisionConstraints();
         }
         // update the Embree scene before colliding objects
         auto embree_t1 = std::chrono::steady_clock::now();
@@ -181,16 +182,17 @@ void Simulation::_timeStep()
 
     
     // auto update_t1 = std::chrono::steady_clock::now();
-    for (auto& obj : _objects)
+
+    _objects.for_each_element([](auto& obj)
     {
         obj->update();
-    }
+    });
 
     // update each object's velocities
-    for (auto& obj : _objects)
+    _objects.for_each_element([](auto& obj)
     {
         obj->velocityUpdate();
-    }
+    });
     // auto update_t2 = std::chrono::steady_clock::now();
     // std::cout << "Update took " << std::chrono::duration_cast<std::chrono::microseconds>(update_t2 - update_t1).count() << " us\n";
 

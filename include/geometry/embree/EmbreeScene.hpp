@@ -46,11 +46,11 @@ class EmbreeScene
 
     ~EmbreeScene();
 
-    /** Adds a MeshObject (i.e. a surface mesh) to the Embree scene */
-    void addObject(const Sim::MeshObject* obj_ptr);
-
-    /** Adds a TetMeshObject (i.e. a volumetric mesh) to the Embree scene */
-    void addObject(const Sim::TetMeshObject* obj_ptr);
+    template<typename ObjectType>
+    void addObject(const ObjectType* /*obj_ptr*/)
+    {
+        /** TODO: add AABB's to _collision_scene */
+    }
 
     /** Updates the Embree scene. */
     void update();

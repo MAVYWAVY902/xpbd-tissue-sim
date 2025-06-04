@@ -4,11 +4,21 @@
 #include <assimp/Importer.hpp>
 
 #include "simobject/Object.hpp"
+#include "simobject/FirstOrderXPBDMeshObject.hpp"
+#include "simobject/XPBDMeshObject.hpp"
+#include "simobject/RigidMeshObject.hpp"
+#include "simobject/RigidObject.hpp"
+#include "simobject/RigidPrimitives.hpp"
+#include "simobject/VirtuosoArm.hpp"
+#include "simobject/VirtuosoRobot.hpp"
 
 #include "config/simulation/SimulationConfig.hpp"
 #include "collision/CollisionScene.hpp"
 #include "graphics/GraphicsScene.hpp"
 #include "geometry/embree/EmbreeScene.hpp"
+
+#include "common/VariadicVectorContainer.hpp"
+#include "common/SimulationTypeDefs.hpp"
 
 #include <yaml-cpp/yaml.h>
 
@@ -109,21 +119,21 @@ class Simulation
          * Adds the object to the appropriate part of the simulation (i.e. to the CollisionScene if collisions are enabled, GraphicsScene if graphics are enabled, etc.)
         */
         template<typename ConfigType>        
-        ConfigType::ObjectType* _addObjectFromConfig(const ConfigType* obj_config)
+        typename ConfigType::ObjectType* _addObjectFromConfig(const ConfigType* obj_config)
         {
-            using ObjPtrType = std::unique_ptr<ConfigType::ObjectType>;
+            using ObjPtrType = std::unique_ptr<typename ConfigType::ObjectType>;
 
             ObjPtrType new_obj = obj_config->createObject(this);
             new_obj->setup();
 
             // add tetrahedral mesh objects to Embree scene
             // TODO: better way to do this?
-            if constexpr (std::is_convertible_v<ConfigType::ObjectType*, Sim::TetMeshObject*>)
+            if constexpr (std::is_convertible_v<typename ConfigType::ObjectType*, Sim::TetMeshObject*>)
             {
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
                     _embree_scene->addObject( new_obj.get() );
             }
-            else if (std::is_convertible_v<ConfigType::ObjectType*, Sim::MeshObject*>)
+            else if (std::is_convertible_v<typename ConfigType::ObjectType*, Sim::MeshObject*>)
             {
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
                     _embree_scene->addObject( new_obj.get() );
@@ -142,7 +152,7 @@ class Simulation
 
             // if we get to here, we have successfully created a new MeshObject of some kind
             // so add the new object to the simulation
-            ConfigType::ObjectType* tmp_ptr = new_obj.get();
+            typename ConfigType::ObjectType* tmp_ptr = new_obj.get();
             if (obj_config->graphicsOnly())
             {
                 _graphics_only_objects.template push_back<ObjPtrType>(std::move(new_obj));

@@ -42,11 +42,6 @@ namespace Solver
     class XPBDSolver;
 }
 
-namespace Geometry
-{
-    class SDF;
-}
-
 namespace Sim
 {
 

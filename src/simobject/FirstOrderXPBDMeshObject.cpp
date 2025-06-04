@@ -1,6 +1,8 @@
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "simulation/Simulation.hpp"
 
+#include "geometry/DeformableMeshSDF.hpp"
+
 namespace Sim
 {
 

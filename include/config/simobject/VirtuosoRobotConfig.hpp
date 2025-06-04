@@ -52,23 +52,22 @@ class VirtuosoRobotConfig : public ObjectConfig
             
 
             // create the specified type of object based on type string
-            std::unique_ptr<VirtuosoArmConfig> config;
             if (type == "VirtuosoArm")                   
-                config = std::make_unique<VirtuosoArmConfig>(obj_node);
+                _arm_configs.emplace_back(obj_node);
             else
             {
                 std::cerr << "Unknown type of object! \"" << type << "\" is not a type of VirtuosoArm." << std::endl;
                 assert(0);
             }
 
-            _arm_configs.push_back(std::move(config));
+            
             
         }
     }
 
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
-    const std::vector<std::unique_ptr<VirtuosoArmConfig>>& armConfigs() const { return _arm_configs; }
+    const std::vector<VirtuosoArmConfig>& armConfigs() const { return _arm_configs; }
     Real endoscopeDiameter() const { return _endoscope_diameter.value.value(); }
     Real endoscopeLength() const { return _endoscope_length.value.value(); }
     Real armSeparationDistance() const { return _arm_separation_dist.value.value(); }
@@ -82,7 +81,7 @@ class VirtuosoRobotConfig : public ObjectConfig
     ConfigParameter<Real> _optic_vertical_dist;
     ConfigParameter<Real> _optic_tilt;
 
-    std::vector<std::unique_ptr<VirtuosoArmConfig>> _arm_configs;
+    std::vector<VirtuosoArmConfig> _arm_configs;
 };
 
 } // namespace Config

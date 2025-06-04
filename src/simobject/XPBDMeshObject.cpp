@@ -14,6 +14,8 @@
 #include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
 #include "utils/MeshUtils.hpp"
 
+#include "geometry/DeformableMeshSDF.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #endif

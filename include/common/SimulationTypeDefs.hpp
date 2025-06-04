@@ -28,8 +28,8 @@ struct GetObjectTypesFromConfigTypes;
 template <typename... ConfigTypes>
 struct GetObjectTypesFromConfigTypes<TypeList<ConfigTypes...>>
 {
-    using duped_type = TypeList<ConfigTypes::ObjectType...>;
-    using deduped_type = TypeListRemoveDuplicates<duped_type>::type;
+    using duped_type = TypeList<typename ConfigTypes::ObjectType...>;
+    using deduped_type = typename TypeListRemoveDuplicates<duped_type>::type;
 };
 
 /** The types of simulation Objects the Simulation should expect. These come directly from the SimulationObjectconfigTypes. */
