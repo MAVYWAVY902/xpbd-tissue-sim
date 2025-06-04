@@ -37,7 +37,7 @@ class RigidMeshObjectConfig : public RigidObjectConfig, public MeshObjectConfig
         _sdf_filename.value = sdf_filename;
     }
 
-    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
+    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
     std::optional<std::string> sdfFilename() const { return _sdf_filename.value; }
 

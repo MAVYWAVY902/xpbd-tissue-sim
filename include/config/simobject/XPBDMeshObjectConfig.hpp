@@ -115,7 +115,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         _residual_policy.value = residual_policy;
     }
 
-    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
+    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
     // Getters
     std::optional<int> numSolverIters() const { return _num_solver_iters.value; }

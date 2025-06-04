@@ -45,7 +45,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
         _damping_multiplier.value = damping_multiplier;
     }
 
-    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
+    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
     std::optional<Real> dampingMultiplier() const { return _damping_multiplier.value; }
 

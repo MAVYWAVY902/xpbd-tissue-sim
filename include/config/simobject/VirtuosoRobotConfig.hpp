@@ -7,7 +7,7 @@
 namespace Sim
 {
     class Object;
-    class VirtuosoRobot : public Object {};
+    class VirtuosoRobot;
 }
 
 namespace Config
@@ -66,7 +66,7 @@ class VirtuosoRobotConfig : public ObjectConfig
         }
     }
 
-    virtual std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const override;
+    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
     const std::vector<std::unique_ptr<VirtuosoArmConfig>>& armConfigs() const { return _arm_configs; }
     Real endoscopeDiameter() const { return _endoscope_diameter.value.value(); }
