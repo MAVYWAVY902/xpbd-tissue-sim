@@ -9,6 +9,9 @@
 #include "config/simobject/VirtuosoArmConfig.hpp"
 #include "config/simobject/VirtuosoRobotConfig.hpp"
 
+#include "common/SimulationTypeDefs.hpp"
+#include "common/VariadicVectorContainer.hpp"
+
 #include <optional>
 #include <string>
 
@@ -35,6 +38,11 @@ enum class Visualization
 
 class SimulationConfig : public Config
 {
+
+    public:
+    using ConfigVectorType = VariadicVectorContainerFromTypeList<SimulationObjectConfigTypes>::type;
+
+
     /** Static predefined default for simulation time step */
     static std::optional<Real>& DEFAULT_TIME_STEP() { static std::optional<Real> time_step(1e-3); return time_step; }
     /** Static predefined default for simulation end time */
@@ -102,22 +110,27 @@ class SimulationConfig : public Config
             
 
             // create the specified type of object based on type string
-            std::unique_ptr<ObjectConfig> config;
-            if (type == "XPBDMeshObject")                   config = std::make_unique<XPBDMeshObjectConfig>(obj_node);
-            else if (type == "FirstOrderXPBDMeshObject")    config = std::make_unique<FirstOrderXPBDMeshObjectConfig>(obj_node);
-            else if (type == "RigidMeshObject")             config = std::make_unique<RigidMeshObjectConfig>(obj_node);
-            else if (type == "RigidSphere")                 config = std::make_unique<RigidSphereConfig>(obj_node);
-            else if (type == "RigidBox")                    config = std::make_unique<RigidBoxConfig>(obj_node);
-            else if (type == "RigidCylinder")               config = std::make_unique<RigidCylinderConfig>(obj_node);
-            else if (type == "VirtuosoArm")                 config = std::make_unique<VirtuosoArmConfig>(obj_node);
-            else if (type == "VirtuosoRobot")               config = std::make_unique<VirtuosoRobotConfig>(obj_node);
+            if (type == "XPBDMeshObject")
+                _object_configs.template emplace_back<XPBDMeshObjectConfig>(obj_node);
+            else if (type == "FirstOrderXPBDMeshObject")    
+                _object_configs.template emplace_back<FirstOrderXPBDMeshObjectConfig>(obj_node);
+            else if (type == "RigidMeshObject")
+                _object_configs.template emplace_back<RigidMeshObjectConfig>(obj_node);
+            else if (type == "RigidSphere")
+                _object_configs.template emplace_back<RigidSphereConfig>(obj_node);
+            else if (type == "RigidBox")
+                _object_configs.template emplace_back<RigidBoxConfig>(obj_node);
+            else if (type == "RigidCylinder")
+                _object_configs.template emplace_back<RigidCylinderConfig>(obj_node);
+            else if (type == "VirtuosoArm")
+                _object_configs.template emplace_back<VirtuosoArmConfig>(obj_node);
+            else if (type == "VirtuosoRobot")
+                _object_configs.template emplace_back<VirtuosoRobotConfig>(obj_node);
             else
             {
                 std::cerr << "Unknown type of object! \"" << type << "\" is not a type of simulation object." << std::endl;
                 assert(0);
             }
-
-            _object_configs.push_back(std::move(config));
             
         }
     }
@@ -152,7 +165,7 @@ class SimulationConfig : public Config
     Real collisionRate() const { return _collision_rate.value.value(); }
 
     // get list of MeshObject configs that will be used to create MeshObjects
-    const std::vector<std::unique_ptr<ObjectConfig> >& objectConfigs() const { return _object_configs; }
+    const ConfigVectorType& objectConfigs() const { return _object_configs; }
 
     protected:
     // Parameters
@@ -166,7 +179,9 @@ class SimulationConfig : public Config
     ConfigParameter<Real> _collision_rate;
 
     /** List of MeshObject configs for each object in the Simulation */
-    std::vector<std::unique_ptr<ObjectConfig>> _object_configs;
+    // std::vector<std::unique_ptr<ObjectConfig>> _object_configs;
+
+    ConfigVectorType _object_configs;
 
 };
 

@@ -25,6 +25,9 @@ namespace Sim
 class Simulation
 {
     public:
+    using ObjectVectorType = VariadicVectorContainerFromTypeList<SimulationObjectTypes>::unique_ptr_type;
+
+    public:
     struct CallbackInfo
     {
         std::function<void()> callback;
@@ -104,8 +107,52 @@ class Simulation
         /** Helper to add an object to the simulation given an ObjectConfig.
          * Will create an object (RigidMeshObject, RigidSphere, XPBDMeshObject, etc.) depending on the type of ObjectConfig given.
          * Adds the object to the appropriate part of the simulation (i.e. to the CollisionScene if collisions are enabled, GraphicsScene if graphics are enabled, etc.)
-        */        
-       Object* _addObjectFromConfig(const Config::ObjectConfig* obj_config);
+        */
+        template<typename ConfigType>        
+        ConfigType::ObjectType* _addObjectFromConfig(const ConfigType* obj_config)
+        {
+            using ObjPtrType = std::unique_ptr<ConfigType::ObjectType>;
+
+            ObjPtrType new_obj = obj_config->createObject(this);
+            new_obj->setup();
+
+            // add tetrahedral mesh objects to Embree scene
+            // TODO: better way to do this?
+            if constexpr (std::is_convertible_v<ConfigType::ObjectType*, Sim::TetMeshObject*>)
+            {
+                if (obj_config->collisions() && !obj_config->graphicsOnly())
+                    _embree_scene->addObject( new_obj.get() );
+            }
+            else if (std::is_convertible_v<ConfigType::ObjectType*, Sim::MeshObject*>)
+            {
+                if (obj_config->collisions() && !obj_config->graphicsOnly())
+                    _embree_scene->addObject( new_obj.get() );
+            }
+
+            // add the new object to the collision scene if collisions are enabled
+            if (obj_config->collisions() && !obj_config->graphicsOnly())
+            {
+                _collision_scene->addObject(new_obj.get(), obj_config);
+            }
+            // add the new object to the graphics scene to be visualized
+            if (_graphics_scene)
+            {
+                _graphics_scene->addObject(new_obj.get(), obj_config);
+            }
+
+            // if we get to here, we have successfully created a new MeshObject of some kind
+            // so add the new object to the simulation
+            ConfigType::ObjectType* tmp_ptr = new_obj.get();
+            if (obj_config->graphicsOnly())
+            {
+                _graphics_only_objects.template push_back<ObjPtrType>(std::move(new_obj));
+            }
+            else
+            {
+                _objects.template push_back<ObjPtrType>(std::move(new_obj));
+            }
+            return tmp_ptr;
+        }
 
         /** Time step the simulation */
         virtual void _timeStep();
@@ -152,12 +199,12 @@ class Simulation
         /** storage of all Objects in the simulation.
          * These objects will evolve in time through the update() method that they all provide
          */
-        std::vector<std::unique_ptr<Object>> _objects;
+        ObjectVectorType _objects;
 
         /** storage of objects in the simulation that are purely visual (i.e. no physics involved, just graphics)
          * update() will NOT get called on these objects.
          */
-        std::vector<std::unique_ptr<Object>> _graphics_only_objects;
+        ObjectVectorType _graphics_only_objects;
 
         std::unique_ptr<CollisionScene> _collision_scene;
 

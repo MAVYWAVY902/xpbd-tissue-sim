@@ -15,6 +15,7 @@ set(COMMON_HEADERS
     ${COMMON_INCLUDE_DIR}/VariadicVectorContainer.hpp
     ${COMMON_INCLUDE_DIR}/XPBDEnumTypes.hpp
     ${COMMON_INCLUDE_DIR}/XPBDTypedefs.hpp
+    ${COMMON_INCLUDE_DIR}/SimulationTypeDefs.hpp
 )
 
 set(COMMON_SOURCES
