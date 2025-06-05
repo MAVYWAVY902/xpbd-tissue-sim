@@ -71,6 +71,11 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj,
         const Vec3r& p2 = mesh->vertex(f[1]);
         const Vec3r& p3 = mesh->vertex(f[2]);
 
+        // check if centroid of face is close
+        const Real centroid_dist = sdf->evaluate((p1+p2+p3)/3);
+        if (centroid_dist > 2e-3)
+            continue;
+
         const Real p1p2 = (p2-p1).norm();
         const Real p1p3 = (p3-p1).norm();
         const Real p2p3 = (p3-p2).norm();
