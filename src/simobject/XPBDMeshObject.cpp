@@ -63,7 +63,8 @@ Geometry::AABB XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::boundin
 template<typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::createSDF()
 {
-    _sdf = SDFType(this, _sim->embreeScene());
+    if (!_sdf.has_value())
+        _sdf = SDFType(this, _sim->embreeScene());
 }
 
 template<typename SolverType, typename... ConstraintTypes>

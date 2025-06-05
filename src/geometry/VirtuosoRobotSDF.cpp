@@ -6,7 +6,7 @@ namespace Geometry
 {
 
 VirtuosoRobotSDF::VirtuosoRobotSDF(Sim::VirtuosoRobot* virtuoso_robot)
-    : _virtuoso_robot(virtuoso_robot)
+    : _virtuoso_robot(virtuoso_robot), _arm1_sdf(nullptr), _arm2_sdf(nullptr)
 {
     if (_virtuoso_robot->hasArm1())
     {

@@ -142,7 +142,7 @@ class Simulation
             // add the new object to the collision scene if collisions are enabled
             if (obj_config->collisions() && !obj_config->graphicsOnly())
             {
-                _collision_scene->addObject(new_obj.get(), obj_config);
+                _collision_scene->addObject(new_obj.get());
             }
             // add the new object to the graphics scene to be visualized
             if (_graphics_scene)

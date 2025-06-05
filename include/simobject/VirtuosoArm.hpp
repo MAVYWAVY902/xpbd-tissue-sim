@@ -71,8 +71,13 @@ class VirtuosoArm : public Object
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const override;
 
-    virtual void createSDF() override { _sdf = SDFType(this); };
-    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
+    virtual void createSDF() override 
+    { 
+        if(!_sdf.has_value()) 
+            _sdf = SDFType(this); 
+    }
+
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; }
 
     Real innerTubeDiameter() const { return _it_dia; }
     Real innerTubeTranslation() const { return _it_translation; }

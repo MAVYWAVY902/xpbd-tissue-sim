@@ -51,8 +51,13 @@ class VirtuosoRobot : public Object
         return Geometry::AABB(0,0,0,1,1,1);
     }
 
-    virtual void createSDF() override { _sdf = SDFType(this); }
-    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
+    virtual void createSDF() override 
+    { 
+        if(!_sdf.has_value()) 
+            _sdf = SDFType(this); 
+    }
+
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; }
     
 
     /** Performs any necessary setup for this object.

@@ -36,7 +36,11 @@ class RigidSphere : public RigidObject
 
     virtual Geometry::AABB boundingBox() const override;
 
-    virtual void createSDF() override { _sdf = SDFType(this); };
+    virtual void createSDF() override 
+    { 
+        if (!_sdf.has_value()) 
+            _sdf = SDFType(this); 
+    }
     virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
 
  #ifdef HAVE_CUDA
@@ -80,8 +84,12 @@ class RigidBox : public RigidObject
 
     virtual Geometry::AABB boundingBox() const override;
 
-    virtual void createSDF() override { _sdf = SDFType(this); };
-    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
+    virtual void createSDF() override 
+    { 
+        if (!_sdf.has_value()) 
+            _sdf = SDFType(this); 
+    }
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; }
 
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override { assert(0); /* not implemented */ }
@@ -126,8 +134,13 @@ class RigidCylinder : public RigidObject
 
     virtual Geometry::AABB boundingBox() const override;
 
-    virtual void createSDF() override { _sdf = SDFType(this); };
-    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
+    virtual void createSDF() override 
+    { 
+        if (!_sdf.has_value()) 
+            _sdf = SDFType(this); 
+    }
+
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; }
 
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override { assert(0); /* not implemented */ }
