@@ -19,10 +19,7 @@ namespace Geometry
 class DeformableMeshSDF : public SDF
 {
     public:
-    DeformableMeshSDF(const Sim::TetMeshObject* mesh_obj, const EmbreeScene* embree_scene)
-        : _mesh_obj(mesh_obj), _embree_scene(embree_scene) {}
-
-    ~DeformableMeshSDF() {};
+    DeformableMeshSDF(const Sim::TetMeshObject* mesh_obj, const EmbreeScene* embree_scene);
 
     virtual Real evaluate(const Vec3r& x) const override;
     virtual Vec3r gradient(const Vec3r& x) const override;

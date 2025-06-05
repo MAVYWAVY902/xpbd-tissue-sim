@@ -491,6 +491,15 @@ const XPBDMeshObjectGPUResource* XPBDMeshObject<SolverType, TypeList<ConstraintT
 }
 #endif
 
+} // namespace Sim
+
+
+
+
+/////////////////////////////////////////////////////////////////
+// Explicit template instantiations
+////////////////////////////////////////////////////////////////
+
 #include "common/XPBDTypedefs.hpp"
 // instantiate templates
 
@@ -547,6 +556,7 @@ const XPBDMeshObjectGPUResource* XPBDMeshObject<SolverType, TypeList<ConstraintT
 // // InstantiateAllXPBDMeshObjects<typename XPBDMeshObjectConstraintConfigurations::type_list>::instantiate();
 // template struct InstantiateAllXPBDMeshObjects<typename XPBDMeshObjectConstraintConfigurations::type_list>;
 
+namespace Sim {
 
 // TODO: find a way to automate this!
 using SolverTypesStableNeohookean = XPBDObjectSolverTypes<XPBDMeshObjectConstraintConfigurations::StableNeohookean::projector_type_list>;

@@ -227,10 +227,18 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_movePo
     }   
 }
 
-// CTAD
-// template<typename SolverType, typename ...ConstraintTypes> FirstOrderXPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const FirstOrderXPBDMeshObjectConfig* config)
-//     -> FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>;
 
+} // namespace Sim
+
+
+/////////////////////////////////////////////////////////////////
+// Explicit template instantiations
+////////////////////////////////////////////////////////////////
+
+#include "common/XPBDTypedefs.hpp"
+
+namespace Sim 
+{
 using SolverTypesStableNeohookean = FirstOrderXPBDObjectSolverTypes<FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookean::projector_type_list>;
 using SolverTypesStableNeohookeanCombined = FirstOrderXPBDObjectSolverTypes<FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::projector_type_list>;
 using StableNeohookeanConstraints = FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookean::constraint_type_list;
