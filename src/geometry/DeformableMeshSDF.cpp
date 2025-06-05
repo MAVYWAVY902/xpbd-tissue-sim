@@ -15,19 +15,24 @@ Real DeformableMeshSDF::evaluate(const Vec3r& x) const
     // find enclosing tetrahedron for query point
     std::set<EmbreeHit> query_result = _embree_scene->pointInTetrahedraQuery(x, _mesh_obj);
 
-    if (query_result.empty())
-    {
-        EmbreeHit hit = _embree_scene->closestPointTetMesh(x, _mesh_obj);
-        return (hit.hit_point - x).norm();
-    }
+    // find closest point on surface for query point
+    const int sign = (query_result.empty()) ? 1 : -1;
+    EmbreeHit hit = _embree_scene->closestPointTetMesh(x, _mesh_obj);
+    return (hit.hit_point - x).norm() * sign;
+
+    // if (query_result.empty())
+    // {
+    //     EmbreeHit hit = _embree_scene->closestPointTetMesh(x, _mesh_obj);
+    //     return (hit.hit_point - x).norm();
+    // }
     
     // map query point back to undeformed configuration (Xm = F^-1 (x - v4) + v4)
-    int elem_index = query_result.begin()->prim_index;
-    const Mat3r F = _mesh_obj->tetMesh()->elementDeformationGradient(elem_index);
-    const Eigen::Vector4i& elem = _mesh_obj->tetMesh()->element(elem_index);
-    const Vec3r& v4 = _mesh_obj->tetMesh()->vertex(elem[3]);
+    // int elem_index = query_result.begin()->prim_index;
+    // const Mat3r F = _mesh_obj->tetMesh()->elementDeformationGradient(elem_index);
+    // const Eigen::Vector4i& elem = _mesh_obj->tetMesh()->element(elem_index);
+    // const Vec3r& v4 = _mesh_obj->tetMesh()->vertex(elem[3]);
 
-    const Vec3r X_m = F.inverse() * (x - v4) + v4;
+    // const Vec3r X_m = F.inverse() * (x - v4) + v4;
 
     // query MeshSDF with Xm
     
@@ -43,7 +48,8 @@ Real DeformableMeshSDF::evaluate(const Vec3r& x) const
 Vec3r DeformableMeshSDF::gradient(const Vec3r& x) const
 {
     // TODO
-    return Vec3r(0,0,0);
+    EmbreeHit hit = _embree_scene->closestPointTetMesh(x, _mesh_obj);
+    return (hit.hit_point - x).normalized();
 }
 
 // Real DeformableMeshSDF::_evaluateStaticSDF(const Vec3r& X_m) const

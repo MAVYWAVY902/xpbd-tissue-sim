@@ -10,6 +10,8 @@
 #include "geometry/embree/EmbreeTetMeshGeometry.hpp"
 #include "geometry/embree/EmbreeQueryStructs.hpp"
 
+#include "simobject/MeshObject.hpp"
+
 #include <map>
 #include <set>
 
@@ -51,6 +53,9 @@ class EmbreeScene
     {
         /** TODO: add AABB's to _collision_scene */
     }
+
+    void addObject(const Sim::TetMeshObject* obj);
+    void addObject(const Sim::MeshObject* obj);
 
     /** Updates the Embree scene. */
     void update();

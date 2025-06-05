@@ -1,8 +1,6 @@
 #include "geometry/embree/EmbreeScene.hpp"
 #include "geometry/embree/EmbreeQueryStructs.hpp"
 
-#include "simobject/MeshObject.hpp"
-
 namespace Geometry
 {
 
@@ -33,7 +31,6 @@ EmbreeScene::~EmbreeScene()
     
 }
 
-template<>
 void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
 {
     // make sure that object has not already been added to Embree scene
@@ -69,9 +66,9 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
     rtcReleaseGeometry(rtc_geom);
 }
 
-template<>
 void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
 {
+    std::cout << "\n\nADDING TETMESHOBJECT TO EMBREE SCENE\n\n" << std::endl;
     // make sure that object has not already been added to Embree scene
     if (_tet_mesh_to_embree_geom.count(obj_ptr) > 0)
         assert(0 && "Object has already been added to Embree scene!");
@@ -128,6 +125,7 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     rtcReleaseGeometry(rtc_mesh_geom);
     rtcReleaseGeometry(rtc_tet_mesh_geom);
 }
+
 
 void EmbreeScene::update()
 {

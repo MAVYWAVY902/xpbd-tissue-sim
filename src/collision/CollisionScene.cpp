@@ -41,7 +41,16 @@ void CollisionScene::collideObjects()
 
 void CollisionScene::_collideObjectPair(Sim::Object* obj1, Sim::Object* obj2)
 {
-    // do nothing for now
+    // do nothing in the general case
+}
+
+void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPBDMeshObject_Base* xpbd_mesh_obj)
+{
+    const typename Sim::XPBDMeshObject_Base::SDFType* sdf = xpbd_mesh_obj->SDF();
+    const Vec3r& tip_pos = virtuoso_arm->tipPosition();
+    const Real dist = sdf->evaluate(tip_pos);
+    
+    std::cout << "DeformableSDF distance: " << dist << std::endl;
 }
 
 void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base* xpbd_mesh_obj2)

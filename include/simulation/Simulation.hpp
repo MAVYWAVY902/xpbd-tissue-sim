@@ -128,15 +128,15 @@ class Simulation
 
             // add tetrahedral mesh objects to Embree scene
             // TODO: better way to do this?
-            if constexpr (std::is_convertible_v<typename ConfigType::ObjectType*, Sim::TetMeshObject*>)
+            if constexpr (std::is_convertible_v<typename ConfigType::ObjectType*, TetMeshObject*>)
             {
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
-                    _embree_scene->addObject( new_obj.get() );
+                    _embree_scene->addObject( (TetMeshObject*)new_obj.get() );  // explicitly cast to TetMeshObject* so the correct overload of addObject() is called
             }
-            else if (std::is_convertible_v<typename ConfigType::ObjectType*, Sim::MeshObject*>)
+            else if (std::is_convertible_v<typename ConfigType::ObjectType*, MeshObject*>)
             {
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
-                    _embree_scene->addObject( new_obj.get() );
+                    _embree_scene->addObject( (MeshObject*)new_obj.get() );     // explicitly cast to MeshObject* so the correct overload of addObject() is called
             }
 
             // add the new object to the collision scene if collisions are enabled

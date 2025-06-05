@@ -114,6 +114,7 @@ class CollisionScene
      * Overrides for specific pairs of objects are implemented.
      */
     void _collideObjectPair(Sim::Object* obj1, Sim::Object* obj2);  // most general, does nothing
+    void _collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPBDMeshObject_Base* xpbd_mesh_obj);
     void _collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base* xpbd_mesh_obj2);
     void _collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj, Sim::VirtuosoArm* virtuoso_arm);
     void _collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj, Sim::RigidObject* rigid_obj);
