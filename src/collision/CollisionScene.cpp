@@ -124,6 +124,16 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj,
         const Vec3r& p1 = mesh->vertex(f[0]);
         const Vec3r& p2 = mesh->vertex(f[1]);
         const Vec3r& p3 = mesh->vertex(f[2]);
+
+        // check if centroid of face is close
+        const Real p1p2 = (p2-p1).squaredNorm();
+        const Real p1p3 = (p3-p1).squaredNorm();
+        const Real p2p3 = (p3-p2).squaredNorm();
+        const Real max_edge = std::max({p1p2, p1p3, p2p3});
+        const Real centroid_dist = sdf->evaluate((p1+p2+p3)/3);
+        if (centroid_dist*centroid_dist > max_edge)
+            continue;
+
         const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
         if (distance <= 1e-4)
@@ -158,6 +168,16 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj,
         const Vec3r& p1 = mesh->vertex(f[0]);
         const Vec3r& p2 = mesh->vertex(f[1]);
         const Vec3r& p3 = mesh->vertex(f[2]);
+
+        // check if centroid of face is close
+        const Real p1p2 = (p2-p1).squaredNorm();
+        const Real p1p3 = (p3-p1).squaredNorm();
+        const Real p2p3 = (p3-p2).squaredNorm();
+        const Real max_edge = std::max({p1p2, p1p3, p2p3});
+        const Real centroid_dist = sdf->evaluate((p1+p2+p3)/3);
+        if (centroid_dist*centroid_dist > max_edge)
+            continue;
+            
         const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
         if (distance <= 1e-4)
