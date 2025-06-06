@@ -52,6 +52,12 @@ Vec3r DeformableMeshSDF::gradient(const Vec3r& x) const
     return (hit.hit_point - x).normalized();
 }
 
+std::pair<int, Vec3r> DeformableMeshSDF::closestSurfacePoint(const Vec3r& x) const
+{
+    EmbreeHit hit = _embree_scene->closestPointTetMesh(x, _mesh_obj);
+    return std::make_pair(hit.prim_index, hit.hit_point);
+}
+
 // Real DeformableMeshSDF::_evaluateStaticSDF(const Vec3r& X_m) const
 // {
 //     // SDF may not be centered about the origin

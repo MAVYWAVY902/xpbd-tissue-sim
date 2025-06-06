@@ -24,6 +24,8 @@ class DeformableMeshSDF : public SDF
     virtual Real evaluate(const Vec3r& x) const override;
     virtual Vec3r gradient(const Vec3r& x) const override;
 
+    virtual std::pair<int, Vec3r> closestSurfacePoint(const Vec3r& x) const;
+
     private:
     // Real _evaluateStaticSDF(const Vec3r& X_m) const;
     // Vec3r _gradientStaticSDF(const Vec3r& X_m) const;

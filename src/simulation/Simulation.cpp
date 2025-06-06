@@ -170,12 +170,12 @@ void Simulation::_timeStep()
         auto embree_t1 = std::chrono::steady_clock::now();
         _embree_scene->update();
         auto embree_t2 = std::chrono::steady_clock::now();
-        std::cout << "Embree update took " << std::chrono::duration_cast<std::chrono::microseconds>(embree_t2 - embree_t1).count() << " us\n";
+        // std::cout << "Embree update took " << std::chrono::duration_cast<std::chrono::microseconds>(embree_t2 - embree_t1).count() << " us\n";
 
 
         _collision_scene->collideObjects();
         auto t2 = std::chrono::steady_clock::now();
-        std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
+        // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
 
         
     }

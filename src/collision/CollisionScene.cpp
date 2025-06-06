@@ -46,11 +46,55 @@ void CollisionScene::_collideObjectPair(Sim::Object* obj1, Sim::Object* obj2)
 
 void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPBDMeshObject_Base* xpbd_mesh_obj)
 {
-    const typename Sim::XPBDMeshObject_Base::SDFType* sdf = xpbd_mesh_obj->SDF();
-    const Vec3r& tip_pos = virtuoso_arm->tipPosition();
-    const Real dist = sdf->evaluate(tip_pos);
+    const typename Sim::XPBDMeshObject_Base::SDFType* mesh_sdf = xpbd_mesh_obj->SDF();
+
+    // sample points along backbone to check against the Deformable SDF
+    const Vec3r& inner_tube_start = virtuoso_arm->innerTubeStartFrame().origin();
+    const Vec3r& inner_tube_end = virtuoso_arm->innerTubeEndFrame().origin();
     
-    std::cout << "DeformableSDF distance: " << dist << std::endl;
+    const Real it_dia = virtuoso_arm->innerTubeDiameter();
+
+    const Vec3r& dir = (inner_tube_end - inner_tube_start).normalized();
+    const Real dist_thresh = 0.5*it_dia;
+
+    const int num_samples = (inner_tube_end - inner_tube_start).norm() / dist_thresh;
+    // std::cout << "Num samples: " << num_samples << std::endl;
+    for (int i = 0; i < num_samples; i++)
+    {
+        const Vec3r& pos = inner_tube_start + dir*dist_thresh*i;
+        const Real sdf_dist = mesh_sdf->evaluate(pos);
+
+        if (sdf_dist <= dist_thresh)
+        {
+            // there is penetration
+            std::cout << "DeformableSDF collision!" << std::endl;
+
+            // find the index of closest face and the closest surface point on the deformable mesh
+            const auto [face_ind, closest_point] = mesh_sdf->closestSurfacePoint(pos);
+
+            // calculate barycentric coordinates of closest surface point
+            const Eigen::Vector3i& f = xpbd_mesh_obj->mesh()->face(face_ind);
+            const Vec3r& p1 = xpbd_mesh_obj->mesh()->vertex(f[0]);
+            const Vec3r& p2 = xpbd_mesh_obj->mesh()->vertex(f[1]);
+            const Vec3r& p3 = xpbd_mesh_obj->mesh()->vertex(f[2]);
+            const auto [u, v, w] = GeometryUtils::barycentricCoords(pos, p1, p2, p3);
+
+
+            // calculate collision normal
+            const Vec3r collision_normal = (closest_point - pos).normalized();
+
+            // find appropriate point on surface of Virtuoso arm (a.k.a a cylinder)
+            // Hacky way: move some distance towards the surface in the opposite direction from the collision normal and query the arm's SDF
+            const typename Sim::VirtuosoArm::SDFType* arm_sdf = virtuoso_arm->SDF();
+            const Vec3r arm_sdf_query_point = pos - collision_normal*it_dia;
+            const Real arm_sdf_dist = arm_sdf->evaluate(arm_sdf_query_point);
+            const Vec3r arm_sdf_grad = arm_sdf->gradient(arm_sdf_query_point);
+            const Vec3r arm_surface_point = arm_sdf_query_point - arm_sdf_dist * arm_sdf_grad;
+            xpbd_mesh_obj->addStaticCollisionConstraint(arm_sdf, arm_surface_point, collision_normal, face_ind, u, v, w);
+        }
+    }
+
+    // std::cout << "DeformableSDF distance: " << dist << std::endl;
 }
 
 void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base* xpbd_mesh_obj2)
