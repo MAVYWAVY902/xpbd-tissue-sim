@@ -20,6 +20,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(Eigen3 3.3 REQUIRED)   # find Eigen
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
+find_package(embree 4 REQUIRED)
 
 add_executable(${PROJECT_NAME}_node src/SimBridge.cpp src/sim_bridge_node.cpp)
 ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs geometry_msgs shape_msgs sensor_msgs)
@@ -27,6 +28,8 @@ target_link_libraries(${PROJECT_NAME}_node
   ResidualSimulation
   VirtuosoSimulation
   Collision
+  Config
+  Geometry
   SimObject
   Solver
   Graphics
@@ -42,6 +45,7 @@ target_link_libraries(${PROJECT_NAME}_node
   easy3d::util
   easy3d::renderer
   easy3d::viewer
+  embree
   HD
   HDU
   mesh2sdf
