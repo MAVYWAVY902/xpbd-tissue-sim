@@ -258,7 +258,7 @@ std::tuple<Real, Vec3r, Mat3r> Mesh::massProperties(Real density) const
 {
     // uses the algorithm described here: http://number-none.com/blow/inertia/index.html
     Real total_volume = 0;
-    Vec3r center_of_mass(0,0,0);
+    Vec3r weighted_volume(0,0,0);
     Mat3r covariance = Mat3r::Zero();
 
     // covariance of "canonical" tetrahedron which is (0,0,0), (1,0,0), (0,1,0), (0,0,1)
@@ -287,14 +287,15 @@ std::tuple<Real, Vec3r, Mat3r> Mesh::massProperties(Real density) const
         // calculate the center of mass of this tetrahedron - just average of 4 vertices
         const Vec3r tet_cm = 0.25*(v0 + v1 + v2 + v3);
         // update overall center of mass using a weighted average
-        if (total_volume + volume > 0)
-            center_of_mass = (center_of_mass*total_volume + tet_cm*volume) / (total_volume + volume);
+        weighted_volume += tet_cm*volume;
 
         // add covariance matrix from this tet
         covariance += A.determinant() * A * C_canonical * A.transpose();
         // update overall volume
         total_volume += volume;
     }
+
+    Vec3r center_of_mass = weighted_volume / total_volume;
 
     // move covariance matrix to center of mass
     covariance = covariance + total_volume * ( 2*(-center_of_mass) * (center_of_mass).transpose() + (-center_of_mass)*(-center_of_mass).transpose());
@@ -308,7 +309,7 @@ std::tuple<Real, Vec3r, Mat3r> Mesh::massProperties(Real density) const
 Vec3r Mesh::massCenter() const
 {
     Real total_volume = 0;
-    Vec3r center_of_mass(0,0,0);
+    Vec3r weighted_volume(0,0,0);
     for (const auto& f : _faces.colwise())
     {
         // each triangle in the mesh + origin forms a tetrahedron
@@ -330,14 +331,15 @@ Vec3r Mesh::massCenter() const
         // calculate the center of mass of this tetrahedron - just average of 4 vertices
         const Vec3r tet_cm = 0.25*(v0 + v1 + v2 + v3);
         // update overall center of mass using a weighted average
-        if (total_volume + volume > 0)
-            center_of_mass = (center_of_mass*total_volume + tet_cm*volume) / (total_volume + volume);
+        // if (total_volume + volume > 0)
+        //     center_of_mass = (center_of_mass*total_volume + tet_cm*volume) / (total_volume + volume);
+        weighted_volume += tet_cm * volume;
 
         // update overall volume
         total_volume += volume;
     }
 
-    return center_of_mass;
+    return weighted_volume / total_volume;
 }
 
 void Mesh::writeMeshToObjFile(const std::string& filename) const
