@@ -46,6 +46,7 @@ void CollisionScene::_collideObjectPair(Sim::Object* obj1, Sim::Object* obj2)
 
 void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPBDMeshObject_Base* xpbd_mesh_obj)
 {
+    return;
     const typename Sim::XPBDMeshObject_Base::SDFType* mesh_sdf = xpbd_mesh_obj->SDF();
 
     // sample points along backbone to check against the Deformable SDF
@@ -221,7 +222,7 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj,
         const Real centroid_dist = sdf->evaluate((p1+p2+p3)/3);
         if (centroid_dist*centroid_dist > max_edge)
             continue;
-            
+
         const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
         if (distance <= 1e-4)
