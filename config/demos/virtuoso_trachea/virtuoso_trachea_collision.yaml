@@ -2,8 +2,8 @@ name: "Virtuoso Trachea"
 
 # Tissue grasping simulation-specific parameters
 input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
-# fixed-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_fixed_faces.txt"
-fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
+fixed-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_fixed_faces.txt"
+# fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
 # tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"
 # goal-filename: "../resource/demos/trachea_virtuoso/goals/goal1.obj"
 # goals-folder: "../resource/demos/trachea_virtuoso/goals/"
@@ -31,9 +31,9 @@ objects:
     # type: "XPBDMeshObject"
     type: "FirstOrderXPBDMeshObject"
     # filename: "../resource/cube/cube8.msh"
-    filename: "../resource/demos/trachea_virtuoso/trachea_with_tumor.msh"
+    # filename: "../resource/demos/trachea_virtuoso/trachea_with_tumor.msh"
     # filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r.msh"
-    # filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r.msh"
+    filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r.msh"
     # filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined.msh"
     material:
       name: "Soft Tissue"
@@ -44,9 +44,9 @@ objects:
     draw-points: false
     draw-edges: true
     max-size: 0.06
-    position: [0, 0, 0]
+    position: [0, 0, -0.005]
     velocity: [0, 0, 0]
-    rotation: [0, 180, 0]
+    rotation: [90, 0, 0]
     num-solver-iters: 1
     residual-policy: "Never"
     solver-type: "Gauss-Seidel"
@@ -55,7 +55,7 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     with-residual: false
     with-damping: false
-    damping-multiplier: 20000000000
+    damping-multiplier: 80000000000
     # damping-multiplier: 40000000000
     collisions: true
     draw-faces: true
@@ -79,7 +79,7 @@ objects:
       outer-tube-rotation: 30
       inner-tube-rotation: 30
       inner-tube-diameter: 1.04e-3
-      inner-tube-translation: 20e-3
+      inner-tube-translation: 10e-3
 
     # -
     #   name: "Arm2"
