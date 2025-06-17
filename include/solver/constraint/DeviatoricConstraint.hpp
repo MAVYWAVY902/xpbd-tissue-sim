@@ -76,8 +76,8 @@ class DeviatoricConstraint : public ElementConstraint
 
     Vec3r elasticForce(int index) const
     {
-        double C;
-        double delC[12];
+        Real C;
+        Real delC[12];
         evaluateWithGradient(&C, delC);
 
         // compute elastic force for index

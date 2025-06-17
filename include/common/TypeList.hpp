@@ -1,10 +1,24 @@
 #ifndef __TYPE_LIST_HPP
 #define __TYPE_LIST_HPP
 
+#include <type_traits>
+
 /** Empty struct that stores a parameter pack. Very useful for template metaprogramming. */
 template<typename ...Types>
 struct TypeList
 {
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// Prepend type to TypeList
+/////////////////////////////////////////////////////////////////////////////////////////
+template<typename T, typename List>
+struct TypeListPrepend;
+
+template<typename T, typename... Types>
+struct TypeListPrepend<T, TypeList<Types...>>
+{
+    using type = TypeList<T, Types...>;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -52,6 +66,33 @@ struct TypeListContains<T, TypeList<Types...>>
 // helper metafunction
 template <typename T, typename List>
 constexpr bool type_list_contains_v = TypeListContains<T, List>::value;
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Removing duplicates from a TypeList
+/////////////////////////////////////////////////////////////////////////////
+template<typename List>
+struct TypeListRemoveDuplicates;
+
+template<>
+struct TypeListRemoveDuplicates<TypeList<>>
+{
+    using type = TypeList<>;
+};
+
+template<typename Head, typename... Tail>
+struct TypeListRemoveDuplicates<TypeList<Head, Tail...>>
+{
+    private:
+
+    using tail_deduped = typename TypeListRemoveDuplicates<TypeList<Tail...>>::type;
+
+    public:
+
+    using type = std::conditional_t< TypeListContains<Head, tail_deduped>::value,
+        tail_deduped,   // don't include Head if it is already present in tail_deduped
+        typename TypeListPrepend<Head, tail_deduped>::type >; // keep Head in the TypeList if not present in tail_deduped
+};
 
 
 

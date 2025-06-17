@@ -257,7 +257,7 @@ int main(void)
     mesh_gpu_resource->fullCopyToDevice();
 
     // TODO: fix whatever is going on here
-    RigidMeshObjectConfig rigid_mesh_obj_config("rigid_mesh_obj", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), 100, true, true,
+    RigidMeshObjectConfig rigid_mesh_obj_config("rigid_mesh_obj", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), 100, true, false, true,
                                                 "../resource/general/stanford_bunny_lowpoly.stl", std::optional<Real>(1), std::optional<Vec3r>(),
                                                  false, true, true, Vec4r(0.5, 0.5, 0.5, 0.5), std::optional<std::string>());
     Sim::RigidMeshObject rigid_mesh_obj(nullptr, &rigid_mesh_obj_config);

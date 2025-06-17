@@ -1,5 +1,5 @@
 #include "simulation/OutputSimulation.hpp"
-#include "config/OutputSimulationConfig.hpp"
+#include "config/simulation/OutputSimulationConfig.hpp"
 #include "utils/MeshUtils.hpp"
 
 #include "simobject/XPBDMeshObject.hpp"
@@ -7,7 +7,7 @@
 namespace Sim
 {
 
-OutputSimulation::OutputSimulation(const OutputSimulationConfig* config)
+OutputSimulation::OutputSimulation(const Config::OutputSimulationConfig* config)
     : Simulation(config)
 {
     _last_print_sim_time = 0;

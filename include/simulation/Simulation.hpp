@@ -4,10 +4,21 @@
 #include <assimp/Importer.hpp>
 
 #include "simobject/Object.hpp"
+#include "simobject/FirstOrderXPBDMeshObject.hpp"
+#include "simobject/XPBDMeshObject.hpp"
+#include "simobject/RigidMeshObject.hpp"
+#include "simobject/RigidObject.hpp"
+#include "simobject/RigidPrimitives.hpp"
+#include "simobject/VirtuosoArm.hpp"
+#include "simobject/VirtuosoRobot.hpp"
 
-#include "config/SimulationConfig.hpp"
+#include "config/simulation/SimulationConfig.hpp"
 #include "collision/CollisionScene.hpp"
 #include "graphics/GraphicsScene.hpp"
+#include "geometry/embree/EmbreeScene.hpp"
+
+#include "common/VariadicVectorContainer.hpp"
+#include "common/SimulationTypeDefs.hpp"
 
 #include <yaml-cpp/yaml.h>
 
@@ -24,6 +35,9 @@ namespace Sim
 class Simulation
 {
     public:
+    using ObjectVectorType = VariadicVectorContainerFromTypeList<SimulationObjectTypes>::unique_ptr_type;
+
+    public:
     struct CallbackInfo
     {
         std::function<void()> callback;
@@ -36,13 +50,13 @@ class Simulation
     };
 
     public:
-        explicit Simulation(const SimulationConfig* config);
+        explicit Simulation(const Config::SimulationConfig* config);
 
     protected:
         /** Protected default constructor - only callable from derived objects
          * Assumes that the _config object is set and exists
          */
-        explicit Simulation();
+        // explicit Simulation();
     
     public:
         virtual std::string toString(const int indent) const;
@@ -58,6 +72,10 @@ class Simulation
         Real dt() const { return _time_step; }
         
         Real gAccel() const { return _g_accel; }
+
+        const Graphics::GraphicsScene* graphicsScene() const { return _graphics_scene.get(); }
+        const Geometry::EmbreeScene* embreeScene() const { return _embree_scene.get(); }
+        const CollisionScene* collisionScene() const { return _collision_scene.get(); }
 
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
@@ -99,8 +117,52 @@ class Simulation
         /** Helper to add an object to the simulation given an ObjectConfig.
          * Will create an object (RigidMeshObject, RigidSphere, XPBDMeshObject, etc.) depending on the type of ObjectConfig given.
          * Adds the object to the appropriate part of the simulation (i.e. to the CollisionScene if collisions are enabled, GraphicsScene if graphics are enabled, etc.)
-        */        
-       Object* _addObjectFromConfig(const ObjectConfig* obj_config);
+        */
+        template<typename ConfigType>        
+        typename ConfigType::ObjectType* _addObjectFromConfig(const ConfigType* obj_config)
+        {
+            using ObjPtrType = std::unique_ptr<typename ConfigType::ObjectType>;
+
+            ObjPtrType new_obj = obj_config->createObject(this);
+            new_obj->setup();
+
+            // add tetrahedral mesh objects to Embree scene
+            // TODO: better way to do this?
+            if constexpr (std::is_convertible_v<typename ConfigType::ObjectType*, TetMeshObject*>)
+            {
+                if (obj_config->collisions() && !obj_config->graphicsOnly())
+                    _embree_scene->addObject( (TetMeshObject*)new_obj.get() );  // explicitly cast to TetMeshObject* so the correct overload of addObject() is called
+            }
+            else if (std::is_convertible_v<typename ConfigType::ObjectType*, MeshObject*>)
+            {
+                if (obj_config->collisions() && !obj_config->graphicsOnly())
+                    _embree_scene->addObject( (MeshObject*)new_obj.get() );     // explicitly cast to MeshObject* so the correct overload of addObject() is called
+            }
+
+            // add the new object to the collision scene if collisions are enabled
+            if (obj_config->collisions() && !obj_config->graphicsOnly())
+            {
+                _collision_scene->addObject(new_obj.get());
+            }
+            // add the new object to the graphics scene to be visualized
+            if (_graphics_scene)
+            {
+                _graphics_scene->addObject(new_obj.get(), obj_config);
+            }
+
+            // if we get to here, we have successfully created a new MeshObject of some kind
+            // so add the new object to the simulation
+            typename ConfigType::ObjectType* tmp_ptr = new_obj.get();
+            if (obj_config->graphicsOnly())
+            {
+                _graphics_only_objects.template push_back<ObjPtrType>(std::move(new_obj));
+            }
+            else
+            {
+                _objects.template push_back<ObjPtrType>(std::move(new_obj));
+            }
+            return tmp_ptr;
+        }
 
         /** Time step the simulation */
         virtual void _timeStep();
@@ -113,7 +175,7 @@ class Simulation
         bool _setup;
         
         /** YAML config dictionary for setting up the simulation */
-        const SimulationConfig* _config;
+        const Config::SimulationConfig* _config;
 
         /** Name of the simulation */
         std::string _name;
@@ -122,7 +184,7 @@ class Simulation
         std::string _description;
 
         /** How the simulation should be run */
-        SimulationMode _sim_mode;
+        Config::SimulationMode _sim_mode;
 
         /** Current sim time */
         Real _time;
@@ -147,16 +209,18 @@ class Simulation
         /** storage of all Objects in the simulation.
          * These objects will evolve in time through the update() method that they all provide
          */
-        std::vector<std::unique_ptr<Object>> _objects;
+        ObjectVectorType _objects;
 
         /** storage of objects in the simulation that are purely visual (i.e. no physics involved, just graphics)
          * update() will NOT get called on these objects.
          */
-        std::vector<std::unique_ptr<Object>> _graphics_only_objects;
+        ObjectVectorType _graphics_only_objects;
 
         std::unique_ptr<CollisionScene> _collision_scene;
 
         std::unique_ptr<Graphics::GraphicsScene> _graphics_scene;
+
+        std::unique_ptr<Geometry::EmbreeScene> _embree_scene;
 };
 
 } // namespace Sim

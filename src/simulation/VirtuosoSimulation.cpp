@@ -8,13 +8,13 @@
 namespace Sim
 {
 
-VirtuosoSimulation::VirtuosoSimulation(const VirtuosoSimulationConfig* config)
+VirtuosoSimulation::VirtuosoSimulation(const Config::VirtuosoSimulationConfig* config)
     : Simulation(config), _virtuoso_robot(nullptr), _active_arm(nullptr), _has_new_arm1_joint_state(false), _has_new_arm2_joint_state(false)
 {
     _input_device = config->inputDevice();
 
     // initialize the haptic device if using haptic device input
-    if (_input_device == SimulationInputDevice::HAPTIC)
+    if (_input_device == Config::SimulationInputDevice::HAPTIC)
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
         _haptic_device_manager = std::make_unique<HapticDeviceManager>();
@@ -44,22 +44,16 @@ void VirtuosoSimulation::setup()
 {
     Simulation::setup();
     
-    if (_input_device == SimulationInputDevice::MOUSE)
+    if (_input_device == Config::SimulationInputDevice::MOUSE)
     {
         _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
     }
 
     // find the VirtuosoRobot object - necessary for Virtuoso simulation controls
-    for (auto& obj : _objects)
-    {
-        if (VirtuosoRobot* robot = dynamic_cast<VirtuosoRobot*>(obj.get()))
-        {
-            _virtuoso_robot = robot;
-            break;
-        }
-    }
+    auto& _virtuoso_robot_objs = _objects.template get<std::unique_ptr<VirtuosoRobot>>();
+    assert((_virtuoso_robot_objs.size() == 1) && "There must be exactly 1 VirtuosoRobot in the sim!");
+    _virtuoso_robot = _virtuoso_robot_objs.front().get();
 
-    assert(_virtuoso_robot && "No VirtuosoRobot found in the sim! (add one to the config file)");
 
     // set the active arm to be arm1
     _active_arm = _virtuoso_robot->arm1();
@@ -67,9 +61,9 @@ void VirtuosoSimulation::setup()
 
     
     // create an object at the tip of the robot to show where grasping is
-    RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
-        1.0, 0.002, false, true, false);
-    _tip_cursor = dynamic_cast<RigidSphere*>(_addObjectFromConfig(&cursor_config));
+    Config::RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+        1.0, 0.0005, false, true, false);
+    _tip_cursor = _addObjectFromConfig(&cursor_config);
     assert(_tip_cursor);
     _tip_cursor->setPosition(_active_arm->tipPosition());
 }
@@ -88,13 +82,13 @@ void VirtuosoSimulation::notifyMouseButtonPressed(int button, int action, int mo
 
 void VirtuosoSimulation::notifyMouseMoved(double x, double y)
 {
-    if (_input_device == SimulationInputDevice::MOUSE)
+    if (_input_device == Config::SimulationInputDevice::MOUSE)
     {
         if (_keys_held[32] > 0) // space bar = clutch
         {
-            const double scaling = 0.00005;
-            double dx = x - _last_mouse_pos[0];
-            double dy = y - _last_mouse_pos[1];
+            const Real scaling = 0.00005;
+            Real dx = x - _last_mouse_pos[0];
+            Real dy = y - _last_mouse_pos[1];
 
             // camera plane defined by camera up direction and camera right direction
             // changes in mouse y position = changes along camera up direction
@@ -160,11 +154,11 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
 void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
 {
     // when using mouse input, mouse scrolling moves the robot tip in and out of the page
-    if (_input_device == SimulationInputDevice::MOUSE)
+    if (_input_device == Config::SimulationInputDevice::MOUSE)
     {
         if (_keys_held[32] > 0) // space bar = clutch
         {
-            const double scaling = 0.0005;
+            const Real scaling = 0.0003;
             const Vec3r view_dir = _graphics_scene->cameraViewDirection();
 
             const Vec3r current_tip_position = _tip_cursor->position();
@@ -200,9 +194,14 @@ void VirtuosoSimulation::setArm2JointState(double ot_rot, double ot_trans, doubl
 
 void VirtuosoSimulation::_moveCursor(const Vec3r& dp)
 {
+    Vec3r dp_clamped = dp;
+    if (dp.norm() > 5.0e-5)
+    {
+        dp_clamped = dp * (5.0e-5 / dp.norm());
+    }
     // move the tip cursor and the active arm tip position
     const Vec3r current_tip_position = _tip_cursor->position();
-    _tip_cursor->setPosition(current_tip_position + dp);
+    _tip_cursor->setPosition(current_tip_position + dp_clamped);
     _active_arm->setTipPosition(_tip_cursor->position());
 }
 
@@ -214,53 +213,53 @@ void VirtuosoSimulation::_updateGraphics()
 
 void VirtuosoSimulation::_timeStep()
 {
-    if (_input_device == SimulationInputDevice::KEYBOARD)
+    if (_input_device == Config::SimulationInputDevice::KEYBOARD)
     {
         if (_keys_held[81] > 0) // Q = CCW inner tube rotation
         {
-            const double cur_rot = _active_arm->innerTubeRotation();
+            const Real cur_rot = _active_arm->innerTubeRotation();
             _active_arm->setInnerTubeRotation(cur_rot + IT_ROT_RATE*dt());
 
         }
         if (_keys_held[87] > 0) // W = CCW outer tube rotation
         {
-            const double cur_rot = _active_arm->outerTubeRotation();
+            const Real cur_rot = _active_arm->outerTubeRotation();
             _active_arm->setOuterTubeRotation(cur_rot + OT_ROT_RATE*dt());
         }
         if (_keys_held[69] > 0) // E = inner tube extension
         {
-            const double cur_trans = _active_arm->innerTubeTranslation();
+            const Real cur_trans = _active_arm->innerTubeTranslation();
             _active_arm->setInnerTubeTranslation(cur_trans + IT_TRANS_RATE*dt());
         }
         if (_keys_held[82] > 0) // R = outer tube extension
         {
-            const double cur_trans = _active_arm->outerTubeTranslation();
+            const Real cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans + OT_TRANS_RATE*dt());
         }
         if (_keys_held[65] > 0) // A = CW inner tube rotation
         {
-            const double cur_rot = _active_arm->innerTubeRotation();
+            const Real cur_rot = _active_arm->innerTubeRotation();
             _active_arm->setInnerTubeRotation(cur_rot - IT_ROT_RATE*dt()); 
         }
         if (_keys_held[83] > 0) // S = CW outer tube rotation
         {
-            const double cur_rot = _active_arm->outerTubeRotation();
+            const Real cur_rot = _active_arm->outerTubeRotation();
             _active_arm->setOuterTubeRotation(cur_rot - OT_ROT_RATE*dt());
         }
         if (_keys_held[68] > 0) // D = inner tube retraction
         {
-            const double cur_trans = _active_arm->innerTubeTranslation();
+            const Real cur_trans = _active_arm->innerTubeTranslation();
             _active_arm->setInnerTubeTranslation(cur_trans - IT_TRANS_RATE*dt());
         }
         if (_keys_held[70] > 0) // F = outer tube retraction
         {
-            const double cur_trans = _active_arm->outerTubeTranslation();
+            const Real cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
         }
         _tip_cursor->setPosition(_active_arm->tipPosition());
     }
 
-    if (_input_device == SimulationInputDevice::HAPTIC)
+    if (_input_device == Config::SimulationInputDevice::HAPTIC)
     {
         HHD handle = _haptic_device_manager->deviceHandles()[0];
         Vec3r cur_pos = _haptic_device_manager->position(handle);

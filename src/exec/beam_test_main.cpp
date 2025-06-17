@@ -6,7 +6,7 @@ int main(int argc, char **argv)
     if (argc > 1)
     {
         std::string config_filename(argv[1]);
-        BeamSimulationConfig config(YAML::LoadFile(config_filename));
+        Config::BeamSimulationConfig config(YAML::LoadFile(config_filename));
         Sim::BeamSimulation sim(&config);
         return sim.run();
     }

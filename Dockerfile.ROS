@@ -107,6 +107,7 @@ WORKDIR Easy3D/build
 RUN cmake ..
 RUN make -j 8
 RUN make install
+RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/easy3d-2.6.1/lib/
 
 
 
@@ -130,6 +131,23 @@ WORKDIR /thirdparty
 RUN git clone https://github.com/smtobin/Mesh2SDF.git
 WORKDIR Mesh2SDF/build
 RUN cmake .. -DUSE_DOUBLE_PRECISION=1
+RUN make -j 8
+RUN make install
+
+
+##########################
+# Embree install
+##########################
+
+# packages needed for Embree
+RUN apt-get update && apt-get -y install cmake-curses-gui \
+    libtbb-dev \
+    libglfw3-dev
+
+WORKDIR /thirdparty
+RUN git clone https://github.com/RenderKit/embree.git
+WORKDIR embree/build
+RUN cmake ..
 RUN make -j 8
 RUN make install
 
@@ -184,7 +202,7 @@ RUN export GTDD_HOME=/root/.3dsystems
 WORKDIR /thirdparty
 RUN wget https://get.foxglove.dev/desktop/latest/foxglove-studio-latest-linux-amd64.deb
 RUN apt-get update
-RUN apt-get install foxglove-studio-*.deb
+RUN apt-get install -y ./foxglove-studio-*.deb
 
 # install rosbridge server package
 RUN apt-get install ros-jazzy-rosbridge-server -y

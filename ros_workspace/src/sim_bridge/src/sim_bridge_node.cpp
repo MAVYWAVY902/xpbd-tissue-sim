@@ -2,7 +2,7 @@
 
 #include "sim_bridge/SimBridge.hpp"
 
-#include "config/VirtuosoTissueGraspingSimulationConfig.hpp"
+#include "config/simulation/VirtuosoTissueGraspingSimulationConfig.hpp"
 #include "simulation/VirtuosoTissueGraspingSimulation.hpp"
 
 #include <mutex>
@@ -47,7 +47,7 @@ int main(int argc, char ** argv)
     }
 
     // create the simulation config object from the yaml config file
-    VirtuosoTissueGraspingSimulationConfig config(YAML::LoadFile(config_filename));
+    Config::VirtuosoTissueGraspingSimulationConfig config(YAML::LoadFile(config_filename));
     // create the simulation from the config object
     Sim::VirtuosoTissueGraspingSimulation sim(&config);
 

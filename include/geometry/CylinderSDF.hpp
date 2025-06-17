@@ -2,7 +2,11 @@
 #define __CYLINDER_SDF_HPP
 
 #include "geometry/SDF.hpp"
-#include "simobject/RigidPrimitives.hpp"
+
+namespace Sim
+{
+   class RigidCylinder;
+}
 
 namespace Geometry
 {

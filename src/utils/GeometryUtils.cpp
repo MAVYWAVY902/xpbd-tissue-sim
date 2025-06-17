@@ -111,60 +111,60 @@ Vec4r eulXYZ2Quat(const Real x, const Real y, const Real z)
     return Vec4r({q1, q2, q3, w});
 }
 
-Eigen::Matrix3d Rz(double theta)
+Mat3r Rz(Real theta)
 {
-    Eigen::Matrix3d rot_mat;
+    Mat3r rot_mat;
     rot_mat << std::cos(theta), -std::sin(theta), 0.0,
                 std::sin(theta), std::cos(theta), 0.0,
                 0.0, 0.0, 1.0;
     return rot_mat;
 }
 
-Eigen::Matrix3d Ry(double theta)
+Mat3r Ry(Real theta)
 {
-    Eigen::Matrix3d rot_mat;
+    Mat3r rot_mat;
     rot_mat << std::cos(theta), 0.0, std::sin(theta),
                 0.0, 1.0, 0.0,
                 -std::sin(theta), 0.0, std::cos(theta);
     return rot_mat;
 }
 
-Eigen::Matrix3d Rx(double theta)
+Mat3r Rx(Real theta)
 {
-    Eigen::Matrix3d rot_mat;
+    Mat3r rot_mat;
     rot_mat << 1.0, 0.0, 0.0,
                 0.0, std::cos(theta), -std::sin(theta),
                 0.0, std::sin(theta), std::cos(theta);
     return rot_mat;
 }
 
-Eigen::Vector3d Vee_SO3(const Eigen::Matrix3d& mat)
+Vec3r Vee_SO3(const Mat3r& mat)
 {
     // we'll just assume mat is skew-symmetric
-    return Eigen::Vector3d(mat(2,1), mat(0,2), mat(1,0));
+    return Vec3r(mat(2,1), mat(0,2), mat(1,0));
 }
 
-Eigen::Matrix3d Bracket_so3(const Eigen::Vector3d& vec)
+Mat3r Bracket_so3(const Vec3r& vec)
 {
     // make skew-symmetric matrix
-    Eigen::Matrix3d mat;
+    Mat3r mat;
     mat << 0, -vec[2], vec[1],
            vec[2], 0, -vec[0],
            -vec[1], vec[0], 0;
     return mat;
 }
 
-Eigen::Vector<double,6> Vee_SE3(const Eigen::Matrix4d& mat)
+Vec6r Vee_SE3(const Mat4r& mat)
 {
-    Eigen::Vector<double,6> vec;
+    Vec6r vec;
     vec(Eigen::seq(0,2)) = Vee_SO3(mat.block<3,3>(0,0));
     vec(Eigen::seq(3,5)) = mat.block<3,1>(0,3);
     return vec;
 }
 
-Eigen::Matrix4d Bracket_se3(const Eigen::Vector<double,6>& vec)
+Mat4r Bracket_se3(const Vec6r& vec)
 {
-    Eigen::Matrix4d mat = Eigen::Matrix4d::Zero();
+    Mat4r mat = Mat4r::Zero();
     mat.block<3,3>(0,0) = Bracket_so3( (vec(Eigen::seq(0,2))) );
     mat.block<3,1>(0,3) = vec(Eigen::seq(3,5));
     return mat;

@@ -57,6 +57,12 @@ public:
     /** Number of faces in the mesh. */
     int numFaces() const { return _faces.cols(); }
 
+    /** Updates the vertex normals in the mesh */
+    void updateVertexNormals();
+
+    /** Returns the vertex normal at vertex i */
+    Vec3r vertexNormal(int index);
+
     /** Returns a single vertex as an Eigen 3-vector, given the vertex index. */
     Vec3r vertex(const int index) const { return _vertices.col(index); }
 
@@ -303,6 +309,7 @@ public:
 protected:
     VerticesMat _vertices; // the vertices of the mesh
     FacesMat _faces;       // the faces of the mesh
+    VerticesMat _vertex_normals; // vertex normals of the mesh
 
     Vec3r _unrotated_size_xyz; // the size of the mesh in each dimension in its unrotated state
 

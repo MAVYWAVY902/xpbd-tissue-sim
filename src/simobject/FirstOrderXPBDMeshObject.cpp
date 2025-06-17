@@ -1,11 +1,13 @@
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "simulation/Simulation.hpp"
 
+#include "geometry/DeformableMeshSDF.hpp"
+
 namespace Sim
 {
 
 template<typename SolverType, typename... ConstraintTypes>
-FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::FirstOrderXPBDMeshObject(const Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config)
+FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::FirstOrderXPBDMeshObject(const Simulation* sim, const ConfigType* config)
     : XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>(sim, config)
 {
     std::cout << "FirstOrderXPBDMeshObject constructor! " << std::endl;
@@ -31,19 +33,20 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
 {
     // TODO: lots of duplicated code here...
 
-    this->_loadAndConfigureMesh();
+    this->loadAndConfigureMesh();
 
     this->_solver.setup();
 
     // set size of collision constraint projector vectors
     using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
     using RigidCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
-    this->_solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(this->_mesh->numFaces());
+    // this->_solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(4*this->_mesh->numFaces() + this->_mesh->numVertices());
     this->_solver.template setNumProjectorsOfType<RigidCollisionConstraintType>(this->_mesh->numFaces());
 
     // initialize the previous vertices matrix once we've loaded the mesh
     this->_previous_vertices = this->_mesh->vertices();
     this->_vertex_velocities = Geometry::Mesh::VerticesMat::Zero(3, this->_mesh->numVertices());
+    this->_vertices_in_collision.resize(this->_mesh->numVertices(), false);
 
     _calculatePerVertexQuantities();
     // _createSolver(_solver_type, _num_solver_iters, _residual_policy);       // create the Solver object first and then add ConstraintProjectors to it
@@ -65,7 +68,7 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_create
     // another TODO: this code is duplicated from XPBDMeshObject - really probably shouldn't have it in two places
     this->_constraints.template reserve<Solver::HydrostaticConstraint>(this->tetMesh()->numElements());
     this->_constraints.template reserve<Solver::DeviatoricConstraint>(this->tetMesh()->numElements());
-    this->_constraints.template reserve<Solver::StaticDeformableCollisionConstraint>(this->_mesh->numFaces());
+    this->_constraints.template reserve<Solver::StaticDeformableCollisionConstraint>(1000*this->_mesh->numFaces());
     this->_constraints.template reserve<Solver::RigidDeformableCollisionConstraint>(this->_mesh->numFaces());
     this->_constraints.template reserve<Solver::AttachmentConstraint>(this->_mesh->numVertices());
 
@@ -123,6 +126,10 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addStat
     int v2 = face[1];
     int v3 = face[2];
 
+    _vertices_in_collision[v1] = true;
+    _vertices_in_collision[v2] = true;
+    _vertices_in_collision[v3] = true;
+
     Real* v1_ptr = this->_mesh->vertexPointer(v1);
     Real* v2_ptr = this->_mesh->vertexPointer(v2);
     Real* v3_ptr = this->_mesh->vertexPointer(v3);
@@ -134,7 +141,8 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addStat
     Solver::StaticDeformableCollisionConstraint& collision_constraint = 
         this->_constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
-    this->_solver.setConstraintProjector(face_ind, this->_sim->dt(), &collision_constraint); // TODO: accomodate for first-order method
+    this->_solver.addConstraintProjector(this->_sim->dt(), &collision_constraint);
+    // this->_solver.setConstraintProjector(face_ind, this->_sim->dt(), &collision_constraint); // TODO: accomodate for first-order method
 
     // XPBDCollisionConstraint xpbd_collision_constraint;
     // xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -142,6 +150,23 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addStat
     // xpbd_collision_constraint.num_steps_unused = 0;
 
     // _collision_constraints.push_back(std::move(xpbd_collision_constraint));
+}
+
+template<typename SolverType, typename... ConstraintTypes>
+void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addVertexStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n, int vert_ind)
+{
+    
+    Real* v_ptr = this->_mesh->vertexPointer(vert_ind);
+
+    Real m = 1 / _inv_B[vert_ind];
+
+    Solver::StaticDeformableCollisionConstraint& collision_constraint = 
+        this->_constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, vert_ind, v_ptr, m, vert_ind, v_ptr, m, vert_ind, v_ptr, m, 1, 0, 0);
+
+    this->_solver.addConstraintProjector(this->_sim->dt(), &collision_constraint);
+    // this->_solver.setConstraintProjector(this->_mesh->numFaces() + vert_ind, this->_sim->dt(), &collision_constraint);
+
+    // std::cout << "addVertexStaticCollisionConstraint...vertex = " << vert_ind << std::endl;
 }
 
 template<typename SolverType, typename... ConstraintTypes>
@@ -177,18 +202,43 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addRigi
 }
 
 template<typename SolverType, typename... ConstraintTypes>
+void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::clearCollisionConstraints()
+{
+    XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::clearCollisionConstraints();
+
+    for (unsigned i = 0; i < _vertices_in_collision.size(); i++)
+    {
+        _vertices_in_collision[i] = false;
+    }
+}
+
+template<typename SolverType, typename... ConstraintTypes>
 void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_movePositionsInertially()
 {
     for (int i = 0; i < this->_mesh->numVertices(); i++)
     {
+        // if (_vertices_in_collision[i])
+        // {
+        //     std::cout << "Skipping vertex " << i << " in collision!" << std::endl;
+        //     continue;
+        // }
+
         this->_mesh->displaceVertex(i, Vec3r(0, 0, -this->_sim->gAccel() * this->_vertex_masses[i] * this->_sim->dt() * _inv_B[i]));
     }   
 }
 
-// CTAD
-// template<typename SolverType, typename ...ConstraintTypes> FirstOrderXPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const FirstOrderXPBDMeshObjectConfig* config)
-//     -> FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>;
 
+} // namespace Sim
+
+
+/////////////////////////////////////////////////////////////////
+// Explicit template instantiations
+////////////////////////////////////////////////////////////////
+
+#include "common/XPBDTypedefs.hpp"
+
+namespace Sim 
+{
 using SolverTypesStableNeohookean = FirstOrderXPBDObjectSolverTypes<FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookean::projector_type_list>;
 using SolverTypesStableNeohookeanCombined = FirstOrderXPBDObjectSolverTypes<FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookeanCombined::projector_type_list>;
 using StableNeohookeanConstraints = FirstOrderXPBDMeshObjectConstraintConfigurations::StableNeohookean::constraint_type_list;

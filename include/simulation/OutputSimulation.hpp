@@ -4,7 +4,7 @@
 #include "Simulation.hpp"
 #include "common/types.hpp"
 
-#include "config/OutputSimulationConfig.hpp"
+#include "config/simulation/OutputSimulationConfig.hpp"
 
 #include <fstream>
 
@@ -14,7 +14,7 @@ namespace Sim
 class OutputSimulation : public Simulation
 {
     public:
-    explicit OutputSimulation(const OutputSimulationConfig* config);
+    explicit OutputSimulation(const Config::OutputSimulationConfig* config);
 
     ~OutputSimulation();
 

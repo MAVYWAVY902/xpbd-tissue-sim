@@ -1,5 +1,7 @@
 #include "geometry/MeshSDF.hpp"
 
+#include "simobject/RigidMeshObject.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/resource/MeshSDFGPUResource.hpp"
 #endif
@@ -7,7 +9,7 @@
 namespace Geometry
 {
 
-MeshSDF::MeshSDF(const Sim::RigidMeshObject* mesh_obj, const RigidMeshObjectConfig* config)
+MeshSDF::MeshSDF(const Sim::RigidMeshObject* mesh_obj, const Config::RigidMeshObjectConfig* config)
     : SDF(), _mesh_obj(mesh_obj)
 {
     if (config && config->sdfFilename().has_value())

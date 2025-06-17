@@ -4,15 +4,20 @@
 #include "geometry/Mesh.hpp"
 #include "geometry/TetMesh.hpp"
 #include "utils/MeshUtils.hpp"
-#include "config/MeshObjectConfig.hpp"
+#include "config/simobject/ObjectConfig.hpp"
+#include "config/simobject/MeshObjectConfig.hpp"
 
 namespace Sim
 {
 
 class MeshObject
 {
+    // public typedefs
     public:
-    MeshObject(const MeshObjectConfig* mesh_config, const ObjectConfig* obj_config)
+    using ConfigType = Config::MeshObjectConfig;
+
+    public:
+    MeshObject(const ConfigType* mesh_config, const Config::ObjectConfig* obj_config)
     {
         _filename = mesh_config->filename();
 
@@ -23,20 +28,11 @@ class MeshObject
         _max_size = mesh_config->maxSize();
     }
 
-    MeshObject(const std::string& filename)
-    {
-        _filename = filename;
-
-        _initial_position = Eigen::Vector3d(0,0,0);
-        _initial_rotation = Eigen::Vector3d(0,0,0);
-    }
-
     const Geometry::Mesh* mesh() const { return _mesh.get(); }
 
     Geometry::Mesh* mesh() { return _mesh.get(); }
 
-    protected:
-    void _loadAndConfigureMesh()
+    void loadAndConfigureMesh()
     {
         _loadMeshFromFile(_filename);
 
@@ -60,6 +56,8 @@ class MeshObject
         // then do rigid transformation - rotation and translation
         _mesh->rotateAbout(_initial_position, _initial_rotation);
     }
+
+    protected:
 
     virtual void _loadMeshFromFile(const std::string& fname)
     {
@@ -90,7 +88,7 @@ class MeshObject
 class TetMeshObject : public MeshObject
 {
     public:
-    TetMeshObject(const MeshObjectConfig* mesh_config, const ObjectConfig* obj_config)
+    TetMeshObject(const ConfigType* mesh_config, const Config::ObjectConfig* obj_config)
         : MeshObject(mesh_config, obj_config)
     {
 

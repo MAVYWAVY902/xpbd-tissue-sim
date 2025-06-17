@@ -5,7 +5,7 @@
 namespace Sim
 {
 
-RigidObject::RigidObject(const Simulation* sim, const RigidObjectConfig* config)
+RigidObject::RigidObject(const Simulation* sim, const ConfigType* config)
     : Object(sim, config)
 {
     _p = config->initialPosition();
@@ -68,7 +68,7 @@ void RigidObject::velocityUpdate()
     _v = (_p - _p_prev) / _sim->dt();
 
     // update angular velocity
-    const Eigen::Vector4d dq = GeometryUtils::quatMult(_q, GeometryUtils::inverseQuat(_q_prev));
+    const Vec4r dq = GeometryUtils::quatMult(_q, GeometryUtils::inverseQuat(_q_prev));
     _w = 2 / _sim->dt() * dq(Eigen::seq(0,2));
     if (dq[3] < 0)  
         _w = -_w;

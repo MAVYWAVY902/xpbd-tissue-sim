@@ -93,6 +93,11 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
         coordinate_updates_ptr[3*i+1].update = update_y;
         coordinate_updates_ptr[3*i+2].ptr = _constraint1->positions()[i].position_ptr+2;
         coordinate_updates_ptr[3*i+2].update = update_z;
+
+        // if (_constraint1->positions()[i].index == 337)
+        // {
+        //     std::cout << "Index 337 combined position update: "  << update_x << ", " << update_y << ", " << update_z << std::endl;
+        // }
     }
 }
 

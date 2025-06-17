@@ -22,6 +22,23 @@ TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const Eleme
         _attached_elements_to_vertex[elem[2]].push_back(i);
         _attached_elements_to_vertex[elem[3]].push_back(i);
     }
+
+    _element_inv_undeformed_basis.resize(numElements());
+    for (int i = 0; i < numElements(); i++)
+    {
+        const Eigen::Vector4i& elem = element(i);
+        const Vec3r& v1 = vertex(elem[0]);
+        const Vec3r& v2 = vertex(elem[1]);
+        const Vec3r& v3 = vertex(elem[2]);
+        const Vec3r& v4 = vertex(elem[3]);
+
+        Mat3r X;
+        X.col(0) = (v1 - v4);
+        X.col(1) = (v2 - v4);
+        X.col(2) = (v3 - v4);
+
+        _element_inv_undeformed_basis[i] = X.inverse();
+    }
 }
 
 TetMesh::TetMesh(const TetMesh& other)
@@ -29,6 +46,7 @@ TetMesh::TetMesh(const TetMesh& other)
 {
     _elements = other._elements;
     _attached_elements_to_vertex = other._attached_elements_to_vertex;
+    _element_inv_undeformed_basis = other._element_inv_undeformed_basis;
 }
 
 TetMesh::TetMesh(TetMesh&& other)
@@ -36,9 +54,10 @@ TetMesh::TetMesh(TetMesh&& other)
 {
     _elements = std::move(other._elements);
     _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);
+    _element_inv_undeformed_basis = std::move(other._element_inv_undeformed_basis);
 }
 
-Real TetMesh::elementVolume(const int index) const
+Real TetMesh::elementVolume(int index) const
 {
     const Eigen::Vector4i& elem = element(index);
     const Vec3r& v1 = vertex(elem[0]);
@@ -52,6 +71,22 @@ Real TetMesh::elementVolume(const int index) const
     X.col(2) = (v3 - v4);
 
     return std::abs(X.determinant() / 6.0);
+}
+
+Mat3r TetMesh::elementDeformationGradient(int index) const
+{
+    const Eigen::Vector4i& elem = element(index);
+    const Vec3r& v1 = vertex(elem[0]);
+    const Vec3r& v2 = vertex(elem[1]);
+    const Vec3r& v3 = vertex(elem[2]);
+    const Vec3r& v4 = vertex(elem[3]);
+
+    Mat3r deformed_basis;
+    deformed_basis.col(0) = (v1 - v4);
+    deformed_basis.col(1) = (v2 - v4);
+    deformed_basis.col(2) = (v3 - v4);
+
+    return deformed_basis * _element_inv_undeformed_basis[index];
 }
 
 std::pair<int, Real> TetMesh::averageTetEdgeLength() const

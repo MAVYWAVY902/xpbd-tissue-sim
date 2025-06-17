@@ -30,7 +30,7 @@ class AttachmentConstraint : public Constraint
      * 
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      */
-    inline void evaluate(double* C) const override
+    inline void evaluate(Real* C) const override
     {
         *C = ( Eigen::Map<Vec3r>(_positions[0].position_ptr) - (*_attached_pos_ptr + _attachment_offset) ).norm();
     }
@@ -40,15 +40,15 @@ class AttachmentConstraint : public Constraint
      * 
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    inline void gradient(double* grad) const override
+    inline void gradient(Real* grad) const override
     {
         const Vec3r& attach_pt = (*_attached_pos_ptr + _attachment_offset);
-        const double dist = ( Eigen::Map<Vec3r>(_positions[0].position_ptr) - attach_pt ).norm();
-        if (dist < 1e-12)
+        const Real dist = ( Eigen::Map<Vec3r>(_positions[0].position_ptr) - attach_pt ).norm();
+        if (dist < Real(1e-12))
         {
-            grad[0] = 1e-12;
-            grad[1] = 1e-12;
-            grad[2] = 1e-12;
+            grad[0] = Real(1e-12);
+            grad[1] = Real(1e-12);
+            grad[2] = Real(1e-12);
         }
         else
         {
@@ -67,17 +67,17 @@ class AttachmentConstraint : public Constraint
      * @param C (OUTPUT) - the pointer to the (currently empty) value of the constraint
      * @param grad (OUTPUT) - the pointer to the (currently empty) constraint gradient vector. Expects it to be _gradient_vector_size x 1.
      */
-    void evaluateWithGradient(double* C, double* grad) const override
+    void evaluateWithGradient(Real* C, Real* grad) const override
     {
         const Vec3r& attach_pt = (*_attached_pos_ptr + _attachment_offset);
-        const double dist = ( Eigen::Map<Vec3r>(_positions[0].position_ptr) - attach_pt ).norm();
+        const Real dist = ( Eigen::Map<Vec3r>(_positions[0].position_ptr) - attach_pt ).norm();
         *C = dist;
 
-        if (dist < 1e-12)
+        if (dist < Real(1e-12))
         {
-            grad[0] = 1e-12;
-            grad[1] = 1e-12;
-            grad[2] = 1e-12;
+            grad[0] = Real(1e-12);
+            grad[1] = Real(1e-12);
+            grad[2] = Real(1e-12);
         }
         else
         {

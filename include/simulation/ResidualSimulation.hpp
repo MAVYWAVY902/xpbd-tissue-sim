@@ -2,7 +2,7 @@
 #define __RESIDUAL_SIMULATION_HPP
 
 #include "simulation/OutputSimulation.hpp"
-#include "config/ResidualSimulationConfig.hpp"
+#include "config/simulation/ResidualSimulationConfig.hpp"
 #include "common/types.hpp"
 
 namespace Sim
@@ -12,7 +12,7 @@ class ResidualSimulation : public OutputSimulation
 {
     public:
 
-    explicit ResidualSimulation(const ResidualSimulationConfig* config);
+    explicit ResidualSimulation(const Config::ResidualSimulationConfig* config);
     
     virtual std::string type() const override { return "ResidualSimulation"; }
 
