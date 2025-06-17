@@ -3,8 +3,10 @@
 #include "sim_bridge/SimBridge.hpp"
 #include "sim_bridge/VirtuosoSimBridge.hpp"
 
+#include "config/simulation/GraspingSimulationConfig.hpp"
 #include "config/simulation/VirtuosoTissueGraspingSimulationConfig.hpp"
 #include "simulation/VirtuosoTissueGraspingSimulation.hpp"
+#include "simulation/GraspingSimulation.hpp"
 
 #include <mutex>
 #include <condition_variable>
@@ -89,6 +91,13 @@ int main(int argc, char ** argv)
         Sim::VirtuosoSimulation sim(&config);
 
         startNode<Sim::VirtuosoSimulation>(&sim);
+    }
+    else if (simulation_type == "GraspingSimulation")
+    {
+        Config::GraspingSimulationConfig config(YAML::LoadFile(config_filename));
+        Sim::GraspingSimulation sim(&config);
+
+        startNode<Sim::GraspingSimulation>(&sim);
     }
     else if (simulation_type == "Simulation")
     {

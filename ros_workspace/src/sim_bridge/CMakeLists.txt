@@ -27,6 +27,7 @@ ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs geometry_msgs sha
 target_link_libraries(${PROJECT_NAME}_node
   ResidualSimulation
   VirtuosoSimulation
+  GraspingSimulation
   Collision
   Config
   Geometry
