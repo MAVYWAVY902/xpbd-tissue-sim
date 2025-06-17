@@ -15,6 +15,7 @@ set(CONFIG_HEADERS
     ${CONFIG_INCLUDE_DIR}/simulation/OutputSimulationConfig.hpp
     ${CONFIG_INCLUDE_DIR}/simulation/ResidualSimulationConfig.hpp
     ${CONFIG_INCLUDE_DIR}/simulation/SimulationConfig.hpp
+    ${CONFIG_INCLUDE_DIR}/simulation/GraspingSimulationConfig.hpp
     ${CONFIG_INCLUDE_DIR}/simulation/VirtuosoSimulationConfig.hpp
     ${CONFIG_INCLUDE_DIR}/simulation/VirtuosoTissueGraspingSimulationConfig.hpp
     

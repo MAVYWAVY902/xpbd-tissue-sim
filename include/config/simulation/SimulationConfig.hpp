@@ -50,6 +50,7 @@ class SimulationConfig : public Config
     /** Static predefined default for simulation mode */
     static std::optional<SimulationMode>& DEFAULT_SIM_MODE() { static std::optional<SimulationMode> sim_mode(SimulationMode::VISUALIZATION); return sim_mode; }
     static std::optional<Visualization>& DEFAULT_VISUALIZATION() { static std::optional<Visualization> visualization(Visualization::EASY3D); return visualization; }
+    static std::optional<bool>& DEFAULT_ENABLE_MOUSE_INTERACTION() { static std::optional<bool> enable(true); return enable; }
     /** Static predefined default for acceleration due to gravity */
     static std::optional<Real>& DEFAULT_G_ACCEL() { static std::optional<Real> g_accel(9.81); return g_accel; }
     /** Static predefined default for simulation description */
@@ -87,6 +88,7 @@ class SimulationConfig : public Config
         _extractParameter("end-time", node, _end_time, DEFAULT_END_TIME());
         _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS(), DEFAULT_SIM_MODE());
         _extractParameterWithOptions("visualization", node, _visualization, VISUALIZATION_OPTIONS(), DEFAULT_VISUALIZATION());
+        _extractParameter("enable-mouse-interaction", node, _enable_mouse_interaction, DEFAULT_ENABLE_MOUSE_INTERACTION());
         _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
         _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
         _extractParameter("fps", node, _fps, DEFAULT_FPS());
@@ -137,7 +139,7 @@ class SimulationConfig : public Config
 
     explicit SimulationConfig(const std::string& name, const std::string& description,
                              Real time_step, Real end_time, Real g_accel,
-                             SimulationMode sim_mode, Visualization visualization, Real fps,
+                             SimulationMode sim_mode, Visualization visualization, bool enable_mouse_interaction, Real fps,
                              Real collision_rate)
         : Config(name)
     {
@@ -147,6 +149,7 @@ class SimulationConfig : public Config
         _g_accel.value = g_accel;
         _sim_mode.value = sim_mode;
         _visualization.value = visualization;
+        _enable_mouse_interaction.value = enable_mouse_interaction;
         _fps.value = fps;
         _collision_rate.value = collision_rate;
     }
@@ -159,6 +162,7 @@ class SimulationConfig : public Config
     Real endTime() const { return _end_time.value.value(); }
     SimulationMode simMode() const { return _sim_mode.value.value(); }
     Visualization visualization() const { return _visualization.value.value(); }
+    bool enableMouseInteraction() const { return _enable_mouse_interaction.value.value(); }
     Real gAccel() const { return _g_accel.value.value(); }
     std::string description() const { return _description.value.value(); }
     Real fps() const { return _fps.value.value(); }
@@ -174,6 +178,7 @@ class SimulationConfig : public Config
     ConfigParameter<Real> _end_time;
     ConfigParameter<SimulationMode> _sim_mode; 
     ConfigParameter<Visualization> _visualization;
+    ConfigParameter<bool> _enable_mouse_interaction;
     ConfigParameter<Real> _g_accel;
     ConfigParameter<Real> _fps;
     ConfigParameter<Real> _collision_rate;

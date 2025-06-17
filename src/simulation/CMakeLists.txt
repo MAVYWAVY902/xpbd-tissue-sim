@@ -44,6 +44,31 @@ target_sources(BeamSimulation
         ${SIMULATION_SRC_DIR}/BeamSimulation.cpp
 )
 
+######################################
+# Grasping Simulation
+######################################
+
+set(GRASPING_SIMULATION_HEADERS
+    "${SIMULATION_INCLUDE_DIR}/GraspingSimulation.hpp"
+)
+
+set(GRASPING_SIMULATION_SOURCES
+    "${SIMULATION_SRC_DIR}/GraspingSimulation.cpp"
+)
+
+target_sources(GraspingSimulation
+    PRIVATE
+        ${GRASPING_SIMULATION_HEADERS}
+        ${GRASPING_SIMULATION_SOURCES}
+)
+
+install(TARGETS GraspingSimulation EXPORT GraspingSimulation-targets
+    RUNTIME DESTINATION bin/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
+)
+install(FILES ${GRASPING_SIMULATION_HEADERS}
+    DESTINATION include/${PROJECT_NAME}/simulation)
+
 
 ######################################
 # Virtuoso Simulation

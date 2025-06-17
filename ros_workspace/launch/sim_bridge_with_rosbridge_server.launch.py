@@ -18,6 +18,12 @@ def generate_launch_description():
         description='Absolute path to the simulation config file.'
     )
 
+    simulation_type_arg = DeclareLaunchArgument(
+        'simulation_type',
+        default_value=TextSubstitution(text='VirtuosoTissueGraspingSimulation'),
+        description='The type of simulation to create.'
+    )
+
     # the sim_bridge node
     sim_bridge_node = Node(
         package='sim_bridge',
@@ -36,7 +42,8 @@ def generate_launch_description():
             {"publish_rate_hz": 30.0}
         ],
         arguments=[
-            '--config-filename', LaunchConfiguration('config_filename')
+            '--config-filename', LaunchConfiguration('config_filename'),
+            '--simulation-type', LaunchConfiguration('simulation_type')
         ]
     )
 
@@ -54,6 +61,7 @@ def generate_launch_description():
 
     ld = LaunchDescription([
         config_file_arg,
+        simulation_type_arg,
         sim_bridge_node,
         rosbridge_server
     ])

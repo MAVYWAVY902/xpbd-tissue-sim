@@ -77,6 +77,8 @@ class Simulation
         const Geometry::EmbreeScene* embreeScene() const { return _embree_scene.get(); }
         const CollisionScene* collisionScene() const { return _collision_scene.get(); }
 
+        const ObjectVectorType& objects() const { return _objects; }
+        const ObjectVectorType& graphicsObjects() const { return _graphics_only_objects; }
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
          */

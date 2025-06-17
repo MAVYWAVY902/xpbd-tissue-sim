@@ -86,6 +86,8 @@ void Simulation::setup()
         _graphics_scene->viewer()->registerSimulation(this);
         // add text that displays the current Sim Time  
         _graphics_scene->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f, Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO, std::array<float,3>({0,0,0}), 0.5f, false);
+    
+        _graphics_scene->viewer()->enableMouseInteraction(_config->enableMouseInteraction());
     }
 
     /** Add simulation objects from Config object... */

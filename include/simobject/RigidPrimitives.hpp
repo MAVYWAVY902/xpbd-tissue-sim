@@ -30,6 +30,7 @@ class RigidSphere : public RigidObject
     /** Returns a string with the type of the object. */
     virtual std::string type() const override { return "RigidObject"; }
 
+    void setRadius(Real new_radius) { _radius = new_radius; }
     Real radius() const { return _radius; }
 
     virtual void setup() override;

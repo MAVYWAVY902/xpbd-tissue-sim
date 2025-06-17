@@ -22,11 +22,12 @@ find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # req
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 find_package(embree 4 REQUIRED)
 
-add_executable(${PROJECT_NAME}_node src/SimBridge.cpp src/sim_bridge_node.cpp)
+add_executable(${PROJECT_NAME}_node src/sim_bridge_node.cpp)
 ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs geometry_msgs shape_msgs sensor_msgs)
 target_link_libraries(${PROJECT_NAME}_node
   ResidualSimulation
   VirtuosoSimulation
+  GraspingSimulation
   Collision
   Config
   Geometry
