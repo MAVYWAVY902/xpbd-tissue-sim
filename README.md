@@ -9,7 +9,13 @@ A place to prototype and test algorithms and approaches for simulation of highly
   * [Config files](#config-files)
   * [Changing the mesh](#changing-the-mesh)
   * [Creating a new derived `Simulation` class (advanced)](#creating-a-new-derived-simulation-class-advanced)
+* [Demos](#demos)
+  * [Virtuoso trachea demo](#virtuoso-trachea-demo)
+  * [Simple grasping demo](#simple-grasping-demo)
 * [ROS interface](#ros-interface)
+  * [Example usage](#example-usage)
+  * [`sim_bridge` with VirtuosoSimulation](#sim_bridge-with-virtuososimulation)
+  * [`sim_bridge` in general](#sim_bridge-in-general)
 * [Modifying the code](#modifying-the-code)
 * [Code structure](#code-structure)
   * [Simulation](#simulation)
@@ -113,12 +119,74 @@ The mesh of a simulated deformable object can be changed by simply changing the 
 ### Creating a new derived `Simulation` class (advanced)
 If there are specific capabilities not captured by the current simulation types, it is pretty easy to create a new `Simulation` class that provides specific functionality. For an example of how this is done, look at `VirtuosoSimulation`, which extends the base `Simulation` class to add keyboard, mouse, and haptic device control for the Virtuoso robot that is in the simulation.
 
+## Demos
+Below describes various off-the-shelf demos that demonstrate some of the simulator capabilities.
+
+### Virtuoso trachea demo
+This demo consists of a life-size trachea mesh with a tumor and a Virtuoso robot that can interact with the tissue mesh. The yellow sphere at the tip of the robot represents the grasping radius -- when grasping is toggled to be active, all tissue mesh nodes inside the sphere will be "grasped" and move around with the tip of the robot. When grasping is toggled to be inactive, any grasped mesh nodes are released.
+
+**Running the demo:**
+```
+./VirtuosoTracheaDemo ../config/demos/virtuoso_trachea/virtuoso_trachea.yaml
+```
+
+**Controls:**
+Different input types can be used to control the Virtuoso robot. The options are "Keyboard", "Mouse", and "Haptic" (Geomagic Touch). The input type can be changed by changing the `input-device` field in the config file.
+
+For all simulations: press `Alt` to toggle which Virtuoso arm is actively being controlled (only applicable when there is more than one arm). Press `Tab` to switch to the endoscope view.
+
+_Keyboard_: Controls the joint variables directly. `Q/A` = inner tube rotation; `W/S` = outer tube rotation; `E/D` = inner tube translation; `R/F` = outer tube translation. `Space` = toggle grasping.
+
+_Mouse_: Controls the tip of the robot (joint variables computed through inverse kinematics). Hold `Space` and move the mouse to move the active arm tip position parallel to the camera plane. Hold `Space` and scroll the mouse wheel to move the active arm tip position into/out of the camera plane. `Left click` toggles grasping (note: you do not need to hold `Left click` to continually grasp -- one mouse click to toggle on, and another mouse click to toggle off).
+
+_Haptic_: Controls the tip of the robot. Hold the first button and move the input device to move the active arm tip position. Press and hold the second button to grasp (note: you need to continually hold the second button to keep grasping -- hold both buttons to grasp and move at the same time).
+
+**With collisions:**
+Collisions between the tissue and the Virtuoso arm can be enabled by running
+```
+./VirtuosoTracheaDemo ../config/demos/virtuoso_trachea/virtuoso_trachea_collision.yaml
+```
+
+### Simple grasping demo
+This demo is basically a simpler version of the above demo, without the Virtuoso arm. The yellow sphere at the tip of the robot represents the grasping radius -- when grasping is toggled to be active, all tissue mesh nodes inside the sphere will be "grasped" and move around with the tip of the robot. When grasping is toggled to be inactive, any grasped mesh nodes are released. The bottom face of the mesh is optionally fixed to better see the effects of deformation.
+
+**Running the demo:**
+```
+./GraspingTest ../config/demos/simple_grasping/grasping_config.yaml
+```
+
+**Controls:**
+Hold `Space` and move the mouse to move the active arm tip position parallel to the camera plane. Hold `Space` and scroll the mouse wheel to move the active arm tip position into/out of the camera plane. `Left click` toggles grasping (note: you do not need to hold `Left click` to continually grasp -- one mouse click to toggle on, and another mouse click to toggle off). Press `W` to increase the grasp radius, and press `S` to decrease the grasp radius. Note that the amount the grasping sphere moves per frame depends scales with the size of it.
+
+
 ## ROS interface
 When `docker-compose-ros.yml` is used to build the Docker container, ROS2 Jazzy is installed inside the container. The folder `ros_workspace/` is the ROS workspace folder.
 
 **IMPORTANT:** when using the ROS interface, make sure to `make install` from the `/workspace/build` directory. This is needed so that the ROS node has access to the libraries and headers from the rest of the code.
 
-`sim_bridge` is a provided ROS node specifically designed for simulations where a Virtuoso robot interacts with tissue. The node subscribes to input Virtuoso joint states and relays those to the simulation, and outputs coordinate frames along each Virtuoso arm, as well as the tissue mesh. The list of topics can be found below:
+`sim_bridge` is a provided ROS node that will publish parts of the simulation state over ROS for visualization or integration with other pieces of code.
+
+Two launch files are provided:
+* `ros_workspace/launch/sim_bridge.launch.py` - launches the `SimBridge` ROS node by itself.
+* `ros_workspace/launch/sim_bridge_with_rosbridge_server.launch.py` - launches the `SimBridge` ROS node and starts a `rosbridge` WebSocket connection on port 9090 (useful for visualizing with Foxglove).
+
+The launch files provide a few launch arguments/parameters:
+* Parameter `publish_rate_hz` - the publish rate (in Hz) of the output topics of the `SimBridge` node. Default: 30.0 Hz.
+* Launch argument `config_filename` - the absolute path to the config filename to be used to launch the simulation. Default: `/worksapce/config/demos/virtuoso_trachea/virtuoso_trachea.yaml`.
+* Launch argument `simulation_type` - the "type" of simulation to be launched. Corresponds to the camel-case class name of the type of simulation to be launched. Default: `VirtuosoTissueGraspingSimulation`. Other options: `GraspingSimulation`, `VirtuosoSimulation`, `Simulation`.
+
+### Example usage
+
+Launching the Virtuoso robot + trachea demo:
+```
+ros2 launch launch/sim_bridge_with_rosbridge_server.launch.py config_filename:=/workspace/config/demos/virtuoso_trachea/virtuoso_trachea.yaml simulation_type:=`VirtuosoTissueGraspingSimulation`
+```
+Launching the simple grasping demo:
+```
+ros2 launch launch/sim_bridge_with_rosbridge_server.launch.py config_filename:=/workspace/config/demos/simple_grasping/grasping_config.yaml simulation_type:=`GraspingSimulation`
+```
+### `sim_bridge` with VirtuosoSimulation
+When `simulation_type` is `VirtuosoTissueGraspingSimulation` or `VirtuosoSimulation`, the `sim_bridge` node subscribes to input Virtuoso joint states and relays those to the simulation, and outputs coordinate frames along each Virtuoso arm, as well as the tissue mesh. The list of topics can be found below:
 
 | Topic        | Mapped To | Description | Frame | Type | Notes |
 |--------------|-----------|-------------|-------|------|-------|
@@ -129,18 +197,12 @@ When `docker-compose-ros.yml` is used to build the Docker container, ROS2 Jazzy 
 | `/output/tissue_mesh` | `/sim/tissue_mesh` | Output surface mesh (vertices, surface faces) of the deformable tissue mesh. | `/world` | `shape_msgs/Mesh` | This message is not timestamped. All vertices are sent, but only surface faces sent.  |
 | `/output/tissue_mesh_vertices` | `/sim/tissue_mesh_vertices` | Vertices of the deformable tissue mesh. | `/world` | `sensor_msgs/PointCloud2` | Purely for visualization purposes. |
 
-Two launch files are provided:
-* `ros_workspace/launch/sim_bridge.launch.py` - launches the `SimBridge` ROS node by itself.
-* `ros_workspace/launch/sim_bridge_with_rosbridge_server.launch.py` - launches the `SimBridge` ROS node and starts a `rosbridge` WebSocket connection on port 9090 (useful for visualizing with Foxglove).
-
-The launch files provide a few launch arguments/parameters:
-* Parameter `publish_rate_hz` - the publish rate (in Hz) of the output topics of the `SimBridge` node. Default: 30.0 Hz.
-* Launch argument `config_filename` - the absolute path to the config filename to be used to launch the simulation. Default: `/worksapce/config/demos/virtuoso_trachea/virtuoso_trachea.yaml`.
-
-Example usage:
-```
-ros2 launch launch/sim_bridge_with_rosbridge_server.launch.py config_filename:=/workspace/config/demos/virtuoso_trachea/virtuoso_trachea
-```
+### `sim_bridge` in general
+In general, the `sim_bridge` node publishes any deformable meshes in the simulation. The list of topics can be found below:
+| Topic        | Mapped To | Description | Frame | Type | Notes |
+|--------------|-----------|-------------|-------|------|-------|
+| `/output/mesh_vertices_<i>` | N/A | Vertices of the ith deformable mesh in the simulation. | `/world` | `sensor_msgs/PointCloud2` | Purely for visualization purposes. |
+| `/output/mesh_<i>` | N/A | Output surface mesh (vertices, surface faces) of the ith deformable mesh in the simulation. | `/world` | `shape_msgs/Mesh` | This message is not timestamped. All vertices are sent, but only surface faces sent. |
 
 ## Modifying the code
 The Docker container is set up to share the repo files outside of the container. That means that you can make edits to files **outside** the container and have those changes be reflected **inside** the container! This is nice because then your code editor does not need to be launched from inside the Docker container.
