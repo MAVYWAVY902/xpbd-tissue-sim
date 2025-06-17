@@ -46,7 +46,7 @@ void TissueGraspingSimulation::setup()
     // _viewer->enableMouseInteraction(false);
     
     // _grasp_tip = std::make_shared<RigidMeshObject>("grasp_tip", "../resource/general/Sphere_Cursor.stl");
-    // _grasp_tip->moveTo(Eigen::Vector3d(0,0,0));
+    // _grasp_tip->moveTo(Vec3r(0,0,0));
     // _grasp_tip->resize(_grasp_size);
     // addObject(_grasp_tip);
 
@@ -108,32 +108,32 @@ void TissueGraspingSimulation::_updateGraphics()
     //     else if (_grasping && !_haptic_device_manager->button1Pressed())
     //         _toggleTissueGrasping();
 
-    //     const Eigen::Vector3d haptic_position = _haptic_device_manager->position()/500;
+    //     const Vec3r haptic_position = _haptic_device_manager->position()/500;
         
-    //     const Eigen::Vector3d old_tip_position = _grasp_tip_position;
+    //     const Vec3r old_tip_position = _grasp_tip_position;
     //     _grasp_tip_position = _transformInputPosition(haptic_position);
 
     //     // std::cout << "Position: " << _grasp_tip_position(0) << ", " << _grasp_tip_position(1) << ", " << _grasp_tip_position(2) << std::endl;
         
-    //     Eigen::Matrix3d camera_rotation;
+    //     Mat3r camera_rotation;
     //     // easy3d::vec3 view_dir_easy3d = _viewer->camera()->viewDirection();
     //     // easy3d::vec3 up_vec_easy3d = _viewer->camera()->upVector();
     //     // easy3d::vec3 right_vec_easy3d = -_viewer->camera()->rightVector();
-    //     // Eigen::Vector3d view_dir(view_dir_easy3d[0], view_dir_easy3d[1], view_dir_easy3d[2]);
-    //     // Eigen::Vector3d up_vec(up_vec_easy3d[0], up_vec_easy3d[1], up_vec_easy3d[2]);
-    //     // Eigen::Vector3d right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2]);
-    //     Eigen::Vector3d view_dir = _graphics_scene->cameraViewDirection();
-    //     Eigen::Vector3d up_vec = _graphics_scene->cameraUpDirection();
-    //     Eigen::Vector3d right_vec = _graphics_scene->cameraRightDirection(); 
+    //     // Vec3r view_dir(view_dir_easy3d[0], view_dir_easy3d[1], view_dir_easy3d[2]);
+    //     // Vec3r up_vec(up_vec_easy3d[0], up_vec_easy3d[1], up_vec_easy3d[2]);
+    //     // Vec3r right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2]);
+    //     Vec3r view_dir = _graphics_scene->cameraViewDirection();
+    //     Vec3r up_vec = _graphics_scene->cameraUpDirection();
+    //     Vec3r right_vec = _graphics_scene->cameraRightDirection(); 
         
     //     camera_rotation.row(0) = right_vec;
     //     camera_rotation.row(1) = up_vec;
     //     camera_rotation.row(2) = view_dir;
 
-    //     const Eigen::Matrix3d haptic_orientation = camera_rotation*_haptic_device_manager->orientation();
+    //     const Mat3r haptic_orientation = camera_rotation*_haptic_device_manager->orientation();
 
     //     _grasp_tip->moveTo(_grasp_tip_position);
-    //     Eigen::Matrix3d rot_transpose = _grasp_tip_rotation.transpose();
+    //     Mat3r rot_transpose = _grasp_tip_rotation.transpose();
     //     // _grasp_tip->rotate(rot_transpose);
     //     // _grasp_tip->rotate(haptic_orientation);
 
@@ -141,11 +141,11 @@ void TissueGraspingSimulation::_updateGraphics()
 
     //     for (const auto& vd : _grasped_vertex_drivers)
     //     {
-    //         Eigen::Vector3d new_position = vd->position() + (_grasp_tip_position-old_tip_position);
-    //         const double dist_from_grasp_tip = (new_position - _grasp_tip_position).norm();
+    //         Vec3r new_position = vd->position() + (_grasp_tip_position-old_tip_position);
+    //         const Real dist_from_grasp_tip = (new_position - _grasp_tip_position).norm();
     //         if (dist_from_grasp_tip > _grasp_size*0.25)
     //         {
-    //             const Eigen::Vector3d dir = (_grasp_tip_position - new_position).normalized();
+    //             const Vec3r dir = (_grasp_tip_position - new_position).normalized();
     //             new_position += dir*(dist_from_grasp_tip - _grasp_size*0.25);
     //         }
     //         vd->setPosition(new_position);
@@ -218,7 +218,7 @@ void TissueGraspingSimulation::notifyMouseMoved(Real x, Real y)
 
     // for (const auto& vd : _grasped_vertex_drivers)
     // {
-    //     Eigen::Vector3d new_position;
+    //     Vec3r new_position;
     //     new_position(0) = vd->position()(0);
     //     new_position(1) = vd->position()(1);
     //     new_position(2) = vd->position()(2) - _z_scaling*(y - _mouse_pos_2d(1));
@@ -253,8 +253,8 @@ void TissueGraspingSimulation::notifyKeyPressed(int key, int action, int modifie
         // _viewer->camera()->setViewDirection(easy3d::vec3(0.105808, 0.990158, -0.0916088));
         // if (_graphics_scene)
         // {
-        //     Eigen::Vector3d position(-0.00324725, -0.0680968, 1.00019);
-        //     Eigen::Vector3d view_dir(0.105808, 0.990158, -0.0916088);
+        //     Vec3r position(-0.00324725, -0.0680968, 1.00019);
+        //     Vec3r view_dir(0.105808, 0.990158, -0.0916088);
         //     _graphics_scene->setCameraPosition(position);
         //     _graphics_scene->setCameraViewDirection(view_dir);
         // }
@@ -324,11 +324,11 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
     //         {
     //             for (int phi = 0; phi < 360; phi+=30)
     //             {
-    //                 for (double p = 0; p < _grasp_size; p+=_grasp_size/5.0)
+    //                 for (Real p = 0; p < _grasp_size; p+=_grasp_size/5.0)
     //                 {
-    //                     const double x = _grasp_tip_position(0) + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
-    //                     const double y = _grasp_tip_position(1) + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
-    //                     const double z = _grasp_tip_position(2) + p*std::cos(phi*M_PI/180);
+    //                     const Real x = _grasp_tip_position(0) + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
+    //                     const Real y = _grasp_tip_position(1) + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
+    //                     const Real z = _grasp_tip_position(2) + p*std::cos(phi*M_PI/180);
     //                     unsigned v = _tissue_obj->getClosestVertex(x, y, z);
 
     //                     // make sure v is inside sphere
@@ -347,7 +347,7 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
     //     {
     //         // grab middle vertex and lift it up
             
-    //         Eigen::Vector3d vertex_pos = _tissue_obj->getVertex(v);
+    //         Vec3r vertex_pos = _tissue_obj->getVertex(v);
 
 
     //         std::shared_ptr<StaticVertexDriver> vd = std::make_shared<StaticVertexDriver>("tissue grasping", v, vertex_pos);
@@ -364,14 +364,14 @@ void TissueGraspingSimulation::_toggleTissueGrasping()
 // std::set<unsigned> TissueGraspingSimulation::_getAllVerticesInGraspingArea()
 // {
 //     std::set<unsigned> vertices_to_grasp;
-//     const double step = 1e-3; // some small value to capture all vertices on the top plane inside the area
-//     // const double grab_size = 0.05;
+//     const Real step = 1e-3; // some small value to capture all vertices on the top plane inside the area
+//     // const Real grab_size = 0.05;
 
 //     const int num_steps = _grasp_size / step;
 
-//     const Eigen::Vector3d& min_coords = _tissue_obj->bboxMinCoords();
-//     const Eigen::Vector3d& max_coords = _tissue_obj->bboxMaxCoords();
-//     Eigen::Vector3d vertex_grab_pos({min_coords(0) + (max_coords(0)-min_coords(0))*0.5, 
+//     const Vec3r& min_coords = _tissue_obj->bboxMinCoords();
+//     const Vec3r& max_coords = _tissue_obj->bboxMaxCoords();
+//     Vec3r vertex_grab_pos({min_coords(0) + (max_coords(0)-min_coords(0))*0.5, 
 //                                     min_coords(1) + (max_coords(1)-min_coords(1))*0.5,
 //                                     max_coords(2)});
     
@@ -394,7 +394,7 @@ Vec3r TissueGraspingSimulation::_transformInputPosition(const Vec3r& input_posit
 {
     Vec4r input_position_h(input_position(0), input_position(1), input_position(2), 1);
 
-    Eigen::Matrix4d T_OC = Eigen::Matrix4d::Identity();
+    Mat4r T_OC = Mat4r::Identity();
     T_OC(0,0) = -1;
     T_OC(2,2) = -1;
     T_OC(2,3) = 0.2; // distance
@@ -408,7 +408,7 @@ Vec3r TissueGraspingSimulation::_transformInputPosition(const Vec3r& input_posit
     Vec4r right_vec(right_vec_easy3d[0], right_vec_easy3d[1], right_vec_easy3d[2], 0);
     Vec4r camera_position(camera_position_easy3d[0], camera_position_easy3d[1], camera_position_easy3d[2], 1);
 
-    Eigen::Matrix4d T_CW;
+    Mat4r T_CW;
     T_CW.col(0) = right_vec;
     T_CW.col(1) = up_vec;
     T_CW.col(2) = view_dir;

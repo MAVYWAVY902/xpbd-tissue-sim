@@ -103,6 +103,8 @@ class ConstraintProjector
         // compute RHS of lambda update: -C - alpha_tilde*lambda
         Real RHS = -C - alpha_tilde * _lambda;
 
+        // std::cout << "\t\tRHS: " << RHS << " LHS: " << LHS << std::endl; 
+
         // compute lambda update
         Real dlam = RHS / LHS;
         _lambda += dlam;
@@ -122,6 +124,11 @@ class ConstraintProjector
             coordinate_updates_ptr[3*i+1].update = update_y;
             coordinate_updates_ptr[3*i+2].ptr = positions[i].position_ptr+2;
             coordinate_updates_ptr[3*i+2].update = update_z;
+
+            // if (positions[i].index == 337)
+            // {
+            //     std::cout << "Index 337 position update: "  << update_x << ", " << update_y << ", " << update_z << std::endl;
+            // }
         }
     }
 

@@ -16,7 +16,11 @@ namespace Sim
 {
     class Object;
 }
-class ObjectConfig;
+
+namespace Config
+{
+    class ObjectConfig;
+}
 
 namespace Graphics {
 
@@ -56,7 +60,7 @@ class GraphicsScene
      * @param obj_config : the ObjectConfig that contains any visualization parameters (e.g. coloring, draw points, etc.)
      * @returns the index of the provided object in the _graphics_objects array (can be used to fetch it in the future)
      */
-    virtual int addObject(const Sim::Object* obj, const ObjectConfig* obj_config=nullptr) = 0;
+    virtual int addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config=nullptr) = 0;
 
     /** Sets the camera mode to Orthographic */
     virtual void setCameraOrthographic() = 0;
@@ -65,7 +69,7 @@ class GraphicsScene
     virtual void setCameraPerspective() = 0;
 
     /** Sets the FOV of the camera (FOV in radians). */
-    virtual void setCameraFOV(double fov) = 0;
+    virtual void setCameraFOV(Real fov) = 0;
 
 
     /** Gets the camera view direction. */
@@ -81,7 +85,7 @@ class GraphicsScene
     /** Gets the camera right direction. */
     virtual Vec3r cameraRightDirection() const = 0;
     /** Sets the camera right direction. */
-    // virtual void setCameraRightDirection(const Eigen::Vector3d& right_dir) const = 0;
+    // virtual void setCameraRightDirection(const Vec3r& right_dir) const = 0;
 
     /** Gets the camera position. */
     virtual Vec3r cameraPosition() const = 0;

@@ -135,6 +135,23 @@ RUN make -j 8
 RUN make install
 
 
+##########################
+# Embree install
+##########################
+
+# packages needed for Embree
+RUN apt-get update && apt-get -y install cmake-curses-gui \
+    libtbb-dev \
+    libglfw3-dev
+
+WORKDIR /thirdparty
+RUN git clone https://github.com/RenderKit/embree.git
+WORKDIR embree/build
+RUN cmake ..
+RUN make -j 8
+RUN make install
+
+
 
 
 ################################## 

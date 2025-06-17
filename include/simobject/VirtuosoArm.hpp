@@ -4,10 +4,14 @@
 #include "simobject/Object.hpp"
 
 #include "geometry/CoordinateFrame.hpp"
+#include "geometry/VirtuosoArmSDF.hpp"
 
 #include <array>
 
-class VirtuosoArmConfig;
+namespace Config
+{
+    class VirtuosoArmConfig;
+}
 
 namespace Sim
 {
@@ -28,6 +32,9 @@ class VirtuosoArm : public Object
     constexpr static double GRASPING_RADIUS = 0.002;    // grasping radius for the grasper tool
 
     public:
+    using ConfigType = Config::VirtuosoArmConfig;
+    using SDFType = Geometry::VirtuosoArmSDF;
+    
     using OuterTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES>;
     using InnerTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_IT_FRAMES>;
 
@@ -39,7 +46,7 @@ class VirtuosoArm : public Object
     };
 
     public:
-    VirtuosoArm(const Simulation* sim, const VirtuosoArmConfig* config);
+    VirtuosoArm(const Simulation* sim, const ConfigType* config);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
@@ -64,9 +71,17 @@ class VirtuosoArm : public Object
     /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
     virtual Geometry::AABB boundingBox() const override;
 
-    double innerTubeDiameter() const { return _it_dia; }
-    double innerTubeTranslation() const { return _it_translation; }
-    double innerTubeRotation() const { return _it_rotation; }
+    virtual void createSDF() override 
+    { 
+        if(!_sdf.has_value()) 
+            _sdf = SDFType(this); 
+    }
+
+    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; }
+
+    Real innerTubeDiameter() const { return _it_dia; }
+    Real innerTubeTranslation() const { return _it_translation; }
+    Real innerTubeRotation() const { return _it_rotation; }
 
     double outerTubeDiameter() const { return _ot_dia; }
     double outerTubeRadiusOfCurvature() const { return _ot_r_curvature; }
@@ -93,8 +108,8 @@ class VirtuosoArm : public Object
     const OuterTubeFramesArray& outerTubeFrames() const { return _ot_frames; }
     const InnerTubeFramesArray& innerTubeFrames() const { return _it_frames; }
 
-    Eigen::Vector3d tipPosition() const;
-    void setTipPosition(const Eigen::Vector3d& new_position);
+    Vec3r tipPosition() const;
+    void setTipPosition(const Vec3r& new_position);
 
     const XPBDMeshObject_Base* toolManipulatedObject() const { return _tool_manipulated_object; }
     void setToolManipulatedObject(XPBDMeshObject_Base* obj) { _tool_manipulated_object = obj; }
@@ -125,7 +140,7 @@ class VirtuosoArm : public Object
      * 
      * Note: this method easily breaks when the Jacobian becomes singular or the commanded position is outside the reachable workspace of the robot.
      */
-    void _jacobianDifferentialInverseKinematics(const Eigen::Vector3d& dx);
+    void _jacobianDifferentialInverseKinematics(const Vec3r& dx);
 
     /** Computes the new joint positions given a change in tip position, using a hybrid approach combining analytical geometry and the analytical Jacobian.
      * The outer tube rotation is given by the angle of the commanded position in cylindrical coordinates (i.e. easily solved for analytically).
@@ -136,36 +151,36 @@ class VirtuosoArm : public Object
      * Note: this method is more robust to the singularity while maintaining the favorable properties of Jacobian-based inverse kinematics.
      * Another note: the Jacobian used also does not incorporate applied forces. 
      */
-    void _hybridDifferentialInverseKinematics(const Eigen::Vector3d& dx);
+    void _hybridDifferentialInverseKinematics(const Vec3r& dx);
 
     /** Computes the spatial Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
      * Used in the 3DOF positional differential inverse kinematics.
      * 
      * (The only joint variables that affect tip position are outer tube rotation, outer tube translation, inner tube translation)
      */
-    Eigen::Matrix<double,6,3> _3DOFSpatialJacobian();
+    Eigen::Matrix<Real,6,3> _3DOFSpatialJacobian();
 
     /** Computes the spatial Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
      * Uses a NUMERICAL approach - varies each joint variable and computes the change in the tip transform.
      */
-    Eigen::Matrix<double,6,3> _3DOFNumericalSpatialJacobian();
+    Eigen::Matrix<Real,6,3> _3DOFNumericalSpatialJacobian();
 
     /** Computes the hybrid Jacobian for the tip position w.r.t the outer tube rotation, outer tube translation, and inner tube translation.
      * This is a 3x3 matrix (J_a) that relates the velocity of the tip position in the world frame (p_dot) to the actuator velocities (q_dot):
      *      p_dot = J_a * q_dot
      */
-    Eigen::Matrix3d _3DOFAnalyticalHybridJacobian();
+    Mat3r _3DOFAnalyticalHybridJacobian();
 
     private:
     double _it_dia; // inner tube diameter, in m
     double _ot_dia; // outer tube diameter, in m
     double _ot_r_curvature; // outer tube radius of curvature, in m
 
-    double _it_translation; // translation of the inner tube. Right now, assuming that when translation=0, inner tube is fully retracted
-    double _it_rotation;    // rotation of inner tube. Right now, assuming angle is measured CCW from positive x-axis 
-    double _ot_translation; // translation of the outer tube. Right now, assuming that when translation=0, outer tube is fully retracted
-    double _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
-    double _ot_distal_straight_length; // the length of the straight section on the distal part of the outer tube
+    Real _it_translation; // translation of the inner tube. Right now, assuming that when translation=0, inner tube is fully retracted
+    Real _it_rotation;    // rotation of inner tube. Right now, assuming angle is measured CCW from positive x-axis 
+    Real _ot_translation; // translation of the outer tube. Right now, assuming that when translation=0, outer tube is fully retracted
+    Real _ot_rotation;    // rotation of the outer tube. Right now, assuming rotation=0 corresponds to a curve to the left in the XY plane
+    Real _ot_distal_straight_length; // the length of the straight section on the distal part of the outer tube
 
     int _tool_state; // state of the tool (i.e. 1=ON, 0=OFF)
     int _last_tool_state; // the previous state of the tool (needed so that we know when tool state has changed)
@@ -184,6 +199,9 @@ class VirtuosoArm : public Object
     InnerTubeFramesArray _it_frames;  // coordinate frames along the backbone of the inner tube
 
     bool _stale_frames;     // true if the joint variables have been updated and the coordinate frames need to be recomputed
+
+    /** Signed Distance Field for the Virtuoso arm. Must be created explicitly with createSDF(). */
+    std::optional<SDFType> _sdf;
 
 
 };

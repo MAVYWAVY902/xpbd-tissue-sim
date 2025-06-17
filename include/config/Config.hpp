@@ -11,6 +11,9 @@
 
 #include "common/colors.hpp"
 
+namespace Config
+{
+
 /** Simple templated struct that stores a parameter from a YAML config.
  * The name field is the name of the YAML parameter.
  * The value is the value of the YAML parameter. Note the use of std::optional to represent YAML parameters that are null or missing.
@@ -264,5 +267,7 @@ class Config
     /** Name parameter */
     ConfigParameter<std::string> _name;    
 };
+
+} // namespace Config
 
 #endif // __CONFIG_HPP

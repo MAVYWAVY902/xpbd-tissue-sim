@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "config/ElasticMaterialConfig.hpp"
+#include "config/simobject/ElasticMaterialConfig.hpp"
 
 /** A class for representing an elastic material.
  * Basically just stores material properties
@@ -11,12 +11,15 @@
 class ElasticMaterial
 {
     public:
+    using ConfigType = Config::ElasticMaterialConfig;
+
+    public:
     /** Static predefined Rubber material */
     static ElasticMaterial& RUBBER() { static ElasticMaterial rubber("Rubber", 100*100*100/1000, 3e6, 0.49, 0.6, 0.3); return rubber; }
     
     public:
 
-    explicit ElasticMaterial(const ElasticMaterialConfig* config)
+    explicit ElasticMaterial(const ConfigType* config)
         : _name(config->name()),
           _density(config->density()),
           _E(config->E()),

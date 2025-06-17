@@ -33,10 +33,15 @@ class TetMesh : public Mesh
     int numElements() const { return _elements.cols(); }
 
     /** Returns a single element as an Eigen 4-vector, given the element index. */
-    Eigen::Vector4i element(const int index) const { return _elements.col(index); }
+    Eigen::Vector4i element(int index) const { return _elements.col(index); }
 
-    /** Returns the volume of the specified element. */
-    Real elementVolume(const int index) const;
+    /** Returns the current volume of the specified element. */
+    Real elementVolume(int index) const;
+
+    /** Returns deformation gradient for the specified element.
+     * Assumes linear shape functions (deformation gradient is constant throughout the element)
+     */
+    Mat3r elementDeformationGradient(int index) const;
 
     /** Returns the number of edges along with the average edge length in the tetrahedra of the mesh.
      * Note that this is different from averageFaceEdgeLength, which only returns the average edge length in the faces (i.e. the surface) of the mesh.
@@ -51,6 +56,12 @@ class TetMesh : public Mesh
 
     protected:
     ElementsMat _elements;  // the matrix of tetrahedral elements
+
+    /** inverse undeformed basis for each element
+     *   - used in calculating the deformation gradient (F = XQ) where X is current deformed basis, Q is inverse undeformed basis
+     *  calculated [v1 - v4, v2 - v4, v3 - v4]
+   */
+    std::vector<Mat3r> _element_inv_undeformed_basis;  
 
     std::vector<std::vector<int>> _attached_elements_to_vertex; // lists the elements (by index) attached to a vertex
 };

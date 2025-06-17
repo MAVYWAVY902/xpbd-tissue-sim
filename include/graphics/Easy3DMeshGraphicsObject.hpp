@@ -31,7 +31,7 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
      * @param mesh_object : the simulation MeshObject to get mesh information from
      * @param mesh_object_config : the MeshObjectConfig file to get additional parameters from
      */
-    explicit Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const MeshObjectConfig* mesh_object_config);
+    explicit Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const Config::MeshObjectConfig* mesh_object_config);
 
     virtual ~Easy3DMeshGraphicsObject();
 

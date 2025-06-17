@@ -57,7 +57,7 @@ class HapticDeviceManager
 
     const std::vector<HHD>& deviceHandles() const { return _device_handles; }
 
-    void setForce(HHD handle, const Eigen::Vector3d& force);
+    void setForce(HHD handle, const Vec3r& force);
     const Vec3r& force(HHD handle) const { return _device_forces.at(handle); }
 
     private:

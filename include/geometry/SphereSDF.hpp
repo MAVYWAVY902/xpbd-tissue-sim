@@ -2,7 +2,11 @@
 #define __SPHERE_SDF_HPP
 
 #include "geometry/SDF.hpp"
-#include "simobject/RigidPrimitives.hpp"
+
+namespace Sim
+{
+   class RigidSphere;
+}
 
 namespace Geometry
 {

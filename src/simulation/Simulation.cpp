@@ -1,10 +1,10 @@
 #include "simulation/Simulation.hpp"
-#include "config/RigidMeshObjectConfig.hpp"
-#include "config/XPBDMeshObjectConfig.hpp"
-#include "config/FirstOrderXPBDMeshObjectConfig.hpp"
-#include "config/RigidPrimitiveConfigs.hpp"
-#include "config/VirtuosoArmConfig.hpp"
-#include "config/VirtuosoRobotConfig.hpp"
+#include "config/simobject/RigidMeshObjectConfig.hpp"
+#include "config/simobject/XPBDMeshObjectConfig.hpp"
+#include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
+#include "config/simobject/RigidPrimitiveConfigs.hpp"
+#include "config/simobject/VirtuosoArmConfig.hpp"
+#include "config/simobject/VirtuosoRobotConfig.hpp"
 
 #include "graphics/Easy3DGraphicsScene.hpp"
 
@@ -25,7 +25,7 @@ namespace Sim
 {
 
 
-Simulation::Simulation(const SimulationConfig* config)
+Simulation::Simulation(const Config::SimulationConfig* config)
     : _setup(false), _config(config)
 {
     // initialize gmsh
@@ -33,33 +33,31 @@ Simulation::Simulation(const SimulationConfig* config)
 
     // set simulation properties based on YAML file
     _name = _config->name();
-    _description = _config->description().value();
-    _time_step = _config->timeStep().value();
-    _end_time = _config->endTime().value();
+    _description = _config->description();
+    _time_step = _config->timeStep();
+    _end_time = _config->endTime();
     _time = 0;
-    _g_accel = _config->gAccel().value();
-    _viewer_refresh_time = 1/_config->fps().value()*1000;
-    _time_between_collision_checks = 1.0/_config->collisionRate().value();
+    _g_accel = _config->gAccel();
+    _viewer_refresh_time = 1/_config->fps()*1000;
+    _time_between_collision_checks = 1.0/_config->collisionRate();
 
     // set the Simulation mode from the YAML config
-    _sim_mode = _config->simMode().value();
+    _sim_mode = _config->simMode();
 
     // initialize the graphics scene according to the type specified by the user
     // if "None", don't create a graphics scene
-    if (_config->visualization().value() == Visualization::EASY3D)
+    if (_config->visualization() == Config::Visualization::EASY3D)
     {
         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
     }
 
+    // initialize the Embree scene
+    _embree_scene = std::make_unique<Geometry::EmbreeScene>();
+
     // initialize the collision scene
     // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
-    _collision_scene = std::make_unique<CollisionScene>(this);
+    _collision_scene = std::make_unique<CollisionScene>(this, _embree_scene.get());
     _last_collision_detection_time = 0;
-}
-
-Simulation::Simulation()
-{
-
 }
 
 std::string Simulation::toString(const int indent) const
@@ -71,83 +69,6 @@ std::string Simulation::toString(const int indent) const
     ss << indent_str << "End time: " << _end_time << " s" << std::endl;
     ss << indent_str << "Gravity: " << _g_accel << " m/s2" << std::endl;
     return  ss.str();
-}
-
-Object* Simulation::_addObjectFromConfig(const ObjectConfig* obj_config)
-{
-    std::unique_ptr<Object> new_obj;
-    // try downcasting
-    // TODO: fix this to remove dynamic_cast! maybe move creation to Config class? Idk
-    if (const FirstOrderXPBDMeshObjectConfig* xpbd_config = dynamic_cast<const FirstOrderXPBDMeshObjectConfig*>(obj_config))
-    {
-        // new_obj = std::make_unique<FirstOrderXPBDMeshObject>(this, xpbd_config);
-        new_obj = XPBDObjectFactory::createFirstOrderXPBDMeshObject(this, xpbd_config);
-    }
-    else if (const XPBDMeshObjectConfig* xpbd_config = dynamic_cast<const XPBDMeshObjectConfig*>(obj_config))
-    {
-        // new_obj = std::make_unique<XPBDMeshObject>(this, xpbd_config);
-        new_obj = XPBDObjectFactory::createXPBDMeshObject(this, xpbd_config);
-    }
-    else if (const RigidMeshObjectConfig* rigid_config = dynamic_cast<const RigidMeshObjectConfig*>(obj_config))
-    {
-        new_obj = std::make_unique<RigidMeshObject>(this, rigid_config);
-    }
-    else if (const RigidSphereConfig* rigid_config = dynamic_cast<const RigidSphereConfig*>(obj_config))
-    {
-        new_obj = std::make_unique<RigidSphere>(this, rigid_config);
-    }
-    else if (const RigidBoxConfig* rigid_config = dynamic_cast<const RigidBoxConfig*>(obj_config))
-    {
-        new_obj = std::make_unique<RigidBox>(this, rigid_config);
-    }
-    else if (const RigidCylinderConfig* rigid_config = dynamic_cast<const RigidCylinderConfig*>(obj_config))
-    {
-        new_obj = std::make_unique<RigidCylinder>(this, rigid_config);
-    }
-    else if (const VirtuosoArmConfig* virtuoso_config = dynamic_cast<const VirtuosoArmConfig*>(obj_config))
-    {
-        new_obj = std::make_unique<VirtuosoArm>(this, virtuoso_config);
-    }
-    else if (const VirtuosoRobotConfig* virtuoso_config = dynamic_cast<const VirtuosoRobotConfig*>(obj_config))
-    {
-        new_obj = std::make_unique<VirtuosoRobot>(this, virtuoso_config);
-    }
-    else
-    {
-        // downcasting failed for some reason, halt
-        std::cerr << "Unknown config type!" << std::endl;
-        assert(0);
-    }
-
-    // set up the new object
-    new_obj->setup();
-    
-    // add the new object to the collision scene if collisions are enabled
-    if (obj_config->collisions() && !obj_config->graphicsOnly())
-    {
-        _collision_scene->addObject(new_obj.get(), obj_config);
-    }
-    // add the new object to the graphics scene to be visualized
-    if (_graphics_scene)
-    {
-        _graphics_scene->addObject(new_obj.get(), obj_config);
-    }
-
-    // if we get to here, we have successfully created a new MeshObject of some kind
-    // so add the new object to the simulation
-    if (obj_config->graphicsOnly())
-    {
-        _graphics_only_objects.push_back(std::move(new_obj));
-        return _graphics_only_objects.back().get();
-    }
-        
-    else
-    {
-        _objects.push_back(std::move(new_obj));
-        return _objects.back().get();   
-    }
-        
-    
 }
 
 void Simulation::setup()
@@ -168,10 +89,11 @@ void Simulation::setup()
     }
 
     /** Add simulation objects from Config object... */
-    for (const auto& obj_config : _config->objectConfigs())
+    auto& object_configs = _config->objectConfigs();
+    object_configs.for_each_element([this](const auto& config)
     {
-        _addObjectFromConfig(obj_config.get());
-    }
+        this->_addObjectFromConfig(&config);
+    });
         
 
     
@@ -203,7 +125,7 @@ void Simulation::update()
         }
 
         // if the simulation is ahead of the current elapsed wall time, stall
-        if (_sim_mode == SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
+        if (_sim_mode == Config::SimulationMode::VISUALIZATION && _time > wall_time_elapsed_s)
         {
             continue;
         }
@@ -232,17 +154,25 @@ void Simulation::update()
 
 void Simulation::_timeStep()
 {
+    // std::cout << "\n===Time step===" << std::endl;
     // auto t1 = std::chrono::steady_clock::now();
 
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
         // run collision detection
         auto t1 = std::chrono::steady_clock::now();
-        for (auto& obj : _objects)
+        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        for (auto& obj : xpbd_mesh_objs)
         {
-            if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
-                xpbd_obj->clearCollisionConstraints();
+            obj->clearCollisionConstraints();
         }
+        // update the Embree scene before colliding objects
+        auto embree_t1 = std::chrono::steady_clock::now();
+        _embree_scene->update();
+        auto embree_t2 = std::chrono::steady_clock::now();
+        // std::cout << "Embree update took " << std::chrono::duration_cast<std::chrono::microseconds>(embree_t2 - embree_t1).count() << " us\n";
+
+
         _collision_scene->collideObjects();
         auto t2 = std::chrono::steady_clock::now();
         // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
@@ -250,16 +180,21 @@ void Simulation::_timeStep()
         
     }
 
-    for (auto& obj : _objects)
+    
+    // auto update_t1 = std::chrono::steady_clock::now();
+
+    _objects.for_each_element([](auto& obj)
     {
         obj->update();
-    }
+    });
 
     // update each object's velocities
-    for (auto& obj : _objects)
+    _objects.for_each_element([](auto& obj)
     {
         obj->velocityUpdate();
-    }
+    });
+    // auto update_t2 = std::chrono::steady_clock::now();
+    // std::cout << "Update took " << std::chrono::duration_cast<std::chrono::microseconds>(update_t2 - update_t1).count() << " us\n";
 
     if (_time - _last_collision_detection_time > _time_between_collision_checks)
     {
@@ -294,7 +229,7 @@ void Simulation::notifyKeyPressed(int /* key */, int action, int /* modifiers */
     // action = 2 ==> key hold event
     
     // if key is pressed down or held, we want to time step
-    if (_sim_mode == SimulationMode::FRAME_BY_FRAME && action > 0)
+    if (_sim_mode == Config::SimulationMode::FRAME_BY_FRAME && action > 0)
     {
         _timeStep();
         _updateGraphics();
@@ -329,7 +264,7 @@ int Simulation::run()
 
     // spwan the update thread
     std::thread update_thread;
-    if (_sim_mode != SimulationMode::FRAME_BY_FRAME)
+    if (_sim_mode != Config::SimulationMode::FRAME_BY_FRAME)
     {
         update_thread = std::thread(&Simulation::update, this);
     }

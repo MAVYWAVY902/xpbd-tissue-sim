@@ -14,6 +14,8 @@
 #include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
 #include "utils/MeshUtils.hpp"
 
+#include "geometry/DeformableMeshSDF.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #endif
@@ -21,7 +23,7 @@
 namespace Sim
 {
 
-XPBDMeshObject_Base::XPBDMeshObject_Base(const Simulation* sim, const XPBDMeshObjectConfig* config)
+XPBDMeshObject_Base::XPBDMeshObject_Base(const Simulation* sim, const ConfigType* config)
     : Object(sim, config), TetMeshObject(config, config)
 {}
 
@@ -29,7 +31,7 @@ XPBDMeshObject_Base::XPBDMeshObject_Base(const Simulation* sim, const XPBDMeshOb
 ////////////////////////////////////////////////////////////////////////////////////
 
 template<typename SolverType, typename ...ConstraintTypes>
-XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject(const Simulation* sim, const XPBDMeshObjectConfig* config)
+XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject(const Simulation* sim, const ConfigType* config)
     : XPBDMeshObject_Base(sim, config), _material(config->materialConfig()),
         _solver(this, config->numSolverIters().value(), config->residualPolicy().value())
 {
@@ -59,17 +61,24 @@ Geometry::AABB XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::boundin
 }
 
 template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::createSDF()
+{
+    if (!_sdf.has_value())
+        _sdf = SDFType(this, _sim->embreeScene());
+}
+
+template<typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
 {
-    _loadAndConfigureMesh();
+    loadAndConfigureMesh();
 
     _solver.setup();
 
     // set size of collision constraint projector vectors
     using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
     using RigidCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
-    _solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(_mesh->numFaces());
-    _solver.template setNumProjectorsOfType<RigidCollisionConstraintType>(_mesh->numFaces());
+    // _solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(_mesh->numFaces() + _mesh->numVertices());
+    // _solver.template setNumProjectorsOfType<RigidCollisionConstraintType>(_mesh->numFaces());
 
     // initialize the previous vertices matrix once we've loaded the mesh
     _previous_vertices = _mesh->vertices();
@@ -135,6 +144,21 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addStaticCollisio
 }
 
 template<typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addVertexStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n, int vert_ind)
+{
+    
+    Real* v_ptr = _mesh->vertexPointer(vert_ind);
+
+    Real m = vertexMass(vert_ind);
+
+    Solver::StaticDeformableCollisionConstraint& collision_constraint = 
+        _constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, vert_ind, v_ptr, m, vert_ind, v_ptr, m, vert_ind, v_ptr, m, 1, 0, 0);
+
+    _solver.addConstraintProjector(_sim->dt(), &collision_constraint);
+    // _solver.setConstraintProjector(_mesh->numFaces() + vert_ind, _sim->dt(), &collision_constraint);
+}
+
+template<typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
                                        int face_ind, const Real u, const Real v, const Real w)
 {
@@ -154,8 +178,8 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::addRigidDeformabl
     Solver::RigidDeformableCollisionConstraint& collision_constraint = 
         _constraints.template emplace_back<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
-    // _solver.addConstraintProjector(_sim->dt(), &collision_constraint);
-    _solver.setConstraintProjector(face_ind, _sim->dt(), &collision_constraint);
+    _solver.addConstraintProjector(_sim->dt(), &collision_constraint);
+    // _solver.setConstraintProjector(face_ind, _sim->dt(), &collision_constraint);
 
     // XPBDCollisionConstraint xpbd_collision_constraint;
     // xpbd_collision_constraint.constraint = std::move(collision_constraint);
@@ -172,8 +196,10 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::clearCollisionCon
     // NOTE: because the collision constraint
     using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
     using RigidCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
-    _solver.template setAllProjectorsOfTypeInvalid<StaticCollisionConstraintType>();
-    _solver.template setAllProjectorsOfTypeInvalid<RigidCollisionConstraintType>();
+    // _solver.template setAllProjectorsOfTypeInvalid<StaticCollisionConstraintType>();
+    // _solver.template setAllProjectorsOfTypeInvalid<RigidCollisionConstraintType>();
+    _solver.template clearProjectorsOfType<StaticCollisionConstraintType>();
+    _solver.template clearProjectorsOfType<RigidCollisionConstraintType>();
 
     // // clear the collision constraints lists
     _constraints.template clear<Solver::StaticDeformableCollisionConstraint>();
@@ -347,6 +373,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_movePositionsIne
 template<typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_projectConstraints()
 {
+    // std::cout << "Number of collision constraints: " << _constraints.template get<Solver::StaticDeformableCollisionConstraint>().size() << std::endl;
     _solver.solve();
 
     // TODO: update collision constraints unused
@@ -465,6 +492,15 @@ const XPBDMeshObjectGPUResource* XPBDMeshObject<SolverType, TypeList<ConstraintT
 }
 #endif
 
+} // namespace Sim
+
+
+
+
+/////////////////////////////////////////////////////////////////
+// Explicit template instantiations
+////////////////////////////////////////////////////////////////
+
 #include "common/XPBDTypedefs.hpp"
 // instantiate templates
 
@@ -521,6 +557,7 @@ const XPBDMeshObjectGPUResource* XPBDMeshObject<SolverType, TypeList<ConstraintT
 // // InstantiateAllXPBDMeshObjects<typename XPBDMeshObjectConstraintConfigurations::type_list>::instantiate();
 // template struct InstantiateAllXPBDMeshObjects<typename XPBDMeshObjectConstraintConfigurations::type_list>;
 
+namespace Sim {
 
 // TODO: find a way to automate this!
 using SolverTypesStableNeohookean = XPBDObjectSolverTypes<XPBDMeshObjectConstraintConfigurations::StableNeohookean::projector_type_list>;

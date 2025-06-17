@@ -4,8 +4,8 @@
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/FirstOrderXPBDMeshObject.hpp"
 
-#include "config/XPBDMeshObjectConfig.hpp"
-#include "config/FirstOrderXPBDMeshObjectConfig.hpp"
+#include "config/simobject/XPBDMeshObjectConfig.hpp"
+#include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
 
 #include "common/XPBDEnumTypes.hpp"
 #include "common/XPBDTypedefs.hpp"
@@ -14,7 +14,7 @@
 class XPBDObjectFactory
 {
     public:
-    static std::unique_ptr<Sim::XPBDMeshObject_Base> createXPBDMeshObject(const Sim::Simulation* sim, const XPBDMeshObjectConfig* config)
+    static std::unique_ptr<Sim::XPBDMeshObject_Base> createXPBDMeshObject(const Sim::Simulation* sim, const Config::XPBDMeshObjectConfig* config)
     {
         XPBDMeshObjectConstraintConfigurationEnum constraint_type = config->constraintType();
         if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN)
@@ -32,7 +32,7 @@ class XPBDObjectFactory
         }
     }
 
-    static std::unique_ptr<Sim::XPBDMeshObject_Base> createFirstOrderXPBDMeshObject(const Sim::Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config)
+    static std::unique_ptr<Sim::XPBDMeshObject_Base> createFirstOrderXPBDMeshObject(const Sim::Simulation* sim, const Config::FirstOrderXPBDMeshObjectConfig* config)
     {
         XPBDMeshObjectConstraintConfigurationEnum constraint_type = config->constraintType();
         if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN)
@@ -52,7 +52,7 @@ class XPBDObjectFactory
 
     private:
     template<typename ConstraintType>
-    static std::unique_ptr<Sim::XPBDMeshObject_Base> _createXPBDMeshObject(const Sim::Simulation* sim, const XPBDMeshObjectConfig* config)
+    static std::unique_ptr<Sim::XPBDMeshObject_Base> _createXPBDMeshObject(const Sim::Simulation* sim, const Config::XPBDMeshObjectConfig* config)
     {
         XPBDObjectSolverTypeEnum solver_type = config->solverType().value();
         if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)
@@ -79,7 +79,7 @@ class XPBDObjectFactory
 
     // TODO: create proper type for First Order (right now just duplicating what's in _createXPBDMeshObject)
     template<typename ConstraintType>
-    static std::unique_ptr<Sim::XPBDMeshObject_Base> _createFirstOrderXPBDMeshObject(const Sim::Simulation* sim, const FirstOrderXPBDMeshObjectConfig* config)
+    static std::unique_ptr<Sim::XPBDMeshObject_Base> _createFirstOrderXPBDMeshObject(const Sim::Simulation* sim, const Config::FirstOrderXPBDMeshObjectConfig* config)
     {
         XPBDObjectSolverTypeEnum solver_type = config->solverType().value();
         if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)

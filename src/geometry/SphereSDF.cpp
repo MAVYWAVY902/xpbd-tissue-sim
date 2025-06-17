@@ -1,5 +1,7 @@
 #include "geometry/SphereSDF.hpp"
 
+#include "simobject/RigidPrimitives.hpp"
+
 #ifdef HAVE_CUDA
 #include "gpu/resource/SphereSDFGPUResource.hpp"
 #endif

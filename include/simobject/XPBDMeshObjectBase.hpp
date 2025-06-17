@@ -5,11 +5,16 @@
 #include "simobject/MeshObject.hpp"
 #include "simobject/ElasticMaterial.hpp"
 #include "simobject/RigidObject.hpp"
-#include "geometry/SDF.hpp"
+
+#include "geometry/DeformableMeshSDF.hpp"
+
 #include "common/XPBDEnumTypes.hpp"
 
 // TODO: resolve circular dependenciees! Too many bandaids everywhere
-class XPBDMeshObjectConfig;
+namespace Config
+{
+    class XPBDMeshObjectConfig;
+}
 
 namespace Sim
 {
@@ -17,7 +22,11 @@ namespace Sim
     class XPBDMeshObject_Base : public Object, public TetMeshObject
     {
         public:
-        explicit XPBDMeshObject_Base(const Simulation* sim, const XPBDMeshObjectConfig* config);
+        using SDFType = Geometry::DeformableMeshSDF;
+        using ConfigType = Config::XPBDMeshObjectConfig;
+
+        public:
+        explicit XPBDMeshObject_Base(const Simulation* sim, const ConfigType* config);
 
         virtual ~XPBDMeshObject_Base() {}
 
@@ -34,6 +43,7 @@ namespace Sim
         virtual int numConstraintsForPosition(const int index) const = 0;
         virtual void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
             int face_ind, const Real u, const Real v, const Real w) = 0;
+        virtual void addVertexStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n, int vert_ind) = 0;
         virtual void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
             int face_ind, const Real u, const Real v, const Real w) = 0;
         virtual void clearCollisionConstraints() = 0;
@@ -41,6 +51,8 @@ namespace Sim
         virtual void addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset) = 0;
         virtual void clearAttachmentConstraints() = 0;
         virtual Vec3r elasticForceAtVertex(int index) = 0;
+
+        virtual const SDFType* SDF() const override { return nullptr; }
     };
 }
 

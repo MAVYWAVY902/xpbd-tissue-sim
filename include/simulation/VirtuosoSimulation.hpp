@@ -8,7 +8,7 @@
 #include "simobject/RigidPrimitives.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 
-#include "config/VirtuosoSimulationConfig.hpp"
+#include "config/simulation/VirtuosoSimulationConfig.hpp"
 
 #include "haptics/HapticDeviceManager.hpp"
 
@@ -21,7 +21,7 @@ namespace Sim
 class VirtuosoSimulation : public Simulation
 {
     public:
-    VirtuosoSimulation(const VirtuosoSimulationConfig* config);
+    VirtuosoSimulation(const Config::VirtuosoSimulationConfig* config);
 
     virtual std::string type() const override { return "VirtuosoSimulation"; }
 
@@ -80,7 +80,7 @@ class VirtuosoSimulation : public Simulation
     VirtuosoArmJointState _new_arm2_joint_state;
 
     
-    SimulationInputDevice _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)
+    Config::SimulationInputDevice _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)
 
     RigidSphere* _tip_cursor;       // spherical object for visualizing grasp area 
 
@@ -92,10 +92,10 @@ class VirtuosoSimulation : public Simulation
     std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
 
     /** KEYBOARD INPUT */
-    constexpr static double IT_ROT_RATE = 3; // rad/s
-    constexpr static double IT_TRANS_RATE = 0.005; // m/s
-    constexpr static double OT_ROT_RATE = 3; // rad/s
-    constexpr static double OT_TRANS_RATE = 0.005; // m/s
+    constexpr static Real IT_ROT_RATE = 3; // rad/s
+    constexpr static Real IT_TRANS_RATE = 0.005; // m/s
+    constexpr static Real OT_ROT_RATE = 3; // rad/s
+    constexpr static Real OT_TRANS_RATE = 0.005; // m/s
 
     std::map<int, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
 };

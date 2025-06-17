@@ -25,6 +25,7 @@ list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build") # needed in order to f
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 find_package(Eigen3 3.3 REQUIRED)   # find Eigen
+find_package(embree 4 REQUIRED)
 
 include_directories("./include")
 
@@ -78,13 +79,14 @@ add_subdirectory("src/utils")
 
 # link in necessary libraries
 target_link_libraries(Collision Eigen3::Eigen mesh2sdf Geometry GeometryUtils)
+target_link_libraries(Config Eigen3::Eigen SimObject)
 target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
-target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils)
+target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils embree)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
-target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Geometry Solver)   # link MeshUtils and Solver libraries
+target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Geometry Solver Config)   # link MeshUtils and Solver libraries
 target_link_libraries(Solver Eigen3::Eigen SimObject)         # link SimObject library
-target_link_libraries(MeshUtils gmsh assimp Eigen3::Eigen) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
-target_link_libraries(GeometryUtils Eigen3::Eigen)
+target_link_libraries(MeshUtils gmsh assimp Eigen3::Eigen Geometry) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
+target_link_libraries(GeometryUtils Eigen3::Eigen Geometry)
 
 ### Simulation libraries - each has its own executable
 add_library(ResidualSimulation)
@@ -95,7 +97,7 @@ add_library(VirtuosoSimulation)
 # add_library(InitialDeformationSimulation)
 add_subdirectory("src/simulation")
 
-target_link_libraries(ResidualSimulation Collision Graphics Geometry SimObject Solver yaml-cpp)
+target_link_libraries(ResidualSimulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp)
 target_link_libraries(BeamSimulation ResidualSimulation)
 target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
 # target_link_libraries(BeamStretchSimulation ResidualSimulation)
@@ -130,6 +132,9 @@ target_link_libraries(VirtuosoTracheaDemo VirtuosoSimulation)
 add_executable(VariadicVectorContainerTest src/exec/test/variadic_vector_container_test.cpp)
 target_link_libraries(VariadicVectorContainerTest Eigen3::Eigen)
 
+add_executable(EmbreeTest src/exec/test/embree_test.cpp)
+target_link_libraries(EmbreeTest embree Geometry MeshUtils)
+
 if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject Solver)
     target_link_libraries(SimObject GPU)
@@ -148,6 +153,12 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_compile_definitions(Solver PRIVATE HAVE_CUDA)
     target_compile_definitions(ResidualSimulation PRIVATE HAVE_CUDA)
     target_compile_definitions(BeamSimulation PRIVATE HAVE_CUDA)
+    target_compile_definitions(VirtuosoSimulation PRIVATE HAVE_CUDA)
+
+    target_compile_definitions(Test PRIVATE HAVE_CUDA)
+    target_compile_definitions(BeamTest PRIVATE HAVE_CUDA)
+    target_compile_definitions(VirtuosoTest PRIVATE HAVE_CUDA)
+    target_compile_definitions(VirtuosoTracheaDemo PRIVATE HAVE_CUDA)
 
     # target_compile_options(GPU PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
     #                    -G

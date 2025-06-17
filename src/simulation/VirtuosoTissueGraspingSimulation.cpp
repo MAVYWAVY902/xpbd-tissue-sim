@@ -1,5 +1,5 @@
 #include "simulation/VirtuosoTissueGraspingSimulation.hpp"
-#include "config/VirtuosoTissueGraspingSimulationConfig.hpp"
+#include "config/simulation/VirtuosoTissueGraspingSimulationConfig.hpp"
 
 #include "simulation/VirtuosoSimulation.hpp"
 
@@ -11,7 +11,7 @@
 namespace Sim
 {
 
-VirtuosoTissueGraspingSimulation::VirtuosoTissueGraspingSimulation(const VirtuosoTissueGraspingSimulationConfig* config)
+VirtuosoTissueGraspingSimulation::VirtuosoTissueGraspingSimulation(const Config::VirtuosoTissueGraspingSimulationConfig* config)
 : VirtuosoSimulation(config), _grasping(false)
 {
     // extract parameters from config object
@@ -31,16 +31,9 @@ void VirtuosoTissueGraspingSimulation::setup()
     VirtuosoSimulation::setup();
 
     // find the XPBDMeshObject (which we're assuming to be the tissue)
-    for (auto& obj : _objects)
-    {
-        if (XPBDMeshObject_Base* xpbd_obj = dynamic_cast<XPBDMeshObject_Base*>(obj.get()))
-        {
-            _tissue_obj = xpbd_obj;
-            break;
-        }
-    }
-
-    assert(_tissue_obj);
+    auto& xpbd_objs = _objects.template get<std::unique_ptr<XPBDMeshObject_Base>>();
+    assert((xpbd_objs.size() > 0) && "There must be at least 1 XPBDMeshObject or FirstOrderXPBDMeshObject in the simulation (there is no tissue object!).");
+    _tissue_obj = xpbd_objs.front().get();
 
     // once we've found the tissue object, make sure that each virtuoso arm knows that this is the object that they're manipulating
     // (the VirtuosoArm class handles the grasping logic)
@@ -68,7 +61,7 @@ void VirtuosoTissueGraspingSimulation::setup()
         std::cout << "Loading goals..." << std::endl;
         for (const auto & entry : std::filesystem::directory_iterator(_goals_folder.value()))
         {
-            RigidMeshObjectConfig goal_config(entry.path(), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+            Config::RigidMeshObjectConfig goal_config(entry.path(), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
                 1.0, false, true, false,
                 entry.path(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
             RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
@@ -91,7 +84,7 @@ void VirtuosoTissueGraspingSimulation::setup()
     
     else if (_goal_filename.has_value())
     {
-        RigidMeshObjectConfig goal_config("goal_mesh", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+        Config::RigidMeshObjectConfig goal_config("goal_mesh", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
             1.0, false, true, false,
             _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
         RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
@@ -130,7 +123,7 @@ void VirtuosoTissueGraspingSimulation::notifyMouseButtonPressed(int button, int 
     // action = 0 ==> mouse up
     // action = 1 ==> mouse down
     
-    if (_input_device == SimulationInputDevice::MOUSE && button == 0 && action == 1)
+    if (_input_device == Config::SimulationInputDevice::MOUSE && button == 0 && action == 1)
     {
         // _toggleTissueGrasping();
         _active_arm->setToolState(!_active_arm->toolState());
@@ -149,7 +142,7 @@ void VirtuosoTissueGraspingSimulation::notifyKeyPressed(int key, int action, int
 {
 
     // if input mode is keyboard, space bar grasps
-    if (_input_device == SimulationInputDevice::KEYBOARD && key == 32 && action == 1)
+    if (_input_device == Config::SimulationInputDevice::KEYBOARD && key == 32 && action == 1)
     {
         _active_arm->setToolState(!_active_arm->toolState());
         // _toggleTissueGrasping();
@@ -244,7 +237,7 @@ void VirtuosoTissueGraspingSimulation::_timeStep()
 
     VirtuosoSimulation::_timeStep();
 
-    if (_input_device == SimulationInputDevice::HAPTIC)
+    if (_input_device == Config::SimulationInputDevice::HAPTIC)
     {
         HHD handle = _haptic_device_manager->deviceHandles()[0];
 

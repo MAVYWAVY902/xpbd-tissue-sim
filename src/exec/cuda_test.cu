@@ -248,7 +248,7 @@ int main(void)
     // RigidSphereConfig sphere_config("sphere1", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), 100, 0.5, true, true);
     // Sim::RigidSphere sphere(nullptr, &sphere_config);
     // Geometry::SphereSDF sdf(&sphere);
-    RigidCylinderConfig cyl_config("cyl1", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), 100, 0.5, 1, true, true);
+    RigidCylinderConfig cyl_config("cyl1", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), 100, Real(0.5), 1, true, false, true);
     Sim::RigidCylinder cyl(nullptr, &cyl_config);
     Geometry::CylinderSDF sdf(&cyl);
     sdf.createGPUResource();
