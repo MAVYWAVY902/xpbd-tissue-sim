@@ -91,6 +91,7 @@ target_link_libraries(GeometryUtils Eigen3::Eigen Geometry)
 ### Simulation libraries - each has its own executable
 add_library(ResidualSimulation)
 add_library(BeamSimulation)
+add_library(GraspingSimulation)
 add_library(VirtuosoSimulation)
 # add_library(BeamStretchSimulation)
 # add_library(TissueGraspingSimulation)
@@ -99,6 +100,7 @@ add_subdirectory("src/simulation")
 
 target_link_libraries(ResidualSimulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp)
 target_link_libraries(BeamSimulation ResidualSimulation)
+target_link_libraries(GraspingSimulation ResidualSimulation)
 target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
 # target_link_libraries(BeamStretchSimulation ResidualSimulation)
 # target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
@@ -110,6 +112,9 @@ target_link_libraries(Test ResidualSimulation)
 
 add_executable(BeamTest src/exec/beam_test_main.cpp)
 target_link_libraries(BeamTest BeamSimulation)
+
+add_executable(GraspingTest src/exec/grasping_main.cpp)
+target_link_libraries(GraspingTest GraspingSimulation)
 
 add_executable(VirtuosoTest src/exec/virtuoso_main.cpp)
 target_link_libraries(VirtuosoTest VirtuosoSimulation)

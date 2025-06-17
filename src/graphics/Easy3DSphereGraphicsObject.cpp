@@ -24,9 +24,20 @@ Easy3DSphereGraphicsObject::Easy3DSphereGraphicsObject(const std::string& name, 
 
 void Easy3DSphereGraphicsObject::update() 
 {
-    // TODO: transform mesh according to current position
+    if (_last_radius != _sphere->radius())
+    {
+        _e3d_mesh = easy3d::SurfaceMeshFactory::quad_sphere(3);
+        for (auto& p : _e3d_mesh.points())
+        {
+            p *= _sphere->radius();
+        }
+        _initial_points = _e3d_mesh.points();
+    }
+
     _transformPoints();
     renderer()->update();
+
+    _last_radius = _sphere->radius();
 }
 
 void Easy3DSphereGraphicsObject::_transformPoints()

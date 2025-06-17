@@ -34,6 +34,7 @@ class Easy3DSphereGraphicsObject : public SphereGraphicsObject, public easy3d::M
     void _transformPoints();
 
     protected:
+    Real _last_radius;
     easy3d::SurfaceMesh _e3d_mesh;
     std::vector<easy3d::vec3> _initial_points;
 };
