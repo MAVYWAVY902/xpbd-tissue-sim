@@ -36,14 +36,15 @@ class GraspingSimulation : public Simulation
 
     protected:
 
-    Real _grasp_radius;
+    Real _grasp_radius; // current grasp radius
+    bool _fix_min_z; // whether or not to fix all vertices that share the minimum z coordinate
 
-    bool _grasping;
-    std::vector<std::pair<Sim::XPBDMeshObject_Base*, int>> _grasped_vertices;
+    bool _grasping; // whether or not we are currently grasping
+    std::vector<std::pair<Sim::XPBDMeshObject_Base*, int>> _grasped_vertices;   // stores the currently grasped vertices as pairs of object pointers and vertex indices
 
-    RigidSphere* _cursor;
+    RigidSphere* _cursor;   // the cursor visualization object that shows the user where the grasping volume is
 
-    Vec2r _last_mouse_pos;
+    Vec2r _last_mouse_pos;  // on-screen mouse position for the last frame
 
     std::map<int, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
 };

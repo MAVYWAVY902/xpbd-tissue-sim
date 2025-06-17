@@ -125,9 +125,9 @@ int Mesh::getClosestVertex(const Vec3r& p) const
 std::vector<int> Mesh::getVerticesWithX(const Real x) const
 {
     std::vector<int> verts;
-    for (int i = 0; i < _vertices.rows(); i++)
+    for (int i = 0; i < numVertices(); i++)
     {
-        if (_vertices(i,0) == x)
+        if (_vertices(0,i) == x)
         {
             verts.push_back(i);
         }
@@ -139,9 +139,9 @@ std::vector<int> Mesh::getVerticesWithX(const Real x) const
 std::vector<int> Mesh::getVerticesWithY(const Real y) const
 {
     std::vector<int> verts;
-    for (int i = 0; i < _vertices.rows(); i++)
+    for (int i = 0; i < numVertices(); i++)
     {
-        if (_vertices(i,1) == y)
+        if (_vertices(1,i) == y)
         {
             verts.push_back(i);
         }
@@ -153,9 +153,9 @@ std::vector<int> Mesh::getVerticesWithY(const Real y) const
 std::vector<int> Mesh::getVerticesWithZ(const Real z) const
 {
     std::vector<int> verts;
-    for (int i = 0; i < _vertices.rows(); i++)
+    for (int i = 0; i < numVertices(); i++)
     {
-        if (_vertices(i,2) == z)
+        if (_vertices(2,i) == z)
         {
             verts.push_back(i);
         }

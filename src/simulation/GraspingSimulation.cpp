@@ -7,6 +7,7 @@ GraspingSimulation::GraspingSimulation(const Config::GraspingSimulationConfig* c
     : Simulation(config), _grasping(false), _cursor(nullptr)
 {
     _grasp_radius = config->graspRadius();
+    _fix_min_z = config->fixMinZ();
 
     // initialize the keys map with relevant keycodes for controlling the simulation
     int key_codes[] = {
@@ -23,6 +24,22 @@ GraspingSimulation::GraspingSimulation(const Config::GraspingSimulationConfig* c
 void GraspingSimulation::setup()
 {
     Simulation::setup();
+
+    if (_fix_min_z)
+    {
+        std::vector<std::unique_ptr<Sim::XPBDMeshObject_Base>>& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
+        for (auto& obj : xpbd_mesh_objs)
+        {
+            // get min z coordinate of the object's mesh
+            Vec3r min_bbox_point = obj->mesh()->boundingBox().min;
+            std::vector<int> vertices_to_fix = obj->mesh()->getVerticesWithZ(min_bbox_point[2]);
+            for (const auto& v : vertices_to_fix)
+            {
+                obj->fixVertex(v);
+            }
+        }
+    }
+    
 
     // create an object to show where grasping is
     Config::RigidSphereConfig cursor_config("cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
