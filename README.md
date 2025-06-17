@@ -179,11 +179,11 @@ The launch files provide a few launch arguments/parameters:
 
 Launching the Virtuoso robot + trachea demo:
 ```
-ros2 launch launch/sim_bridge_with_rosbridge_server.launch.py config_filename:=/workspace/config/demos/virtuoso_trachea/virtuoso_trachea.yaml simulation_type:=`VirtuosoTissueGraspingSimulation`
+ros2 launch launch/sim_bridge_with_rosbridge_server.launch.py config_filename:=/workspace/config/demos/virtuoso_trachea/virtuoso_trachea.yaml simulation_type:=VirtuosoTissueGraspingSimulation
 ```
 Launching the simple grasping demo:
 ```
-ros2 launch launch/sim_bridge_with_rosbridge_server.launch.py config_filename:=/workspace/config/demos/simple_grasping/grasping_config.yaml simulation_type:=`GraspingSimulation`
+ros2 launch launch/sim_bridge_with_rosbridge_server.launch.py config_filename:=/workspace/config/demos/simple_grasping/grasping_config.yaml simulation_type:=GraspingSimulation
 ```
 ### `sim_bridge` with VirtuosoSimulation
 When `simulation_type` is `VirtuosoTissueGraspingSimulation` or `VirtuosoSimulation`, the `sim_bridge` node subscribes to input Virtuoso joint states and relays those to the simulation, and outputs coordinate frames along each Virtuoso arm, as well as the tissue mesh. The list of topics can be found below:
