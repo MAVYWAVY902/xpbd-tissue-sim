@@ -1,6 +1,8 @@
 #include "geometry/embree/EmbreeScene.hpp"
 #include "geometry/embree/EmbreeQueryStructs.hpp"
 
+#include <math.h>
+
 namespace Geometry
 {
 
@@ -68,7 +70,6 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
 
 void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
 {
-    std::cout << "\n\nADDING TETMESHOBJECT TO EMBREE SCENE\n\n" << std::endl;
     // make sure that object has not already been added to Embree scene
     if (_tet_mesh_to_embree_geom.count(obj_ptr) > 0)
         assert(0 && "Object has already been added to Embree scene!");
@@ -246,6 +247,45 @@ std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, cons
     rtcPointQuery(geom->tetScene(), &query, &context, nullptr, &point_query_data);
 
     return point_query_data.result;
+}
+
+std::vector<Vec3r> EmbreeScene::partialViewPointCloud(const Vec3r& origin, const Vec3r& view_dir, const Vec3r& up_dir, Real hfov_deg, Real vfov_deg, Real sample_density) const
+{
+    // calculate "right" direction from view direction and up direction
+    const Vec3r right_dir = up_dir.cross(view_dir);
+    Mat3r R_camera;
+    R_camera.col(0) = right_dir;    // x-axis is "right" direction
+    R_camera.col(1) = up_dir;       // y-axis is "up" direction
+    R_camera.col(2) = view_dir;     // z-axis is "view" direction
+
+    std::vector<Vec3r> hit_points;
+    hit_points.reserve(hfov_deg * vfov_deg * sample_density * sample_density);
+
+    // create rays by sampling spherical coordinates and transforming into local frame
+    Real angle_increment = 1.0/sample_density;
+
+    // std::cout << "hfov: " << hfov_deg << " vfov: " << vfov_deg << " angle_incr: " << angle_increment<< std::endl;
+    for (Real h_angle = -hfov_deg/2.0; h_angle < hfov_deg/2.0; h_angle += angle_increment)
+    {
+        for (Real v_angle = -vfov_deg/2.0; v_angle < vfov_deg/2.0; v_angle += angle_increment)
+        {
+            Real x_local = std::sin(h_angle * M_PI/180.0) * std::cos(v_angle * M_PI/180.0);
+            Real y_local = std::sin(v_angle * M_PI/180.0);
+            Real z_local = std::cos(h_angle * M_PI/180.0) * std::cos(v_angle * M_PI/180.0);
+            const Vec3r dir_local(x_local, y_local, z_local);
+            const Vec3r ray_dir = R_camera * dir_local;
+
+            // std::cout << "Ray dir: " << ray_dir[0] << ", " << ray_dir[1] << ", " << ray_dir[2] << std::endl;
+            EmbreeHit hit = castRay(origin, ray_dir);
+            if (hit.obj)
+            {
+                // std::cout << "Hit!" << std::endl;
+                hit_points.push_back(hit.hit_point);
+            }
+        }
+    }
+
+    return hit_points;
 }
 
 } // namespace Geometry

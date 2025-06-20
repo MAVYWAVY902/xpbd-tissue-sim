@@ -225,6 +225,69 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
         }
 
+        // set up callback to publish mesh vertices as a point cloud
+        if (Sim::VirtuosoTissueGraspingSimulation* tissue_sim = dynamic_cast<Sim::VirtuosoTissueGraspingSimulation*>(_sim))
+        {
+            _partial_view_pc_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/output/partial_view_pc", 3);
+            
+            int hfov = 80;
+            int vfov = 80;
+            Real sample_density = 1.0;
+
+            // set header
+            _partial_view_pc_message.header.stamp = this->now();
+            _partial_view_pc_message.header.frame_id = "/world";
+
+            // add point fields
+            _partial_view_pc_message.fields.resize(3);
+            _partial_view_pc_message.fields[0].name = "x";
+            _partial_view_pc_message.fields[0].offset = 0;
+            _partial_view_pc_message.fields[0].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+            _partial_view_pc_message.fields[0].count = 1;
+
+            _partial_view_pc_message.fields[1].name = "y";
+            _partial_view_pc_message.fields[1].offset = sizeof(Real);
+            _partial_view_pc_message.fields[1].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+            _partial_view_pc_message.fields[1].count = 1;
+
+            _partial_view_pc_message.fields[2].name = "z";
+            _partial_view_pc_message.fields[2].offset = 2*sizeof(Real);
+            _partial_view_pc_message.fields[2].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+            _partial_view_pc_message.fields[2].count = 1;
+
+            _partial_view_pc_message.height = 1;
+            _partial_view_pc_message.width = hfov * vfov * sample_density * sample_density;
+            _partial_view_pc_message.is_dense = true;
+            _partial_view_pc_message.is_bigendian = false;
+
+            _partial_view_pc_message.point_step = 3*sizeof(Real);
+            _partial_view_pc_message.row_step = _partial_view_pc_message.point_step * _partial_view_pc_message.width;
+
+            _partial_view_pc_message.data.resize(_partial_view_pc_message.row_step);
+
+            auto partial_view_pc_callback = 
+                [this, hfov, vfov, sample_density]() -> void {
+
+                    const Vec3r& cam_position = this->_sim->graphicsScene()->cameraPosition();
+                    const Vec3r& cam_view_dir = this->_sim->graphicsScene()->cameraViewDirection();
+                    const Vec3r& cam_up_dir = this->_sim->graphicsScene()->cameraUpDirection();
+
+                    std::vector<Vec3r> points = this->_sim->embreeScene()->partialViewPointCloud(cam_position, cam_view_dir, cam_up_dir, hfov, vfov, sample_density);
+                    this->_partial_view_pc_message.width = points.size();
+
+                    for (unsigned i = 0; i < points.size(); i++)
+                    {
+                        memcpy((Real*)this->_partial_view_pc_message.data.data() + 3*i, points[i].data(), sizeof(Real)*3);
+                    }
+                    
+
+                    this->_partial_view_pc_publisher->publish(this->_partial_view_pc_message);
+                };
+            
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), partial_view_pc_callback);
+
+        }
+
         // set up subscriber callback to take in joint state for arm 1
         if (_sim->virtuosoRobot()->hasArm1())
         {
@@ -344,6 +407,9 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
     sensor_msgs::msg::PointCloud2 _mesh_pcl_message;    // pre-allocated mesh point cloud ROS message for speed (assuming number of vertices stays the same)
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _mesh_pcl_publisher;    // publishes the current mesh vertices as a ROS point cloud (for easy ROS visualization)
+
+    sensor_msgs::msg::PointCloud2 _partial_view_pc_message;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _partial_view_pc_publisher;
 
     /** Subscriptions */
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _arm1_joint_state_subscriber;     // subscribes to joint state commands for arm1

@@ -43,7 +43,7 @@ objects:
     color: [1.0, 0.3, 0.2, 1.0]
     draw-points: false
     draw-edges: true
-    max-size: 0.06
+    max-size: 0.09
     position: [0, 0, -0.005]
     velocity: [0, 0, 0]
     rotation: [90, 0, 0]
@@ -65,7 +65,7 @@ objects:
   -
     name: "Robot"
     type: "VirtuosoRobot"
-    position: [0, -0.03, -0.0015]
+    position: [0, -0.04, -0.0015]
     rotation: [-90, 180, 0]
     collisions: true
     arms:

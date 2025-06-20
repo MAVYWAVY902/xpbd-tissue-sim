@@ -19,7 +19,7 @@ time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
 collision-rate: 1000
 fps: 30
-end-time: 10
+end-time: 10000
 objects:
 
   -
@@ -48,7 +48,7 @@ objects:
     with-damping: false
     # damping-multiplier: 400000000
     damping-multiplier: 600000000
-    collisions: false
+    collisions: true
     draw-faces: true
     draw-points: true
     draw-edges: false

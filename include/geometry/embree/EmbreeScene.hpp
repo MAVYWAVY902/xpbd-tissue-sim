@@ -60,6 +60,7 @@ class EmbreeScene
     /** Updates the Embree scene. */
     void update();
 
+    std::vector<Vec3r> partialViewPointCloud(const Vec3r& origin, const Vec3r& view_dir, const Vec3r& up_dir, Real hfov_deg, Real vfov_deg, Real sample_density) const;
     EmbreeHit castRay(const Vec3r& ray_origin, const Vec3r& ray_dir) const;
     
     EmbreeHit closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr) const;
