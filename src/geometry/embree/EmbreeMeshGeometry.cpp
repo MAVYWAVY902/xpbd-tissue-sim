@@ -4,6 +4,8 @@
 #include "geometry/embree/EmbreeQueryStructs.hpp"
 #include "geometry/embree/EmbreeTetMeshGeometry.hpp"
 
+#include <iostream>
+
 namespace Geometry
 {
 

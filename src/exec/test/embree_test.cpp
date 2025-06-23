@@ -22,10 +22,10 @@ int main()
     gmsh::initialize();
     // load mesh
     // Geometry::TetMesh tet_mesh = MeshUtils::loadTetMeshFromGmshFile("../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined.msh");
-    Config::MeshObjectConfig mesh_config("../resource/cube/cube8.msh", 1, std::nullopt,
+    Config::MeshObjectConfig mesh_config("../resource/cube/cube8.msh", 2, std::nullopt,
         false, false, true, Vec4r(0,0,0,0));
 
-    Config::ObjectConfig object_config("test", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), true, false);
+    Config::ObjectConfig object_config("test", Vec3r(0,0,5), Vec3r(0,0,0), Vec3r(0,0,0), true, false);
 
     Sim::TetMeshObject mesh_obj(&mesh_config, &object_config);
     mesh_obj.loadAndConfigureMesh();
@@ -38,8 +38,12 @@ int main()
     // add object(s) to EmbreeScene
     embree_scene.addObject(&mesh_obj);
 
+    // translate object and update the EmbreeScene
+    mesh_obj.mesh()->moveTogether(Vec3r(0, 0, -5));
+    embree_scene.update();
+
     // point-in-tetrahedron query
-    const Vec3r query_point(0.4,0.35,0.2);
+    const Vec3r query_point(0.0,0.0,0.0);
     std::set<Geometry::EmbreeHit> result = embree_scene.pointInTetrahedraQuery(query_point, &mesh_obj);
 
     std::cout << "\n=== Results for point-in-tet query for query point (" << query_point[0] << ", " << query_point[1] << ", " << query_point[2] << ") ===" << std::endl;

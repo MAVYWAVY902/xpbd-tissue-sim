@@ -272,6 +272,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                     const Vec3r& cam_view_dir = this->_sim->graphicsScene()->cameraViewDirection();
                     const Vec3r& cam_up_dir = this->_sim->graphicsScene()->cameraUpDirection();
 
+                    this->_sim->updateEmbreeScene();
                     std::vector<Vec3r> points = this->_sim->embreeScene()->partialViewPointCloud(cam_position, cam_view_dir, cam_up_dir, hfov, vfov, sample_density);
                     this->_partial_view_pc_message.width = points.size();
 

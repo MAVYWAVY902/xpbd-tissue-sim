@@ -23,7 +23,7 @@ time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
 collision-rate: 1000
 fps: 30
-end-time: 5000
+end-time: 50
 objects:
 
   -
@@ -55,7 +55,7 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     with-residual: false
     with-damping: false
-    damping-multiplier: 80000000000
+    damping-multiplier: 40000000000
     # damping-multiplier: 40000000000
     collisions: true
     draw-faces: true
@@ -79,7 +79,7 @@ objects:
       outer-tube-rotation: 30
       inner-tube-rotation: 30
       inner-tube-diameter: 1.04e-3
-      inner-tube-translation: 10e-3
+      inner-tube-translation: 15e-3
 
     # -
     #   name: "Arm2"

@@ -133,11 +133,18 @@ void EmbreeScene::update()
     for (auto& geom : _embree_mesh_geoms)
     {
         geom.copyVertices();
+        RTCGeometry rtc_geom = rtcGetGeometry(_ray_scene, geom.meshGeomID());
+        rtcCommitGeometry(rtc_geom);
     }
 
     for (auto& geom : _embree_tet_mesh_geoms)
     {
         geom.copyVertices();
+        RTCGeometry rtc_mesh_geom = rtcGetGeometry(_ray_scene, geom.meshGeomID());
+        rtcCommitGeometry(rtc_mesh_geom);
+        RTCGeometry rtc_tet_mesh_geom = rtcGetGeometry(geom.tetScene(), geom.tetMeshGeomID());
+        rtcCommitGeometry(rtc_tet_mesh_geom);
+
         rtcCommitScene(geom.tetScene());
     }
 
