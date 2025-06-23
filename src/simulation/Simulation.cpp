@@ -169,9 +169,9 @@ void Simulation::_timeStep()
             obj->clearCollisionConstraints();
         }
         // update the Embree scene before colliding objects
-        auto embree_t1 = std::chrono::steady_clock::now();
-        _embree_scene->update();
-        auto embree_t2 = std::chrono::steady_clock::now();
+        // auto embree_t1 = std::chrono::steady_clock::now();
+        // _embree_scene->update();
+        // auto embree_t2 = std::chrono::steady_clock::now();
         // std::cout << "Embree update took " << std::chrono::duration_cast<std::chrono::microseconds>(embree_t2 - embree_t1).count() << " us\n";
 
 

@@ -225,6 +225,90 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
         }
 
+        // set up callback to publish mesh vertices as a point cloud
+        if (Sim::VirtuosoTissueGraspingSimulation* tissue_sim = dynamic_cast<Sim::VirtuosoTissueGraspingSimulation*>(_sim))
+        {
+            _partial_view_pc_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/output/partial_view_pc", 3);
+            
+            this->declare_parameter("partial_view_pc", true);
+            this->declare_parameter("partial_view_pc_hfov", 80.0);
+            this->declare_parameter("partial_view_pc_vfov", 30.0);
+            this->declare_parameter("partial_view_pc_sample_density", 1.0);
+
+            Real hfov_deg = this->get_parameter("partial_view_pc_hfov").as_double();
+            Real vfov_deg = this->get_parameter("partial_view_pc_vfov").as_double();
+            Real sample_density = this->get_parameter("partial_view_pc_sample_density").as_double();
+
+            // set header
+            _partial_view_pc_message.header.stamp = this->now();
+            _partial_view_pc_message.header.frame_id = "/world";
+
+            // add point fields
+            _partial_view_pc_message.fields.resize(3);
+            _partial_view_pc_message.fields[0].name = "x";
+            _partial_view_pc_message.fields[0].offset = 0;
+            _partial_view_pc_message.fields[0].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+            _partial_view_pc_message.fields[0].count = 1;
+
+            _partial_view_pc_message.fields[1].name = "y";
+            _partial_view_pc_message.fields[1].offset = sizeof(Real);
+            _partial_view_pc_message.fields[1].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+            _partial_view_pc_message.fields[1].count = 1;
+
+            _partial_view_pc_message.fields[2].name = "z";
+            _partial_view_pc_message.fields[2].offset = 2*sizeof(Real);
+            _partial_view_pc_message.fields[2].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+            _partial_view_pc_message.fields[2].count = 1;
+
+            _partial_view_pc_message.height = 1;
+            _partial_view_pc_message.width = hfov_deg * vfov_deg * sample_density * sample_density;
+            _partial_view_pc_message.is_dense = true;
+            _partial_view_pc_message.is_bigendian = false;
+
+            _partial_view_pc_message.point_step = 3*sizeof(Real);
+            _partial_view_pc_message.row_step = _partial_view_pc_message.point_step * _partial_view_pc_message.width;
+
+            _partial_view_pc_message.data.resize(_partial_view_pc_message.row_step);
+
+            auto partial_view_pc_callback = 
+                [this]() -> void {
+
+                    if (!this->get_parameter("partial_view_pc").as_bool())
+                        return;
+
+                    const Vec3r& cam_position = this->_sim->graphicsScene()->cameraPosition();
+                    const Vec3r& cam_view_dir = this->_sim->graphicsScene()->cameraViewDirection();
+                    const Vec3r& cam_up_dir = this->_sim->graphicsScene()->cameraUpDirection();
+
+                    Real hfov_deg = this->get_parameter("partial_view_pc_hfov").as_double();
+                    Real vfov_deg = this->get_parameter("partial_view_pc_vfov").as_double();
+                    Real sample_density = this->get_parameter("partial_view_pc_sample_density").as_double();
+
+                    this->_sim->updateEmbreeScene();
+                    std::vector<Vec3r> points = this->_sim->embreeScene()->partialViewPointCloud(cam_position, cam_view_dir, cam_up_dir, hfov_deg, vfov_deg, sample_density);
+                    this->_partial_view_pc_message.width = points.size();
+
+                    // make sure we have enough space allocated (this only won't be the case if the user changes the parameters of the partial view point cloud in the middle of running the sim)
+                    size_t data_size = hfov_deg * vfov_deg * sample_density * sample_density * this->_partial_view_pc_message.point_step;
+                    this->_partial_view_pc_message.row_step = data_size;
+                    if (data_size != this->_partial_view_pc_message.data.size())
+                    {
+                        this->_partial_view_pc_message.data.resize(data_size);
+                    }
+
+                    for (unsigned i = 0; i < points.size(); i++)
+                    {
+                        memcpy((Real*)this->_partial_view_pc_message.data.data() + 3*i, points[i].data(), sizeof(Real)*3);
+                    }
+                    
+
+                    this->_partial_view_pc_publisher->publish(this->_partial_view_pc_message);
+                };
+            
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), partial_view_pc_callback);
+
+        }
+
         // set up subscriber callback to take in joint state for arm 1
         if (_sim->virtuosoRobot()->hasArm1())
         {
@@ -344,6 +428,9 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
     sensor_msgs::msg::PointCloud2 _mesh_pcl_message;    // pre-allocated mesh point cloud ROS message for speed (assuming number of vertices stays the same)
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _mesh_pcl_publisher;    // publishes the current mesh vertices as a ROS point cloud (for easy ROS visualization)
+
+    sensor_msgs::msg::PointCloud2 _partial_view_pc_message;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _partial_view_pc_publisher;
 
     /** Subscriptions */
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _arm1_joint_state_subscriber;     // subscribes to joint state commands for arm1
