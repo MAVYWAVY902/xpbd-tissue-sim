@@ -230,9 +230,14 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
         {
             _partial_view_pc_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/output/partial_view_pc", 3);
             
-            int hfov = 80;
-            int vfov = 80;
-            Real sample_density = 1.0;
+            this->declare_parameter("partial_view_pc", true);
+            this->declare_parameter("partial_view_pc_hfov", 80.0);
+            this->declare_parameter("partial_view_pc_vfov", 30.0);
+            this->declare_parameter("partial_view_pc_sample_density", 1.0);
+
+            Real hfov_deg = this->get_parameter("partial_view_pc_hfov").as_double();
+            Real vfov_deg = this->get_parameter("partial_view_pc_vfov").as_double();
+            Real sample_density = this->get_parameter("partial_view_pc_sample_density").as_double();
 
             // set header
             _partial_view_pc_message.header.stamp = this->now();
@@ -256,7 +261,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
             _partial_view_pc_message.fields[2].count = 1;
 
             _partial_view_pc_message.height = 1;
-            _partial_view_pc_message.width = hfov * vfov * sample_density * sample_density;
+            _partial_view_pc_message.width = hfov_deg * vfov_deg * sample_density * sample_density;
             _partial_view_pc_message.is_dense = true;
             _partial_view_pc_message.is_bigendian = false;
 
@@ -266,15 +271,30 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
             _partial_view_pc_message.data.resize(_partial_view_pc_message.row_step);
 
             auto partial_view_pc_callback = 
-                [this, hfov, vfov, sample_density]() -> void {
+                [this]() -> void {
+
+                    if (!this->get_parameter("partial_view_pc").as_bool())
+                        return;
 
                     const Vec3r& cam_position = this->_sim->graphicsScene()->cameraPosition();
                     const Vec3r& cam_view_dir = this->_sim->graphicsScene()->cameraViewDirection();
                     const Vec3r& cam_up_dir = this->_sim->graphicsScene()->cameraUpDirection();
 
+                    Real hfov_deg = this->get_parameter("partial_view_pc_hfov").as_double();
+                    Real vfov_deg = this->get_parameter("partial_view_pc_vfov").as_double();
+                    Real sample_density = this->get_parameter("partial_view_pc_sample_density").as_double();
+
                     this->_sim->updateEmbreeScene();
-                    std::vector<Vec3r> points = this->_sim->embreeScene()->partialViewPointCloud(cam_position, cam_view_dir, cam_up_dir, hfov, vfov, sample_density);
+                    std::vector<Vec3r> points = this->_sim->embreeScene()->partialViewPointCloud(cam_position, cam_view_dir, cam_up_dir, hfov_deg, vfov_deg, sample_density);
                     this->_partial_view_pc_message.width = points.size();
+
+                    // make sure we have enough space allocated (this only won't be the case if the user changes the parameters of the partial view point cloud in the middle of running the sim)
+                    size_t data_size = hfov_deg * vfov_deg * sample_density * sample_density * this->_partial_view_pc_message.point_step;
+                    this->_partial_view_pc_message.row_step = data_size;
+                    if (data_size != this->_partial_view_pc_message.data.size())
+                    {
+                        this->_partial_view_pc_message.data.resize(data_size);
+                    }
 
                     for (unsigned i = 0; i < points.size(); i++)
                     {

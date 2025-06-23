@@ -36,10 +36,15 @@ def generate_launch_description():
             ('/output/arm1_frames', '/sim/arm1_frames'),
             ('/output/arm2_frames', '/sim/arm2_frames'),
             ('/output/tissue_mesh', '/sim/tissue_mesh'),
-            ('/output/tissue_mesh_vertices', '/sim/tissue_mesh_vertices')
+            ('/output/tissue_mesh_vertices', '/sim/tissue_mesh_vertices'),
+            ('/output/partial_view_pc', '/sim/partial_view_pc')
         ],
         parameters=[
-            {"publish_rate_hz": 30.0}
+            {"publish_rate_hz": 30.0},      # publish rate of topics
+            {"partial_view_pc": True},      # whether or not to publish partial-view point cloud
+            {"partial_view_pc_hfov": 80.0},   # degrees
+            {"partial_view_pc_vfov": 50.0},   # degrees
+            {"partial_view_pc_sample_density": 1.0}   # rays per degree (i.e. higher = denser point cloud)
         ],
         arguments=[
             '--config-filename', LaunchConfiguration('config_filename'),

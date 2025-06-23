@@ -23,7 +23,7 @@ time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
 collision-rate: 1000
 fps: 30
-end-time: 50
+end-time: 5000
 objects:
 
   -
