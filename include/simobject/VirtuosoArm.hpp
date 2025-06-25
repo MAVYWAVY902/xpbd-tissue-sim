@@ -45,6 +45,59 @@ class VirtuosoArm : public Object
         CAUTERY
     };
 
+    struct TubeIntegrationState
+    {
+        using VecType = Eigen::Vector<Real, 19>; 
+
+        Vec3r position;                 // position at a point along the tube
+        Mat3r orientation;              // orientation at a point along the tube
+        Vec3r internal_force;           // (global) internal force at a point along the tube
+        Vec3r internal_moment;          // (global) internal moment at a point along the tube
+        Real torsional_displacement;    // total torsional displacement at this point along the tube
+
+        static VecType toVec(const TubeIntegrationState& state)
+        {
+            VecType vec;
+            vec << state.position, state.orientation.reshaped(), state.internal_force, state.internal_moment, state.torsional_displacement;
+            return vec;
+        }
+
+        static TubeIntegrationState fromVec(const VecType& vec)
+        {
+            TubeIntegrationState state;
+            state.position = vec( Eigen::seqN(0,3) );
+            state.orientation = vec( Eigen::seqN(3, 9) ).reshaped(3,3);
+            state.internal_force = vec( Eigen::seqN(12, 3) );
+            state.internal_moment = vec( Eigen::seqN(15, 3) );
+            state.torsional_displacement = vec(18);
+            return state;
+        }
+
+    };
+
+    struct TubeIntegrationParams
+    {
+        using VecType = Eigen::Vector<Real, 6>;
+
+        Vec3r precurvature;     // precurvature of the tube
+        Vec3r K_inv;            // inverse stiffnesses of the tube (in body frame, hence K is diagonal and can be represented by a 3-vector)
+
+        static VecType toVec(const TubeIntegrationParams& params)
+        {
+            VecType vec;
+            vec << params.precurvature, params.K_inv;
+            return vec;
+        }
+
+        static TubeIntegrationParams fromVec(const VecType& vec)
+        {
+            TubeIntegrationParams params;
+            params.precurvature = vec( Eigen::seqN(0,3) );
+            params.K_inv = vec( Eigen::seqN(3,6) );
+            return params;
+        }
+    };
+
     public:
     VirtuosoArm(const Simulation* sim, const ConfigType* config);
 
@@ -79,15 +132,17 @@ class VirtuosoArm : public Object
 
     virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; }
 
-    Real innerTubeDiameter() const { return _it_dia; }
+    Real innerTubeOuterDiameter() const { return _it_outer_dia; }
+    Real innerTubeInnerDiameter() const { return _it_inner_dia; }
     Real innerTubeTranslation() const { return _it_translation; }
     Real innerTubeRotation() const { return _it_rotation; }
 
-    double outerTubeDiameter() const { return _ot_dia; }
-    double outerTubeRadiusOfCurvature() const { return _ot_r_curvature; }
-    double outerTubeTranslation() const { return _ot_translation; }
-    double outerTubeRotation() const { return _ot_rotation; }
-    double outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
+    Real outerTubeOuterDiameter() const { return _ot_outer_dia; }
+    Real outerTubeInnerDiameter() const { return _ot_inner_dia; }
+    Real outerTubeRadiusOfCurvature() const { return _ot_r_curvature; }
+    Real outerTubeTranslation() const { return _ot_translation; }
+    Real outerTubeRotation() const { return _ot_rotation; }
+    Real outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
     int toolState() const { return _tool_state; }
 
     void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
@@ -95,8 +150,8 @@ class VirtuosoArm : public Object
     void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
     void setOuterTubeRotation(double r) { _ot_rotation = r; _recomputeCoordinateFrames(); }
     void setToolState(int tool) { _tool_state = tool; }
-    void setBasePosition(const Eigen::Vector3d& pos) { _arm_base_position = pos; _recomputeCoordinateFrames(); }
-    void setBaseRotation(const Eigen::Matrix3d& rot_mat) { _arm_base_rotation = rot_mat; _recomputeCoordinateFrames();}
+    void setBasePosition(const Vec3r& pos) { _arm_base_position = pos; _recomputeCoordinateFrames(); }
+    void setBaseRotation(const Mat3r& rot_mat) { _arm_base_rotation = rot_mat; _recomputeCoordinateFrames();}
 
     const Geometry::CoordinateFrame& armBaseFrame() const { return _arm_base_frame; }
     const Geometry::CoordinateFrame& outerTubeStartFrame() const { return _ot_frames[0]; }
@@ -111,6 +166,12 @@ class VirtuosoArm : public Object
     Vec3r tipPosition() const;
     void setTipPosition(const Vec3r& new_position);
 
+    Vec3r tipForce() const { return _tip_force; }
+    Vec3r tipMoment() const { return _tip_moment; }
+    void setTipForce(const Vec3r& new_tip_force);
+    void setTipMoment(const Vec3r& new_tip_moment);
+    void setTipForceAndMoment(const Vec3r& new_tip_force, const Vec3r& new_tip_moment);
+
     const XPBDMeshObject_Base* toolManipulatedObject() const { return _tool_manipulated_object; }
     void setToolManipulatedObject(XPBDMeshObject_Base* obj) { _tool_manipulated_object = obj; }
 
@@ -118,6 +179,9 @@ class VirtuosoArm : public Object
 
     private:
     void _recomputeCoordinateFrames();
+    void _recomputeCoordinateFramesStaticsModel();
+
+    std::vector<TubeIntegrationState::VecType> _integrateTubeRK4(const TubeIntegrationState& tube_base_state, const std::vector<Real>& s, const Vec3r& K_inv, const Vec3r& u_star) const;
 
     /** Performs any tool actions, if applicable.
      * 
@@ -172,9 +236,11 @@ class VirtuosoArm : public Object
     Mat3r _3DOFAnalyticalHybridJacobian();
 
     private:
-    double _it_dia; // inner tube diameter, in m
-    double _ot_dia; // outer tube diameter, in m
-    double _ot_r_curvature; // outer tube radius of curvature, in m
+    Real _it_outer_dia; // inner tube outer diameter, in m
+    Real _ot_outer_dia; // outer tube outer diameter, in m
+    Real _ot_inner_dia; // outer tube inner diameter, in m
+    Real _it_inner_dia; // inner tube inner diameter, in m
+    Real _ot_r_curvature; // outer tube radius of curvature, in m
 
     Real _it_translation; // translation of the inner tube. Right now, assuming that when translation=0, inner tube is fully retracted
     Real _it_rotation;    // rotation of inner tube. Right now, assuming angle is measured CCW from positive x-axis 
@@ -186,11 +252,14 @@ class VirtuosoArm : public Object
     int _last_tool_state; // the previous state of the tool (needed so that we know when tool state has changed)
     ToolType _tool_type; // type of tool used on this arm
     XPBDMeshObject_Base* _tool_manipulated_object; // the deformable object that this tool is manipulating
-    Eigen::Vector3d _tool_position; // position of the tool in global coordinates (note that this may be different than the inner tube tip position)
+    Vec3r _tool_position; // position of the tool in global coordinates (note that this may be different than the inner tube tip position)
     std::vector<int> _grasped_vertices; // vertices that are actively being grasped
 
-    Eigen::Vector3d _arm_base_position;
-    Eigen::Matrix3d _arm_base_rotation;
+    Vec3r _arm_base_position;
+    Mat3r _arm_base_rotation;
+
+    Vec3r _tip_force;
+    Vec3r _tip_moment;
 
 
     Geometry::CoordinateFrame _arm_base_frame;        // coordinate frame at the tool channel (where it leaves the endoscope)

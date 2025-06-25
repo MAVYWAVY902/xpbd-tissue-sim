@@ -53,7 +53,7 @@ void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPB
     const Vec3r& inner_tube_start = virtuoso_arm->innerTubeStartFrame().origin();
     const Vec3r& inner_tube_end = virtuoso_arm->innerTubeEndFrame().origin();
     
-    const Real it_dia = virtuoso_arm->innerTubeDiameter();
+    const Real it_dia = virtuoso_arm->innerTubeOuterDiameter();
 
     const Vec3r& dir = (inner_tube_end - inner_tube_start).normalized();
     const Real dist_thresh = 0.5*it_dia;
