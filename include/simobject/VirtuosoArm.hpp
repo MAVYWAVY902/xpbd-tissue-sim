@@ -22,9 +22,9 @@ class VirtuosoArm : public Object
 {
 
     private:
-    constexpr static int NUM_OT_CURVE_FRAMES = 15;      // number of coordinate frames defined along the curved section of the outer tube
-    constexpr static int NUM_OT_STRAIGHT_FRAMES = 5;    // number of coordinate frames defined along the straight distal section of the outer tube
-    constexpr static int NUM_IT_FRAMES = 20;            // number of coordinate frames defined along the inner tube
+    constexpr static int NUM_OT_CURVE_FRAMES = 10;      // number of coordinate frames defined along the curved section of the outer tube
+    constexpr static int NUM_OT_STRAIGHT_FRAMES = 10;    // number of coordinate frames defined along the straight distal section of the outer tube
+    constexpr static int NUM_IT_FRAMES = 10;            // number of coordinate frames defined along the inner tube
 
     constexpr static int MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
     constexpr static int MAX_IT_TRANSLATION = 40e-3;    // maximum inner tube translation (joint limit on Virtuoso system)

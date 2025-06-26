@@ -247,7 +247,7 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModel()
     
     // calculate internal forces and moments carried at the base of the tube collection
     const Vec3r& tip_position = innerTubeEndFrame().origin();
-    const Vec3r base_moment = _tip_moment + _tip_force.cross(tip_position);
+    const Vec3r base_moment = _tip_moment + tip_position.cross(_tip_force);
     const Vec3r base_force = _tip_force;
 
 
@@ -278,8 +278,9 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModel()
     TubeIntegrationState ot_curve_end_state;
     if (curved_length > 0)
     {
+        // std::cout << "Outer tube curved section length > 0 (=" << curved_length << " mm)" << std::endl;
         const Vec3r K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
-        const Vec3r precurvature(1/_ot_r_curvature/1000, 0, 0); // should this be 90/1000?
+        const Vec3r precurvature(1/_ot_r_curvature/1000, 0, 0);
 
         std::vector<Real> ot_curve_s(NUM_OT_CURVE_FRAMES);  // distance along tube for outer curve frames (in mm)
         for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
@@ -305,21 +306,22 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModel()
     }
 
     // integrate straight section of outer tube
-    Real straight_length = std::min(_ot_translation - _ot_distal_straight_length, _ot_distal_straight_length)*1000; // length of outer tube straight section (in mm)
+    Real straight_length = std::min(_ot_translation, _ot_distal_straight_length)*1000; // length of outer tube straight section (in mm)
     TubeIntegrationState ot_end_state;
     if (straight_length > 0)
     {
+        // std::cout << "Outer tube straight section length > 0 mm (=" << straight_length << " mm)" << std::endl;
         const Vec3r ot_K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
         std::vector<Real> ot_straight_s(NUM_OT_STRAIGHT_FRAMES);
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
-            ot_straight_s[i] = curved_length + (i+1)*_ot_distal_straight_length*1000 / NUM_OT_STRAIGHT_FRAMES;
+            ot_straight_s[i] = curved_length + (i+1)*straight_length / (NUM_OT_STRAIGHT_FRAMES-1);
         std::vector<TubeIntegrationState::VecType> ot_straight_states = _integrateTubeRK4(ot_curve_end_state, ot_straight_s, ot_K_inv, Vec3r(0,0,0));
         
 
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
         {
             TubeIntegrationState state = TubeIntegrationState::fromVec(ot_straight_states[i]);
-            _ot_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
+            _ot_frames[NUM_OT_CURVE_FRAMES + i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
         }
 
         ot_end_state = TubeIntegrationState::fromVec(ot_straight_states.back());
@@ -335,19 +337,21 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModel()
     }
 
     // integrate inner tube
-    Real it_length = (_it_translation - _ot_translation)*1000;
+    const Real it_length = std::max(Real(0.0), _it_translation - _ot_translation) * 1000;      // exposed length of the inner tube in mm
     TubeIntegrationState it_start_state = ot_end_state;
     it_start_state.orientation *= GeometryUtils::Rz(_it_rotation - it_start_state.torsional_displacement);
     it_start_state.torsional_displacement = _it_rotation;
 
     if (it_length > 0)
     {
-        
+        // std::cout << "Inner tube length > 0... (=" << it_length << " mm)" << std::endl;
         
         const Vec3r it_K_inv(1/(E*I_it), 1/(E*I_it), 1/(G*J_it));
         std::vector<Real> it_s(NUM_IT_FRAMES);
         for (int i = 0; i < NUM_IT_FRAMES; i++)     
-            it_s[i] = _ot_translation + i*it_length / (NUM_IT_FRAMES - 1);
+        {
+            it_s[i] = _ot_translation*1000 + i*it_length / (NUM_IT_FRAMES - 1);
+        }
         
         std::vector<TubeIntegrationState::VecType> it_states = _integrateTubeRK4(it_start_state, it_s, it_K_inv, Vec3r(0,0,0));
 
@@ -402,6 +406,8 @@ std::vector<VirtuosoArm::TubeIntegrationState::VecType> VirtuosoArm::_integrateT
         const Real h = s[i] - s[i-1];
         TubeIntegrationState::VecType next_state = RK4<TubeIntegrationState::VecType, TubeIntegrationParams>(s[i-1], h, tube_states[i-1], params, ode_func);
         tube_states[i] = next_state;
+
+        // std::cout << "Next position: " << next_state[0] << ", " << next_state[1] << ", " << next_state[2] << std::endl;
     }
 
     return tube_states;
