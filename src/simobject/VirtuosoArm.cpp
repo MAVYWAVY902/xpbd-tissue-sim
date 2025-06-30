@@ -35,7 +35,8 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
     Vec3r initial_rot_xyz = config->baseInitialRotation() * M_PI / 180.0;
     _arm_base_rotation = GeometryUtils::quatToMat(GeometryUtils::eulXYZ2Quat(initial_rot_xyz[0], initial_rot_xyz[1], initial_rot_xyz[2]));
 
-    _recomputeCoordinateFrames();
+    // _recomputeCoordinateFrames();
+    _recomputeCoordinateFramesStaticsModel();
 
 }
 
@@ -47,8 +48,6 @@ std::string VirtuosoArm::toString(const int indent) const
 
 Vec3r VirtuosoArm::tipPosition() const
 {
-    // if (_stale_frames)
-    //     _recomputeCoordinateFrames();
     
     return innerTubeEndFrame().origin();
 }
@@ -99,7 +98,8 @@ void VirtuosoArm::update()
 {
     if (_stale_frames)
     {
-        _recomputeCoordinateFrames();
+        // _recomputeCoordinateFrames();
+        _recomputeCoordinateFramesStaticsModel();
     }
 
     _toolAction();
@@ -181,6 +181,24 @@ void VirtuosoArm::_grasperToolAction()
         _tool_manipulated_object->clearAttachmentConstraints();
         _grasped_vertices.clear();
     }
+
+    Vec3r total_force = Vec3r::Zero();
+    for (const auto& v : _grasped_vertices)
+    {
+        total_force += _tool_manipulated_object->elasticForceAtVertex(v);
+    }
+
+    // smooth forces
+    // Vec3r new_force = total_force*0.5 + _last_force*0.5;
+
+    // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
+
+    std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
+
+    // transform force from global coordinates into haptic input frame
+    Vec3r test_force(10,0,0);
+    setTipForce(test_force);
+    
 }
 
 void VirtuosoArm::_cauteryToolAction()
@@ -312,15 +330,15 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModel()
     {
         // std::cout << "Outer tube straight section length > 0 mm (=" << straight_length << " mm)" << std::endl;
         const Vec3r ot_K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
-        std::vector<Real> ot_straight_s(NUM_OT_STRAIGHT_FRAMES);
-        for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
-            ot_straight_s[i] = curved_length + (i+1)*straight_length / (NUM_OT_STRAIGHT_FRAMES-1);
+        std::vector<Real> ot_straight_s(NUM_OT_STRAIGHT_FRAMES+1);
+        for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES+1; i++)
+            ot_straight_s[i] = curved_length + i*straight_length / NUM_OT_STRAIGHT_FRAMES;
         std::vector<TubeIntegrationState::VecType> ot_straight_states = _integrateTubeRK4(ot_curve_end_state, ot_straight_s, ot_K_inv, Vec3r(0,0,0));
         
 
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
         {
-            TubeIntegrationState state = TubeIntegrationState::fromVec(ot_straight_states[i]);
+            TubeIntegrationState state = TubeIntegrationState::fromVec(ot_straight_states[i+1]);
             _ot_frames[NUM_OT_CURVE_FRAMES + i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
         }
 
@@ -371,7 +389,10 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModel()
         }
     }
     
-    
+    _stale_frames = false;
+
+    // for now, the tool position is just the inner tube tip position with no offset
+    _tool_position = _it_frames.back().origin();
 }
 
 std::vector<VirtuosoArm::TubeIntegrationState::VecType> VirtuosoArm::_integrateTubeRK4(const VirtuosoArm::TubeIntegrationState& tube_base_state, const std::vector<Real>& s, const Vec3r& K_inv, const Vec3r& u_star) const
@@ -447,7 +468,8 @@ Geometry::TransformationMatrix VirtuosoArm::_computeTipTransform(Real ot_rot, Re
 
 void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
 {
-    _recomputeCoordinateFrames();
+    // _recomputeCoordinateFrames();
+    _recomputeCoordinateFramesStaticsModel();
     const Vec3r target_position = tipPosition() + dx;
 
     for (int i = 0; i < 10; i++)
@@ -466,7 +488,8 @@ void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
         _ot_translation = std::clamp(_ot_translation, Real(0.0), Real(50.0e-3));
         _it_translation = std::clamp(_it_translation, Real(0.0), Real(50.0e-3));
 
-        _recomputeCoordinateFrames();
+        // _recomputeCoordinateFrames();
+        _recomputeCoordinateFramesStaticsModel();
     }
 
     const Vec3r final_err = target_position - tipPosition();
@@ -479,7 +502,8 @@ void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
 
 void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
 {
-    _recomputeCoordinateFrames();
+    // _recomputeCoordinateFrames();
+    _recomputeCoordinateFramesStaticsModel();
     const Vec3r target_position = tipPosition() + dx;
 
     // solve for the outer tube rotation analytically
@@ -489,7 +513,7 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
 
     _ot_rotation = target_angle;
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 1; i++)
     {
         const Vec3r pos_err = target_position - tipPosition();
         if (pos_err.norm() < 1e-10)
@@ -511,7 +535,8 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
             // _it_translation += d;
         }
 
-        _recomputeCoordinateFrames();
+        // _recomputeCoordinateFrames();
+        _recomputeCoordinateFramesStaticsModel();
     }
 
     
@@ -521,7 +546,8 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
 {
     // make sure coordinate frames are up to date
     if (_stale_frames)      
-        _recomputeCoordinateFrames();
+        // _recomputeCoordinateFrames();
+        _recomputeCoordinateFramesStaticsModel();
 
     // because there are max() and min() expressions used, we have a couple different cases for the derivatives
     // when outer tube translation >= length of the outer tube straight section, we have some curve in the outer tube
@@ -601,7 +627,8 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
 Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFNumericalSpatialJacobian()
 {
     if (_stale_frames)
-        _recomputeCoordinateFrames();
+        // _recomputeCoordinateFrames();
+        _recomputeCoordinateFramesStaticsModel();
 
     Eigen::Matrix<Real,6,3> J_s;
 
@@ -615,17 +642,28 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFNumericalSpatialJacobian()
     const Real delta = 1e-6;
 
     {
-        Geometry::TransformationMatrix new_transform = _computeTipTransform(_ot_rotation+delta, _ot_translation, _it_rotation, _it_translation);
+        _ot_rotation += delta;
+        _recomputeCoordinateFramesStaticsModel();
+        Geometry::TransformationMatrix new_transform = innerTubeEndFrame().transform();
         J_s.col(0) = GeometryUtils::Vee_SE3( (new_transform.asMatrix() - orig_transform.asMatrix())/delta * orig_transform_inv.asMatrix());
+        _ot_rotation -= delta;
     }
     {
-        Geometry::TransformationMatrix new_transform = _computeTipTransform(_ot_rotation, _ot_translation+delta, _it_rotation, _it_translation);
+        _ot_translation += delta;
+        _recomputeCoordinateFramesStaticsModel();
+        Geometry::TransformationMatrix new_transform = innerTubeEndFrame().transform();
         J_s.col(1) = GeometryUtils::Vee_SE3( (new_transform.asMatrix() - orig_transform.asMatrix())/delta * orig_transform_inv.asMatrix());
+        _ot_translation -= delta;
     }
     {
-        Geometry::TransformationMatrix new_transform = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation+delta);
+        _it_translation += delta;
+        _recomputeCoordinateFramesStaticsModel();
+        Geometry::TransformationMatrix new_transform = innerTubeEndFrame().transform();
         J_s.col(2) = GeometryUtils::Vee_SE3( (new_transform.asMatrix() - orig_transform.asMatrix())/delta * orig_transform_inv.asMatrix());
+        _it_translation -= delta;
     }
+
+    _recomputeCoordinateFramesStaticsModel();
 
     return J_s;
     
@@ -635,7 +673,8 @@ Mat3r VirtuosoArm::_3DOFAnalyticalHybridJacobian()
 {
     // make sure coordinate frames are up to date
     if (_stale_frames)      
-        _recomputeCoordinateFrames();
+        // _recomputeCoordinateFrames();
+        _recomputeCoordinateFramesStaticsModel();
 
     Eigen::Matrix<Real,3,6> C;
     C << Mat3r::Zero(), Mat3r::Identity();
@@ -650,7 +689,7 @@ Mat3r VirtuosoArm::_3DOFAnalyticalHybridJacobian()
     // std::cout << "J_s analytical:\n " << _3DOFSpatialJacobian() << std::endl;
     // std::cout << "J_s numerical:\n " << _3DOFNumericalSpatialJacobian() << std::endl;
 
-    Eigen::Matrix<Real,6,3> J_b = innerTubeEndFrame().transform().inverse().adjoint() * _3DOFSpatialJacobian();
+    Eigen::Matrix<Real,6,3> J_b = innerTubeEndFrame().transform().inverse().adjoint() * _3DOFNumericalSpatialJacobian();
     // std::cout << "J_b:\n" << J_b << std::endl;
     Mat3r J_a = C * R * J_b;
 

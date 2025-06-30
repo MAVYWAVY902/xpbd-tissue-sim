@@ -188,6 +188,8 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     {
         const Mat3r rot_mat = ot_frames[fi].transform().rotMat();
         const Vec3r translation = ot_frames[fi].transform().translation();
+        // std::cout << "ot_trans " << fi << ": " << translation[0] << ", " << translation[1] << ", " << translation[2] << std::endl;
+        // std::cout << "ot_rot " << fi << ":\n" << rot_mat << std::endl;
         for (unsigned pi = 0; pi < ot_circle_pts.size(); pi++)
         {
             Vec3r transformed_pt = rot_mat * ot_circle_pts[pi] + translation;

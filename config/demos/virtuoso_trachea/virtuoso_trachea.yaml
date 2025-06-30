@@ -10,7 +10,6 @@ goals-folder: "../resource/demos/trachea_virtuoso/goals/"
 # device-name1: "LeftOmni"
 # device-name2: "RightOmni"
 # device-name1: "Omni"
-
 g-accel: 0 # m/s2
 # sim-mode: "Visualization"
 # sim-mode: "Frame-by-frame"

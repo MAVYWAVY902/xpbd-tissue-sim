@@ -251,36 +251,46 @@ void VirtuosoTissueGraspingSimulation::_timeStep()
         {
             _toggleTissueGrasping();
         }
-
-        if (_grasping)
-        {
-            Vec3r total_force = Vec3r::Zero();
-            for (const auto& v : _grasped_vertices)
-            {
-                total_force += _tissue_obj->elasticForceAtVertex(v);
-            }
-
-            // smooth forces
-            Vec3r new_force = total_force*0.5 + _last_force*0.5;
-
-            // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
-
-            std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
-
-            // transform force from global coordinates into haptic input frame
-            const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * new_force;
-            _haptic_device_manager->setForce(handle, haptic_force);
-
-            _last_force = new_force;
-        }
-        else
-        {
-            _haptic_device_manager->setForce(handle, Vec3r::Zero());
-        }
-        
     }
 
-    Simulation::_timeStep();
+    // if (_active_arm->toolState())
+    // {
+    //     Vec3r total_force = Vec3r::Zero();
+    //     for (const auto& v : _grasped_vertices)
+    //     {
+    //         total_force += _tissue_obj->elasticForceAtVertex(v);
+    //     }
+
+    //     // smooth forces
+    //     Vec3r new_force = total_force*0.5 + _last_force*0.5;
+
+    //     // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
+
+    //     std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
+
+    //     // transform force from global coordinates into haptic input frame
+    //     _active_arm->setTipForce(new_force);
+
+    //     if (_input_device == Config::SimulationInputDevice::HAPTIC)
+    //     {
+    //         HHD handle = _haptic_device_manager->deviceHandles()[0];
+    //         const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * new_force;
+    //         _haptic_device_manager->setForce(handle, haptic_force);
+    //     }
+
+    //     _last_force = new_force;
+    // }
+    // else
+    // {
+    //     _active_arm->setTipForce(Vec3r::Zero());
+
+    //     if (_input_device == Config::SimulationInputDevice::HAPTIC)
+    //     {
+    //         HHD handle = _haptic_device_manager->deviceHandles()[0];
+    //         _haptic_device_manager->setForce(handle, Vec3r::Zero());
+    //     }
+    // }
+    
 }
 
 void VirtuosoTissueGraspingSimulation::_toggleGoal()
