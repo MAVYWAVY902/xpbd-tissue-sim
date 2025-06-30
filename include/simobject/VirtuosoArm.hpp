@@ -163,8 +163,9 @@ class VirtuosoArm : public Object
     const OuterTubeFramesArray& outerTubeFrames() const { return _ot_frames; }
     const InnerTubeFramesArray& innerTubeFrames() const { return _it_frames; }
 
-    Vec3r tipPosition() const;
-    void setTipPosition(const Vec3r& new_position);
+    Vec3r actualTipPosition() const;
+    Vec3r commandedTipPosition() const{ return _commanded_tip_position; }
+    void setCommandedTipPosition(const Vec3r& new_position);
 
     Vec3r tipForce() const { return _tip_force; }
     Vec3r tipMoment() const { return _tip_moment; }
@@ -178,6 +179,7 @@ class VirtuosoArm : public Object
     void setJointState(double ot_rotation, double ot_translation, double it_rotation, double it_translation, int tool);
 
     private:
+    void _updateActuatorValuesForCommandedPosition();
     void _recomputeCoordinateFrames();
     void _recomputeCoordinateFramesStaticsModel();
 
@@ -196,7 +198,7 @@ class VirtuosoArm : public Object
 
     void _cauteryToolAction();
 
-    Geometry::TransformationMatrix _computeTipTransform(double ot_rot, double ot_trans, double it_rot, double it_trans);
+    Geometry::TransformationMatrix _computeTipTransform(Real ot_rot, Real ot_trans, Real it_rot, Real it_trans);
 
     /** Computes the new joint positions given a change in tip position, using only the analytical Jacobian.
      * The Jacobian used is the analytical derivative of the tip transformation matrix (i.e. not a numerical Jacobian)
@@ -253,6 +255,7 @@ class VirtuosoArm : public Object
     ToolType _tool_type; // type of tool used on this arm
     XPBDMeshObject_Base* _tool_manipulated_object; // the deformable object that this tool is manipulating
     Vec3r _tool_position; // position of the tool in global coordinates (note that this may be different than the inner tube tip position)
+    Vec3r _commanded_tip_position; // tip position of the arm in the absence of tip forces (i.e. where we tell the arm tip to be at)
     std::vector<int> _grasped_vertices; // vertices that are actively being grasped
 
     Vec3r _arm_base_position;

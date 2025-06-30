@@ -20,7 +20,7 @@ int main()
     const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = arm->innerTubeFrames();
 
     std::cout << "=== NO FORCE ===" << std::endl;
-    std::cout << "Inner tube tip position: " << arm->tipPosition()[0] << ", " << arm->tipPosition()[1] << ", " << arm->tipPosition()[2] << std::endl;
+    std::cout << "Inner tube tip position: " << arm->actualTipPosition()[0] << ", " << arm->actualTipPosition()[1] << ", " << arm->actualTipPosition()[2] << std::endl;
     std::cout << "Outer tube tip position: " << ot_frames.back().origin()[0] << ", " << ot_frames.back().origin()[1] << ", " << ot_frames.back().origin()[2] << std::endl;
 
     arm->setTipForce(Vec3r(0,20,10));
@@ -29,6 +29,6 @@ int main()
     // const Sim::VirtuosoArm::OuterTubeFramesArray& ot_frames2 = arm->outerTubeFrames();
     std::cout << "\n=== TIP FORCE = (" << arm->tipForce()[0] << ", " << arm->tipForce()[1] << ", " << arm->tipForce()[2] << ") ===" << std::endl;
 
-    std::cout << "Inner tube tip position: " << arm->tipPosition()[0] << ", " << arm->tipPosition()[1] << ", " << arm->tipPosition()[2] << std::endl;
+    std::cout << "Inner tube tip position: " << arm->actualTipPosition()[0] << ", " << arm->actualTipPosition()[1] << ", " << arm->actualTipPosition()[2] << std::endl;
     std::cout << "Outer tube tip position: " << ot_frames.back().origin()[0] << ", " << ot_frames.back().origin()[1] << ", " << ot_frames.back().origin()[2] << std::endl;
 }

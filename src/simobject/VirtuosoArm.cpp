@@ -46,16 +46,17 @@ std::string VirtuosoArm::toString(const int indent) const
     return Object::toString(indent);
 }
 
-Vec3r VirtuosoArm::tipPosition() const
+Vec3r VirtuosoArm::actualTipPosition() const
 {
-    
     return innerTubeEndFrame().origin();
 }
 
-void VirtuosoArm::setTipPosition(const Vec3r& new_position)
+void VirtuosoArm::setCommandedTipPosition(const Vec3r& new_position)
 {
     // _jacobianDifferentialInverseKinematics(new_position - tipPosition());
-    _hybridDifferentialInverseKinematics(new_position - tipPosition());
+    const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    _hybridDifferentialInverseKinematics(new_position - T_tip.translation());
+    _commanded_tip_position = new_position;
     _stale_frames = true;
 }
 
@@ -196,14 +197,19 @@ void VirtuosoArm::_grasperToolAction()
     std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
 
     // transform force from global coordinates into haptic input frame
-    Vec3r test_force(10,0,0);
-    setTipForce(test_force);
+    // Vec3r test_force(10,0,0);
+    setTipForce(total_force/10);
     
 }
 
 void VirtuosoArm::_cauteryToolAction()
 {
     // do nothing (for now)
+}
+
+void VirtuosoArm::_updateActuatorValuesForCommandedPosition()
+{
+
 }
 
 void VirtuosoArm::_recomputeCoordinateFrames()
@@ -469,12 +475,14 @@ Geometry::TransformationMatrix VirtuosoArm::_computeTipTransform(Real ot_rot, Re
 void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
 {
     // _recomputeCoordinateFrames();
-    _recomputeCoordinateFramesStaticsModel();
-    const Vec3r target_position = tipPosition() + dx;
+    // _recomputeCoordinateFramesStaticsModel();
+    const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    const Vec3r target_position = T_tip.translation() + dx;
 
     for (int i = 0; i < 10; i++)
     {
-        const Vec3r pos_err = target_position - tipPosition();
+        const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+        const Vec3r pos_err = target_position - T_tip.translation();
         if (pos_err.norm() < 1e-10)
             break;
 
@@ -492,10 +500,10 @@ void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
         _recomputeCoordinateFramesStaticsModel();
     }
 
-    const Vec3r final_err = target_position - tipPosition();
-    std::cout << "Tip pos: " << tipPosition()[0] << ", " << tipPosition()[1] << ", " << tipPosition()[2] << std::endl;
-    std::cout << "Tip err: " << final_err[0] << ", " << final_err[1] << ", " << final_err[2] << std::endl;
-    std::cout << "q: " << _ot_rotation << ", " << _ot_translation << ", " << _it_translation << std::endl;
+    // const Vec3r final_err = target_position - tipPosition();
+    // std::cout << "Tip pos: " << tipPosition()[0] << ", " << tipPosition()[1] << ", " << tipPosition()[2] << std::endl;
+    // std::cout << "Tip err: " << final_err[0] << ", " << final_err[1] << ", " << final_err[2] << std::endl;
+    // std::cout << "q: " << _ot_rotation << ", " << _ot_translation << ", " << _it_translation << std::endl;
 
     _stale_frames = true;
 }
@@ -503,8 +511,9 @@ void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
 void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
 {
     // _recomputeCoordinateFrames();
-    _recomputeCoordinateFramesStaticsModel();
-    const Vec3r target_position = tipPosition() + dx;
+    // _recomputeCoordinateFramesStaticsModel();
+    const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    const Vec3r target_position = T_tip.translation() + dx;
 
     // solve for the outer tube rotation analytically
     Geometry::TransformationMatrix global_to_arm_base = _arm_base_frame.transform().inverse();
@@ -515,7 +524,8 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
 
     for (int i = 0; i < 1; i++)
     {
-        const Vec3r pos_err = target_position - tipPosition();
+        const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+        const Vec3r pos_err = target_position - T_tip.translation();
         if (pos_err.norm() < 1e-10)
             break;
 
@@ -536,7 +546,7 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
         }
 
         // _recomputeCoordinateFrames();
-        _recomputeCoordinateFramesStaticsModel();
+        // _recomputeCoordinateFramesStaticsModel();
     }
 
     
@@ -545,9 +555,9 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
 Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
 {
     // make sure coordinate frames are up to date
-    if (_stale_frames)      
+    // if (_stale_frames)      
         // _recomputeCoordinateFrames();
-        _recomputeCoordinateFramesStaticsModel();
+        // _recomputeCoordinateFramesStaticsModel();
 
     // because there are max() and min() expressions used, we have a couple different cases for the derivatives
     // when outer tube translation >= length of the outer tube straight section, we have some curve in the outer tube
@@ -614,7 +624,8 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
                      0, 0, 0, 0;
 
     // and assemble them into the spatial Jacobian
-    const Geometry::TransformationMatrix T_inv = innerTubeEndFrame().transform().inverse();
+    const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    const Geometry::TransformationMatrix T_inv = T_tip.inverse();
     
     Eigen::Matrix<Real,6,3> J_s;
     J_s.col(0) = GeometryUtils::Vee_SE3(_arm_base_frame.transform().asMatrix() * dT_d_ot_rot * T_inv.asMatrix());
@@ -672,9 +683,11 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFNumericalSpatialJacobian()
 Mat3r VirtuosoArm::_3DOFAnalyticalHybridJacobian()
 {
     // make sure coordinate frames are up to date
-    if (_stale_frames)      
+    // if (_stale_frames)      
         // _recomputeCoordinateFrames();
-        _recomputeCoordinateFramesStaticsModel();
+        // _recomputeCoordinateFramesStaticsModel();
+
+    const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
 
     Eigen::Matrix<Real,3,6> C;
     C << Mat3r::Zero(), Mat3r::Identity();
@@ -682,14 +695,14 @@ Mat3r VirtuosoArm::_3DOFAnalyticalHybridJacobian()
     // std::cout << "C:\n" << C << std::endl;
 
     Eigen::Matrix<Real,6,6> R;
-    R << innerTubeEndFrame().transform().rotMat(), Mat3r::Zero(), Mat3r::Zero(), innerTubeEndFrame().transform().rotMat();
+    R << T_tip.rotMat(), Mat3r::Zero(), Mat3r::Zero(), T_tip.rotMat();
 
     // std::cout << "R:\n" << R << std::endl;
 
     // std::cout << "J_s analytical:\n " << _3DOFSpatialJacobian() << std::endl;
     // std::cout << "J_s numerical:\n " << _3DOFNumericalSpatialJacobian() << std::endl;
 
-    Eigen::Matrix<Real,6,3> J_b = innerTubeEndFrame().transform().inverse().adjoint() * _3DOFNumericalSpatialJacobian();
+    Eigen::Matrix<Real,6,3> J_b = T_tip.inverse().adjoint() * _3DOFSpatialJacobian();
     // std::cout << "J_b:\n" << J_b << std::endl;
     Mat3r J_a = C * R * J_b;
 
