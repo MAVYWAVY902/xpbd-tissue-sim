@@ -38,6 +38,7 @@ class VirtuosoArm : public Object
     using OuterTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES>;
     using InnerTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_IT_FRAMES>;
 
+    /** The type of tool attached to the tip of the arm */
     enum ToolType
     {
         SPATULA,
@@ -45,6 +46,14 @@ class VirtuosoArm : public Object
         CAUTERY
     };
 
+    /** State of a tube at a given point along the tube.
+     * Used in the statics model for the Virtuoso arm, where we integrate from the base to the tip, keeping track of
+     *  - position and orientation
+     *  - internal force and moment
+     *  - total angle swept about z-axis (i.e. torsional angle displacement)
+     * 
+     * Two helper methods are provided to convert between the struct form and a 1D vector of states.
+     */
     struct TubeIntegrationState
     {
         using VecType = Eigen::Vector<Real, 19>; 
@@ -55,6 +64,7 @@ class VirtuosoArm : public Object
         Vec3r internal_moment;          // (global) internal moment at a point along the tube
         Real torsional_displacement;    // total torsional displacement at this point along the tube
 
+        /** Converts a TubeIntegrationState struct to a 1D vector (for use in integration) */
         static VecType toVec(const TubeIntegrationState& state)
         {
             VecType vec;
@@ -62,6 +72,7 @@ class VirtuosoArm : public Object
             return vec;
         }
 
+        /** Converts from a 1D vector back to a TubeIntegrationState */
         static TubeIntegrationState fromVec(const VecType& vec)
         {
             TubeIntegrationState state;
@@ -75,27 +86,15 @@ class VirtuosoArm : public Object
 
     };
 
+    /** Parameters of a tube needed for integration.
+     * These are static parameters of the tube, such as the inverse bending/torsion stiffness and the tube's precurvature.
+     */
     struct TubeIntegrationParams
     {
         using VecType = Eigen::Vector<Real, 6>;
 
         Vec3r precurvature;     // precurvature of the tube
         Vec3r K_inv;            // inverse stiffnesses of the tube (in body frame, hence K is diagonal and can be represented by a 3-vector)
-
-        static VecType toVec(const TubeIntegrationParams& params)
-        {
-            VecType vec;
-            vec << params.precurvature, params.K_inv;
-            return vec;
-        }
-
-        static TubeIntegrationParams fromVec(const VecType& vec)
-        {
-            TubeIntegrationParams params;
-            params.precurvature = vec( Eigen::seqN(0,3) );
-            params.K_inv = vec( Eigen::seqN(3,6) );
-            return params;
-        }
     };
 
     public:
@@ -179,8 +178,14 @@ class VirtuosoArm : public Object
     void setJointState(double ot_rotation, double ot_translation, double it_rotation, double it_translation, int tool);
 
     private:
-    void _updateActuatorValuesForCommandedPosition();
+    /** Recomputes coordinate frames along the Virtuoso arm using purely geometry and not including any tip forces.
+     * This is not used.
+     */
     void _recomputeCoordinateFrames();
+
+    /** Recomputes coordinate frames along the Virtuoso arm using a small-deflection assumption statics model.
+     * This is able to incorporate tip forces and moments into the model.
+     */
     void _recomputeCoordinateFramesStaticsModel();
 
     std::vector<TubeIntegrationState::VecType> _integrateTubeRK4(const TubeIntegrationState& tube_base_state, const std::vector<Real>& s, const Vec3r& K_inv, const Vec3r& u_star) const;

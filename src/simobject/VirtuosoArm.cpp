@@ -183,6 +183,7 @@ void VirtuosoArm::_grasperToolAction()
         _grasped_vertices.clear();
     }
 
+    // apply tip forces
     Vec3r total_force = Vec3r::Zero();
     for (const auto& v : _grasped_vertices)
     {
@@ -190,26 +191,14 @@ void VirtuosoArm::_grasperToolAction()
     }
 
     // smooth forces
-    // Vec3r new_force = total_force*0.5 + _last_force*0.5;
-
-    // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
-
-    std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
-
-    // transform force from global coordinates into haptic input frame
-    // Vec3r test_force(10,0,0);
-    setTipForce(total_force/10);
+    Vec3r new_tip_force = 0.99*tipForce() + 0.01* -total_force/1;   // TODO: investigate why negative sign is needed here
+    setTipForce(new_tip_force);
     
 }
 
 void VirtuosoArm::_cauteryToolAction()
 {
     // do nothing (for now)
-}
-
-void VirtuosoArm::_updateActuatorValuesForCommandedPosition()
-{
-
 }
 
 void VirtuosoArm::_recomputeCoordinateFrames()
@@ -403,41 +392,40 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModel()
 
 std::vector<VirtuosoArm::TubeIntegrationState::VecType> VirtuosoArm::_integrateTubeRK4(const VirtuosoArm::TubeIntegrationState& tube_base_state, const std::vector<Real>& s, const Vec3r& K_inv, const Vec3r& u_star) const
 {
-    std::vector<TubeIntegrationState::VecType> tube_states(s.size());
-    tube_states[0] = TubeIntegrationState::toVec(tube_base_state);
 
+    // a function that uses Cosserat rod ODEs to return the arc length derivative of the state at a given point along the tube
     auto ode_func = [](Real /*s*/, const TubeIntegrationState::VecType& state_vec, const TubeIntegrationParams& params) -> TubeIntegrationState::VecType {
         
         const TubeIntegrationState state = TubeIntegrationState::fromVec(state_vec);
-        TubeIntegrationState state_dot;
+        TubeIntegrationState state_dot; // note that these are ARC LENGTH derivatives, not time derivatives
 
-        // compute arc length derivates of state
-        state_dot.position = state.orientation.col(2);
+        // p_dot = R * e_3
+        state_dot.position = state.orientation.col(2);  
 
+        // u = u_star + K^-1 * R^T * m
         const Vec3r u = params.precurvature + params.K_inv.asDiagonal() * state.orientation.transpose() * state.internal_moment;
+
+        // R_dot = R * u^
         state_dot.orientation = state.orientation * Skew3(u);
+
+        // internal force is constant ==> n_dot = 0
         state_dot.internal_force = Vec3r::Zero();
+
+        // m_dot = -p x n
         state_dot.internal_moment = -state_dot.position.cross( state.internal_force );
+
+        // theta_dot = u_3
         state_dot.torsional_displacement = u[2];
 
         return TubeIntegrationState::toVec(state_dot);
     };
 
+    // integration parameters for the tube consist of the precurvature of the tube and the inverse bending stiffnesses
     TubeIntegrationParams params;
     params.precurvature = u_star;
     params.K_inv = K_inv;
 
-    for (unsigned i = 1; i < s.size(); i++)
-    {
-        // using RK4 integration scheme, compute next state
-        const Real h = s[i] - s[i-1];
-        TubeIntegrationState::VecType next_state = RK4<TubeIntegrationState::VecType, TubeIntegrationParams>(s[i-1], h, tube_states[i-1], params, ode_func);
-        tube_states[i] = next_state;
-
-        // std::cout << "Next position: " << next_state[0] << ", " << next_state[1] << ", " << next_state[2] << std::endl;
-    }
-
-    return tube_states;
+    return RK4<TubeIntegrationState::VecType, TubeIntegrationParams>(TubeIntegrationState::toVec(tube_base_state), s, params, ode_func);
 }
 
 Geometry::TransformationMatrix VirtuosoArm::_computeTipTransform(Real ot_rot, Real ot_trans, Real it_rot, Real it_trans)
