@@ -140,6 +140,9 @@ target_link_libraries(VariadicVectorContainerTest Eigen3::Eigen)
 add_executable(EmbreeTest src/exec/test/embree_test.cpp)
 target_link_libraries(EmbreeTest embree Geometry MeshUtils)
 
+add_executable(VirtuosoStaticsModelTest src/exec/test/virtuoso_statics_model_test.cpp)
+target_link_libraries(VirtuosoStaticsModelTest Eigen3::Eigen SimObject Config)
+
 if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject Solver)
     target_link_libraries(SimObject GPU)

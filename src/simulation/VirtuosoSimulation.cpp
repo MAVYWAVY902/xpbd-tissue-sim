@@ -62,10 +62,10 @@ void VirtuosoSimulation::setup()
     
     // create an object at the tip of the robot to show where grasping is
     Config::RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
-        1.0, 0.0005, false, true, false);
+        1.0, 0.001, false, true, false);
     _tip_cursor = _addObjectFromConfig(&cursor_config);
     assert(_tip_cursor);
-    _tip_cursor->setPosition(_active_arm->tipPosition());
+    _tip_cursor->setPosition(_active_arm->actualTipPosition());
 }
 
 void VirtuosoSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
@@ -128,7 +128,7 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
             _active_arm = _virtuoso_robot->arm1();
         }
 
-        _tip_cursor->setPosition(_active_arm->tipPosition());
+        _tip_cursor->setPosition(_active_arm->commandedTipPosition());
     }
     // when 'TAB' is pressed, switch the camera view to the endoscope view
     else if (key == 258 && action == 1)
@@ -202,7 +202,7 @@ void VirtuosoSimulation::_moveCursor(const Vec3r& dp)
     // move the tip cursor and the active arm tip position
     const Vec3r current_tip_position = _tip_cursor->position();
     _tip_cursor->setPosition(current_tip_position + dp_clamped);
-    _active_arm->setTipPosition(_tip_cursor->position());
+    _active_arm->setCommandedTipPosition(_tip_cursor->position());
 }
 
 void VirtuosoSimulation::_updateGraphics()
@@ -256,7 +256,7 @@ void VirtuosoSimulation::_timeStep()
             const Real cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
         }
-        _tip_cursor->setPosition(_active_arm->tipPosition());
+        _tip_cursor->setPosition(_active_arm->commandedTipPosition());
     }
 
     if (_input_device == Config::SimulationInputDevice::HAPTIC)

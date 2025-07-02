@@ -14,14 +14,14 @@ Real VirtuosoArmSDF::evaluate(const Vec3r& x) const
 {
     const Vec3r x_sdf = _globalToBodyInnerTube(x);
     const Real l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), Real(0.0));
-    return _cylinderSDFDistance(x_sdf, _virtuoso_arm->innerTubeDiameter()/2.0, l);
+    return _cylinderSDFDistance(x_sdf, _virtuoso_arm->innerTubeOuterDiameter()/2.0, l);
 }
 
 Vec3r VirtuosoArmSDF::gradient(const Vec3r& x) const
 {
     const Vec3r x_sdf = _globalToBodyInnerTube(x);
     const Real l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), Real(0.0));
-    const Vec3r body_grad = _cylinderSDFGradient(x_sdf, _virtuoso_arm->innerTubeDiameter()/2.0, l);
+    const Vec3r body_grad = _cylinderSDFGradient(x_sdf, _virtuoso_arm->innerTubeOuterDiameter()/2.0, l);
     return _bodyToGlobalInnerTubeGradient(body_grad);
 }
 

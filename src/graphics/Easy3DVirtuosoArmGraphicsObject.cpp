@@ -59,8 +59,8 @@ void Easy3DVirtuosoArmGraphicsObject::_generateInitialMesh()
     int num_ot_vertices = (ot_frames.size() * _OT_TUBULAR_RES + 2);
     int num_it_vertices = (it_frames.size() * _IT_TUBULAR_RES + 2);
 
-    const Real ot_r = _virtuoso_arm->outerTubeDiameter() / 2.0;
-    const Real it_r = _virtuoso_arm->innerTubeDiameter() / 2.0;
+    const Real ot_r = _virtuoso_arm->outerTubeOuterDiameter() / 2.0;
+    const Real it_r = _virtuoso_arm->innerTubeOuterDiameter() / 2.0;
     const Real ot_trans = _virtuoso_arm->outerTubeTranslation();
     const Real it_trans = _virtuoso_arm->innerTubeTranslation();
     for (unsigned fi = 0; fi < ot_frames.size(); fi++)
@@ -164,7 +164,7 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = _virtuoso_arm->innerTubeFrames();
 
     // make an "outer tube" circle in the XY plane
-    Real ot_r = _virtuoso_arm->outerTubeDiameter() / 2.0;
+    Real ot_r = _virtuoso_arm->outerTubeOuterDiameter() / 2.0;
     std::array<Vec3r, _OT_TUBULAR_RES> ot_circle_pts;
     for (int i = 0; i < _OT_TUBULAR_RES; i++)
     {
@@ -174,7 +174,7 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     }
 
     // make an "inner tube" circle in the XY plane
-    Real it_r = _virtuoso_arm->innerTubeDiameter() / 2.0;
+    Real it_r = _virtuoso_arm->innerTubeOuterDiameter() / 2.0;
     std::array<Vec3r, _IT_TUBULAR_RES> it_circle_pts;
     for (int i = 0; i < _IT_TUBULAR_RES; i++)
     {
@@ -188,6 +188,8 @@ void Easy3DVirtuosoArmGraphicsObject::_updateMesh()
     {
         const Mat3r rot_mat = ot_frames[fi].transform().rotMat();
         const Vec3r translation = ot_frames[fi].transform().translation();
+        // std::cout << "ot_trans " << fi << ": " << translation[0] << ", " << translation[1] << ", " << translation[2] << std::endl;
+        // std::cout << "ot_rot " << fi << ":\n" << rot_mat << std::endl;
         for (unsigned pi = 0; pi < ot_circle_pts.size(); pi++)
         {
             Vec3r transformed_pt = rot_mat * ot_circle_pts[pi] + translation;
