@@ -100,6 +100,16 @@ RUN make -j 8
 RUN make install
 
 
+##########################
+# VTK install
+##########################
+WORKDIR /thirdparty
+RUN git clone https://gitlab.kitware.com/vtk/vtk.git
+WORKDIR vtk/build
+RUN cmake ..
+RUN make -j 8
+RUN make install
+
 
 
 ################################## 
