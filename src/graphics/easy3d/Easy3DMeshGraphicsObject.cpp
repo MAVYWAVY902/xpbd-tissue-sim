@@ -1,4 +1,4 @@
-#include "graphics/Easy3DMeshGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DMeshGraphicsObject.hpp"
 
 #include <easy3d/renderer/drawable_lines.h>
 #include <easy3d/renderer/drawable_points.h>

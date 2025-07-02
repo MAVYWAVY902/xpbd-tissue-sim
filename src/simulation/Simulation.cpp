@@ -6,7 +6,7 @@
 #include "config/simobject/VirtuosoArmConfig.hpp"
 #include "config/simobject/VirtuosoRobotConfig.hpp"
 
-#include "graphics/Easy3DGraphicsScene.hpp"
+#include "graphics/easy3d/Easy3DGraphicsScene.hpp"
 
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"

@@ -1,4 +1,4 @@
-#include "graphics/Easy3DTextRenderingViewer.hpp"
+#include "graphics/easy3d/Easy3DTextRenderingViewer.hpp"
 
 namespace Graphics
 {

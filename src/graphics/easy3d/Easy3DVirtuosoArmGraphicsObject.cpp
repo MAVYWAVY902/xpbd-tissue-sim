@@ -1,4 +1,4 @@
-#include "graphics/Easy3DVirtuosoArmGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DVirtuosoArmGraphicsObject.hpp"
 
 #include "geometry/TransformationMatrix.hpp"
 #include "geometry/CoordinateFrame.hpp"

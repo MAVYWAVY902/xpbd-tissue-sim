@@ -1,4 +1,4 @@
-#include "graphics/Easy3DSphereGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DSphereGraphicsObject.hpp"
 
 #include <easy3d/algo/surface_mesh_factory.h>
 #include <easy3d/renderer/renderer.h>

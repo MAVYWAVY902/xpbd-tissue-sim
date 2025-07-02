@@ -2,7 +2,7 @@
 #define __EASY3D_GRAPHICS_SCENE_HPP
 
 #include "graphics/GraphicsScene.hpp"
-#include "graphics/Easy3DTextRenderingViewer.hpp"
+#include "graphics/easy3d/Easy3DTextRenderingViewer.hpp"
 
 #include "simobject/Object.hpp"
 #include "config/simobject/MeshObjectConfig.hpp"
