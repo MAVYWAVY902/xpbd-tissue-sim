@@ -1,6 +1,8 @@
 #ifndef __VIEWER_HPP
 #define __VIEWER_HPP
 
+#include "common/SimulationInput.hpp"
+
 #include <string>
 #include <map>
 #include <array>
@@ -153,10 +155,10 @@ class Viewer
     // NOTE: the key, action, modifiers, arguments are from the Easy3D keyboard and mouse events. Subject to change as more graphics backends are added.
 
     /** Shared viewer behavior on keyboard events. */
-    void _processKeyboardEvent(int key, int action, int modifiers);
+    void _processKeyboardEvent(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers);
 
     /** Shared viewer behavior on mouse button events. */
-    void _processMouseButtonEvent(int button, int action, int modifiers);
+    void _processMouseButtonEvent(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers);
 
     /** Shared viewer behavior on mouse move events. */
     void _processCursorMoveEvent(double x, double y);

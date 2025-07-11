@@ -55,7 +55,7 @@ void Viewer::editText(  const std::string& name,
     _text_map.at(name).font_size = new_font_size;
 }
 
-void Viewer::_processKeyboardEvent(int key, int action, int modifiers)
+void Viewer::_processKeyboardEvent(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
     if (_simulation)
     {
@@ -64,7 +64,7 @@ void Viewer::_processKeyboardEvent(int key, int action, int modifiers)
     }
 }
 
-void Viewer::_processMouseButtonEvent(int button, int action, int modifiers)
+void Viewer::_processMouseButtonEvent(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
 {
     if (_simulation)
     {

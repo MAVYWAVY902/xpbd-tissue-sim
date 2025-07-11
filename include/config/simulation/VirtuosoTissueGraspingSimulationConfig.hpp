@@ -31,7 +31,7 @@ class VirtuosoTissueGraspingSimulationConfig : public VirtuosoSimulationConfig
     std::optional<std::string> deviceName2() const { return _device_name2.value; }
 
     protected:
-    ConfigParameter<SimulationInputDevice> _input_device;
+    ConfigParameter<SimulationInput::Device> _input_device;
     ConfigParameter<std::string> _fixed_faces_filename;
     ConfigParameter<std::string> _tumor_faces_filename; 
     ConfigParameter<std::string> _goal_filename;

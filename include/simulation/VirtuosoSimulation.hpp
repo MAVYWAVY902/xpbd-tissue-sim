@@ -27,9 +27,9 @@ class VirtuosoSimulation : public Simulation
 
     virtual void setup() override;
 
-    virtual void notifyKeyPressed(int key, int action, int modifiers) override;
+    virtual void notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers) override;
 
-    virtual void notifyMouseButtonPressed(int button, int action, int modifiers) override;
+    virtual void notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers) override;
 
     virtual void notifyMouseMoved(double x, double y) override;
 
@@ -80,7 +80,7 @@ class VirtuosoSimulation : public Simulation
     VirtuosoArmJointState _new_arm2_joint_state;
 
     
-    Config::SimulationInputDevice _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)
+    SimulationInput::Device _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)
 
     RigidSphere* _tip_cursor;       // spherical object for visualizing grasp area 
 
@@ -97,7 +97,7 @@ class VirtuosoSimulation : public Simulation
     constexpr static Real OT_ROT_RATE = 3; // rad/s
     constexpr static Real OT_TRANS_RATE = 0.005; // m/s
 
-    std::map<int, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
+    std::map<SimulationInput::Key, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
 };
 
 } // namespace Sim

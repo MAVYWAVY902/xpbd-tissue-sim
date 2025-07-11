@@ -6,23 +6,16 @@
 namespace Config
 {
 
-enum SimulationInputDevice
-{
-    MOUSE,
-    KEYBOARD,
-    HAPTIC
-};
-
 class VirtuosoSimulationConfig : public SimulationConfig
 {
     /** Predefined default for input device */
-    static std::optional<SimulationInputDevice>& DEFAULT_INPUT_DEVICE() { static std::optional<SimulationInputDevice> input_device(SimulationInputDevice::KEYBOARD); return input_device; }
+    static std::optional<SimulationInput::Device>& DEFAULT_INPUT_DEVICE() { static std::optional<SimulationInput::Device> input_device(SimulationInput::Device::KEYBOARD); return input_device; }
 
-    static std::map<std::string, SimulationInputDevice>& INPUT_DEVICE_OPTIONS() 
+    static std::map<std::string, SimulationInput::Device>& INPUT_DEVICE_OPTIONS() 
     {
-        static std::map<std::string, SimulationInputDevice> input_device_options{{"Mouse", SimulationInputDevice::MOUSE},
-                                                                                 {"Keyboard", SimulationInputDevice::KEYBOARD},
-                                                                                 {"Haptic", SimulationInputDevice::HAPTIC}};
+        static std::map<std::string, SimulationInput::Device> input_device_options{{"Mouse", SimulationInput::Device::MOUSE},
+                                                                                 {"Keyboard", SimulationInput::Device::KEYBOARD},
+                                                                                 {"Haptic", SimulationInput::Device::HAPTIC}};
         return input_device_options;
     }
 
@@ -33,10 +26,10 @@ class VirtuosoSimulationConfig : public SimulationConfig
         _extractParameterWithOptions("input-device", node, _input_device, INPUT_DEVICE_OPTIONS(), DEFAULT_INPUT_DEVICE());
     }
 
-    SimulationInputDevice inputDevice() const { return _input_device.value.value(); }
+    SimulationInput::Device inputDevice() const { return _input_device.value.value(); }
 
     protected:
-    ConfigParameter<SimulationInputDevice> _input_device;
+    ConfigParameter<SimulationInput::Device> _input_device;
 };
 
 } // namespace Config

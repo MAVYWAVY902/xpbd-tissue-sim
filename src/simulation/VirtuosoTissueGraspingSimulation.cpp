@@ -115,7 +115,7 @@ void VirtuosoTissueGraspingSimulation::setup()
     
 }
 
-void VirtuosoTissueGraspingSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
+void VirtuosoTissueGraspingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
 {
 
     // button = 0 ==> left mouse button
@@ -123,7 +123,7 @@ void VirtuosoTissueGraspingSimulation::notifyMouseButtonPressed(int button, int 
     // action = 0 ==> mouse up
     // action = 1 ==> mouse down
     
-    if (_input_device == Config::SimulationInputDevice::MOUSE && button == 0 && action == 1)
+    if (_input_device == SimulationInput::Device::MOUSE && button == SimulationInput::MouseButton::LEFT && action == SimulationInput::MouseAction::PRESS)
     {
         // _toggleTissueGrasping();
         _active_arm->setToolState(!_active_arm->toolState());
@@ -138,31 +138,31 @@ void VirtuosoTissueGraspingSimulation::notifyMouseMoved(double x, double y)
     VirtuosoSimulation::notifyMouseMoved(x, y);
 }
 
-void VirtuosoTissueGraspingSimulation::notifyKeyPressed(int key, int action, int modifiers)
+void VirtuosoTissueGraspingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
 
     // if input mode is keyboard, space bar grasps
-    if (_input_device == Config::SimulationInputDevice::KEYBOARD && key == 32 && action == 1)
+    if (_input_device == SimulationInput::Device::KEYBOARD && key == SimulationInput::Key::SPACE && action == SimulationInput::KeyAction::PRESS)
     {
         _active_arm->setToolState(!_active_arm->toolState());
         // _toggleTissueGrasping();
     }
 
     // if 'B' is pressed, save the tissue mesh to file
-    if (key == 66 && action == 1)
+    if (key == SimulationInput::Key::B && action == SimulationInput::KeyAction::PRESS)
     {
         const std::string filename = "tissue_mesh_" + std::to_string(_time) + "_s.obj";
         _tissue_obj->mesh()->writeMeshToObjFile(filename);
     }
 
     // if 'Z' is pressed, toggle the goal
-    if (key == 90 && action == 1 && _goal_objs.size() > 0)
+    if (key == SimulationInput::Key::Z && action == SimulationInput::KeyAction::PRESS && _goal_objs.size() > 0)
     {
         _toggleGoal();
     }
 
     // if 'C' is pressed, change goals
-    if (key == 67 && action == 1 && _goal_objs.size() > 0)
+    if (key == SimulationInput::Key::C && action == SimulationInput::KeyAction::PRESS && _goal_objs.size() > 0)
     {
         _changeGoal();
     }
@@ -237,7 +237,7 @@ void VirtuosoTissueGraspingSimulation::_timeStep()
 
     VirtuosoSimulation::_timeStep();
 
-    if (_input_device == Config::SimulationInputDevice::HAPTIC)
+    if (_input_device == SimulationInput::Device::HAPTIC)
     {
         HHD handle = _haptic_device_manager->deviceHandles()[0];
 
@@ -271,7 +271,7 @@ void VirtuosoTissueGraspingSimulation::_timeStep()
     //     // transform force from global coordinates into haptic input frame
     //     _active_arm->setTipForce(new_force);
 
-    //     if (_input_device == Config::SimulationInputDevice::HAPTIC)
+    //     if (_input_device == SimulationInput::Device::HAPTIC)
     //     {
     //         HHD handle = _haptic_device_manager->deviceHandles()[0];
     //         const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * new_force;
@@ -284,7 +284,7 @@ void VirtuosoTissueGraspingSimulation::_timeStep()
     // {
     //     _active_arm->setTipForce(Vec3r::Zero());
 
-    //     if (_input_device == Config::SimulationInputDevice::HAPTIC)
+    //     if (_input_device == SimulationInput::Device::HAPTIC)
     //     {
     //         HHD handle = _haptic_device_manager->deviceHandles()[0];
     //         _haptic_device_manager->setForce(handle, Vec3r::Zero());

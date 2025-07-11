@@ -21,9 +21,9 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
      * @param action : the action performed on the keyboard
      * @param modifiers : the modifiers (i.e. Shift, Ctrl, Alt)
      */
-    virtual void notifyKeyPressed(int key, int action, int modifiers) override;
+    virtual void notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers) override;
 
-    virtual void notifyMouseButtonPressed(int button, int action, int modifiers) override;
+    virtual void notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers) override;
 
     virtual void notifyMouseMoved(double x, double y) override;
 

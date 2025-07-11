@@ -14,7 +14,7 @@ VirtuosoSimulation::VirtuosoSimulation(const Config::VirtuosoSimulationConfig* c
     _input_device = config->inputDevice();
 
     // initialize the haptic device if using haptic device input
-    if (_input_device == Config::SimulationInputDevice::HAPTIC)
+    if (_input_device == SimulationInput::Device::HAPTIC)
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
         _haptic_device_manager = std::make_unique<HapticDeviceManager>();
@@ -23,28 +23,28 @@ VirtuosoSimulation::VirtuosoSimulation(const Config::VirtuosoSimulationConfig* c
     }
 
     // initialize the keys map with relevant keycodes for controlling the Virtuoso robot with the keyboard
-    int key_codes[] = {
-        32, // space bar
-        81, // Q
-        87, // W
-        69, // E
-        82, // R
-        65, // A
-        83, // S
-        68, // D
-        70  // F
+    SimulationInput::Key keys[] = {
+        SimulationInput::Key::SPACE, // space bar
+        SimulationInput::Key::Q, // Q
+        SimulationInput::Key::W, // W
+        SimulationInput::Key::E, // E
+        SimulationInput::Key::R, // R
+        SimulationInput::Key::A, // A
+        SimulationInput::Key::S, // S
+        SimulationInput::Key::D, // D
+        SimulationInput::Key::F  // F
     };
 
-    size_t num_key_codes = sizeof(key_codes) / sizeof(key_codes[0]);
-    for (unsigned i = 0; i < num_key_codes; i++)
-        _keys_held[key_codes[i]] = 0;
+    size_t num_keys = sizeof(keys) / sizeof(keys[0]);
+    for (unsigned i = 0; i < num_keys; i++)
+        _keys_held[keys[i]] = 0;
 }
 
 void VirtuosoSimulation::setup()
 {
     Simulation::setup();
     
-    if (_input_device == Config::SimulationInputDevice::MOUSE)
+    if (_input_device == SimulationInput::Device::MOUSE)
     {
         _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
     }
@@ -68,13 +68,8 @@ void VirtuosoSimulation::setup()
     _tip_cursor->setPosition(_active_arm->actualTipPosition());
 }
 
-void VirtuosoSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
+void VirtuosoSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
 {
-
-    // button = 0 ==> left mouse button
-    // button = 1 ==> right mouse button
-    // action = 0 ==> mouse up
-    // action = 1 ==> mouse down
 
     Simulation::notifyMouseButtonPressed(button, action, modifiers);
 
@@ -82,9 +77,9 @@ void VirtuosoSimulation::notifyMouseButtonPressed(int button, int action, int mo
 
 void VirtuosoSimulation::notifyMouseMoved(double x, double y)
 {
-    if (_input_device == Config::SimulationInputDevice::MOUSE)
+    if (_input_device == SimulationInput::Device::MOUSE)
     {
-        if (_keys_held[32] > 0) // space bar = clutch
+        if (_keys_held[SimulationInput::Key::SPACE] > 0) // space bar = clutch
         {
             const Real scaling = 0.00005;
             Real dx = x - _last_mouse_pos[0];
@@ -106,18 +101,18 @@ void VirtuosoSimulation::notifyMouseMoved(double x, double y)
     _last_mouse_pos[1] = y;
 }
 
-void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
+void VirtuosoSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
 
     // find key in map
     auto it = _keys_held.find(key);
     if (it != _keys_held.end())
     {
-        it->second = (action > 0); // if action > 0, key is pressed or held
+        it->second = (action == SimulationInput::KeyAction::PRESS); // if action > 0, key is pressed or held
     }
 
     // when 'ALT' is pressed, switch which arm is active
-    if (key == 342 && action == 1)
+    if (key == SimulationInput::Key::ALT && action == SimulationInput::KeyAction::PRESS)
     {
         if (_virtuoso_robot->hasArm2() && _active_arm == _virtuoso_robot->arm1())
         {
@@ -131,7 +126,7 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
         _tip_cursor->setPosition(_active_arm->commandedTipPosition());
     }
     // when 'TAB' is pressed, switch the camera view to the endoscope view
-    else if (key == 258 && action == 1)
+    else if (key == SimulationInput::Key::TAB && action == SimulationInput::KeyAction::PRESS)
     {
         if (_graphics_scene)
         {
@@ -154,9 +149,9 @@ void VirtuosoSimulation::notifyKeyPressed(int key, int action, int modifiers)
 void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
 {
     // when using mouse input, mouse scrolling moves the robot tip in and out of the page
-    if (_input_device == Config::SimulationInputDevice::MOUSE)
+    if (_input_device == SimulationInput::Device::MOUSE)
     {
-        if (_keys_held[32] > 0) // space bar = clutch
+        if (_keys_held[SimulationInput::Key::SPACE] > 0) // space bar = clutch
         {
             const Real scaling = 0.0003;
             const Vec3r view_dir = _graphics_scene->cameraViewDirection();
@@ -213,45 +208,45 @@ void VirtuosoSimulation::_updateGraphics()
 
 void VirtuosoSimulation::_timeStep()
 {
-    if (_input_device == Config::SimulationInputDevice::KEYBOARD)
+    if (_input_device == SimulationInput::Device::KEYBOARD)
     {
-        if (_keys_held[81] > 0) // Q = CCW inner tube rotation
+        if (_keys_held[SimulationInput::Key::Q] > 0) // Q = CCW inner tube rotation
         {
             const Real cur_rot = _active_arm->innerTubeRotation();
             _active_arm->setInnerTubeRotation(cur_rot + IT_ROT_RATE*dt());
 
         }
-        if (_keys_held[87] > 0) // W = CCW outer tube rotation
+        if (_keys_held[SimulationInput::Key::W] > 0) // W = CCW outer tube rotation
         {
             const Real cur_rot = _active_arm->outerTubeRotation();
             _active_arm->setOuterTubeRotation(cur_rot + OT_ROT_RATE*dt());
         }
-        if (_keys_held[69] > 0) // E = inner tube extension
+        if (_keys_held[SimulationInput::Key::E] > 0) // E = inner tube extension
         {
             const Real cur_trans = _active_arm->innerTubeTranslation();
             _active_arm->setInnerTubeTranslation(cur_trans + IT_TRANS_RATE*dt());
         }
-        if (_keys_held[82] > 0) // R = outer tube extension
+        if (_keys_held[SimulationInput::Key::R] > 0) // R = outer tube extension
         {
             const Real cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans + OT_TRANS_RATE*dt());
         }
-        if (_keys_held[65] > 0) // A = CW inner tube rotation
+        if (_keys_held[SimulationInput::Key::A] > 0) // A = CW inner tube rotation
         {
             const Real cur_rot = _active_arm->innerTubeRotation();
             _active_arm->setInnerTubeRotation(cur_rot - IT_ROT_RATE*dt()); 
         }
-        if (_keys_held[83] > 0) // S = CW outer tube rotation
+        if (_keys_held[SimulationInput::Key::S] > 0) // S = CW outer tube rotation
         {
             const Real cur_rot = _active_arm->outerTubeRotation();
             _active_arm->setOuterTubeRotation(cur_rot - OT_ROT_RATE*dt());
         }
-        if (_keys_held[68] > 0) // D = inner tube retraction
+        if (_keys_held[SimulationInput::Key::D] > 0) // D = inner tube retraction
         {
             const Real cur_trans = _active_arm->innerTubeTranslation();
             _active_arm->setInnerTubeTranslation(cur_trans - IT_TRANS_RATE*dt());
         }
-        if (_keys_held[70] > 0) // F = outer tube retraction
+        if (_keys_held[SimulationInput::Key::F] > 0) // F = outer tube retraction
         {
             const Real cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
@@ -259,7 +254,7 @@ void VirtuosoSimulation::_timeStep()
         _tip_cursor->setPosition(_active_arm->commandedTipPosition());
     }
 
-    if (_input_device == Config::SimulationInputDevice::HAPTIC)
+    if (_input_device == SimulationInput::Device::HAPTIC)
     {
         HHD handle = _haptic_device_manager->deviceHandles()[0];
         Vec3r cur_pos = _haptic_device_manager->position(handle);
