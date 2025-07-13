@@ -4,6 +4,7 @@
 #include "common/types.hpp"
 #include "simobject/Object.hpp"
 #include "config/simobject/RigidObjectConfig.hpp"
+#include "geometry/TransformationMatrix.hpp"
 #include "utils/GeometryUtils.hpp"
 
 namespace Sim
@@ -49,6 +50,8 @@ class RigidObject : public Object
     virtual void setOrientation(const Vec4r& orientation) { if (!_fixed) _q = orientation; }
     const Vec4r& orientation() const { return _q; }
     const Vec4r& prevOrientation() const { return _q_prev; }
+
+    Geometry::TransformationMatrix transform() const;
 
     Real mass() const { return _m; }
     Mat3r I() const { return _I; }

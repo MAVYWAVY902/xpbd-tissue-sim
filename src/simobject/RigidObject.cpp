@@ -101,5 +101,10 @@ Vec3r RigidObject::bodyToGlobal(const Vec3r& x) const
     return _p + GeometryUtils::rotateVectorByQuat(x, _q);
 }
 
+Geometry::TransformationMatrix RigidObject::transform() const
+{
+    return Geometry::TransformationMatrix(GeometryUtils::quatToMat(_q), _p);
+}
+
 
 } // namespace Simulation
