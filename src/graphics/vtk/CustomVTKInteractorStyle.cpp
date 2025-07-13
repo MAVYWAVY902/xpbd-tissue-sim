@@ -1,4 +1,4 @@
-#include "graphics/CustomVTKInteractorStyle.hpp"
+#include "graphics/vtk/CustomVTKInteractorStyle.hpp"
 #include "graphics/vtk/VTKViewer.hpp"
 
 #include "common/SimulationInput.hpp"

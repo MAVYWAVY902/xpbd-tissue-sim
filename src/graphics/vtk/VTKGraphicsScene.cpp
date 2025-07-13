@@ -1,5 +1,10 @@
 #include "graphics/vtk/VTKGraphicsScene.hpp"
 
+#include "simobject/Object.hpp"
+
+#include <vtkOpenGLRenderer.h>
+#include <vtkCamera.h>
+
 namespace Graphics
 {
 
@@ -86,7 +91,7 @@ Vec3r VTKGraphicsScene::cameraUpDirection() const
     return Vec3r(vec[0], vec[1], vec[2]);
 }
 
-void VTKGraphicsScene::setCameraUpDirection(const Vec3r& up_dir) const
+void VTKGraphicsScene::setCameraUpDirection(const Vec3r& up_dir)
 {
     _vtk_viewer->renderer()->GetActiveCamera()->SetViewUp(up_dir[0], up_dir[1], up_dir[2]);
 }

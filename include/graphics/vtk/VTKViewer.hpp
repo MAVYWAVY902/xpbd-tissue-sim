@@ -24,6 +24,7 @@ class VTKViewer : public Viewer
     // keyboard and mouse events
     friend class CustomVTKInteractorStyle;
 
+    public:
     static void renderCallback(vtkObject* caller, long unsigned int event_id, void* client_data, void* call_data);
     const vtkSmartPointer<vtkOpenGLRenderer> renderer() const { return _renderer; }
     vtkSmartPointer<vtkOpenGLRenderer> renderer() { return _renderer; }
@@ -99,7 +100,7 @@ class VTKViewer : public Viewer
     vtkSmartPointer<vtkRenderWindow> _render_window;
     vtkSmartPointer<vtkRenderWindowInteractor> _interactor;
 
-    std::map<std::string, vtSmartPointer<vtkTextActor>> _text_actor_map;
+    std::map<std::string, vtkSmartPointer<vtkTextActor>> _text_actor_map;
 
     std::atomic<bool> _should_render = false;
 };

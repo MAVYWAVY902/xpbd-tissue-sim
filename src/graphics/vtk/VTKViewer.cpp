@@ -140,9 +140,8 @@ void VTKViewer::_setupRenderWindow()
     _render_window->SetWindowName(_name.c_str());
 
     _interactor = vtkSmartPointer<vtkRenderWindowInteractor>::New();
-    // vtkNew<vtkInteractorStyleTrackballCamera> style;
     vtkNew<CustomVTKInteractorStyle> style;
-    style->registerSimulation(sim);
+    style->registerViewer(this);
     _interactor->SetInteractorStyle(style);
     _interactor->SetRenderWindow(_render_window);
 
@@ -174,7 +173,7 @@ void VTKViewer::_setupRenderWindow()
     toneMappingP->SetToneMappingType(vtkToneMappingPass::GenericFilmic);
     toneMappingP->SetGenericFilmicDefaultPresets();
     toneMappingP->SetDelegatePass(cameraP);
-    toneMappingP->SetExposure(_render_config.exposure());
+    toneMappingP->SetExposure(0.5);
 
     _renderer->SetPass(toneMappingP);
 
@@ -203,24 +202,24 @@ void VTKViewer::update()
 
 int VTKViewer::width() const
 {
-    _render_window->GetSize()[0];
+    return _render_window->GetSize()[0];
 }
 
 int VTKViewer::height() const
 {
-    _render_window->GetSize()[1];
+    return _render_window->GetSize()[1];
 }
 
 void VTKViewer::addText(const std::string& name,
                 const std::string& text,
-                const float& x = 0.0f,
-                const float& y = 0.0f,
-                const float& font_size = 20.0f,
-                const TextAlignment& alignment = TextAlignment::LEFT,
-                const Font& font = Font::MAO,
-                const std::array<float,3>& color = {0.0f, 0.0f, 0.0f},
-                const float& line_spacing = 0.5f,
-                const bool& upper_left = true)
+                const float& x,
+                const float& y,
+                const float& font_size,
+                const TextAlignment& alignment,
+                const Font& font,
+                const std::array<float,3>& color,
+                const float& line_spacing,
+                const bool& upper_left)
 {
     Viewer::addText(name, text, x, y, font_size, alignment, font, color, line_spacing, upper_left);
 
@@ -237,7 +236,7 @@ void VTKViewer::addText(const std::string& name,
     _renderer->AddActor(text_actor);
 }
 
-void VTKViewer::removeText(const std::string& name) override
+void VTKViewer::removeText(const std::string& name)
 {
     Viewer::removeText(name);
 
@@ -248,7 +247,7 @@ void VTKViewer::removeText(const std::string& name) override
     _text_actor_map.erase(name);
 }
 
-void editText(const std::string& name, const std::string& new_text) override
+void VTKViewer::editText(const std::string& name, const std::string& new_text)
 {
     Viewer::editText(name, new_text);
 
@@ -260,11 +259,11 @@ void editText(const std::string& name, const std::string& new_text) override
     }
 }
 
-void editText(const std::string& name,
+void VTKViewer::editText(const std::string& name,
                 const std::string& new_text,
                 const float& new_x,
                 const float& new_y,
-                const float& new_font_size) override
+                const float& new_font_size)
 {
     Viewer::editText(name, new_text, new_x, new_y, new_font_size);
     
@@ -274,7 +273,7 @@ void editText(const std::string& name,
         vtkSmartPointer<vtkTextActor> txt = it->second;
         txt->SetInput(new_text.c_str());
         txt->SetDisplayPosition(new_x, new_y);
-        txt->GetTextProperty()->SentFontSize(new_font_size);
+        txt->GetTextProperty()->SetFontSize(new_font_size);
     }
 }
 
@@ -285,7 +284,7 @@ void VTKViewer::_processKeyboardEvent(SimulationInput::Key key, SimulationInput:
 
 void VTKViewer::_processMouseButtonEvent(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
 {
-    Viewer::_processMouseButtonEvent(key, action, modifiers);
+    Viewer::_processMouseButtonEvent(button, action, modifiers);
 }
 
 void VTKViewer::_processCursorMoveEvent(double x, double y)
