@@ -70,6 +70,7 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     vtkNew<vtkPolyDataMapper> mapper;
     mapper->SetInputConnection(tangents->GetOutputPort());
     
+    _vtk_actor = vtkSmartPointer<vtkActor>::New();
     _vtk_actor->SetMapper(mapper);
 
     /** TODO: add more rendering options (color, textures, normals, etc.) */
