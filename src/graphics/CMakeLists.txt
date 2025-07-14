@@ -25,6 +25,7 @@ set(GRAPHICS_HEADERS
     ${GRAPHICS_INCLUDE_DIR}/vtk/VTKSphereGraphicsObject.hpp
     ${GRAPHICS_INCLUDE_DIR}/vtk/VTKMeshGraphicsObject.hpp
     ${GRAPHICS_INCLUDE_DIR}/vtk/VTKVirtuosoArmGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKVirtuosoRobotGraphicsObject.hpp
 )
 
 set(GRAPHICS_SOURCES
@@ -47,6 +48,7 @@ set(GRAPHICS_SOURCES
     ${GRAPHICS_SRC_DIR}/vtk/VTKSphereGraphicsObject.cpp
     ${GRAPHICS_SRC_DIR}/vtk/VTKMeshGraphicsObject.cpp
     ${GRAPHICS_SRC_DIR}/vtk/VTKVirtuosoArmGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKVirtuosoRobotGraphicsObject.cpp
 )
 
 target_sources(Graphics
