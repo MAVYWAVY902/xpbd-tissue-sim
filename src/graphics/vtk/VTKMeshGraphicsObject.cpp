@@ -30,10 +30,10 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     _vtk_poly_data = vtkSmartPointer<vtkPolyData>::New();
 
     // create points
-    const Geometry::Mesh::VerticesMat& vertices = _mesh->vertices();
     vtkNew<vtkPoints> vtk_points;
-    for (const auto& v : vertices.colwise())
+    for (int vi = 0; vi < _mesh->numVertices(); vi++)
     {
+        const Vec3r& v = _mesh->vertex(vi);
         vtk_points->InsertNextPoint(v[0], v[1], v[2]);
     }
 
@@ -50,12 +50,12 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
         vtk_faces->InsertNextCell(tri);
     }
 
-    _vtk_poly_data->SetPoints(points);
-    _vtk_poly_data->SetPolys(faces);
+    _vtk_poly_data->SetPoints(vtk_points);
+    _vtk_poly_data->SetPolys(vtk_faces);
 
     // smooth normals
     vtkNew<vtkPolyDataNormals> normal_generator;
-    normal_generator->SetInput(_vtk_poly_data);
+    normal_generator->SetInputData(_vtk_poly_data);
     normal_generator->SetFeatureAngle(30.0);
     normal_generator->SplittingOff();
     normal_generator->ConsistencyOn();
@@ -75,6 +75,17 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     /** TODO: add more rendering options (color, textures, normals, etc.) */
     
     
+}
+
+void VTKMeshGraphicsObject::update() 
+{
+    vtkPoints* points = _vtk_poly_data->GetPoints();
+    for (int vi = 0; vi < _mesh->numVertices(); vi++)
+    {
+        const Vec3r& v = _mesh->vertex(vi);
+        points->SetPoint(vi, v.data());
+    }
+    points->Modified();
 }
 
 } // namespace Graphics

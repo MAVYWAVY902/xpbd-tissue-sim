@@ -17,6 +17,8 @@ class VTKMeshGraphicsObject : public MeshGraphicsObject
 
     virtual void update() override;
 
+    vtkSmartPointer<vtkActor> actor() { return _vtk_actor; }
+
     private:
     vtkSmartPointer<vtkPolyData> _vtk_poly_data;
     vtkSmartPointer<vtkActor> _vtk_actor;
