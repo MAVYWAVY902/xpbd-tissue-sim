@@ -1,6 +1,13 @@
 #include "graphics/vtk/VTKGraphicsScene.hpp"
+#include "graphics/vtk/VTKBoxGraphicsObject.hpp"
+#include "graphics/vtk/VTKCylinderGraphicsObject.hpp"
+#include "graphics/vtk/VTKSphereGraphicsObject.hpp"
+#include "graphics/vtk/VTKMeshGraphicsObject.hpp"
+#include "graphics/vtk/VTKVirtuosoArmGraphicsObject.hpp"
+#include "graphics/vtk/VTKVirtuosoRobotGraphicsObject.hpp"
 
 #include "simobject/Object.hpp"
+#include "simobject/MeshObject.hpp"
 
 #include <vtkOpenGLRenderer.h>
 #include <vtkCamera.h>
@@ -52,7 +59,79 @@ int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConf
         assert(0);
     }
 
-    /** TODO: create new graphics object depending on type */
+    /** TODO: this stinks! Maybe use templates? */
+    std::unique_ptr<GraphicsObject> new_graphics_obj;
+
+    // try downcasting to MeshObject
+    if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(obj))
+    {
+
+        // create a new MeshGraphicsObject for visualizing this MeshObject
+        auto ptr = std::make_unique<VTKMeshGraphicsObject>(obj->name(), mo->mesh());
+        _vtk_viewer->renderer()->AddActor(ptr->actor());
+        new_graphics_obj = std::move(ptr);
+    }
+
+    // try downcasting to a RigidSphere
+    else if (const Sim::RigidSphere* sphere = dynamic_cast<const Sim::RigidSphere*>(obj))
+    {
+        // create a new SphereGraphicsObject for visualizing the sphere
+        auto ptr = std::make_unique<VTKSphereGraphicsObject>(sphere->name(), sphere);
+        _vtk_viewer->renderer()->AddActor(ptr->actor());
+        new_graphics_obj = std::move(ptr);
+        
+    }
+
+    // try downcasting to a RigidBox
+    else if (const Sim::RigidBox* box = dynamic_cast<const Sim::RigidBox*>(obj))
+    {
+        auto ptr = std::make_unique<VTKBoxGraphicsObject>(box->name(), box);
+        _vtk_viewer->renderer()->AddActor(ptr->actor());
+        new_graphics_obj = std::move(ptr);
+    }
+
+    // try downcasting to a RigidCylinder
+    else if (const Sim::RigidCylinder* cyl = dynamic_cast<const Sim::RigidCylinder*>(obj))
+    {
+        auto ptr = std::make_unique<VTKCylinderGraphicsObject>(cyl->name(), cyl);
+        _vtk_viewer->renderer()->AddActor(ptr->actor());
+        new_graphics_obj = std::move(ptr);
+    }
+
+    // try downcasting to a VirtuosoArm
+    else if (const Sim::VirtuosoArm* arm = dynamic_cast<const Sim::VirtuosoArm*>(obj))
+    {
+        auto ptr = std::make_unique<VTKVirtuosoArmGraphicsObject>(arm->name(), arm);
+        _vtk_viewer->renderer()->AddActor(ptr->actor());
+        new_graphics_obj = std::move(ptr);
+        
+    }
+
+    else if (const Sim::VirtuosoRobot* robot = dynamic_cast<const Sim::VirtuosoRobot*>(obj))
+    {
+        auto ptr = std::make_unique<VTKVirtuosoRobotGraphicsObject>(robot->name(), robot);
+        _vtk_viewer->renderer()->AddActor(ptr->actor());
+        new_graphics_obj = std::move(ptr);
+
+        if (robot->hasArm1())
+        {
+            std::unique_ptr<VTKVirtuosoArmGraphicsObject> arm1_graphics_obj = std::make_unique<VTKVirtuosoArmGraphicsObject>(robot->arm1()->name(), robot->arm1());
+            _vtk_viewer->renderer()->AddActor(arm1_graphics_obj->actor());
+            _graphics_objects.push_back(std::move(arm1_graphics_obj));
+        }
+        if (robot->hasArm2())
+        {
+            std::unique_ptr<VTKVirtuosoArmGraphicsObject> arm2_graphics_obj = std::make_unique<VTKVirtuosoArmGraphicsObject>(robot->arm2()->name(), robot->arm2());
+            _vtk_viewer->renderer()->AddActor(arm2_graphics_obj->actor());
+            _graphics_objects.push_back(std::move(arm2_graphics_obj));
+        }
+        
+    }
+
+     // finally add the GraphicsObject to the list of GraphicsObjects
+    _graphics_objects.push_back(std::move(new_graphics_obj));
+
+    return _graphics_objects.size() - 1;
 }
 
 void VTKGraphicsScene::setCameraOrthographic()
