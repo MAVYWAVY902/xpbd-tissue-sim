@@ -41,12 +41,12 @@ VTKVirtuosoArmGraphicsObject::VTKVirtuosoArmGraphicsObject(const std::string& na
     normal_generator->ComputeCellNormalsOff();
     normal_generator->Update();
 
-    vtkNew<vtkPolyDataTangents> tangents;
-    tangents->SetInputConnection(normal_generator->GetOutputPort());
-    tangents->Update();
+    // vtkNew<vtkPolyDataTangents> tangents;
+    // tangents->SetInputConnection(normal_generator->GetOutputPort());
+    // tangents->Update();
 
     vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(tangents->GetOutputPort());
+    mapper->SetInputConnection(normal_generator->GetOutputPort());
     
     _vtk_actor = vtkSmartPointer<vtkActor>::New();
     _vtk_actor->SetMapper(mapper);

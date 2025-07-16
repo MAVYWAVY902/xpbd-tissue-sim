@@ -8,6 +8,7 @@
 #include "config/simobject/VirtuosoRobotConfig.hpp"
 
 #include "graphics/easy3d/Easy3DGraphicsScene.hpp"
+#include "graphics/vtk/VTKGraphicsScene.hpp"
 
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
@@ -50,6 +51,11 @@ Simulation::Simulation(const Config::SimulationConfig* config)
     if (_config->visualization() == Config::Visualization::EASY3D)
     {
         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
+    }
+
+    if (_config->visualization() == Config::Visualization::VTK)
+    {
+        _graphics_scene = std::make_unique<Graphics::VTKGraphicsScene>("main");
     }
 
     // initialize the Embree scene

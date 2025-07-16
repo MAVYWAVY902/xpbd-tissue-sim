@@ -118,7 +118,7 @@ add_library(VirtuosoSimulation)
 # add_library(InitialDeformationSimulation)
 add_subdirectory("src/simulation")
 
-target_link_libraries(ResidualSimulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp)
+target_link_libraries(ResidualSimulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp ${VTK_LIBRARIES})
 target_link_libraries(BeamSimulation ResidualSimulation)
 target_link_libraries(GraspingSimulation ResidualSimulation)
 target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
@@ -128,7 +128,7 @@ target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
 
 ### Create executables
 add_executable(Test src/exec/main.cpp)
-target_link_libraries(Test ResidualSimulation)
+target_link_libraries(Test ResidualSimulation ${VTK_LIBRARIES})
 
 add_executable(BeamTest src/exec/beam_test_main.cpp)
 target_link_libraries(BeamTest BeamSimulation)
@@ -162,6 +162,14 @@ target_link_libraries(EmbreeTest embree Geometry MeshUtils)
 
 add_executable(VirtuosoStaticsModelTest src/exec/test/virtuoso_statics_model_test.cpp)
 target_link_libraries(VirtuosoStaticsModelTest Eigen3::Eigen SimObject Config)
+
+add_executable(VTKTest src/exec/test/vtk_test.cpp)
+target_link_libraries(VTKTest Graphics ${VTK_LIBRARIES})
+
+vtk_module_autoinit(
+  TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest
+  MODULES ${VTK_LIBRARIES}
+)
 
 if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject Solver)

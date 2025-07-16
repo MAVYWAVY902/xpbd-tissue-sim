@@ -12,6 +12,10 @@
 #include <vtkOpenGLRenderer.h>
 #include <vtkCamera.h>
 
+#include <vtkOutputWindow.h>
+#include <vtkObjectFactory.h>
+#include <vtkAutoInit.h>
+
 namespace Graphics
 {
 
