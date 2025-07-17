@@ -8,25 +8,20 @@ namespace Config
 
 class OutputSimulationConfig : public SimulationConfig
 {
-    /** Static predefined default for simulation time step */
-    static std::optional<Real>& DEFAULT_PRINT_INTERVAL() { static std::optional<Real> print_interval(1e-3); return print_interval; }
-    /** Static predefined efault for output file folder location */
-    static std::optional<std::string>& DEFAULT_OUTPUT_FOLDER() { static std::optional<std::string> output_folder("../output"); return output_folder; }
-
     public:
     explicit OutputSimulationConfig(const YAML::Node& node)
         : SimulationConfig(node)
     {
-        _extractParameter("print-interval", node, _print_interval, DEFAULT_PRINT_INTERVAL());
-        _extractParameter("output-folder", node, _output_folder, DEFAULT_OUTPUT_FOLDER());
+        _extractParameter("print-interval", node, _print_interval);
+        _extractParameter("output-folder", node, _output_folder);
     }
 
-    std::optional<Real> printInterval() const { return _print_interval.value; }
-    std::optional<std::string> outputFolder() const { return _output_folder.value; }
+    Real printInterval() const { return _print_interval.value; }
+    std::string outputFolder() const { return _output_folder.value; }
 
     protected:
-    ConfigParameter<Real> _print_interval; // s
-    ConfigParameter<std::string> _output_folder;
+    ConfigParameter<Real> _print_interval = ConfigParameter<Real>(1e-3); // s
+    ConfigParameter<std::string> _output_folder = ConfigParameter<std::string>("../output");
 };
 
 } // namespace Config

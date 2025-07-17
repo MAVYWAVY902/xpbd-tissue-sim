@@ -8,9 +8,6 @@ namespace Config
 
 class VirtuosoSimulationConfig : public SimulationConfig
 {
-    /** Predefined default for input device */
-    static std::optional<SimulationInput::Device>& DEFAULT_INPUT_DEVICE() { static std::optional<SimulationInput::Device> input_device(SimulationInput::Device::KEYBOARD); return input_device; }
-
     static std::map<std::string, SimulationInput::Device>& INPUT_DEVICE_OPTIONS() 
     {
         static std::map<std::string, SimulationInput::Device> input_device_options{{"Mouse", SimulationInput::Device::MOUSE},
@@ -23,13 +20,13 @@ class VirtuosoSimulationConfig : public SimulationConfig
     explicit VirtuosoSimulationConfig(const YAML::Node& node)
         : SimulationConfig(node)
     {
-        _extractParameterWithOptions("input-device", node, _input_device, INPUT_DEVICE_OPTIONS(), DEFAULT_INPUT_DEVICE());
+        _extractParameterWithOptions("input-device", node, _input_device, INPUT_DEVICE_OPTIONS());
     }
 
-    SimulationInput::Device inputDevice() const { return _input_device.value.value(); }
+    SimulationInput::Device inputDevice() const { return _input_device.value; }
 
     protected:
-    ConfigParameter<SimulationInput::Device> _input_device;
+    ConfigParameter<SimulationInput::Device> _input_device = ConfigParameter<SimulationInput::Device>(SimulationInput::Device::MOUSE);
 };
 
 } // namespace Config

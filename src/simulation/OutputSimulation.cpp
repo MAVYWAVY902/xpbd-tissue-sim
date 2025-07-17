@@ -13,9 +13,9 @@ OutputSimulation::OutputSimulation(const Config::OutputSimulationConfig* config)
     _last_print_sim_time = 0;
 
     // extract the stretch velocity and time from the config object
-    _print_interval_s = config->printInterval().value();
+    _print_interval_s = config->printInterval();
 
-    std::string output_folder = config->outputFolder().value();
+    std::string output_folder = config->outputFolder();
     if (output_folder.back() != '/')
     {
         output_folder += "/";

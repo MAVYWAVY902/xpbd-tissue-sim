@@ -11,7 +11,7 @@ FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::FirstOrderXP
     : XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>(sim, config)
 {
     std::cout << "FirstOrderXPBDMeshObject constructor! " << std::endl;
-    _damping_multiplier = config->dampingMultiplier().value();
+    _damping_multiplier = config->dampingMultiplier();
 
     std::cout << "Damping Multiplier: " << _damping_multiplier << std::endl;
 }

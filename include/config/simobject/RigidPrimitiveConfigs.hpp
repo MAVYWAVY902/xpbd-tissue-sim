@@ -19,12 +19,11 @@ class RigidSphereConfig : public RigidObjectConfig
     using ObjectType = Sim::RigidSphere;
 
     public:
-    static std::optional<Real>& DEFAULT_RADIUS() { static std::optional<Real> r(1); return r; }
 
     explicit RigidSphereConfig(const YAML::Node& node)
         : RigidObjectConfig(node)
     {
-        _extractParameter("radius", node, _radius, DEFAULT_RADIUS());
+        _extractParameter("radius", node, _radius);
     }
 
     explicit RigidSphereConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
@@ -38,10 +37,10 @@ class RigidSphereConfig : public RigidObjectConfig
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
 
-    Real radius() const { return _radius.value.value(); }
+    Real radius() const { return _radius.value; }
 
     protected:
-    ConfigParameter<Real> _radius;
+    ConfigParameter<Real> _radius = ConfigParameter<Real>(1);
 
 };
 
@@ -54,12 +53,11 @@ class RigidBoxConfig : public RigidObjectConfig
     using ObjectType = Sim::RigidBox;
 
     public:
-    static std::optional<Vec3r>& DEFAULT_SIZE() { static std::optional<Vec3r> size({1,1,1}); return size; }
 
     explicit RigidBoxConfig(const YAML::Node& node)
         : RigidObjectConfig(node)
     {
-        _extractParameter("size", node, _size, DEFAULT_SIZE());
+        _extractParameter("size", node, _size);
     }
 
     explicit RigidBoxConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
@@ -72,10 +70,10 @@ class RigidBoxConfig : public RigidObjectConfig
 
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
-    Vec3r size() const { return _size.value.value(); }
+    Vec3r size() const { return _size.value; }
 
     protected:
-    ConfigParameter<Vec3r> _size;
+    ConfigParameter<Vec3r> _size = ConfigParameter<Vec3r>(Vec3r(1,1,1));
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -87,14 +85,12 @@ class RigidCylinderConfig : public RigidObjectConfig
     using ObjectType = Sim::RigidCylinder;
 
     public:
-    static std::optional<Real>& DEFAULT_RADIUS() { static std::optional<Real> r(1); return r; }
-    static std::optional<Real>& DEFAULT_HEIGHT() { static std::optional<Real> h(1); return h; }
     
     explicit RigidCylinderConfig(const YAML::Node& node)
         : RigidObjectConfig(node)
     {
-        _extractParameter("radius", node, _radius, DEFAULT_RADIUS());
-        _extractParameter("height", node, _height, DEFAULT_HEIGHT());
+        _extractParameter("radius", node, _radius);
+        _extractParameter("height", node, _height);
     }
 
     explicit RigidCylinderConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
@@ -108,12 +104,12 @@ class RigidCylinderConfig : public RigidObjectConfig
 
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
-    Real radius() const { return _radius.value.value(); }
-    Real height() const { return _height.value.value(); }
+    Real radius() const { return _radius.value; }
+    Real height() const { return _height.value; }
 
     protected:
-    ConfigParameter<Real> _radius;
-    ConfigParameter<Real> _height;
+    ConfigParameter<Real> _radius = ConfigParameter<Real>(1);
+    ConfigParameter<Real> _height = ConfigParameter<Real>(1);
 };
 
 } // namespace Config

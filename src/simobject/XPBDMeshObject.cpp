@@ -33,7 +33,7 @@ XPBDMeshObject_Base::XPBDMeshObject_Base(const Simulation* sim, const ConfigType
 template<typename SolverType, typename ...ConstraintTypes>
 XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject(const Simulation* sim, const ConfigType* config)
     : XPBDMeshObject_Base(sim, config), _material(config->materialConfig()),
-        _solver(this, config->numSolverIters().value(), config->residualPolicy().value())
+        _solver(this, config->numSolverIters(), config->residualPolicy())
 {
     /* extract values from the Config object */
     
@@ -41,11 +41,7 @@ XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject(const S
     _initial_velocity = config->initialVelocity();
     
     // constraint specifications
-    _constraints_with_residual = config->withResidual().value();
-    _constraints_with_damping = config->withDamping().value();
     _constraint_type = config->constraintType();
-
-    _damping_gamma = config->dampingGamma().value();
 }
 
 template<typename SolverType, typename... ConstraintTypes>

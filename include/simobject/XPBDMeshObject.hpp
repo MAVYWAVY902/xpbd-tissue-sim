@@ -192,12 +192,8 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
     std::vector<int> _vertex_attached_elements;
     std::vector<bool> _is_fixed_vertex;
 
-    Real _damping_gamma;                  // the amount of damping per constraint. gamma = alpha_tilde * beta_tilde / dt (see Equation (26) in the XPBD paper for more details.)
-    
     XPBDMeshObjectConstraintConfigurationEnum _constraint_type;    // the type of constraints to create - set by the Config object
-    bool _constraints_with_residual;        // whether or not the constraints should include the primary residual in their update - set by the Config object
-    bool _constraints_with_damping;         // whether or not the constraints should include damping in their update - set by the Config object
-
+    
     // TODO: generalize constraints somehow
     // std::unique_ptr<    Solver::XPBDSolver<Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
     //                     Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,

@@ -10,17 +10,14 @@ namespace Config
 class RigidObjectConfig : public ObjectConfig
 {
     public:
-    static std::optional<Vec3r>& DEFAULT_ANGULAR_VELOCITY() { static std::optional<Vec3r> ang_vel({0,0,0}); return ang_vel; }
-    static std::optional<Real>& DEFAULT_DENSITY() { static std::optional<Real> density(1000); return density; }
-    static std::optional<bool>& DEFAULT_FIXED() { static std::optional<bool> fixed(false); return fixed; }
 
     explicit RigidObjectConfig(const YAML::Node& node)
         : ObjectConfig(node)
     {
         // extract parameters from Config
-        _extractParameter("angular-velocity", node, _initial_ang_velocity, DEFAULT_ANGULAR_VELOCITY());
-        _extractParameter("density", node, _density, DEFAULT_DENSITY());
-        _extractParameter("fixed", node, _fixed, DEFAULT_FIXED());
+        _extractParameter("angular-velocity", node, _initial_ang_velocity);
+        _extractParameter("density", node, _density);
+        _extractParameter("fixed", node, _fixed);
     }
 
     explicit RigidObjectConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
@@ -33,14 +30,14 @@ class RigidObjectConfig : public ObjectConfig
         _fixed.value = fixed;
     }
 
-    Vec3r initialAngularVelocity() const { return _initial_ang_velocity.value.value(); }
-    Real density() const { return _density.value.value(); }
-    bool fixed() const { return _fixed.value.value(); }
+    Vec3r initialAngularVelocity() const { return _initial_ang_velocity.value; }
+    Real density() const { return _density.value; }
+    bool fixed() const { return _fixed.value; }
 
     protected:
-    ConfigParameter<Vec3r> _initial_ang_velocity;
-    ConfigParameter<Real> _density;
-    ConfigParameter<bool> _fixed;
+    ConfigParameter<Vec3r> _initial_ang_velocity = ConfigParameter<Vec3r>(Vec3r(0,0,0));
+    ConfigParameter<Real> _density = ConfigParameter<Real>(1000);
+    ConfigParameter<bool> _fixed = ConfigParameter<bool>(false);
 
 };
 

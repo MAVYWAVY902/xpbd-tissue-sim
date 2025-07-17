@@ -11,7 +11,6 @@ VTKBoxGraphicsObject::VTKBoxGraphicsObject(const std::string& name, const Sim::R
 {
     // create the vtkActor from a box source
     Vec3r box_size = box->size();
-    Vec3r box_loc = box->position();
     _cube_source = vtkSmartPointer<vtkCubeSource>::New();
     _cube_source->SetXLength(box_size[0]);
     _cube_source->SetYLength(box_size[1]);

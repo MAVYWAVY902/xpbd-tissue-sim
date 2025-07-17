@@ -42,7 +42,7 @@ class RigidMeshObjectConfig : public RigidObjectConfig, public MeshObjectConfig
     std::optional<std::string> sdfFilename() const { return _sdf_filename.value; }
 
     protected:
-    ConfigParameter<std::string> _sdf_filename;
+    ConfigParameter<std::optional<std::string>> _sdf_filename;
 };
 
 } // namespace Config
