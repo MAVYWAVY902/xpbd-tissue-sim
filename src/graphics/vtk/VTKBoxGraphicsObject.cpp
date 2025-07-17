@@ -26,7 +26,8 @@ VTKBoxGraphicsObject::VTKBoxGraphicsObject(const std::string& name, const Sim::R
 
     _vtk_transform = vtkSmartPointer<vtkTransform>::New();
 
-    Mat4r box_transform_mat = box->transform().asMatrix();
+    // IMPORTANT: use row-major ordering since that is what VTKTransform expects (default for Eigen is col-major)
+    Eigen::Matrix<Real, 4, 4, Eigen::RowMajor> box_transform_mat = _box->transform().asMatrix();
     _vtk_transform->SetMatrix(box_transform_mat.data());
 
     _box_actor->SetUserTransform(_vtk_transform);
@@ -34,7 +35,8 @@ VTKBoxGraphicsObject::VTKBoxGraphicsObject(const std::string& name, const Sim::R
 
 void VTKBoxGraphicsObject::update()
 {
-    Mat4r box_transform_mat = _box->transform().asMatrix();
+    // IMPORTANT: use row-major ordering since that is what VTKTransform expects (default for Eigen is col-major)
+    Eigen::Matrix<Real, 4, 4, Eigen::RowMajor> box_transform_mat = _box->transform().asMatrix();
     _vtk_transform->SetMatrix(box_transform_mat.data());
 }
 

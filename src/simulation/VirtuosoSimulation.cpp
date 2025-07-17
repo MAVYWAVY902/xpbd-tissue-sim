@@ -46,7 +46,7 @@ void VirtuosoSimulation::setup()
     
     if (_input_device == SimulationInput::Device::MOUSE)
     {
-        _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
+        // _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
     }
 
     // find the VirtuosoRobot object - necessary for Virtuoso simulation controls
@@ -92,7 +92,7 @@ void VirtuosoSimulation::notifyMouseMoved(double x, double y)
             const Vec3r right_vec = _graphics_scene->cameraRightDirection();
             
             const Vec3r current_tip_position = _tip_cursor->position();
-            const Vec3r offset = right_vec*dx + up_vec*-dy; // negate dy since increasing dy is actually opposite of camera frame up vec
+            const Vec3r offset = right_vec*dx + up_vec*dy;
             _moveCursor(offset*scaling);
         }
     }
@@ -138,7 +138,7 @@ void VirtuosoSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationIn
             const Vec3r& y_axis_pt = cam_transform.rotMat() * Vec3r(0,1,0) + cam_transform.translation();
             _graphics_scene->setCameraViewDirection(z_axis_pt - cam_transform.translation());
             _graphics_scene->setCameraUpDirection(y_axis_pt - cam_transform.translation());
-            _graphics_scene->setCameraFOV(80.0 * M_PI / 180.0);
+            _graphics_scene->setCameraFOV(80.0);
         }
     }
 

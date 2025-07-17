@@ -180,7 +180,7 @@ void Easy3DGraphicsScene::setCameraPerspective()
 
 void Easy3DGraphicsScene::setCameraFOV(Real fov)
 {
-    _easy3d_viewer->camera()->setFieldOfView(fov);
+    _easy3d_viewer->camera()->setFieldOfView(fov * M_PI/180.0);
 }
 
 Vec3r Easy3DGraphicsScene::cameraViewDirection() const

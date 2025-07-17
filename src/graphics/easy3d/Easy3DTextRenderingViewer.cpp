@@ -187,7 +187,7 @@ bool Easy3DTextRenderingViewer::callback_event_mouse_button(int e3d_button, int 
 
 bool Easy3DTextRenderingViewer::callback_event_cursor_pos(double x, double y)
 {
-    _processCursorMoveEvent(x, y);
+    _processCursorMoveEvent(x, height()-y);
 
     // if mouse interaction is enabled, pass onthe event to easy3d::Viewer
     if (_enable_mouse_interaction)

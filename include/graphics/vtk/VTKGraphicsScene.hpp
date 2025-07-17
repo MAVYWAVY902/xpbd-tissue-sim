@@ -47,7 +47,7 @@ class VTKGraphicsScene : public GraphicsScene
     /** Sets the camera mode to Perspective */
     virtual void setCameraPerspective() override;
 
-    /** Sets the FOV of the camera (FOV in radians). */
+    /** Sets the FOV of the camera (FOV in degrees). */
     virtual void setCameraFOV(Real fov) override;
 
 

@@ -38,10 +38,10 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     }
 
     // create faces
-    const Geometry::Mesh::FacesMat& faces = _mesh->faces();
     vtkNew<vtkCellArray> vtk_faces;
-    for (const auto& f : faces.colwise())
+    for (int fi = 0; fi < _mesh->numFaces(); fi++)
     {
+        const Vec3i& f = _mesh->face(fi);
         vtkNew<vtkTriangle> tri;
         tri->GetPointIds()->SetId(0, f[0]);
         tri->GetPointIds()->SetId(1, f[1]);

@@ -23,11 +23,17 @@ VTKVirtuosoRobotGraphicsObject::VTKVirtuosoRobotGraphicsObject(const std::string
     _vtk_transform = vtkSmartPointer<vtkTransform>::New();
 
     Geometry::TransformationMatrix endoscope_transform = _virtuoso_robot->endoscopeFrame().transform();
-    const Vec3r cyl_frame_pos = endoscope_transform.translation() - endoscope_transform.rotMat().col(2) * _virtuoso_robot->endoscopeLength();
+    const Vec3r cyl_frame_pos = endoscope_transform.translation() - endoscope_transform.rotMat().col(2) * _virtuoso_robot->endoscopeLength()/2.0;
 
     Geometry::TransformationMatrix cyl_transform(endoscope_transform.rotMat(), cyl_frame_pos);
-    Mat4r transform_mat = cyl_transform.asMatrix();
+     // IMPORTANT: use row-major ordering since that is what VTKTransform expects (default for Eigen is col-major)
+    Eigen::Matrix<Real, 4, 4, Eigen::RowMajor> transform_mat = cyl_transform.asMatrix();
     _vtk_transform->SetMatrix(transform_mat.data());
+
+    // vtkCylinderSource creates a cylinder along the y-axis, but we expect the endoscope to be along the z-axis
+    // hence we need to first rotate the cylinder provided by vtkCylinderSource by -90 deg about the x-axis
+    _vtk_transform->PreMultiply();
+    _vtk_transform->RotateX(-90);
 
     _vtk_actor->SetUserTransform(_vtk_transform);
 }
@@ -35,11 +41,17 @@ VTKVirtuosoRobotGraphicsObject::VTKVirtuosoRobotGraphicsObject(const std::string
 void VTKVirtuosoRobotGraphicsObject::update()
 {
     Geometry::TransformationMatrix endoscope_transform = _virtuoso_robot->endoscopeFrame().transform();
-    const Vec3r cyl_frame_pos = endoscope_transform.translation() - endoscope_transform.rotMat().col(2) * _virtuoso_robot->endoscopeLength();
+    const Vec3r cyl_frame_pos = endoscope_transform.translation() - endoscope_transform.rotMat().col(2) * _virtuoso_robot->endoscopeLength()/2.0;
 
     Geometry::TransformationMatrix cyl_transform(endoscope_transform.rotMat(), cyl_frame_pos);
-    Mat4r transform_mat = cyl_transform.asMatrix();
+     // IMPORTANT: use row-major ordering since that is what VTKTransform expects (default for Eigen is col-major)
+    Eigen::Matrix<Real, 4, 4, Eigen::RowMajor> transform_mat = cyl_transform.asMatrix();
     _vtk_transform->SetMatrix(transform_mat.data());
+
+    // vtkCylinderSource creates a cylinder along the y-axis, but we expect the endoscope to be along the z-axis
+    // hence we need to first rotate the cylinder provided by vtkCylinderSource by -90 deg about the x-axis
+    _vtk_transform->PreMultiply();
+    _vtk_transform->RotateX(-90);
 }
 
 } // namespace Graphics

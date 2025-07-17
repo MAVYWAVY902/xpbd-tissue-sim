@@ -21,16 +21,28 @@ VTKCylinderGraphicsObject::VTKCylinderGraphicsObject(const std::string& name, co
 
     _vtk_transform = vtkSmartPointer<vtkTransform>::New();
 
-    Mat4r cyl_transform_mat = cyl->transform().asMatrix();
+    // IMPORTANT: use row-major ordering since that is what VTKTransform expects (default for Eigen is col-major)
+    Eigen::Matrix<Real, 4, 4, Eigen::RowMajor> cyl_transform_mat = cyl->transform().asMatrix();
     _vtk_transform->SetMatrix(cyl_transform_mat.data());
+
+    // vtkCylinderSource creates a cylinder along the y-axis, but we expect the cylinder to be along the z-axis
+    // hence we need to first rotate the cylinder provided by vtkCylinderSource by -90 deg about the x-axis
+    _vtk_transform->PreMultiply();
+    _vtk_transform->RotateX(-90);
 
     _cyl_actor->SetUserTransform(_vtk_transform);
 }
 
 void VTKCylinderGraphicsObject::update()
 {
-    Mat4r cyl_transform_mat = _cylinder->transform().asMatrix();
+    // IMPORTANT: use row-major ordering since that is what VTKTransform expects (default for Eigen is col-major)
+    Eigen::Matrix<Real, 4, 4, Eigen::RowMajor> cyl_transform_mat = _cylinder->transform().asMatrix();
     _vtk_transform->SetMatrix(cyl_transform_mat.data());
+
+    // vtkCylinderSource creates a cylinder along the y-axis, but we expect the cylinder to be along the z-axis
+    // hence we need to first rotate the cylinder provided by vtkCylinderSource by -90 deg about the x-axis
+    _vtk_transform->PreMultiply();
+    _vtk_transform->RotateX(-90);
 }
 
 } // namespace Graphics

@@ -103,7 +103,7 @@ objects:
     type: "RigidSphere"
     radius: 0.5
     density: 10000
-    position: [0, 0, 0]
+    position: [0, 0, -1.5]
     velocity: [0, 0, 0]
     fixed: true
     collisions: true

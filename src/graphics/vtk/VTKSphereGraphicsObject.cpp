@@ -1,6 +1,7 @@
 #include "graphics/vtk/VTKSphereGraphicsObject.hpp"
 
 #include <vtkPolyDataMapper.h>
+#include <vtkMatrix4x4.h>
 
 namespace Graphics
 {
@@ -20,7 +21,8 @@ VTKSphereGraphicsObject::VTKSphereGraphicsObject(const std::string& name, const 
 
     _vtk_transform = vtkSmartPointer<vtkTransform>::New();
 
-    Mat4r sphere_transform_mat = sphere->transform().asMatrix();
+    // IMPORTANT: use row-major ordering since that is what VTKTransform expects (default for Eigen is col-major)
+    Eigen::Matrix<Real, 4, 4, Eigen::RowMajor> sphere_transform_mat = sphere->transform().asMatrix();
     _vtk_transform->SetMatrix(sphere_transform_mat.data());
 
     _sphere_actor->SetUserTransform(_vtk_transform);
@@ -28,7 +30,8 @@ VTKSphereGraphicsObject::VTKSphereGraphicsObject(const std::string& name, const 
 
 void VTKSphereGraphicsObject::update()
 {
-    Mat4r sphere_transform_mat = _sphere->transform().asMatrix();
+    // IMPORTANT: use row-major ordering since that is what VTKTransform expects (default for Eigen is col-major)
+    Eigen::Matrix<Real, 4, 4, Eigen::RowMajor> sphere_transform_mat = _sphere->transform().asMatrix();
     _vtk_transform->SetMatrix(sphere_transform_mat.data());
 }
 

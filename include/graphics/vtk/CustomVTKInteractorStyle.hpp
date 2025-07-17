@@ -1,6 +1,8 @@
 #ifndef __CUSTOM_VTK_INTERACTOR_HPP
 #define __CUSTOM_VTK_INTERACTOR_HPP
 
+#include "common/SimulationInput.hpp"
+
 #include <vtkInteractorStyleTrackballCamera.h>
 #include <vtkObjectFactory.h>
 
@@ -40,6 +42,8 @@ class CustomVTKInteractorStyle : public vtkInteractorStyleTrackballCamera
 
     private:
     Graphics::VTKViewer* _viewer;
+
+    static const std::map<std::string, SimulationInput::Key> _vtk_key_map;
 
 };
 

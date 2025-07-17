@@ -6,7 +6,7 @@ input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic"
 fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
 tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"
 # goal-filename: "../resource/demos/trachea_virtuoso/goals/goal1.obj"
-goals-folder: "../resource/demos/trachea_virtuoso/goals/"
+# goals-folder: "../resource/demos/trachea_virtuoso/goals/"
 
 # device-name1: "LeftOmni"
 # device-name2: "RightOmni"
