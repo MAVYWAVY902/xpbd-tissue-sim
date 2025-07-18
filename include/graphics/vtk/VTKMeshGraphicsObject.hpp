@@ -3,6 +3,8 @@
 
 #include "graphics/MeshGraphicsObject.hpp"
 
+#include "config/render/ObjectRenderConfig.hpp"
+
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
 #include <vtkActor.h>
@@ -13,7 +15,7 @@ namespace Graphics
 class VTKMeshGraphicsObject : public MeshGraphicsObject
 {
     public:
-    explicit VTKMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh);
+    explicit VTKMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::ObjectRenderConfig& render_config);
 
     virtual void update() override;
 

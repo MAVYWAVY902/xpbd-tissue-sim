@@ -43,7 +43,7 @@ void GraspingSimulation::setup()
 
     // create an object to show where grasping is
     Config::RigidSphereConfig cursor_config("cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
-        1.0, _grasp_radius, false, true, false);
+        1.0, _grasp_radius, false, true, false, Config::ObjectRenderConfig());
     _cursor = _addObjectFromConfig(&cursor_config);
     assert(_cursor);
 }

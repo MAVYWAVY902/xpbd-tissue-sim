@@ -1,4 +1,5 @@
 #include "graphics/vtk/VTKVirtuosoRobotGraphicsObject.hpp"
+#include "graphics/vtk/VTKUtils.hpp"
 
 #include <vtkCylinderSource.h>
 #include <vtkPolyDataMapper.h>
@@ -6,7 +7,7 @@
 namespace Graphics
 {
 
-VTKVirtuosoRobotGraphicsObject::VTKVirtuosoRobotGraphicsObject(const std::string& name, const Sim::VirtuosoRobot* robot)
+VTKVirtuosoRobotGraphicsObject::VTKVirtuosoRobotGraphicsObject(const std::string& name, const Sim::VirtuosoRobot* robot, const Config::ObjectRenderConfig& render_config)
     : VirtuosoRobotGraphicsObject(name, robot)
 {
     // create the vtkActor from a cylinder source
@@ -19,6 +20,24 @@ VTKVirtuosoRobotGraphicsObject::VTKVirtuosoRobotGraphicsObject(const std::string
     
     _vtk_actor = vtkSmartPointer<vtkActor>::New();
     _vtk_actor->SetMapper(data_mapper);
+
+    // setup rendering based on render config
+    VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
+
+    // create the endoscope light attached to the end of the endoscope
+    Vec3r light_pos = robot->camFrame().origin();
+    Vec3r light_dir = robot->camFrame().transform().rotMat().col(2);
+    Real focal_dist = 0.1;
+    Vec3r focal_point = light_pos + light_dir * focal_dist;
+    _endoscope_light = vtkSmartPointer<vtkLight>::New();
+    _endoscope_light->SetLightTypeToSceneLight();
+    _endoscope_light->SetPositional(true);
+    _endoscope_light->SetPosition(light_pos[0], light_pos[1], light_pos[2]);
+    _endoscope_light->SetFocalPoint(focal_point[0], focal_point[1], focal_point[2]);
+    _endoscope_light->SetConeAngle(90);
+    _endoscope_light->SetAttenuationValues(1,0,0);
+    _endoscope_light->SetColor(1.0, 1.0, 1.0);
+    _endoscope_light->SetIntensity(3.0);    /** TODO: make this a settable parameter somehow (and potentially other parameters of the lights) */
 
     _vtk_transform = vtkSmartPointer<vtkTransform>::New();
 

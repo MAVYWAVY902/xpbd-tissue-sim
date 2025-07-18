@@ -79,8 +79,10 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
                                     Real density, Real E, Real nu, Real mu_s, Real mu_k,                                                    // ElasticMaterial params
 
                                     int num_solver_iters, XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
-                                    XPBDSolverResidualPolicyEnum residual_policy )
-        : ObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions, graphics_only),
+                                    XPBDSolverResidualPolicyEnum residual_policy,
+                                
+                                    const ObjectRenderConfig& render_config)
+        : ObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions, graphics_only, render_config),
           MeshObjectConfig(filename, max_size, size, draw_points, draw_edges, draw_faces, color)
     {
         _material_config = std::make_unique<ElasticMaterialConfig>(name + "_material", density, E, nu, mu_s, mu_k);

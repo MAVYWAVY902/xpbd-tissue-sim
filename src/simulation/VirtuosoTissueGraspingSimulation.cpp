@@ -63,7 +63,7 @@ void VirtuosoTissueGraspingSimulation::setup()
         {
             Config::RigidMeshObjectConfig goal_config(entry.path(), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
                 1.0, false, true, false,
-                entry.path(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
+                entry.path(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt, Config::ObjectRenderConfig());
             RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
             goal_obj->mesh()->addFaceProperty<bool>("draw", false);
             
@@ -86,7 +86,7 @@ void VirtuosoTissueGraspingSimulation::setup()
     {
         Config::RigidMeshObjectConfig goal_config("goal_mesh", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
             1.0, false, true, false,
-            _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
+            _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt, Config::ObjectRenderConfig());
         RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
         goal_obj->mesh()->addFaceProperty<bool>("draw", false);
 

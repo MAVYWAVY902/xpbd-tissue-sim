@@ -10,6 +10,8 @@
 #include "graphics/Viewer.hpp"
 #include "graphics/GraphicsObject.hpp"
 
+#include "config/render/ObjectRenderConfig.hpp"
+
 #include "common/types.hpp"
 
 namespace Sim
@@ -57,10 +59,10 @@ class GraphicsScene
 
     /** Creates a MeshGraphicsObject from a supplied MeshObject and adds it to the GraphicsScene
      * @param obj : the simulation Object to add to the GraphicsScene for visualization
-     * @param obj_config : the ObjectConfig that contains any visualization parameters (e.g. coloring, draw points, etc.)
+     * @param render_config : the ObjectRenderConfig that contains rendering parameters (e.g. coloring, draw points, etc.)
      * @returns the index of the provided object in the _graphics_objects array (can be used to fetch it in the future)
      */
-    virtual int addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config=nullptr) = 0;
+    virtual int addObject(const Sim::Object* obj, const Config::ObjectRenderConfig& render_config) = 0;
 
     /** Sets the camera mode to Orthographic */
     virtual void setCameraOrthographic() = 0;

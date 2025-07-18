@@ -1,11 +1,12 @@
 #include "graphics/vtk/VTKCylinderGraphicsObject.hpp"
+#include "graphics/vtk/VTKUtils.hpp"
 
 #include <vtkPolyDataMapper.h>
 
 namespace Graphics
 {
 
-VTKCylinderGraphicsObject::VTKCylinderGraphicsObject(const std::string& name, const Sim::RigidCylinder* cyl)
+VTKCylinderGraphicsObject::VTKCylinderGraphicsObject(const std::string& name, const Sim::RigidCylinder* cyl, const Config::ObjectRenderConfig& render_config)
     : CylinderGraphicsObject(name, cyl)
 {
     // create the vtkActor from a cylinder source
@@ -18,6 +19,9 @@ VTKCylinderGraphicsObject::VTKCylinderGraphicsObject(const std::string& name, co
     
     _cyl_actor = vtkSmartPointer<vtkActor>::New();
     _cyl_actor->SetMapper(data_mapper);
+
+    // set up rendering from render config
+    VTKUtils::setupActorFromRenderConfig(_cyl_actor.Get(), render_config);
 
     _vtk_transform = vtkSmartPointer<vtkTransform>::New();
 

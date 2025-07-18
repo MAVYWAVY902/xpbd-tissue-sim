@@ -1,4 +1,5 @@
 #include "graphics/vtk/VTKMeshGraphicsObject.hpp"
+#include "graphics/vtk/VTKUtils.hpp"
 
 #include <vtkPolyDataMapper.h>
 #include <vtkPolyDataNormals.h>
@@ -24,7 +25,7 @@
 namespace Graphics
 {
 
-VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh)
+VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::ObjectRenderConfig& render_config)
     : MeshGraphicsObject(name, mesh)
 {
     _vtk_poly_data = vtkSmartPointer<vtkPolyData>::New();
@@ -73,7 +74,7 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     _vtk_actor = vtkSmartPointer<vtkActor>::New();
     _vtk_actor->SetMapper(mapper);
 
-    /** TODO: add more rendering options (color, textures, normals, etc.) */
+    VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
     
     
 }

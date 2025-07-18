@@ -1,4 +1,5 @@
 #include "graphics/vtk/VTKVirtuosoArmGraphicsObject.hpp"
+#include "graphics/vtk/VTKUtils.hpp"
 
 #include <vtkPolyDataMapper.h>
 #include <vtkPolyDataNormals.h>
@@ -24,7 +25,7 @@
 namespace Graphics
 {
 
-VTKVirtuosoArmGraphicsObject::VTKVirtuosoArmGraphicsObject(const std::string& name, const Sim::VirtuosoArm* arm)
+VTKVirtuosoArmGraphicsObject::VTKVirtuosoArmGraphicsObject(const std::string& name, const Sim::VirtuosoArm* arm, const Config::ObjectRenderConfig& render_config)
     : VirtuosoArmGraphicsObject(name, arm)
 {
     _vtk_poly_data = vtkSmartPointer<vtkPolyData>::New();
@@ -51,7 +52,7 @@ VTKVirtuosoArmGraphicsObject::VTKVirtuosoArmGraphicsObject(const std::string& na
     _vtk_actor = vtkSmartPointer<vtkActor>::New();
     _vtk_actor->SetMapper(mapper);
 
-    /** TODO: add more rendering options (color, textures, normals, etc.) */
+    VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
 }
 
 void VTKVirtuosoArmGraphicsObject::update()

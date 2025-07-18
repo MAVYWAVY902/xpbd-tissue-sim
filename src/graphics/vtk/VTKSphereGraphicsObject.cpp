@@ -1,4 +1,5 @@
 #include "graphics/vtk/VTKSphereGraphicsObject.hpp"
+#include "graphics/vtk/VTKUtils.hpp"
 
 #include <vtkPolyDataMapper.h>
 #include <vtkMatrix4x4.h>
@@ -6,7 +7,7 @@
 namespace Graphics
 {
 
-VTKSphereGraphicsObject::VTKSphereGraphicsObject(const std::string& name, const Sim::RigidSphere* sphere)
+VTKSphereGraphicsObject::VTKSphereGraphicsObject(const std::string& name, const Sim::RigidSphere* sphere, const Config::ObjectRenderConfig& render_config)
     : SphereGraphicsObject(name, sphere)
 {
     // create the vtkActor from a sphere source
@@ -18,6 +19,8 @@ VTKSphereGraphicsObject::VTKSphereGraphicsObject(const std::string& name, const 
     
     _sphere_actor = vtkSmartPointer<vtkActor>::New();
     _sphere_actor->SetMapper(data_mapper);
+
+    VTKUtils::setupActorFromRenderConfig(_sphere_actor.Get(), render_config);
 
     _vtk_transform = vtkSmartPointer<vtkTransform>::New();
 

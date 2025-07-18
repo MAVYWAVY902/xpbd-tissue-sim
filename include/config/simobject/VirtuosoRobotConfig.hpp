@@ -54,10 +54,22 @@ class VirtuosoRobotConfig : public ObjectConfig
                 std::cerr << "Unknown type of object! \"" << type << "\" is not a type of VirtuosoArm." << std::endl;
                 assert(0);
             }
-
-            
-            
         }
+    }
+
+    explicit VirtuosoRobotConfig( const std::string& name, 
+        const Vec3r& initial_pos, const Vec3r& initial_rot, const Vec3r& initial_velocity, bool collisions, bool graphics_only,
+        Real endoscope_diameter, Real endoscope_length, Real arm_separation_distance, Real optic_vertical_distance, Real optic_tilt_deg,
+        const std::vector<VirtuosoArmConfig>& arm_configs,
+        const ObjectRenderConfig& render_config)
+        : ObjectConfig(name, initial_pos, initial_rot, initial_velocity, collisions, graphics_only, render_config),
+            _arm_configs(arm_configs)
+    {
+        _endoscope_diameter.value = endoscope_diameter;
+        _endoscope_length.value = endoscope_length;
+        _arm_separation_dist.value = arm_separation_distance;
+        _optic_vertical_dist.value = optic_vertical_distance;
+        _optic_tilt.value = optic_tilt_deg;
     }
 
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;

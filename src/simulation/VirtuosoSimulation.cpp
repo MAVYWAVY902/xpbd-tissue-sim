@@ -46,7 +46,7 @@ void VirtuosoSimulation::setup()
     
     if (_input_device == SimulationInput::Device::MOUSE)
     {
-        // _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
+        _graphics_scene->viewer()->enableMouseInteraction(false);   // disable mouse interaction with the viewer when using mouse control
     }
 
     // find the VirtuosoRobot object - necessary for Virtuoso simulation controls
@@ -62,7 +62,7 @@ void VirtuosoSimulation::setup()
     
     // create an object at the tip of the robot to show where grasping is
     Config::RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
-        1.0, 0.001, false, true, false);
+        1.0, 0.001, false, true, false, Config::ObjectRenderConfig());
     _tip_cursor = _addObjectFromConfig(&cursor_config);
     assert(_tip_cursor);
     _tip_cursor->setPosition(_active_arm->actualTipPosition());

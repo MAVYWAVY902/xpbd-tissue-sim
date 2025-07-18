@@ -3,6 +3,8 @@
 
 #include "graphics/SphereGraphicsObject.hpp"
 
+#include "config/render/ObjectRenderConfig.hpp"
+
 #include <vtkSphereSource.h>
 #include <vtkActor.h>
 #include <vtkTransform.h>
@@ -13,7 +15,7 @@ namespace Graphics
 class VTKSphereGraphicsObject : public SphereGraphicsObject
 {
     public:
-    explicit VTKSphereGraphicsObject(const std::string& name, const Sim::RigidSphere* sphere);
+    explicit VTKSphereGraphicsObject(const std::string& name, const Sim::RigidSphere* sphere, const Config::ObjectRenderConfig& render_config);
 
     virtual void update() override;
 

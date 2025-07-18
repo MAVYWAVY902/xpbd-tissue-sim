@@ -28,8 +28,9 @@ class RigidSphereConfig : public RigidObjectConfig
 
     explicit RigidSphereConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
         const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, Real radius,
-        bool collisions, bool graphics_only, bool fixed)
-        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed)
+        bool collisions, bool graphics_only, bool fixed,
+        const ObjectRenderConfig& render_config)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed, render_config)
     {
         _radius.value = radius;
     }
@@ -62,8 +63,9 @@ class RigidBoxConfig : public RigidObjectConfig
 
     explicit RigidBoxConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
         const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, const Vec3r& size,
-        bool collisions, bool graphics_only, bool fixed)
-        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed)
+        bool collisions, bool graphics_only, bool fixed,
+        const ObjectRenderConfig& render_config)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed, render_config)
     {
         _size.value = size;
     }
@@ -95,8 +97,9 @@ class RigidCylinderConfig : public RigidObjectConfig
 
     explicit RigidCylinderConfig(const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,
         const Vec3r& initial_velocity, const Vec3r& initial_angular_velocity, Real density, Real radius, Real height,
-        bool collisions, bool graphics_only, bool fixed)
-        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed)
+        bool collisions, bool graphics_only, bool fixed,
+        const ObjectRenderConfig& render_config)
+        : RigidObjectConfig(name, initial_position, initial_rotation, initial_velocity, initial_angular_velocity, density, collisions, graphics_only, fixed, render_config)
     {
         _radius.value = radius;
         _height.value = height;

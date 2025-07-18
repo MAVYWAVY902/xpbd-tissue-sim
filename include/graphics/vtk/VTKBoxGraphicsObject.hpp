@@ -3,6 +3,8 @@
 
 #include "graphics/BoxGraphicsObject.hpp"
 
+#include "config/render/ObjectRenderConfig.hpp"
+
 #include <vtkActor.h>
 #include <vtkCubeSource.h>
 #include <vtkTransform.h>
@@ -13,7 +15,7 @@ namespace Graphics
 class VTKBoxGraphicsObject : public BoxGraphicsObject
 {
     public:
-    explicit VTKBoxGraphicsObject(const std::string& name, const Sim::RigidBox* box);
+    explicit VTKBoxGraphicsObject(const std::string& name, const Sim::RigidBox* box, const Config::ObjectRenderConfig& render_config);
 
     virtual void update() override;
 

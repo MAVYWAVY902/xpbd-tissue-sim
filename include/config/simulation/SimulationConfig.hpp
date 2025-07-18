@@ -8,6 +8,7 @@
 #include "config/simobject/RigidPrimitiveConfigs.hpp"
 #include "config/simobject/VirtuosoArmConfig.hpp"
 #include "config/simobject/VirtuosoRobotConfig.hpp"
+#include "config/render/SimulationRenderConfig.hpp"
 
 #include "common/SimulationTypeDefs.hpp"
 #include "common/VariadicVectorContainer.hpp"
@@ -66,7 +67,7 @@ class SimulationConfig : public Config
      * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
      */
     explicit SimulationConfig(const YAML::Node& node)
-        : Config(node)
+        : Config(node), _render_config(node)
     {
         // extract parameters
         _extractParameter("time-step", node, _time_step);
@@ -125,8 +126,8 @@ class SimulationConfig : public Config
     explicit SimulationConfig(const std::string& name, const std::string& description,
                              Real time_step, Real end_time, Real g_accel,
                              SimulationMode sim_mode, Visualization visualization, bool enable_mouse_interaction, Real fps,
-                             Real collision_rate)
-        : Config(name)
+                             Real collision_rate, const SimulationRenderConfig& render_config)
+        : Config(name), _render_config(render_config)
     {
         _description.value = description;
         _time_step.value = time_step;
@@ -156,6 +157,8 @@ class SimulationConfig : public Config
     // get list of MeshObject configs that will be used to create MeshObjects
     const ConfigVectorType& objectConfigs() const { return _object_configs; }
 
+    const SimulationRenderConfig& renderConfig() const { return _render_config; }
+
     protected:
     // Parameters
     ConfigParameter<std::string> _description = ConfigParameter<std::string>("");
@@ -170,6 +173,8 @@ class SimulationConfig : public Config
 
     /** List of object configs for each object in the Simulation */
     ConfigVectorType _object_configs;
+
+    SimulationRenderConfig _render_config;
 };
 
 } // namespace Config

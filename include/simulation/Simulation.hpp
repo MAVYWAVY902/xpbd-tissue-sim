@@ -151,7 +151,7 @@ class Simulation
             // add the new object to the graphics scene to be visualized
             if (_graphics_scene)
             {
-                _graphics_scene->addObject(new_obj.get(), obj_config);
+                _graphics_scene->addObject(new_obj.get(), obj_config->renderConfig());
             }
 
             // if we get to here, we have successfully created a new MeshObject of some kind

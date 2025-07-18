@@ -3,6 +3,8 @@
 
 #include "graphics/CylinderGraphicsObject.hpp"
 
+#include "config/render/ObjectRenderConfig.hpp"
+
 #include <vtkActor.h>
 #include <vtkCylinderSource.h>
 #include <vtkTransform.h>
@@ -13,7 +15,7 @@ namespace Graphics
 class VTKCylinderGraphicsObject : public CylinderGraphicsObject
 {
     public:
-    explicit VTKCylinderGraphicsObject(const std::string& name, const Sim::RigidCylinder* cylinder);
+    explicit VTKCylinderGraphicsObject(const std::string& name, const Sim::RigidCylinder* cylinder, const Config::ObjectRenderConfig& render_config);
 
     virtual void update() override;
 

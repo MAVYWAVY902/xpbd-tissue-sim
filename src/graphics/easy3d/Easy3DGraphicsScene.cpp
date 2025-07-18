@@ -65,7 +65,7 @@ int Easy3DGraphicsScene::run()
     return _easy3d_viewer->run();
 }
 
-int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config)
+int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectRenderConfig& obj_config)
 {
 
     // make sure object with name doesn't already exist in the scene
@@ -80,13 +80,9 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectC
     // try downcasting to MeshObject
     if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(obj))
     {
-        // if the downcast was successful, we should be able to downcast the ObjectConfig object to a MeshObjectConfig
-        const Config::MeshObjectConfig* mo_config = dynamic_cast<const Config::MeshObjectConfig*>(obj_config);
-        assert(mo_config);
-
         // create a new MeshGraphicsObject for visualizing this MeshObject
         // std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
-        new_graphics_obj = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
+        new_graphics_obj = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), obj_config);
     }
 
     // try downcasting to a RigidSphere

@@ -54,7 +54,7 @@ int VTKGraphicsScene::run()
     return 0;
 }
 
-int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config)
+int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectRenderConfig& render_config)
 {
     // make sure object with name doesn't already exist in the scene
     if (getObject(obj->name()))
@@ -71,7 +71,7 @@ int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConf
     {
 
         // create a new MeshGraphicsObject for visualizing this MeshObject
-        auto ptr = std::make_unique<VTKMeshGraphicsObject>(obj->name(), mo->mesh());
+        auto ptr = std::make_unique<VTKMeshGraphicsObject>(obj->name(), mo->mesh(), render_config);
         _vtk_viewer->renderer()->AddActor(ptr->actor());
         new_graphics_obj = std::move(ptr);
     }
@@ -80,7 +80,7 @@ int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConf
     else if (const Sim::RigidSphere* sphere = dynamic_cast<const Sim::RigidSphere*>(obj))
     {
         // create a new SphereGraphicsObject for visualizing the sphere
-        auto ptr = std::make_unique<VTKSphereGraphicsObject>(sphere->name(), sphere);
+        auto ptr = std::make_unique<VTKSphereGraphicsObject>(sphere->name(), sphere, render_config);
         _vtk_viewer->renderer()->AddActor(ptr->actor());
         new_graphics_obj = std::move(ptr);
         
@@ -89,7 +89,7 @@ int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConf
     // try downcasting to a RigidBox
     else if (const Sim::RigidBox* box = dynamic_cast<const Sim::RigidBox*>(obj))
     {
-        auto ptr = std::make_unique<VTKBoxGraphicsObject>(box->name(), box);
+        auto ptr = std::make_unique<VTKBoxGraphicsObject>(box->name(), box, render_config);
         _vtk_viewer->renderer()->AddActor(ptr->actor());
         new_graphics_obj = std::move(ptr);
     }
@@ -97,7 +97,7 @@ int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConf
     // try downcasting to a RigidCylinder
     else if (const Sim::RigidCylinder* cyl = dynamic_cast<const Sim::RigidCylinder*>(obj))
     {
-        auto ptr = std::make_unique<VTKCylinderGraphicsObject>(cyl->name(), cyl);
+        auto ptr = std::make_unique<VTKCylinderGraphicsObject>(cyl->name(), cyl, render_config);
         _vtk_viewer->renderer()->AddActor(ptr->actor());
         new_graphics_obj = std::move(ptr);
     }
@@ -105,7 +105,7 @@ int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConf
     // try downcasting to a VirtuosoArm
     else if (const Sim::VirtuosoArm* arm = dynamic_cast<const Sim::VirtuosoArm*>(obj))
     {
-        auto ptr = std::make_unique<VTKVirtuosoArmGraphicsObject>(arm->name(), arm);
+        auto ptr = std::make_unique<VTKVirtuosoArmGraphicsObject>(arm->name(), arm, render_config);
         _vtk_viewer->renderer()->AddActor(ptr->actor());
         new_graphics_obj = std::move(ptr);
         
@@ -113,22 +113,26 @@ int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConf
 
     else if (const Sim::VirtuosoRobot* robot = dynamic_cast<const Sim::VirtuosoRobot*>(obj))
     {
-        auto ptr = std::make_unique<VTKVirtuosoRobotGraphicsObject>(robot->name(), robot);
+        auto ptr = std::make_unique<VTKVirtuosoRobotGraphicsObject>(robot->name(), robot, render_config);
         _vtk_viewer->renderer()->AddActor(ptr->actor());
+        _vtk_viewer->renderer()->AddLight(ptr->endoscopeLight());
         new_graphics_obj = std::move(ptr);
 
         if (robot->hasArm1())
         {
-            std::unique_ptr<VTKVirtuosoArmGraphicsObject> arm1_graphics_obj = std::make_unique<VTKVirtuosoArmGraphicsObject>(robot->arm1()->name(), robot->arm1());
+            std::unique_ptr<VTKVirtuosoArmGraphicsObject> arm1_graphics_obj = 
+                std::make_unique<VTKVirtuosoArmGraphicsObject>(robot->arm1()->name(), robot->arm1(), render_config);
             _vtk_viewer->renderer()->AddActor(arm1_graphics_obj->actor());
             _graphics_objects.push_back(std::move(arm1_graphics_obj));
         }
         if (robot->hasArm2())
         {
-            std::unique_ptr<VTKVirtuosoArmGraphicsObject> arm2_graphics_obj = std::make_unique<VTKVirtuosoArmGraphicsObject>(robot->arm2()->name(), robot->arm2());
+            std::unique_ptr<VTKVirtuosoArmGraphicsObject> arm2_graphics_obj = 
+                std::make_unique<VTKVirtuosoArmGraphicsObject>(robot->arm2()->name(), robot->arm2(), render_config);
             _vtk_viewer->renderer()->AddActor(arm2_graphics_obj->actor());
             _graphics_objects.push_back(std::move(arm2_graphics_obj));
         }
+
         
     }
 
@@ -152,6 +156,7 @@ void VTKGraphicsScene::setCameraFOV(Real fov)
 {
     _vtk_viewer->renderer()->GetActiveCamera()->UseHorizontalViewAngleOn();
     _vtk_viewer->renderer()->GetActiveCamera()->SetViewAngle(fov);
+    _vtk_viewer->renderer()->ResetCameraClippingRange();
 }
 
 Vec3r VTKGraphicsScene::cameraViewDirection() const
@@ -166,6 +171,7 @@ void VTKGraphicsScene::setCameraViewDirection(const Vec3r& view_dir)
     Vec3r pos = cameraPosition();
     Vec3r new_focal_point = pos + view_dir*dist;
     _vtk_viewer->renderer()->GetActiveCamera()->SetFocalPoint(new_focal_point[0], new_focal_point[1], new_focal_point[2]);
+    _vtk_viewer->renderer()->ResetCameraClippingRange();
 }
 
 Vec3r VTKGraphicsScene::cameraUpDirection() const
@@ -177,6 +183,7 @@ Vec3r VTKGraphicsScene::cameraUpDirection() const
 void VTKGraphicsScene::setCameraUpDirection(const Vec3r& up_dir)
 {
     _vtk_viewer->renderer()->GetActiveCamera()->SetViewUp(up_dir[0], up_dir[1], up_dir[2]);
+    _vtk_viewer->renderer()->ResetCameraClippingRange();
 }
 
 Vec3r VTKGraphicsScene::cameraRightDirection() const
@@ -193,6 +200,7 @@ Vec3r VTKGraphicsScene::cameraPosition() const
 void VTKGraphicsScene::setCameraPosition(const Vec3r& pos)
 {
     _vtk_viewer->renderer()->GetActiveCamera()->SetPosition(pos[0], pos[1], pos[2]);
+    _vtk_viewer->renderer()->ResetCameraClippingRange();
 }
 
 

@@ -3,6 +3,8 @@
 
 #include "graphics/VirtuosoArmGraphicsObject.hpp"
 
+#include "config/render/ObjectRenderConfig.hpp"
+
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
 #include <vtkActor.h>
@@ -13,7 +15,7 @@ namespace Graphics
 class VTKVirtuosoArmGraphicsObject : public VirtuosoArmGraphicsObject
 {
     public:
-    explicit VTKVirtuosoArmGraphicsObject(const std::string& name, const Sim::VirtuosoArm* arm);
+    explicit VTKVirtuosoArmGraphicsObject(const std::string& name, const Sim::VirtuosoArm* arm, const Config::ObjectRenderConfig& render_config);
 
     virtual void update() override;
 

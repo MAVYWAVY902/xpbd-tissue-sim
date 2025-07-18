@@ -1,12 +1,14 @@
 #include "graphics/vtk/VTKBoxGraphicsObject.hpp"
 
+#include "graphics/vtk/VTKUtils.hpp"
+
 #include <vtkPolyDataMapper.h>
 #include <vtkTransform.h>
 
 namespace Graphics
 {
 
-VTKBoxGraphicsObject::VTKBoxGraphicsObject(const std::string& name, const Sim::RigidBox* box)
+VTKBoxGraphicsObject::VTKBoxGraphicsObject(const std::string& name, const Sim::RigidBox* box, const Config::ObjectRenderConfig& render_config)
     : BoxGraphicsObject(name, box)
 {
     // create the vtkActor from a box source
@@ -22,6 +24,9 @@ VTKBoxGraphicsObject::VTKBoxGraphicsObject(const std::string& name, const Sim::R
     
     _box_actor = vtkSmartPointer<vtkActor>::New();
     _box_actor->SetMapper(data_mapper);
+
+    // set up rendering from render config
+    VTKUtils::setupActorFromRenderConfig(_box_actor.Get(), render_config);
 
     _vtk_transform = vtkSmartPointer<vtkTransform>::New();
 
