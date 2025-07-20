@@ -25,8 +25,8 @@
 namespace Graphics
 {
 
-Easy3DGraphicsScene::Easy3DGraphicsScene(const std::string& name)
-    : GraphicsScene(name)
+Easy3DGraphicsScene::Easy3DGraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config)
+    : GraphicsScene(name, sim_render_config)
 {
 
 }

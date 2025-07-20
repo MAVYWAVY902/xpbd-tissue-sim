@@ -35,8 +35,10 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
     Vec3r initial_rot_xyz = config->baseInitialRotation() * M_PI / 180.0;
     _arm_base_rotation = GeometryUtils::quatToMat(GeometryUtils::eulXYZ2Quat(initial_rot_xyz[0], initial_rot_xyz[1], initial_rot_xyz[2]));
 
-    // _recomputeCoordinateFrames();
-    _recomputeCoordinateFramesStaticsModel();
+    _tip_force = Vec3r::Zero();
+    _tip_moment = Vec3r::Zero();
+
+    _stale_frames = true;
 
 }
 
@@ -92,7 +94,9 @@ void VirtuosoArm::setJointState(double ot_rotation, double ot_translation, doubl
 
 void VirtuosoArm::setup()
 {
-    // nothing for now
+    _recomputeCoordinateFramesStaticsModel();
+
+    _commanded_tip_position = actualTipPosition();
 }
 
 void VirtuosoArm::update()

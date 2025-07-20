@@ -26,7 +26,7 @@ class VTKGraphicsScene : public GraphicsScene
 {
     public:
 
-    explicit VTKGraphicsScene(const std::string& name);
+    explicit VTKGraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config);
 
     virtual void init() override;
 

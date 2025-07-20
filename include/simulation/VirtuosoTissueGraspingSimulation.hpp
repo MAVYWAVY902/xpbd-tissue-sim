@@ -39,8 +39,6 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 
     void _moveCursor(const Vec3r& dp);
 
-    void _toggleTissueGrasping();
-
     void _toggleGoal();
     void _changeGoal();
 

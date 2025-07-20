@@ -51,13 +51,13 @@ VTK_MODULE_INIT(vtkRenderingOpenGL2);
 namespace Graphics
 {
 
-VTKViewer::VTKViewer(const std::string& title)
+VTKViewer::VTKViewer(const std::string& title, const Config::SimulationRenderConfig& render_config)
     : Viewer(title)
 {
-    _setupRenderWindow();
+    _setupRenderWindow(render_config);
 }
 
-void VTKViewer::_setupRenderWindow()
+void VTKViewer::_setupRenderWindow(const Config::SimulationRenderConfig& render_config)
 {
     // create renderer for actors in the scene
     _renderer = vtkSmartPointer<vtkOpenGLRenderer>::New();
@@ -69,46 +69,47 @@ void VTKViewer::_setupRenderWindow()
     // Create HDR lighting (if specified in the config)
     /////////////////////////////////////////////////////////
 
-    // std::optional<std::string> hdr_filename = _render_config.hdrImageFilename();
-    // if (hdr_filename.has_value())
-    // {
-    //     vtkNew<vtkTexture> hdr_texture;
-    //     vtkNew<vtkHDRReader> reader;
-    //     reader->SetFileName(hdr_filename.value().c_str());
-    //     hdr_texture->SetInputConnection(reader->GetOutputPort());
-    //     hdr_texture->SetColorModeToDirectScalars();
-    //     hdr_texture->MipmapOn();
-    //     hdr_texture->InterpolateOn();
+    std::optional<std::string> hdr_filename = render_config.hdrImageFilename();
+    std::cout << "hdr_filename: " << hdr_filename.value_or("NO HDR FILENAME") << std::endl;
+    if (hdr_filename.has_value())
+    {
+        vtkNew<vtkTexture> hdr_texture;
+        vtkNew<vtkHDRReader> reader;
+        reader->SetFileName(hdr_filename.value().c_str());
+        hdr_texture->SetInputConnection(reader->GetOutputPort());
+        hdr_texture->SetColorModeToDirectScalars();
+        hdr_texture->MipmapOn();
+        hdr_texture->InterpolateOn();
 
-    //     if (_render_config.createSkybox())
-    //     {
-    //         vtkNew<vtkSkybox> skybox;
-    //         skybox->SetTexture(hdr_texture);
-    //         skybox->SetFloorRight(0,0,1);
-    //         skybox->SetProjection(vtkSkybox::Sphere);
-    //         _renderer->AddActor(skybox);
-    //     }
+        if (render_config.createSkybox())
+        {
+            vtkNew<vtkSkybox> skybox;
+            skybox->SetTexture(hdr_texture);
+            skybox->SetFloorRight(0,0,1);
+            skybox->SetProjection(vtkSkybox::Sphere);
+            _renderer->AddActor(skybox);
+        }
 
-    //     _renderer->UseImageBasedLightingOn();
-    //     _renderer->UseSphericalHarmonicsOn();
-    //     _renderer->SetEnvironmentTexture(hdr_texture, false);
-    // }
+        _renderer->UseImageBasedLightingOn();
+        _renderer->UseSphericalHarmonicsOn();
+        _renderer->SetEnvironmentTexture(hdr_texture, false);
+    }
     
 
     ////////////////////////////////////////////////////////
     // Add lights
     ////////////////////////////////////////////////////////
 
-    vtkNew<vtkLight> light;
-    light->SetLightTypeToSceneLight();
-    light->SetPositional(true);
-    light->SetPosition(0.0, 10, 0);
-    light->SetFocalPoint(0,0,0);
-    light->SetConeAngle(90);
-    light->SetAttenuationValues(1,0,0);
-    light->SetColor(1.0, 1.0, 1.0);
-    light->SetIntensity(1.0);
-    _renderer->AddLight(light);
+    // vtkNew<vtkLight> light;
+    // light->SetLightTypeToSceneLight();
+    // light->SetPositional(true);
+    // light->SetPosition(0.0, 10, 0);
+    // light->SetFocalPoint(0,0,0);
+    // light->SetConeAngle(90);
+    // light->SetAttenuationValues(1,0,0);
+    // light->SetColor(1.0, 1.0, 1.0);
+    // light->SetIntensity(1.0);
+    // _renderer->AddLight(light);
 
 
     ///////////////////////////////////////////////////////
@@ -148,7 +149,7 @@ void VTKViewer::_setupRenderWindow()
     //////////////////////////////////////////////////////
     _render_window = vtkSmartPointer<vtkRenderWindow>::New();
     _render_window->AddRenderer(_renderer);
-    _render_window->SetSize(600, 600);
+    _render_window->SetSize(render_config.windowWidth(), render_config.windowHeight());
     _render_window->SetWindowName(_name.c_str());
 
     _interactor = vtkSmartPointer<vtkRenderWindowInteractor>::New();
@@ -185,7 +186,7 @@ void VTKViewer::_setupRenderWindow()
     toneMappingP->SetToneMappingType(vtkToneMappingPass::GenericFilmic);
     toneMappingP->SetGenericFilmicDefaultPresets();
     toneMappingP->SetDelegatePass(cameraP);
-    toneMappingP->SetExposure(0.5);
+    toneMappingP->SetExposure(render_config.exposure());
 
     _renderer->SetPass(toneMappingP);
 

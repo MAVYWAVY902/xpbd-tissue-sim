@@ -12,6 +12,7 @@ VirtuosoSimulation::VirtuosoSimulation(const Config::VirtuosoSimulationConfig* c
     : Simulation(config), _virtuoso_robot(nullptr), _active_arm(nullptr), _has_new_arm1_joint_state(false), _has_new_arm2_joint_state(false)
 {
     _input_device = config->inputDevice();
+    _show_tip_cursor = config->showTipCursor();
 
     // initialize the haptic device if using haptic device input
     if (_input_device == SimulationInput::Device::HAPTIC)
@@ -61,11 +62,17 @@ void VirtuosoSimulation::setup()
 
     
     // create an object at the tip of the robot to show where grasping is
-    Config::RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
-        1.0, 0.001, false, true, false, Config::ObjectRenderConfig());
-    _tip_cursor = _addObjectFromConfig(&cursor_config);
-    assert(_tip_cursor);
-    _tip_cursor->setPosition(_active_arm->actualTipPosition());
+    if (_show_tip_cursor)
+    {
+        Config::ObjectRenderConfig cursor_render_config(Config::ObjectRenderConfig::RenderType::PBR, std::nullopt, std::nullopt, std::nullopt,
+            0.0, 0.5, Vec3r(1.0, 1.0, 0.0), true, false, false);
+        Config::RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
+            1.0, 0.001, false, true, false, cursor_render_config);
+        _tip_cursor = _addObjectFromConfig(&cursor_config);
+        assert(_tip_cursor);
+        _tip_cursor->setPosition(_active_arm->actualTipPosition());
+    }
+    
 }
 
 void VirtuosoSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
@@ -91,7 +98,7 @@ void VirtuosoSimulation::notifyMouseMoved(double x, double y)
             const Vec3r up_vec = _graphics_scene->cameraUpDirection();
             const Vec3r right_vec = _graphics_scene->cameraRightDirection();
             
-            const Vec3r current_tip_position = _tip_cursor->position();
+            const Vec3r current_tip_position = _active_arm->commandedTipPosition();
             const Vec3r offset = right_vec*dx + up_vec*dy;
             _moveCursor(offset*scaling);
         }
@@ -123,7 +130,8 @@ void VirtuosoSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationIn
             _active_arm = _virtuoso_robot->arm1();
         }
 
-        _tip_cursor->setPosition(_active_arm->commandedTipPosition());
+        if (_show_tip_cursor)
+            _tip_cursor->setPosition(_active_arm->commandedTipPosition());
     }
     // when 'TAB' is pressed, switch the camera view to the endoscope view
     else if (key == SimulationInput::Key::TAB && action == SimulationInput::KeyAction::PRESS)
@@ -156,7 +164,7 @@ void VirtuosoSimulation::notifyMouseScrolled(double dx, double dy)
             const Real scaling = 0.0003;
             const Vec3r view_dir = _graphics_scene->cameraViewDirection();
 
-            const Vec3r current_tip_position = _tip_cursor->position();
+            const Vec3r current_tip_position = _active_arm->commandedTipPosition();
             const Vec3r offset = view_dir*dy;
             _moveCursor(offset*scaling);
         }
@@ -195,9 +203,12 @@ void VirtuosoSimulation::_moveCursor(const Vec3r& dp)
         dp_clamped = dp * (5.0e-5 / dp.norm());
     }
     // move the tip cursor and the active arm tip position
-    const Vec3r current_tip_position = _tip_cursor->position();
-    _tip_cursor->setPosition(current_tip_position + dp_clamped);
-    _active_arm->setCommandedTipPosition(_tip_cursor->position());
+    const Vec3r current_tip_position = _active_arm->commandedTipPosition();
+    const Vec3r new_commanded_position = current_tip_position + dp_clamped;
+    _active_arm->setCommandedTipPosition(new_commanded_position);
+
+    if (_show_tip_cursor)
+        _tip_cursor->setPosition(new_commanded_position);
 }
 
 void VirtuosoSimulation::_updateGraphics()
@@ -251,7 +262,9 @@ void VirtuosoSimulation::_timeStep()
             const Real cur_trans = _active_arm->outerTubeTranslation();
             _active_arm->setOuterTubeTranslation(cur_trans - OT_TRANS_RATE*dt());
         }
-        _tip_cursor->setPosition(_active_arm->commandedTipPosition());
+
+        if (_show_tip_cursor)
+            _tip_cursor->setPosition(_active_arm->commandedTipPosition());
     }
 
     if (_input_device == SimulationInput::Device::HAPTIC)

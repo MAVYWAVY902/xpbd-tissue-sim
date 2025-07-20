@@ -11,6 +11,7 @@
 #include "graphics/GraphicsObject.hpp"
 
 #include "config/render/ObjectRenderConfig.hpp"
+#include "config/render/SimulationRenderConfig.hpp"
 
 #include "common/types.hpp"
 
@@ -36,8 +37,9 @@ class GraphicsScene
     public:
     /** Creates a new GraphicsScene with a given name
      * @param name : the name of the new GraphicsScene
+     * @param sim_render_config : the rendering parameters to use
      */
-    explicit GraphicsScene(const std::string& name);
+    explicit GraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config);
 
     virtual ~GraphicsScene() {}
 
@@ -109,6 +111,9 @@ class GraphicsScene
 
     protected:
     std::string _name;
+     
+    /** Store the render config for when the GraphicsScene gets initialized */
+    Config::SimulationRenderConfig _sim_render_config;
 
     std::vector<std::unique_ptr<GraphicsObject>> _graphics_objects; 
 

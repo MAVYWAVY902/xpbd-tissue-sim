@@ -56,6 +56,28 @@ class ObjectRenderConfig : public Config
         _extractParameter("draw-points", node, _draw_points);
     }
 
+    explicit ObjectRenderConfig(
+        RenderType render_type,
+        std::optional<std::string> orm_texture_filename, std::optional<std::string> normals_texture_filename, std::optional<std::string> base_color_texture_filename,
+        Real metallic, Real roughness, const Vec3r& color,
+        bool draw_faces, bool draw_edges, bool draw_points
+    )
+    {
+        _render_type.value = render_type;
+
+        _orm_texture_filename.value = orm_texture_filename;
+        _normals_texture_filename.value = normals_texture_filename;
+        _base_color_texture_filename.value = base_color_texture_filename;
+
+        _metallic.value = metallic;
+        _roughness.value = roughness;
+        _color.value = color;
+
+        _draw_faces.value = draw_faces;
+        _draw_edges.value = draw_edges;
+        _draw_points.value = draw_points;
+    }
+
     RenderType renderType() const { return _render_type.value; }
     std::optional<std::string> ormTextureFilename() const { return _orm_texture_filename.value; }
     std::optional<std::string> normalsTextureFilename() const { return _normals_texture_filename.value; }

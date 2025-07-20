@@ -2,6 +2,7 @@
 #define __VTK_VIEWER_HPP
 
 #include "graphics/Viewer.hpp"
+#include "config/render/SimulationRenderConfig.hpp"
 
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
@@ -31,7 +32,7 @@ class VTKViewer : public Viewer
     void displayWindow() { _render_window->Render(); }
     void interactorStart() { _interactor->Start(); }
 
-    explicit VTKViewer(const std::string& title);
+    explicit VTKViewer(const std::string& title, const Config::SimulationRenderConfig& render_config);
 
     virtual void update() override;
 
@@ -93,7 +94,7 @@ class VTKViewer : public Viewer
 
     private:
     /** Set up rendering settings */
-    void _setupRenderWindow();
+    void _setupRenderWindow(const Config::SimulationRenderConfig& render_config);
 
     private:
     vtkSmartPointer<vtkOpenGLRenderer> _renderer;

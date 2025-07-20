@@ -3,8 +3,8 @@
 namespace Graphics
 {
 
-GraphicsScene::GraphicsScene(const std::string& name)
-    : _name(name)
+GraphicsScene::GraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config)
+    : _name(name), _sim_render_config(sim_render_config)
 {
 
 }

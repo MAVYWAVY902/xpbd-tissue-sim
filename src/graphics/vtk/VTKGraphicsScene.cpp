@@ -19,15 +19,15 @@
 namespace Graphics
 {
 
-VTKGraphicsScene::VTKGraphicsScene(const std::string& name)
-    : GraphicsScene(name)
+VTKGraphicsScene::VTKGraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config)
+    : GraphicsScene(name, sim_render_config)
 {
 
 }
 
 void VTKGraphicsScene::init()
 {
-    _viewer = std::make_unique<VTKViewer>(_name);
+    _viewer = std::make_unique<VTKViewer>(_name, _sim_render_config);
     _vtk_viewer = dynamic_cast<VTKViewer*>(_viewer.get());
 }
 

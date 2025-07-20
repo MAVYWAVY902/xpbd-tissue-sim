@@ -18,7 +18,7 @@ class Easy3DGraphicsScene : public GraphicsScene
     /** Creates a new Easy3DGraphicsScene with a given name
      * @param name : the name of the new GraphicsScene
      */
-    explicit Easy3DGraphicsScene(const std::string& name);
+    explicit Easy3DGraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config);
 
     virtual ~Easy3DGraphicsScene();
 

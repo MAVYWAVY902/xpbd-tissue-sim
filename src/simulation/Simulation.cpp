@@ -50,12 +50,12 @@ Simulation::Simulation(const Config::SimulationConfig* config)
     // if "None", don't create a graphics scene
     if (_config->visualization() == Config::Visualization::EASY3D)
     {
-        _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
+        _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main", config->renderConfig());
     }
 
     if (_config->visualization() == Config::Visualization::VTK)
     {
-        _graphics_scene = std::make_unique<Graphics::VTKGraphicsScene>("main");
+        _graphics_scene = std::make_unique<Graphics::VTKGraphicsScene>("main", config->renderConfig());
     }
 
     // initialize the Embree scene

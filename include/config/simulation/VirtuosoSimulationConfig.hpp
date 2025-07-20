@@ -21,12 +21,16 @@ class VirtuosoSimulationConfig : public SimulationConfig
         : SimulationConfig(node)
     {
         _extractParameterWithOptions("input-device", node, _input_device, INPUT_DEVICE_OPTIONS());
+        _extractParameter("show-tip-cursor", node, _show_tip_cursor);
     }
 
     SimulationInput::Device inputDevice() const { return _input_device.value; }
+    bool showTipCursor() const { return _show_tip_cursor.value; }
 
     protected:
     ConfigParameter<SimulationInput::Device> _input_device = ConfigParameter<SimulationInput::Device>(SimulationInput::Device::MOUSE);
+
+    ConfigParameter<bool> _show_tip_cursor = ConfigParameter<bool>(true);
 };
 
 } // namespace Config

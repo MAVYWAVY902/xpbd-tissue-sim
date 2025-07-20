@@ -81,6 +81,7 @@ class VirtuosoSimulation : public Simulation
 
     
     SimulationInput::Device _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)
+    bool _show_tip_cursor;  // whether or not to show the tip cursor
 
     RigidSphere* _tip_cursor;       // spherical object for visualizing grasp area 
 
