@@ -32,25 +32,28 @@ VTKVirtuosoArmGraphicsObject::VTKVirtuosoArmGraphicsObject(const std::string& na
 
     _generateInitialPolyData();
 
-    // smooth normals
-    vtkNew<vtkPolyDataNormals> normal_generator;
-    normal_generator->SetInputData(_vtk_poly_data);
-    normal_generator->SetFeatureAngle(30.0);
-    normal_generator->SplittingOff();
-    normal_generator->ConsistencyOn();
-    normal_generator->ComputePointNormalsOn();
-    normal_generator->ComputeCellNormalsOff();
-    normal_generator->Update();
+    vtkNew<vtkPolyDataMapper> data_mapper;
+    if (render_config.smoothNormals())
+    {
+        // smooth normals
+        vtkNew<vtkPolyDataNormals> normal_generator;
+        normal_generator->SetInputData(_vtk_poly_data);
+        normal_generator->SetFeatureAngle(30.0);
+        normal_generator->SplittingOff();
+        normal_generator->ConsistencyOn();
+        normal_generator->ComputePointNormalsOn();
+        normal_generator->ComputeCellNormalsOff();
+        normal_generator->Update();
 
-    // vtkNew<vtkPolyDataTangents> tangents;
-    // tangents->SetInputConnection(normal_generator->GetOutputPort());
-    // tangents->Update();
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(normal_generator->GetOutputPort());
+        data_mapper->SetInputConnection(normal_generator->GetOutputPort());
+    }
+    else
+    {
+        data_mapper->SetInputData(_vtk_poly_data);
+    }
     
     _vtk_actor = vtkSmartPointer<vtkActor>::New();
-    _vtk_actor->SetMapper(mapper);
+    _vtk_actor->SetMapper(data_mapper);
 
     VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
 }

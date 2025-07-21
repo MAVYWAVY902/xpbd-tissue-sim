@@ -145,6 +145,9 @@ struct VTKUtils
         actor->GetProperty()->SetMetallic(render_config.metallic());
         actor->GetProperty()->SetRoughness(render_config.roughness());
 
+        // set opacity
+        actor->GetProperty()->SetOpacity(render_config.opacity());
+
         /** TODO: add more render options */
     }
 };

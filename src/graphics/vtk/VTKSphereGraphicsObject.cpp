@@ -14,9 +14,28 @@ VTKSphereGraphicsObject::VTKSphereGraphicsObject(const std::string& name, const 
     _sphere_source = vtkSmartPointer<vtkSphereSource>::New();
     _sphere_source->SetRadius(sphere->radius());
 
-    vtkNew<vtkPolyDataMapper> data_mapper;
-    data_mapper->SetInputConnection(_sphere_source->GetOutputPort());
     
+    vtkNew<vtkPolyDataMapper> data_mapper;
+
+    if (render_config.smoothNormals())
+    {
+        // smooth normals
+        vtkNew<vtkPolyDataNormals> normal_generator;
+        normal_generator->SetInputConnection(_sphere_source->GetOutputPort());
+        normal_generator->SetFeatureAngle(30.0);
+        normal_generator->SplittingOff();
+        normal_generator->ConsistencyOn();
+        normal_generator->ComputePointNormalsOn();
+        normal_generator->ComputeCellNormalsOff();
+        normal_generator->Update();
+
+        data_mapper->SetInputConnection(normal_generator->GetOutputPort());
+    }
+    else
+    {
+        data_mapper->SetInputConnection(_sphere_source->GetOutputPort());
+    }
+
     _sphere_actor = vtkSmartPointer<vtkActor>::New();
     _sphere_actor->SetMapper(data_mapper);
 

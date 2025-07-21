@@ -18,10 +18,27 @@ VTKBoxGraphicsObject::VTKBoxGraphicsObject(const std::string& name, const Sim::R
     _cube_source->SetYLength(box_size[1]);
     _cube_source->SetZLength(box_size[2]);
     // cube_source->SetCenter(box_loc[0], box_loc[1], box_loc[2]);
-
-    vtkNew<vtkPolyDataMapper> data_mapper;
-    data_mapper->SetInputConnection(_cube_source->GetOutputPort());
     
+    vtkNew<vtkPolyDataMapper> data_mapper;
+    if (render_config.smoothNormals())
+    {
+        // smooth normals
+        vtkNew<vtkPolyDataNormals> normal_generator;
+        normal_generator->SetInputConnection(_cube_source->GetOutputPort());
+        normal_generator->SetFeatureAngle(30.0);
+        normal_generator->SplittingOff();
+        normal_generator->ConsistencyOn();
+        normal_generator->ComputePointNormalsOn();
+        normal_generator->ComputeCellNormalsOff();
+        normal_generator->Update();
+
+        data_mapper->SetInputConnection(normal_generator->GetOutputPort());
+    }
+    else
+    {
+        data_mapper->SetInputConnection(_cube_source->GetOutputPort());
+    }
+
     _box_actor = vtkSmartPointer<vtkActor>::New();
     _box_actor->SetMapper(data_mapper);
 

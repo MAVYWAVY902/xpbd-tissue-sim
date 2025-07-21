@@ -116,16 +116,7 @@ void VirtuosoTissueGraspingSimulation::setup()
 }
 
 void VirtuosoTissueGraspingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
-{
-    std::cout << "Mouse button pressed!" << std::endl;
-    std::cout << "button=Left? " << (button == SimulationInput::MouseButton::LEFT) << std::endl;
-    std::cout << "action=press? " << (action == SimulationInput::MouseAction::PRESS) << std::endl;
-
-    // button = 0 ==> left mouse button
-    // button = 1 ==> right mouse button
-    // action = 0 ==> mouse up
-    // action = 1 ==> mouse down
-    
+{   
     if (_input_device == SimulationInput::Device::MOUSE && button == SimulationInput::MouseButton::LEFT && action == SimulationInput::MouseAction::PRESS)
     {
         // _toggleTissueGrasping();

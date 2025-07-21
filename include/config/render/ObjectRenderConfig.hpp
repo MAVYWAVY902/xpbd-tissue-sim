@@ -49,8 +49,10 @@ class ObjectRenderConfig : public Config
 
         _extractParameter("metallic", node, _metallic);
         _extractParameter("roughness", node, _roughness);
+        _extractParameter("opacity", node, _opacity);
         _extractParameter("color", node, _color);
 
+        _extractParameter("smooth-normals", node, _smooth_normals);
         _extractParameter("draw-faces", node, _draw_faces);
         _extractParameter("draw-edges", node, _draw_edges);
         _extractParameter("draw-points", node, _draw_points);
@@ -59,8 +61,8 @@ class ObjectRenderConfig : public Config
     explicit ObjectRenderConfig(
         RenderType render_type,
         std::optional<std::string> orm_texture_filename, std::optional<std::string> normals_texture_filename, std::optional<std::string> base_color_texture_filename,
-        Real metallic, Real roughness, const Vec3r& color,
-        bool draw_faces, bool draw_edges, bool draw_points
+        Real metallic, Real roughness, Real opacity, const Vec3r& color,
+        bool smooth_normals, bool draw_faces, bool draw_edges, bool draw_points
     )
     {
         _render_type.value = render_type;
@@ -71,8 +73,10 @@ class ObjectRenderConfig : public Config
 
         _metallic.value = metallic;
         _roughness.value = roughness;
+        _opacity.value = opacity;
         _color.value = color;
 
+        _smooth_normals.value = smooth_normals;
         _draw_faces.value = draw_faces;
         _draw_edges.value = draw_edges;
         _draw_points.value = draw_points;
@@ -85,8 +89,10 @@ class ObjectRenderConfig : public Config
 
     Real metallic() const { return _metallic.value; }
     Real roughness() const { return _roughness.value; }
+    Real opacity() const { return _opacity.value; }
     const Vec3r& color() const { return _color.value; }
 
+    bool smoothNormals() const { return _smooth_normals.value; }
     bool drawFaces() const { return _draw_faces.value; }
     bool drawEdges() const { return _draw_edges.value; }
     bool drawPoints() const { return _draw_points.value; }
@@ -101,8 +107,10 @@ class ObjectRenderConfig : public Config
 
     ConfigParameter<Real> _metallic = ConfigParameter<Real>(0.0);
     ConfigParameter<Real> _roughness = ConfigParameter<Real>(0.5);
+    ConfigParameter<Real> _opacity = ConfigParameter<Real>(1.0);
     ConfigParameter<Vec3r> _color = ConfigParameter<Vec3r>(Vec3r(0.8, 0.8, 0.8));
 
+    ConfigParameter<bool> _smooth_normals = ConfigParameter<bool>(true);
     ConfigParameter<bool> _draw_faces = ConfigParameter<bool>(true);
     ConfigParameter<bool> _draw_edges = ConfigParameter<bool>(false);
     ConfigParameter<bool> _draw_points = ConfigParameter<bool>(false);

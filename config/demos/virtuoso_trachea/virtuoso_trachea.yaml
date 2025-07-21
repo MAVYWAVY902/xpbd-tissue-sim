@@ -7,6 +7,7 @@ fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.tx
 tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"
 # goal-filename: "../resource/demos/trachea_virtuoso/goals/goal1.obj"
 # goals-folder: "../resource/demos/trachea_virtuoso/goals/"
+show-tip-cursor: true
 
 # device-name1: "LeftOmni"
 # device-name2: "RightOmni"
@@ -57,6 +58,7 @@ objects:
     render-type: "PBR"
     metallic: 0.0
     roughness: 0.4
+    smooth-normals: true
     draw-points: false
     draw-edges: true
 

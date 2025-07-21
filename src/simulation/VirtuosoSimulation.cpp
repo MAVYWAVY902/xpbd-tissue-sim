@@ -65,7 +65,7 @@ void VirtuosoSimulation::setup()
     if (_show_tip_cursor)
     {
         Config::ObjectRenderConfig cursor_render_config(Config::ObjectRenderConfig::RenderType::PBR, std::nullopt, std::nullopt, std::nullopt,
-            0.0, 0.5, Vec3r(1.0, 1.0, 0.0), true, false, false);
+            0.0, 0.5, 0.3, Vec3r(1.0, 1.0, 0.0), true, true, false, false);
         Config::RigidSphereConfig cursor_config("tip_cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
             1.0, 0.001, false, true, false, cursor_render_config);
         _tip_cursor = _addObjectFromConfig(&cursor_config);

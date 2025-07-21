@@ -13,10 +13,27 @@ VTKCylinderGraphicsObject::VTKCylinderGraphicsObject(const std::string& name, co
     _cyl_source = vtkSmartPointer<vtkCylinderSource>::New();
     _cyl_source->SetHeight(cyl->height());
     _cyl_source->SetRadius(cyl->radius());
-
-    vtkNew<vtkPolyDataMapper> data_mapper;
-    data_mapper->SetInputConnection(_cyl_source->GetOutputPort());
     
+    vtkNew<vtkPolyDataMapper> data_mapper;
+    if (render_config.smoothNormals())
+    {
+        // smooth normals
+        vtkNew<vtkPolyDataNormals> normal_generator;
+        normal_generator->SetInputConnection(_cyl_source->GetOutputPort());
+        normal_generator->SetFeatureAngle(30.0);
+        normal_generator->SplittingOff();
+        normal_generator->ConsistencyOn();
+        normal_generator->ComputePointNormalsOn();
+        normal_generator->ComputeCellNormalsOff();
+        normal_generator->Update();
+
+        data_mapper->SetInputConnection(normal_generator->GetOutputPort());
+    }
+    else
+    {
+        data_mapper->SetInputConnection(_cyl_source->GetOutputPort());
+    }
+
     _cyl_actor = vtkSmartPointer<vtkActor>::New();
     _cyl_actor->SetMapper(data_mapper);
 

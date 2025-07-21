@@ -35,6 +35,7 @@
 #include <vtkToneMappingPass.h>
 #include <vtkLightsPass.h>
 #include <vtkOpaquePass.h>
+#include <vtkTranslucentPass.h>
 
 #include <vtkAutoInit.h>
 // VTK_MODULE_INIT(CommonColor);
@@ -163,10 +164,16 @@ void VTKViewer::_setupRenderWindow(const Config::SimulationRenderConfig& render_
     /////////////////////////////////////////////////////////
     // Create the rendering passes and settings
     ////////////////////////////////////////////////////////
-    _render_window->SetMultiSamples(10);
+    // Enable proper transparency rendering
+    _renderer->SetUseDepthPeeling(false);
+    _renderer->SetMaximumNumberOfPeels(4);
+    _render_window->SetAlphaBitPlanes(true);
+    _render_window->SetMultiSamples(0);
+    // _render_window->SetMultiSamples(10);
     
     vtkNew<vtkSequencePass> seqP;
     vtkNew<vtkOpaquePass> opaqueP;
+    vtkNew<vtkTranslucentPass> translucentP;
     vtkNew<vtkLightsPass> lightsP;
 
     vtkNew<vtkShadowMapPass> shadows;
@@ -174,9 +181,11 @@ void VTKViewer::_setupRenderWindow(const Config::SimulationRenderConfig& render_
 
     vtkNew<vtkRenderPassCollection> passes;
     passes->AddItem(lightsP);
-    passes->AddItem(opaqueP);
-    passes->AddItem(shadows->GetShadowMapBakerPass());
     passes->AddItem(shadows);
+    passes->AddItem(opaqueP);
+    passes->AddItem(translucentP);
+    passes->AddItem(shadows->GetShadowMapBakerPass());
+    
     seqP->SetPasses(passes);
 
     vtkNew<vtkCameraPass> cameraP;

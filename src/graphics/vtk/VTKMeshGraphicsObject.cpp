@@ -54,22 +54,29 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     _vtk_poly_data->SetPoints(vtk_points);
     _vtk_poly_data->SetPolys(vtk_faces);
 
-    // smooth normals
-    vtkNew<vtkPolyDataNormals> normal_generator;
-    normal_generator->SetInputData(_vtk_poly_data);
-    normal_generator->SetFeatureAngle(30.0);
-    normal_generator->SplittingOff();
-    normal_generator->ConsistencyOn();
-    normal_generator->ComputePointNormalsOn();
-    normal_generator->ComputeCellNormalsOff();
-    normal_generator->Update();
-
-    // vtkNew<vtkPolyDataTangents> tangents;
-    // tangents->SetInputConnection(normal_generator->GetOutputPort());
-    // tangents->Update();
-
     vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(normal_generator->GetOutputPort());
+    if (render_config.smoothNormals())
+    {
+        // smooth normals
+        vtkNew<vtkPolyDataNormals> normal_generator;
+        normal_generator->SetInputData(_vtk_poly_data);
+        normal_generator->SetFeatureAngle(30.0);
+        normal_generator->SplittingOff();
+        normal_generator->ConsistencyOn();
+        normal_generator->ComputePointNormalsOn();
+        normal_generator->ComputeCellNormalsOff();
+        normal_generator->Update();
+
+        // vtkNew<vtkPolyDataTangents> tangents;
+        // tangents->SetInputConnection(normal_generator->GetOutputPort());
+        // tangents->Update();
+
+        mapper->SetInputConnection(normal_generator->GetOutputPort());
+    }
+    else
+    {
+        mapper->SetInputData(_vtk_poly_data);
+    }
     
     _vtk_actor = vtkSmartPointer<vtkActor>::New();
     _vtk_actor->SetMapper(mapper);
