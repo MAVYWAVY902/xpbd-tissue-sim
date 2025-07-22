@@ -56,7 +56,7 @@ std::pair<Real, Vec3r> VirtuosoArmSDF::_evaluateWithGradient(const Vec3r& x) con
         const Vec3r& pos_i = it_frames[i].origin();
         const Vec3r& pos_iplus1 = it_frames[i+1].origin();
 
-        auto [dist, grad] = _capsuleSDFDistanceAndGradient(x, pos_i, pos_iplus1, 0.5*_virtuoso_arm->outerTubeOuterDiameter());
+        auto [dist, grad] = _capsuleSDFDistanceAndGradient(x, pos_i, pos_iplus1, 0.5*_virtuoso_arm->innerTubeOuterDiameter());
         
         
         if (dist < min_dist)

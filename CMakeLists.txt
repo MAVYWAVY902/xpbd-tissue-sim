@@ -161,13 +161,13 @@ add_executable(EmbreeTest src/exec/test/embree_test.cpp)
 target_link_libraries(EmbreeTest embree Geometry MeshUtils)
 
 add_executable(VirtuosoStaticsModelTest src/exec/test/virtuoso_statics_model_test.cpp)
-target_link_libraries(VirtuosoStaticsModelTest Eigen3::Eigen SimObject Config)
+target_link_libraries(VirtuosoStaticsModelTest Eigen3::Eigen SimObject Config Graphics ${VTK_LIBRARIES})
 
 add_executable(VTKTest src/exec/test/vtk_test.cpp)
 target_link_libraries(VTKTest Graphics ${VTK_LIBRARIES})
 
 vtk_module_autoinit(
-  TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest
+  TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest VirtuosoStaticsModelTest
   MODULES ${VTK_LIBRARIES}
 )
 
