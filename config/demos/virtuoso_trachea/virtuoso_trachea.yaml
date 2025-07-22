@@ -67,6 +67,7 @@ objects:
     type: "VirtuosoRobot"
     position: [0, -0.03, -0.0015]
     rotation: [-90, 180, 0]
+    collisions: true
 
     color: [0.7, 0.7, 0.7]
     render-type: "PBR"
@@ -85,7 +86,7 @@ objects:
       inner-tube-rotation: 30
       inner-tube-diameter: 1.04e-3
       inner-tube-translation: 20e-3
-      collisions: false
+      collisions: true
 
       color: [0.7, 0.7, 0.7]
       render-type: "PBR"
@@ -104,7 +105,7 @@ objects:
       inner-tube-rotation: 45
       inner-tube-diameter: 1.04e-3
       inner-tube-translation: 20e-3
-      collisions: false
+      collisions: true
 
       color: [0.7, 0.7, 0.7]
       render-type: "PBR"

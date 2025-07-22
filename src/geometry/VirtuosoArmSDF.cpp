@@ -10,19 +10,85 @@ VirtuosoArmSDF::VirtuosoArmSDF(const Sim::VirtuosoArm* arm)
 {
 }
 
+// Real VirtuosoArmSDF::evaluate(const Vec3r& x) const
+// {
+//     // const Vec3r x_sdf = _globalToBodyInnerTube(x);
+//     // const Real l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), Real(0.0));
+//     // return _cylinderSDFDistance(x_sdf, _virtuoso_arm->innerTubeOuterDiameter()/2.0, l);
+//     const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = _virtuoso_arm->innerTubeFrames();
+//     return _capsuleSDFDistance(x, it_frames.front().origin(), it_frames.back().origin(), 0.5*_virtuoso_arm->innerTubeOuterDiameter());
+// }
+
+// Vec3r VirtuosoArmSDF::gradient(const Vec3r& x) const
+// {
+//     // const Vec3r x_sdf = _globalToBodyInnerTube(x);
+//     // const Real l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), Real(0.0));
+//     // const Vec3r body_grad = _cylinderSDFGradient(x_sdf, _virtuoso_arm->innerTubeOuterDiameter()/2.0, l);
+//     // return _bodyToGlobalInnerTubeGradient(body_grad);
+
+//     const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = _virtuoso_arm->innerTubeFrames();
+//     return _capsuleSDFGradient(x, it_frames.front().origin(), it_frames.back().origin(), 0.5*_virtuoso_arm->innerTubeOuterDiameter());
+// }
+
 Real VirtuosoArmSDF::evaluate(const Vec3r& x) const
 {
-    const Vec3r x_sdf = _globalToBodyInnerTube(x);
-    const Real l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), Real(0.0));
-    return _cylinderSDFDistance(x_sdf, _virtuoso_arm->innerTubeOuterDiameter()/2.0, l);
+    return _evaluateWithGradient(x).first;
+    // const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = _virtuoso_arm->innerTubeFrames();
+    // return _capsuleSDFDistanceAndGradient(x, it_frames.front().origin(), it_frames.back().origin(), 0.5*_virtuoso_arm->innerTubeOuterDiameter()).first;
 }
 
 Vec3r VirtuosoArmSDF::gradient(const Vec3r& x) const
 {
-    const Vec3r x_sdf = _globalToBodyInnerTube(x);
-    const Real l = std::max(_virtuoso_arm->innerTubeTranslation() - _virtuoso_arm->outerTubeTranslation(), Real(0.0));
-    const Vec3r body_grad = _cylinderSDFGradient(x_sdf, _virtuoso_arm->innerTubeOuterDiameter()/2.0, l);
-    return _bodyToGlobalInnerTubeGradient(body_grad);
+    return _evaluateWithGradient(x).second;
+    // const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = _virtuoso_arm->innerTubeFrames();
+    // return _capsuleSDFDistanceAndGradient(x, it_frames.front().origin(), it_frames.back().origin(), 0.5*_virtuoso_arm->innerTubeOuterDiameter()).second;
+}
+
+std::pair<Real, Vec3r> VirtuosoArmSDF::_evaluateWithGradient(const Vec3r& x) const
+{
+    const Sim::VirtuosoArm::OuterTubeFramesArray& ot_frames = _virtuoso_arm->outerTubeFrames();
+    const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = _virtuoso_arm->innerTubeFrames();
+
+    Real min_dist = std::numeric_limits<Real>::max();
+    Vec3r min_grad = Vec3r::Zero();
+    for (unsigned i = 0; i < it_frames.size()-1; i++)
+    {
+        const Vec3r& pos_i = it_frames[i].origin();
+        const Vec3r& pos_iplus1 = it_frames[i+1].origin();
+
+        auto [dist, grad] = _capsuleSDFDistanceAndGradient(x, pos_i, pos_iplus1, 0.5*_virtuoso_arm->outerTubeOuterDiameter());
+        
+        
+        if (dist < min_dist)
+        {
+            min_dist = dist;
+            min_grad = grad;
+        }
+
+        if (dist < 0)
+            return std::make_pair(min_dist, min_grad);
+            
+    }
+
+    for (unsigned i = 0; i < ot_frames.size()-1; i++)
+    {
+        const Vec3r& pos_i = ot_frames[i].origin();
+        const Vec3r& pos_iplus1 = ot_frames[i+1].origin();
+
+        auto [dist, grad] = _capsuleSDFDistanceAndGradient(x, pos_i, pos_iplus1, 0.5*_virtuoso_arm->outerTubeOuterDiameter());
+
+        if (dist < min_dist)
+        {
+            min_dist = dist;
+            min_grad = grad;
+        }
+
+        if (dist < 0)
+            return std::make_pair(min_dist, min_grad);
+            
+    }
+
+    return std::make_pair(min_dist, min_grad);
 }
 
 Vec3r VirtuosoArmSDF::_bodyToGlobalInnerTubeGradient(const Vec3r& grad) const
@@ -76,6 +142,33 @@ Vec3r VirtuosoArmSDF::_globalToBodyInnerTube(const Vec3r& x) const
 
     return inv_transform.rotMat()*x + inv_transform.translation();
 
+}
+
+Real VirtuosoArmSDF::_capsuleSDFDistance(const Vec3r& p, const Vec3r& a, const Vec3r& b, Real radius) const
+{
+    const Vec3r pa = p - a;
+    const Vec3r ba = b - a;
+    const Real h = std::clamp(pa.dot(ba) / ba.squaredNorm(), Real(0.0), Real(1.0) );
+    return (pa - ba*h).norm() - radius;
+}
+
+Vec3r VirtuosoArmSDF::_capsuleSDFGradient(const Vec3r& p, const Vec3r& a, const Vec3r& b, Real radius) const
+{
+    const Vec3r pa = p - a;
+    const Vec3r ba = b - a;
+    const Real h = std::clamp(pa.dot(ba) / ba.squaredNorm(), Real(0.0), Real(1.0) );
+    return (pa - ba*h).normalized();
+}
+
+std::pair<Real, Vec3r> VirtuosoArmSDF::_capsuleSDFDistanceAndGradient(const Vec3r& p, const Vec3r& a, const Vec3r& b, Real radius) const
+{
+    const Vec3r pa = p - a;
+    const Vec3r ba = b - a;
+    const Real h = std::clamp(pa.dot(ba) / ba.squaredNorm(), Real(0.0), Real(1.0) );
+    const Vec3r vec = pa - ba*h;
+    const Real vec_norm = vec.norm();
+    const Real dist = vec_norm - radius;
+    return std::make_pair(dist, vec/vec_norm);
 }
 
 Real VirtuosoArmSDF::_cylinderSDFDistance(const Vec3r& x, Real cyl_radius, Real cyl_height) const

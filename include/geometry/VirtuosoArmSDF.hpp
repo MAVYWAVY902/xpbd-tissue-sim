@@ -36,10 +36,16 @@ class VirtuosoArmSDF : public SDF
     #endif
 
     private:
+    std::pair<Real, Vec3r> _evaluateWithGradient(const Vec3r& x) const;
+
     Vec3r _bodyToGlobalInnerTubeGradient(const Vec3r& grad) const;
     Vec3r _globalToBodyInnerTube(const Vec3r& x) const;
     Real _cylinderSDFDistance(const Vec3r& x, Real cyl_radius, Real cyl_height) const;
     Vec3r _cylinderSDFGradient(const Vec3r& x, Real cyl_radius, Real cyl_height) const;
+
+    Real _capsuleSDFDistance(const Vec3r& x, const Vec3r& a, const Vec3r& b, Real radius) const;
+    Vec3r _capsuleSDFGradient(const Vec3r& x, const Vec3r& a, const Vec3r& b, Real radius) const;
+    std::pair<Real, Vec3r> _capsuleSDFDistanceAndGradient(const Vec3r& x, const Vec3r& a, const Vec3r& b, Real radius) const;
 
     private:
     const Sim::VirtuosoArm* _virtuoso_arm;

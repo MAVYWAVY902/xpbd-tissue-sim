@@ -22,9 +22,9 @@ g-accel: 0 # m/s2
 sim-mode: "AFAP"
 time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
-collision-rate: 1000
+collision-rate: 100
 fps: 30
-end-time: 5000
+end-time: 20
 
 # rendering settings
 exposure: 0.2
@@ -67,7 +67,7 @@ objects:
     color: [1.0, 0.3, 0.2]
     render-type: "PBR"
     metallic: 0.0
-    roughness: 0.4
+    roughness: 0.3
     draw-points: false
     draw-edges: true
     draw-faces: true
