@@ -2,7 +2,7 @@
 #define __EASY3D_GRAPHICS_SCENE_HPP
 
 #include "graphics/GraphicsScene.hpp"
-#include "graphics/Easy3DTextRenderingViewer.hpp"
+#include "graphics/easy3d/Easy3DTextRenderingViewer.hpp"
 
 #include "simobject/Object.hpp"
 #include "config/simobject/MeshObjectConfig.hpp"
@@ -18,7 +18,7 @@ class Easy3DGraphicsScene : public GraphicsScene
     /** Creates a new Easy3DGraphicsScene with a given name
      * @param name : the name of the new GraphicsScene
      */
-    explicit Easy3DGraphicsScene(const std::string& name);
+    explicit Easy3DGraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config);
 
     virtual ~Easy3DGraphicsScene();
 
@@ -38,10 +38,10 @@ class Easy3DGraphicsScene : public GraphicsScene
 
     /** Creates a MeshGraphicsObject from a supplied MeshObject and adds it to the GraphicsScene
      * @param obj : the MeshObject to add to the GraphicsScene for visualization
-     * @param obj_config : the MeshObjectConfig that contains visualization parameters (e.g. coloring, draw points, etc.)
+     * @param render_config : the ObjectRenderConfig that contains rendering parameters (e.g. coloring, draw points, etc.)
      * @returns the index of the provided object in the _graphics_objects array (can be used to fetch it in the future)
      */
-    virtual int addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config=nullptr) override;
+    virtual int addObject(const Sim::Object* obj, const Config::ObjectRenderConfig& render_config) override;
 
     /** Sets the camera mode to Orthographic */
     virtual void setCameraOrthographic() override;

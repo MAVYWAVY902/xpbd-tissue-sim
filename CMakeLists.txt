@@ -27,6 +27,26 @@ find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 find_package(Eigen3 3.3 REQUIRED)   # find Eigen
 find_package(embree 4 REQUIRED)
 
+# find VTK
+find_package(VTK COMPONENTS
+    CommonColor
+    CommonCore
+    FiltersSources
+    IOImage
+    InteractionStyle
+    RenderingContextOpenGL2
+    RenderingCore
+    RenderingFreeType
+    RenderingGL2PSOpenGL2
+    RenderingOpenGL2
+)
+
+if (NOT VTK_FOUND)
+  message(FATAL_ERROR "Unable to find the VTK build folder.")
+endif()
+
+
+
 include_directories("./include")
 
 if (HAVE_CUDA AND NOT NO_GPU)
@@ -80,7 +100,7 @@ add_subdirectory("src/utils")
 # link in necessary libraries
 target_link_libraries(Collision Eigen3::Eigen mesh2sdf Geometry GeometryUtils)
 target_link_libraries(Config Eigen3::Eigen SimObject)
-target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer) # link Easy3D for Graphics library
+target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer ${VTK_LIBRARIES}) # link Easy3D for Graphics library
 target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils embree)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
 target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Geometry Solver Config)   # link MeshUtils and Solver libraries
@@ -98,7 +118,7 @@ add_library(VirtuosoSimulation)
 # add_library(InitialDeformationSimulation)
 add_subdirectory("src/simulation")
 
-target_link_libraries(ResidualSimulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp)
+target_link_libraries(ResidualSimulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp ${VTK_LIBRARIES})
 target_link_libraries(BeamSimulation ResidualSimulation)
 target_link_libraries(GraspingSimulation ResidualSimulation)
 target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
@@ -108,7 +128,7 @@ target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
 
 ### Create executables
 add_executable(Test src/exec/main.cpp)
-target_link_libraries(Test ResidualSimulation)
+target_link_libraries(Test ResidualSimulation ${VTK_LIBRARIES})
 
 add_executable(BeamTest src/exec/beam_test_main.cpp)
 target_link_libraries(BeamTest BeamSimulation)
@@ -142,6 +162,14 @@ target_link_libraries(EmbreeTest embree Geometry MeshUtils)
 
 add_executable(VirtuosoStaticsModelTest src/exec/test/virtuoso_statics_model_test.cpp)
 target_link_libraries(VirtuosoStaticsModelTest Eigen3::Eigen SimObject Config)
+
+add_executable(VTKTest src/exec/test/vtk_test.cpp)
+target_link_libraries(VTKTest Graphics ${VTK_LIBRARIES})
+
+vtk_module_autoinit(
+  TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest
+  MODULES ${VTK_LIBRARIES}
+)
 
 if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject Solver)

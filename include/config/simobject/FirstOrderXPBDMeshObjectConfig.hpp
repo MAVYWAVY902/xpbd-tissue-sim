@@ -11,8 +11,6 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
     public:
     using ObjectType = Sim::XPBDMeshObject_Base;
 
-    static std::optional<Real>& DEFAULT_DAMPING_MULTIPLIER() { static std::optional<Real> damping(1); return damping; }
-
     public:
     /** Creates a Config from a YAML node, which consists of the specialized parameters needed for XPBDMeshObject.
      * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
@@ -20,7 +18,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
     explicit FirstOrderXPBDMeshObjectConfig(const YAML::Node& node)
         : XPBDMeshObjectConfig(node)
     {
-        _extractParameter("damping-multiplier", node, _damping_multiplier, DEFAULT_DAMPING_MULTIPLIER());        
+        _extractParameter("damping-multiplier", node, _damping_multiplier);        
     }
 
     explicit FirstOrderXPBDMeshObjectConfig(  
@@ -33,24 +31,27 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
                                     Real density, Real E, Real nu, Real mu_s, Real mu_k,                                                    // ElasticMaterial params
 
                                     int num_solver_iters, XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
-                                    bool with_residual, bool with_damping, Real damping_gamma, XPBDSolverResidualPolicyEnum residual_policy,
+                                    XPBDSolverResidualPolicyEnum residual_policy,
                                 
-                                    Real damping_multiplier )  
+                                    Real damping_multiplier,
+                                
+                                    const ObjectRenderConfig& render_config)  
                                                                                                                                             // FirstOrderXPBDMeshObject params
         : XPBDMeshObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions, graphics_only,
                                 filename, max_size, size, draw_points, draw_edges, draw_faces, color,
                                 density, E, nu, mu_s, mu_k,
-                                num_solver_iters, solver_type, constraint_type, with_residual, with_damping, damping_gamma, residual_policy)
+                                num_solver_iters, solver_type, constraint_type, residual_policy,
+                                render_config)
     {
         _damping_multiplier.value = damping_multiplier;
     }
 
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
-    std::optional<Real> dampingMultiplier() const { return _damping_multiplier.value; }
+    Real dampingMultiplier() const { return _damping_multiplier.value; }
 
     protected:
-    ConfigParameter<Real> _damping_multiplier;
+    ConfigParameter<Real> _damping_multiplier = ConfigParameter<Real>(1);
 };
 
 } // namespace Config

@@ -10,6 +10,9 @@
 #include "graphics/Viewer.hpp"
 #include "graphics/GraphicsObject.hpp"
 
+#include "config/render/ObjectRenderConfig.hpp"
+#include "config/render/SimulationRenderConfig.hpp"
+
 #include "common/types.hpp"
 
 namespace Sim
@@ -34,8 +37,9 @@ class GraphicsScene
     public:
     /** Creates a new GraphicsScene with a given name
      * @param name : the name of the new GraphicsScene
+     * @param sim_render_config : the rendering parameters to use
      */
-    explicit GraphicsScene(const std::string& name);
+    explicit GraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config);
 
     virtual ~GraphicsScene() {}
 
@@ -57,10 +61,10 @@ class GraphicsScene
 
     /** Creates a MeshGraphicsObject from a supplied MeshObject and adds it to the GraphicsScene
      * @param obj : the simulation Object to add to the GraphicsScene for visualization
-     * @param obj_config : the ObjectConfig that contains any visualization parameters (e.g. coloring, draw points, etc.)
+     * @param render_config : the ObjectRenderConfig that contains rendering parameters (e.g. coloring, draw points, etc.)
      * @returns the index of the provided object in the _graphics_objects array (can be used to fetch it in the future)
      */
-    virtual int addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config=nullptr) = 0;
+    virtual int addObject(const Sim::Object* obj, const Config::ObjectRenderConfig& render_config) = 0;
 
     /** Sets the camera mode to Orthographic */
     virtual void setCameraOrthographic() = 0;
@@ -107,6 +111,9 @@ class GraphicsScene
 
     protected:
     std::string _name;
+     
+    /** Store the render config for when the GraphicsScene gets initialized */
+    Config::SimulationRenderConfig _sim_render_config;
 
     std::vector<std::unique_ptr<GraphicsObject>> _graphics_objects; 
 

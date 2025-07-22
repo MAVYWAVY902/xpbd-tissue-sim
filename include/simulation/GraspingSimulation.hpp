@@ -17,9 +17,9 @@ class GraspingSimulation : public Simulation
 
     virtual void setup() override;
 
-    virtual void notifyKeyPressed(int key, int action, int modifiers) override;
+    virtual void notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers) override;
 
-    virtual void notifyMouseButtonPressed(int button, int action, int modifiers) override;
+    virtual void notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers) override;
 
     virtual void notifyMouseMoved(double x, double y) override;
 
@@ -46,7 +46,7 @@ class GraspingSimulation : public Simulation
 
     Vec2r _last_mouse_pos;  // on-screen mouse position for the last frame
 
-    std::map<int, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
+    std::map<SimulationInput::Key, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
 };
 
 } // namespace Sim

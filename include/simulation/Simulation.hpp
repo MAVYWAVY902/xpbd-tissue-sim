@@ -19,6 +19,7 @@
 
 #include "common/VariadicVectorContainer.hpp"
 #include "common/SimulationTypeDefs.hpp"
+#include "common/SimulationInput.hpp"
 
 #include <yaml-cpp/yaml.h>
 
@@ -98,9 +99,9 @@ class Simulation
          * @param action : the action performed on the keyboard
          * @param modifiers : the modifiers (i.e. Shift, Ctrl, Alt)
          */
-        virtual void notifyKeyPressed(int key, int action, int modifiers);
+        virtual void notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers);
 
-        virtual void notifyMouseButtonPressed(int button, int action, int modifiers);
+        virtual void notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers);
 
         virtual void notifyMouseMoved(double x, double y);
 
@@ -150,7 +151,7 @@ class Simulation
             // add the new object to the graphics scene to be visualized
             if (_graphics_scene)
             {
-                _graphics_scene->addObject(new_obj.get(), obj_config);
+                _graphics_scene->addObject(new_obj.get(), obj_config->renderConfig());
             }
 
             // if we get to here, we have successfully created a new MeshObject of some kind

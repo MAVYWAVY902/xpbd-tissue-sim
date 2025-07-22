@@ -2,6 +2,7 @@
 #define __EASY3D_MESH_GRAPHICS_OBJECT_HPP
 
 #include "graphics/MeshGraphicsObject.hpp"
+#include "config/render/ObjectRenderConfig.hpp"
 
 #include <easy3d/core/types.h>
 #include <easy3d/core/model.h>
@@ -19,11 +20,6 @@ namespace Graphics
 class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
 {
     public:
-    /** Creates a Easy3DMeshGraphicsObject with a given name and for a given MeshObject
-     * @param name : the name of the new MeshGraphicsObject
-     * @param mesh_object : the simulation MeshObject to get mesh information from
-     */
-    explicit Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh);
 
     /** Creates a Easy3DMeshGraphicsObject with a given name and for a given MeshObject, and sets additional parameters
      * using a MeshObjectConfig object.
@@ -31,7 +27,7 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
      * @param mesh_object : the simulation MeshObject to get mesh information from
      * @param mesh_object_config : the MeshObjectConfig file to get additional parameters from
      */
-    explicit Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const Config::MeshObjectConfig* mesh_object_config);
+    explicit Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const Config::ObjectRenderConfig& render_config);
 
     virtual ~Easy3DMeshGraphicsObject();
 
@@ -70,7 +66,7 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
      */
     void _updateVertexCache();
 
-    void _init();
+    void _init(const Config::ObjectRenderConfig& config);
 
     protected:
     /** Vector of easy3d::vec3 vertices that is updated before every redraw.

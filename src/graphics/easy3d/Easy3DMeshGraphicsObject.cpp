@@ -1,4 +1,4 @@
-#include "graphics/Easy3DMeshGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DMeshGraphicsObject.hpp"
 
 #include <easy3d/renderer/drawable_lines.h>
 #include <easy3d/renderer/drawable_points.h>
@@ -7,19 +7,13 @@
 
 namespace Graphics {
 
-Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh)
+Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::ObjectRenderConfig& render_config)
     : MeshGraphicsObject(name, mesh)
 {
-    _init();
+    _init(render_config);
 }
 
-Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::MeshObjectConfig* mesh_object_config)
-    : MeshGraphicsObject(name, mesh, mesh_object_config)
-{
-    _init();
-}
-
-void Easy3DMeshGraphicsObject::_init()
+void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config)
 {
     // first ensure that the vertex cache has enough space for each vertex
     _vertex_cache.resize(_mesh->numVertices());
@@ -29,7 +23,7 @@ void Easy3DMeshGraphicsObject::_init()
     // create a new Renderer for this Model so that the Drawables (below) get updated
     set_renderer(std::make_shared<easy3d::Renderer>(this, true));
 
-    if (_draw_faces)
+    if (config.drawFaces())
     {
         // create a TrianglesDrawable for the faces of the tetrahedral mesh
         easy3d::TrianglesDrawable* tri_drawable = renderer()->add_triangles_drawable("faces");
@@ -50,7 +44,7 @@ void Easy3DMeshGraphicsObject::_init()
         tri_drawable->set_uniform_coloring(color);
     }
 
-    if (_draw_points)
+    if (config.drawPoints())
     {
         // create a PointsDrawable for the points of the tetrahedral mesh
         easy3d::PointsDrawable* points_drawable = renderer()->add_points_drawable("vertices");
@@ -61,7 +55,7 @@ void Easy3DMeshGraphicsObject::_init()
         });
     }
 
-    if (_draw_edges)
+    if (config.drawEdges())
     {
         easy3d::LinesDrawable* lines_drawable = renderer()->add_lines_drawable("lines");
         lines_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {

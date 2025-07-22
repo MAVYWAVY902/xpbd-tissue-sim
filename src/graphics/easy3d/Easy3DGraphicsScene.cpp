@@ -1,10 +1,10 @@
-#include "graphics/Easy3DGraphicsScene.hpp"
-#include "graphics/Easy3DMeshGraphicsObject.hpp"
-#include "graphics/Easy3DSphereGraphicsObject.hpp"
-#include "graphics/Easy3DBoxGraphicsObject.hpp"
-#include "graphics/Easy3DCylinderGraphicsObject.hpp"
-#include "graphics/Easy3DVirtuosoArmGraphicsObject.hpp"
-#include "graphics/Easy3DVirtuosoRobotGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DGraphicsScene.hpp"
+#include "graphics/easy3d/Easy3DMeshGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DSphereGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DBoxGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DCylinderGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DVirtuosoArmGraphicsObject.hpp"
+#include "graphics/easy3d/Easy3DVirtuosoRobotGraphicsObject.hpp"
 #include "config/simobject/MeshObjectConfig.hpp"
 
 #include "simobject/MeshObject.hpp"
@@ -25,8 +25,8 @@
 namespace Graphics
 {
 
-Easy3DGraphicsScene::Easy3DGraphicsScene(const std::string& name)
-    : GraphicsScene(name)
+Easy3DGraphicsScene::Easy3DGraphicsScene(const std::string& name, const Config::SimulationRenderConfig& sim_render_config)
+    : GraphicsScene(name, sim_render_config)
 {
 
 }
@@ -65,7 +65,7 @@ int Easy3DGraphicsScene::run()
     return _easy3d_viewer->run();
 }
 
-int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectConfig* obj_config)
+int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectRenderConfig& obj_config)
 {
 
     // make sure object with name doesn't already exist in the scene
@@ -80,13 +80,9 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectC
     // try downcasting to MeshObject
     if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(obj))
     {
-        // if the downcast was successful, we should be able to downcast the ObjectConfig object to a MeshObjectConfig
-        const Config::MeshObjectConfig* mo_config = dynamic_cast<const Config::MeshObjectConfig*>(obj_config);
-        assert(mo_config);
-
         // create a new MeshGraphicsObject for visualizing this MeshObject
         // std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
-        new_graphics_obj = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
+        new_graphics_obj = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), obj_config);
     }
 
     // try downcasting to a RigidSphere
@@ -180,7 +176,7 @@ void Easy3DGraphicsScene::setCameraPerspective()
 
 void Easy3DGraphicsScene::setCameraFOV(Real fov)
 {
-    _easy3d_viewer->camera()->setFieldOfView(fov);
+    _easy3d_viewer->camera()->setFieldOfView(fov * M_PI/180.0);
 }
 
 Vec3r Easy3DGraphicsScene::cameraViewDirection() const

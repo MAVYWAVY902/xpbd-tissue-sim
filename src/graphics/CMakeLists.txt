@@ -9,28 +9,46 @@ set(GRAPHICS_HEADERS
     ${GRAPHICS_INCLUDE_DIR}/GraphicsScene.hpp
     ${GRAPHICS_INCLUDE_DIR}/GraphicsObject.hpp
     ${GRAPHICS_INCLUDE_DIR}/MeshGraphicsObject.hpp
-    ${GRAPHICS_INCLUDE_DIR}/Easy3DGraphicsScene.hpp
-    ${GRAPHICS_INCLUDE_DIR}/Easy3DSphereGraphicsObject.hpp
-    ${GRAPHICS_INCLUDE_DIR}/Easy3DBoxGraphicsObject.hpp
-    ${GRAPHICS_INCLUDE_DIR}/Easy3DCylinderGraphicsObject.hpp
-    ${GRAPHICS_INCLUDE_DIR}/Easy3DMeshGraphicsObject.hpp
-    ${GRAPHICS_INCLUDE_DIR}/Easy3DVirtuosoArmGraphicsObject.hpp
-    ${GRAPHICS_INCLUDE_DIR}/Easy3DVirtuosoRobotGraphicsObject.hpp
-    ${GRAPHICS_INCLUDE_DIR}/Easy3DTextRenderingViewer.hpp
+    ${GRAPHICS_INCLUDE_DIR}/easy3d/Easy3DGraphicsScene.hpp
+    ${GRAPHICS_INCLUDE_DIR}/easy3d/Easy3DSphereGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/easy3d/Easy3DBoxGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/easy3d/Easy3DCylinderGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/easy3d/Easy3DMeshGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/easy3d/Easy3DVirtuosoArmGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/easy3d/Easy3DVirtuosoRobotGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/easy3d/Easy3DTextRenderingViewer.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKGraphicsScene.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKViewer.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/CustomVTKInteractorStyle.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKBoxGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKCylinderGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKSphereGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKMeshGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKVirtuosoArmGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/vtk/VTKVirtuosoRobotGraphicsObject.hpp
 )
 
 set(GRAPHICS_SOURCES
     ${GRAPHICS_SRC_DIR}/Viewer.cpp
     ${GRAPHICS_SRC_DIR}/GraphicsScene.cpp
     ${GRAPHICS_SRC_DIR}/MeshGraphicsObject.cpp
-    ${GRAPHICS_SRC_DIR}/Easy3DGraphicsScene.cpp
-    ${GRAPHICS_SRC_DIR}/Easy3DSphereGraphicsObject.cpp
-    ${GRAPHICS_SRC_DIR}/Easy3DBoxGraphicsObject.cpp
-    ${GRAPHICS_SRC_DIR}/Easy3DCylinderGraphicsObject.cpp
-    ${GRAPHICS_SRC_DIR}/Easy3DMeshGraphicsObject.cpp
-    ${GRAPHICS_SRC_DIR}/Easy3DVirtuosoArmGraphicsObject.cpp
-    ${GRAPHICS_SRC_DIR}/Easy3DVirtuosoRobotGraphicsObject.cpp
-    ${GRAPHICS_SRC_DIR}/Easy3DTextRenderingViewer.cpp
+    ${GRAPHICS_SRC_DIR}/easy3d/Easy3DGraphicsScene.cpp
+    ${GRAPHICS_SRC_DIR}/easy3d/Easy3DSphereGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/easy3d/Easy3DBoxGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/easy3d/Easy3DCylinderGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/easy3d/Easy3DMeshGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/easy3d/Easy3DVirtuosoArmGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/easy3d/Easy3DVirtuosoRobotGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/easy3d/Easy3DTextRenderingViewer.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKGraphicsScene.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKViewer.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/CustomVTKInteractorStyle.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKBoxGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKCylinderGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKSphereGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKMeshGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKVirtuosoArmGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/vtk/VTKVirtuosoRobotGraphicsObject.cpp
 )
 
 target_sources(Graphics

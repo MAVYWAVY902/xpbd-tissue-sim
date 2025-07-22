@@ -1,6 +1,8 @@
 #ifndef __VIEWER_HPP
 #define __VIEWER_HPP
 
+#include "common/SimulationInput.hpp"
+
 #include <string>
 #include <map>
 #include <array>
@@ -96,7 +98,7 @@ class Viewer
      * Simply creates a TextSpec according to the parameters passed in
      * Default parameters are used for convenience - at minimum, the name of the text and the text itself are required
      */
-    void addText(const std::string& name,
+    virtual void addText(const std::string& name,
                  const std::string& text,
                  const float& x = 0.0f,
                  const float& y = 0.0f,
@@ -110,13 +112,13 @@ class Viewer
     /** Removes a text with the specified name
      * @param name : the name of the TextSpec to remove
      */
-    void removeText(const std::string& name);
+    virtual void removeText(const std::string& name);
 
     /** Modifies the text of a rendered TextSpec 
      * @param name : the name of the TextSpec to edit
      * @param new_text : the new text that the TextSpec should have
     */
-    void editText(const std::string& name, const std::string& new_text);
+    virtual void editText(const std::string& name, const std::string& new_text);
 
     /** Modifies the text, position, and font size of a rendered TextSpec 
      * @param name : the name of the TextSpec to edit
@@ -125,7 +127,7 @@ class Viewer
      * @param new_y : the new y position of the text
      * @param new_font_size : the new font size of the text
     */
-    void editText(const std::string& name,
+    virtual void editText(const std::string& name,
                   const std::string& new_text,
                   const float& new_x,
                   const float& new_y,
@@ -153,16 +155,16 @@ class Viewer
     // NOTE: the key, action, modifiers, arguments are from the Easy3D keyboard and mouse events. Subject to change as more graphics backends are added.
 
     /** Shared viewer behavior on keyboard events. */
-    void _processKeyboardEvent(int key, int action, int modifiers);
+    virtual void _processKeyboardEvent(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers);
 
     /** Shared viewer behavior on mouse button events. */
-    void _processMouseButtonEvent(int button, int action, int modifiers);
+    virtual void _processMouseButtonEvent(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers);
 
     /** Shared viewer behavior on mouse move events. */
-    void _processCursorMoveEvent(double x, double y);
+    virtual void _processCursorMoveEvent(double x, double y);
 
     /** Shared viewer behavior on mouse scroll events. */
-    void _processScrollEvent(double dx, double dy);
+    virtual void _processScrollEvent(double dx, double dy);
 
     std::string _name;
 

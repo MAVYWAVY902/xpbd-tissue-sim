@@ -63,7 +63,7 @@ void VirtuosoTissueGraspingSimulation::setup()
         {
             Config::RigidMeshObjectConfig goal_config(entry.path(), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
                 1.0, false, true, false,
-                entry.path(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
+                entry.path(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt, Config::ObjectRenderConfig());
             RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
             goal_obj->mesh()->addFaceProperty<bool>("draw", false);
             
@@ -86,7 +86,7 @@ void VirtuosoTissueGraspingSimulation::setup()
     {
         Config::RigidMeshObjectConfig goal_config("goal_mesh", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
             1.0, false, true, false,
-            _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt);
+            _goal_filename.value(), 0.06, std::nullopt, false, true, false, Vec4r(0.4, 0.0, 0.0, 0.0), std::nullopt, Config::ObjectRenderConfig());
         RigidMeshObject* goal_obj = dynamic_cast<RigidMeshObject*>(_addObjectFromConfig(&goal_config));
         goal_obj->mesh()->addFaceProperty<bool>("draw", false);
 
@@ -115,15 +115,9 @@ void VirtuosoTissueGraspingSimulation::setup()
     
 }
 
-void VirtuosoTissueGraspingSimulation::notifyMouseButtonPressed(int button, int action, int modifiers)
-{
-
-    // button = 0 ==> left mouse button
-    // button = 1 ==> right mouse button
-    // action = 0 ==> mouse up
-    // action = 1 ==> mouse down
-    
-    if (_input_device == Config::SimulationInputDevice::MOUSE && button == 0 && action == 1)
+void VirtuosoTissueGraspingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
+{   
+    if (_input_device == SimulationInput::Device::MOUSE && button == SimulationInput::MouseButton::LEFT && action == SimulationInput::MouseAction::PRESS)
     {
         // _toggleTissueGrasping();
         _active_arm->setToolState(!_active_arm->toolState());
@@ -138,31 +132,31 @@ void VirtuosoTissueGraspingSimulation::notifyMouseMoved(double x, double y)
     VirtuosoSimulation::notifyMouseMoved(x, y);
 }
 
-void VirtuosoTissueGraspingSimulation::notifyKeyPressed(int key, int action, int modifiers)
+void VirtuosoTissueGraspingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
 
     // if input mode is keyboard, space bar grasps
-    if (_input_device == Config::SimulationInputDevice::KEYBOARD && key == 32 && action == 1)
+    if (_input_device == SimulationInput::Device::KEYBOARD && key == SimulationInput::Key::SPACE && action == SimulationInput::KeyAction::PRESS)
     {
         _active_arm->setToolState(!_active_arm->toolState());
         // _toggleTissueGrasping();
     }
 
     // if 'B' is pressed, save the tissue mesh to file
-    if (key == 66 && action == 1)
+    if (key == SimulationInput::Key::B && action == SimulationInput::KeyAction::PRESS)
     {
         const std::string filename = "tissue_mesh_" + std::to_string(_time) + "_s.obj";
         _tissue_obj->mesh()->writeMeshToObjFile(filename);
     }
 
     // if 'Z' is pressed, toggle the goal
-    if (key == 90 && action == 1 && _goal_objs.size() > 0)
+    if (key == SimulationInput::Key::Z && action == SimulationInput::KeyAction::PRESS && _goal_objs.size() > 0)
     {
         _toggleGoal();
     }
 
     // if 'C' is pressed, change goals
-    if (key == 67 && action == 1 && _goal_objs.size() > 0)
+    if (key == SimulationInput::Key::C && action == SimulationInput::KeyAction::PRESS && _goal_objs.size() > 0)
     {
         _changeGoal();
     }
@@ -176,56 +170,6 @@ void VirtuosoTissueGraspingSimulation::notifyMouseScrolled(double dx, double dy)
     VirtuosoSimulation::notifyMouseScrolled(dx, dy);
 }
 
-void VirtuosoTissueGraspingSimulation::_toggleTissueGrasping()
-{
-    if (_grasping)
-    {
-        _tissue_obj->clearAttachmentConstraints();
-        _grasped_vertices.clear();
-        _grasping = false;
-    }
-    else
-    {
-        // std::set<unsigned> vertices_to_grasp;
-        std::map<int, Vec3r> vertices_to_grasp;
-
-        // quick and dirty way to find all vertices in a sphere
-        const Vec3r tip_pos = _tip_cursor->position();
-        for (int theta = 0; theta < 360; theta+=30)
-        {
-            for (int phi = 0; phi < 360; phi+=30)
-            {
-                for (double p = 0; p < _tip_cursor->radius(); p+=_tip_cursor->radius()/5.0)
-                {
-                    const double x = tip_pos[0] + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
-                    const double y = tip_pos[1] + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
-                    const double z = tip_pos[2] + p*std::cos(phi*M_PI/180);
-                    int v = _tissue_obj->mesh()->getClosestVertex(Vec3r(x, y, z));
-
-                    // make sure v is inside sphere
-                    if ((tip_pos - _tissue_obj->mesh()->vertex(v)).norm() <= _tip_cursor->radius())
-                        if (!_tissue_obj->vertexFixed(v))
-                        {
-                            const Vec3r attachment_offset = (_tissue_obj->mesh()->vertex(v) - tip_pos) * 1.0;
-                            vertices_to_grasp[v] = attachment_offset;
-                        }
-                }
-            }
-        }
-
-        for (const auto& [v, offset] : vertices_to_grasp)
-        {
-            // _tissue_obj->addAttachmentConstraint(v, &_dummy, offset);
-            _tissue_obj->addAttachmentConstraint(v, &_tip_cursor->position(), offset);
-            
-            _grasped_vertices.push_back(v);
-        }
-
-        _grasping = true;
-    }
-    
-}
-
 void VirtuosoTissueGraspingSimulation::_updateGraphics()
 {
 
@@ -237,7 +181,7 @@ void VirtuosoTissueGraspingSimulation::_timeStep()
 
     VirtuosoSimulation::_timeStep();
 
-    if (_input_device == Config::SimulationInputDevice::HAPTIC)
+    if (_input_device == SimulationInput::Device::HAPTIC)
     {
         HHD handle = _haptic_device_manager->deviceHandles()[0];
 
@@ -245,51 +189,13 @@ void VirtuosoTissueGraspingSimulation::_timeStep()
 
         if (!_grasping && button1_pressed)
         {
-            _toggleTissueGrasping();
+            _active_arm->setToolState(!_active_arm->toolState());
         }
         else if (_grasping && !button1_pressed)
         {
-            _toggleTissueGrasping();
+            _active_arm->setToolState(!_active_arm->toolState());
         }
     }
-
-    // if (_active_arm->toolState())
-    // {
-    //     Vec3r total_force = Vec3r::Zero();
-    //     for (const auto& v : _grasped_vertices)
-    //     {
-    //         total_force += _tissue_obj->elasticForceAtVertex(v);
-    //     }
-
-    //     // smooth forces
-    //     Vec3r new_force = total_force*0.5 + _last_force*0.5;
-
-    //     // const Vec3r force = 1000*(_initial_grasp_pos - _tip_cursor->position());
-
-    //     std::cout << "TOTAL GRASPED FORCE: " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
-
-    //     // transform force from global coordinates into haptic input frame
-    //     _active_arm->setTipForce(new_force);
-
-    //     if (_input_device == Config::SimulationInputDevice::HAPTIC)
-    //     {
-    //         HHD handle = _haptic_device_manager->deviceHandles()[0];
-    //         const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * new_force;
-    //         _haptic_device_manager->setForce(handle, haptic_force);
-    //     }
-
-    //     _last_force = new_force;
-    // }
-    // else
-    // {
-    //     _active_arm->setTipForce(Vec3r::Zero());
-
-    //     if (_input_device == Config::SimulationInputDevice::HAPTIC)
-    //     {
-    //         HHD handle = _haptic_device_manager->deviceHandles()[0];
-    //         _haptic_device_manager->setForce(handle, Vec3r::Zero());
-    //     }
-    // }
     
 }
 

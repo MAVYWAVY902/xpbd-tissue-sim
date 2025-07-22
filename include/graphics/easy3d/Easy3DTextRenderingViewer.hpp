@@ -9,6 +9,8 @@
 #include "graphics/Viewer.hpp"
 #include "simulation/Simulation.hpp"
 
+#include <map>
+
 class Simulation;
 
 namespace Graphics
@@ -72,6 +74,16 @@ class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
     private:
     /** The TextRenderer responsible for drawing the text on screen. */
     std::unique_ptr<easy3d::TextRenderer> _text_renderer;
+
+    /** Maps Easy3D keys to SimulationInput keys */
+    static const std::map<int, SimulationInput::Key> _easy3d_key_map;
+    /** Maps Easy3D key actions to SimulationInput key actions */
+    static const std::map<int, SimulationInput::KeyAction> _easy3d_key_action_map;
+    /** Maps Easy3D mouse buttons to SimulationInput mouse buttons */
+    static const std::map<int, SimulationInput::MouseButton> _easy3d_mouse_button_map;
+    /** Maps Easy3D mouse actions to SimulationInput mouse actions */
+    static const std::map<int, SimulationInput::MouseAction> _easy3d_mouse_action_map;
+    
 };
 
 } // namespace Graphics

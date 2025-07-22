@@ -54,7 +54,7 @@ class XPBDObjectFactory
     template<typename ConstraintType>
     static std::unique_ptr<Sim::XPBDMeshObject_Base> _createXPBDMeshObject(const Sim::Simulation* sim, const Config::XPBDMeshObjectConfig* config)
     {
-        XPBDObjectSolverTypeEnum solver_type = config->solverType().value();
+        XPBDObjectSolverTypeEnum solver_type = config->solverType();
         if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)
         {
             using SolverType = typename XPBDObjectSolverTypes<typename ConstraintType::projector_type_list>::GaussSeidel;
@@ -81,7 +81,7 @@ class XPBDObjectFactory
     template<typename ConstraintType>
     static std::unique_ptr<Sim::XPBDMeshObject_Base> _createFirstOrderXPBDMeshObject(const Sim::Simulation* sim, const Config::FirstOrderXPBDMeshObjectConfig* config)
     {
-        XPBDObjectSolverTypeEnum solver_type = config->solverType().value();
+        XPBDObjectSolverTypeEnum solver_type = config->solverType();
         if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)
         {
             using SolverType = typename FirstOrderXPBDObjectSolverTypes<typename ConstraintType::projector_type_list>::GaussSeidel;

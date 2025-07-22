@@ -8,6 +8,7 @@
 #include "config/simobject/RigidPrimitiveConfigs.hpp"
 #include "config/simobject/VirtuosoArmConfig.hpp"
 #include "config/simobject/VirtuosoRobotConfig.hpp"
+#include "config/render/SimulationRenderConfig.hpp"
 
 #include "common/SimulationTypeDefs.hpp"
 #include "common/VariadicVectorContainer.hpp"
@@ -33,7 +34,8 @@ enum class SimulationMode
 enum class Visualization
 {
     NONE=0,
-    EASY3D
+    EASY3D,
+    VTK
 };
 
 class SimulationConfig : public Config
@@ -42,23 +44,6 @@ class SimulationConfig : public Config
     public:
     using ConfigVectorType = VariadicVectorContainerFromTypeList<SimulationObjectConfigTypes>::type;
 
-
-    /** Static predefined default for simulation time step */
-    static std::optional<Real>& DEFAULT_TIME_STEP() { static std::optional<Real> time_step(1e-3); return time_step; }
-    /** Static predefined default for simulation end time */
-    static std::optional<Real>& DEFAULT_END_TIME() { static std::optional<Real> end_time(10); return end_time; }
-    /** Static predefined default for simulation mode */
-    static std::optional<SimulationMode>& DEFAULT_SIM_MODE() { static std::optional<SimulationMode> sim_mode(SimulationMode::VISUALIZATION); return sim_mode; }
-    static std::optional<Visualization>& DEFAULT_VISUALIZATION() { static std::optional<Visualization> visualization(Visualization::EASY3D); return visualization; }
-    static std::optional<bool>& DEFAULT_ENABLE_MOUSE_INTERACTION() { static std::optional<bool> enable(true); return enable; }
-    /** Static predefined default for acceleration due to gravity */
-    static std::optional<Real>& DEFAULT_G_ACCEL() { static std::optional<Real> g_accel(9.81); return g_accel; }
-    /** Static predefined default for simulation description */
-    static std::optional<std::string>& DEFAULT_DESCRIPTION() { static std::optional<std::string> description("fart"); return description; }
-    /** Static predefined default for simulation FPS */
-    static std::optional<Real>& DEFAULT_FPS() { static std::optional<Real> fps(30.0); return fps; }
-
-    static std::optional<Real>& DEFAULT_COLLISION_RATE() { static std::optional<Real> collision_rate(100); return collision_rate; }
     /** Static predifined options for the simulation mode. Maps strings to the Simulation mode enum. */
     static std::map<std::string, SimulationMode> SIM_MODE_OPTIONS()
     {
@@ -72,7 +57,8 @@ class SimulationConfig : public Config
     static std::map<std::string, Visualization> VISUALIZATION_OPTIONS()
     {
         static std::map<std::string, Visualization> visualization{{"None", Visualization::NONE},
-                                                                  {"Easy3D", Visualization::EASY3D}};
+                                                                  {"Easy3D", Visualization::EASY3D},
+                                                                  {"VTK", Visualization::VTK}};
         return visualization;
     }
 
@@ -81,18 +67,18 @@ class SimulationConfig : public Config
      * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
      */
     explicit SimulationConfig(const YAML::Node& node)
-        : Config(node)
+        : Config(node), _render_config(node)
     {
         // extract parameters
-        _extractParameter("time-step", node, _time_step, DEFAULT_TIME_STEP());
-        _extractParameter("end-time", node, _end_time, DEFAULT_END_TIME());
-        _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS(), DEFAULT_SIM_MODE());
-        _extractParameterWithOptions("visualization", node, _visualization, VISUALIZATION_OPTIONS(), DEFAULT_VISUALIZATION());
-        _extractParameter("enable-mouse-interaction", node, _enable_mouse_interaction, DEFAULT_ENABLE_MOUSE_INTERACTION());
-        _extractParameter("g-accel", node, _g_accel, DEFAULT_G_ACCEL());
-        _extractParameter("description", node, _description, DEFAULT_DESCRIPTION());
-        _extractParameter("fps", node, _fps, DEFAULT_FPS());
-        _extractParameter("collision-rate", node, _collision_rate, DEFAULT_COLLISION_RATE());
+        _extractParameter("time-step", node, _time_step);
+        _extractParameter("end-time", node, _end_time);
+        _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS());
+        _extractParameterWithOptions("visualization", node, _visualization, VISUALIZATION_OPTIONS());
+        _extractParameter("enable-mouse-interaction", node, _enable_mouse_interaction);
+        _extractParameter("g-accel", node, _g_accel);
+        _extractParameter("description", node, _description);
+        _extractParameter("fps", node, _fps);
+        _extractParameter("collision-rate", node, _collision_rate);
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -140,8 +126,8 @@ class SimulationConfig : public Config
     explicit SimulationConfig(const std::string& name, const std::string& description,
                              Real time_step, Real end_time, Real g_accel,
                              SimulationMode sim_mode, Visualization visualization, bool enable_mouse_interaction, Real fps,
-                             Real collision_rate)
-        : Config(name)
+                             Real collision_rate, const SimulationRenderConfig& render_config)
+        : Config(name), _render_config(render_config)
     {
         _description.value = description;
         _time_step.value = time_step;
@@ -158,36 +144,37 @@ class SimulationConfig : public Config
     SimulationConfig(SimulationConfig&& other) = default;
 
     // Getters
-    Real timeStep() const { return _time_step.value.value(); }
-    Real endTime() const { return _end_time.value.value(); }
-    SimulationMode simMode() const { return _sim_mode.value.value(); }
-    Visualization visualization() const { return _visualization.value.value(); }
-    bool enableMouseInteraction() const { return _enable_mouse_interaction.value.value(); }
-    Real gAccel() const { return _g_accel.value.value(); }
-    std::string description() const { return _description.value.value(); }
-    Real fps() const { return _fps.value.value(); }
-    Real collisionRate() const { return _collision_rate.value.value(); }
+    Real timeStep() const { return _time_step.value; }
+    Real endTime() const { return _end_time.value; }
+    SimulationMode simMode() const { return _sim_mode.value; }
+    Visualization visualization() const { return _visualization.value; }
+    bool enableMouseInteraction() const { return _enable_mouse_interaction.value; }
+    Real gAccel() const { return _g_accel.value; }
+    std::string description() const { return _description.value; }
+    Real fps() const { return _fps.value; }
+    Real collisionRate() const { return _collision_rate.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const ConfigVectorType& objectConfigs() const { return _object_configs; }
 
+    const SimulationRenderConfig& renderConfig() const { return _render_config; }
+
     protected:
     // Parameters
-    ConfigParameter<std::string> _description;
-    ConfigParameter<Real> _time_step;
-    ConfigParameter<Real> _end_time;
-    ConfigParameter<SimulationMode> _sim_mode; 
-    ConfigParameter<Visualization> _visualization;
-    ConfigParameter<bool> _enable_mouse_interaction;
-    ConfigParameter<Real> _g_accel;
-    ConfigParameter<Real> _fps;
-    ConfigParameter<Real> _collision_rate;
+    ConfigParameter<std::string> _description = ConfigParameter<std::string>("");
+    ConfigParameter<Real> _time_step = ConfigParameter<Real>(1e-3);
+    ConfigParameter<Real> _end_time = ConfigParameter<Real>(10);
+    ConfigParameter<SimulationMode> _sim_mode = ConfigParameter<SimulationMode>(SimulationMode::VISUALIZATION);
+    ConfigParameter<Visualization> _visualization = ConfigParameter<Visualization>(Visualization::VTK);
+    ConfigParameter<bool> _enable_mouse_interaction = ConfigParameter<bool>(true);
+    ConfigParameter<Real> _g_accel = ConfigParameter<Real>(9.81);
+    ConfigParameter<Real> _fps = ConfigParameter<Real>(30.0);
+    ConfigParameter<Real> _collision_rate = ConfigParameter<Real>(100);
 
-    /** List of MeshObject configs for each object in the Simulation */
-    // std::vector<std::unique_ptr<ObjectConfig>> _object_configs;
-
+    /** List of object configs for each object in the Simulation */
     ConfigVectorType _object_configs;
 
+    SimulationRenderConfig _render_config;
 };
 
 } // namespace Config

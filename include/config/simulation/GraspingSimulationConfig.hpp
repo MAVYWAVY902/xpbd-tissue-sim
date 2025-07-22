@@ -8,24 +8,22 @@ namespace Config
 
 class GraspingSimulationConfig : public SimulationConfig
 {
-    static std::optional<Real>& DEFAULT_GRASP_RADIUS() { static std::optional<Real> rad(0.1); return rad; }
-    static std::optional<bool>& DEFAULT_FIX_MIN_Z() { static std::optional<bool> fix(true); return fix; }
 
     public:
     explicit GraspingSimulationConfig(const YAML::Node& node)
         : SimulationConfig(node)
     {
-        _extractParameter("grasp-radius", node, _grasp_radius, DEFAULT_GRASP_RADIUS());
-        _extractParameter("fix-min-z", node, _fix_min_z, DEFAULT_FIX_MIN_Z());
+        _extractParameter("grasp-radius", node, _grasp_radius);
+        _extractParameter("fix-min-z", node, _fix_min_z);
         
     }
 
-    Real graspRadius() const { return _grasp_radius.value.value(); }
-    bool fixMinZ() const { return _fix_min_z.value.value(); }
+    Real graspRadius() const { return _grasp_radius.value; }
+    bool fixMinZ() const { return _fix_min_z.value; }
 
     protected:
-    ConfigParameter<Real> _grasp_radius;
-    ConfigParameter<bool> _fix_min_z;
+    ConfigParameter<Real> _grasp_radius = ConfigParameter<Real>(0.1);
+    ConfigParameter<bool> _fix_min_z = ConfigParameter<bool>(true);
 };
 
 } // namespace Config

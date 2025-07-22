@@ -1,4 +1,5 @@
 #include "simulation/Simulation.hpp"
+
 #include "config/simobject/RigidMeshObjectConfig.hpp"
 #include "config/simobject/XPBDMeshObjectConfig.hpp"
 #include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
@@ -6,7 +7,8 @@
 #include "config/simobject/VirtuosoArmConfig.hpp"
 #include "config/simobject/VirtuosoRobotConfig.hpp"
 
-#include "graphics/Easy3DGraphicsScene.hpp"
+#include "graphics/easy3d/Easy3DGraphicsScene.hpp"
+#include "graphics/vtk/VTKGraphicsScene.hpp"
 
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
@@ -48,7 +50,12 @@ Simulation::Simulation(const Config::SimulationConfig* config)
     // if "None", don't create a graphics scene
     if (_config->visualization() == Config::Visualization::EASY3D)
     {
-        _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main");
+        _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main", config->renderConfig());
+    }
+
+    if (_config->visualization() == Config::Visualization::VTK)
+    {
+        _graphics_scene = std::make_unique<Graphics::VTKGraphicsScene>("main", config->renderConfig());
     }
 
     // initialize the Embree scene
@@ -224,21 +231,21 @@ void Simulation::_updateGraphics()
     }
 }
 
-void Simulation::notifyKeyPressed(int /* key */, int action, int /* modifiers */)
+void Simulation::notifyKeyPressed(SimulationInput::Key /* key */, SimulationInput::KeyAction action, int /* modifiers */)
 {
     // action = 0 ==> key up event
     // action = 1 ==> key down event
     // action = 2 ==> key hold event
     
     // if key is pressed down or held, we want to time step
-    if (_sim_mode == Config::SimulationMode::FRAME_BY_FRAME && action > 0)
+    if (_sim_mode == Config::SimulationMode::FRAME_BY_FRAME && action == SimulationInput::KeyAction::PRESS)
     {
         _timeStep();
         _updateGraphics();
     }
 }
 
-void Simulation::notifyMouseButtonPressed(int /* button */, int /* action */, int /* modifiers */)
+void Simulation::notifyMouseButtonPressed(SimulationInput::MouseButton /* button */, SimulationInput::MouseAction /* action */, int /* modifiers */)
 {
     // button = 0 ==> left mouse button
     // button = 1 ==> right mouse button
