@@ -137,19 +137,13 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj,
                 const Real v = (Real)(sj+1) / (num_samples+2);
                 const Real w = 1 - u - v;
                 const Vec3r x = u*p1 + v*p2 + w*p3;
-                const Real distance = sdf->evaluate(x);
-                if (distance <= 1e-3)
+                const auto result = sdf->evaluateWithGradientAndNodeInfo(x);
+                if (result.distance <= virtuoso_arm->innerTubeOuterDiameter())
                 {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
                     // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
                     const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
-                    const Vec3r grad = sdf->gradient(x);
-                    const Vec3r surface_x = x - grad*distance;
-                    // std::cout << "COLLISION!" << std::endl;
-                    // std::cout << "u: " << u << ", v: " << v << ", w: " << w << std::endl;
-                    // std::cout << "position: " << x[0] << ", " << x[1] << ", " << x[2] << "\tnormal: " << grad[0] << ", " << grad[1] << ", " << grad[2] << std::endl;
-                    // std::cout << "surface position: " << surface_x[0] << ", " << surface_x[1] << ", " << surface_x[2] << std::endl;
-                
-                    xpbd_mesh_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
+                    const Vec3r surface_x = x - result.gradient*result.distance;
+                    xpbd_mesh_obj->addStaticCollisionConstraint(sdf, surface_x, result.gradient, i, u, v, w);
                     
                 }
             }
