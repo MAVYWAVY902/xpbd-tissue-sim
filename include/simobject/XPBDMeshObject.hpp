@@ -47,19 +47,6 @@ namespace Sim
 
 class RigidObject;
 
-struct XPBDCollisionConstraint
-{
-    std::unique_ptr<Solver::CollisionConstraint> constraint;
-    int projector_index;
-    int num_steps_unused;
-};
-
-struct XPBDAttachmentConstraint
-{
-    std::unique_ptr<Solver::AttachmentConstraint> constraint;
-    int projector_index;
-};
-
 /** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
  *  "A Constraint-based Formulation of Stable Neo-Hookean Materials" by Macklin and Muller (2021).
  *  Refer to the paper and preceding papers for details on the XPBD approach.

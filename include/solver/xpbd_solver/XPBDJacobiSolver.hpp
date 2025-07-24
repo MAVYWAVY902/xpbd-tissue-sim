@@ -26,57 +26,39 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
     template<class... Constraints>
     void addConstraintProjector(Real dt, Constraints* ... constraints)
     {
-        auto projector = this->_createConstraintProjector(dt, constraints...);
+        using ProjectorType = typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type;
+        ProjectorType projector(dt, constraints...);
     
         // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
         this->_coordinate_updates.resize(this->_coordinate_updates.size() + projector.numCoordinates());
+        this->_rigid_body_updates.resize(this->_rigid_body_updates.size() + ProjectorType::NUM_RIGID_BODIES);
     
         // increase the total number of constraints (needed for the constraint residual size)
-        this->_num_constraints += decltype(projector)::NUM_CONSTRAINTS;
-    
-        // check if primary residual is needed for constraint projection
-        // if (options.with_residual)
-        // {
-            // TODO: FIX THIS for the NEW APPROACH!!!
-
-            // _constraints_using_primary_residual = true;
-            // if (WithDistributedPrimaryResidual* wpr = dynamic_cast<WithDistributedPrimaryResidual*>(projector.get()))
-            // {
-            //     wpr->setPrimaryResidual(_primary_residual.data());
-            // }
-        // }
+        this->_num_constraints += ProjectorType::NUM_CONSTRAINTS;
             
-        this->_constraint_projectors.template push_back<decltype(projector)>(std::move(projector));
+        this->_constraint_projectors.template push_back<ProjectorType>(std::move(projector));
     }
-
-    // template<class... Constraints>
-    // void setConstraintProjector(int index, Real dt, Constraints* ... constraints)
-    // {
-    //     auto projector = this->_createConstraintProjector(dt, constraints...);
-            
-    //     _constraint_projectors.template set<decltype(projector)>(index, std::move(projector));
-    // }
 
 
     protected:
     /** Implements a Jacobi update strategy for constraint projection.
      */
-    /** Implements a Gauss-Seidel update strategy for constraint projection.
-     * @param data - the pre-allocated data block to use for evaluating the constraints and their gradients. Assumes that it is large enough to accomodate the ConstraintProjector with the largest memory requirement.
-     */
     void _iterateConstraints()
     {
         int total_coord_updates = 0;
+        int total_rb_updates = 0;
         this->_constraint_projectors.for_each_element([&](auto& proj)
         {
+            using ProjectorType = std::remove_cv_t<std::remove_reference_t<decltype(proj)>>;
             if (!proj.isValid())
                 return;
 
             // TODO: check if proj is a RigidBodyConstraintProjector
             // if constexpr ()
 
-            proj.project(this->_coordinate_updates.data() + total_coord_updates);
+            _projectorProject(proj, this->_coordinate_updates.data() + total_coord_updates, this->_rigid_body_updates.data() + total_rb_updates);
             total_coord_updates += proj.numCoordinates();
+            total_rb_updates += ProjectorType::NUM_RIGID_BODIES;
         });
 
         // apply the position updates
@@ -85,6 +67,29 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
             if (this->_coordinate_updates[i].ptr)
                 *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
         }
+
+        // apply the rigid body updates
+        for (int i = 0; i < total_rb_updates; i++)
+        {
+            const RigidBodyUpdate& rb_update = this->_rigid_body_updates[i];
+            if (rb_update.obj_ptr)
+            {
+                rb_update.obj_ptr->setPosition(rb_update.obj_ptr->position() + Eigen::Map<const Vec3r>(rb_update.position_update));
+                rb_update.obj_ptr->setOrientation(rb_update.obj_ptr->orientation() + Eigen::Map<const Vec4r>(rb_update.orientation_update));
+            }
+        }
+    }
+
+    template<class ProjectorType>
+    void _projectorProject(ProjectorType& projector, CoordinateUpdate* coordinate_updates, RigidBodyUpdate*)
+    {
+        projector.project(coordinate_updates);
+    }
+
+    template<class ...Constraints>
+    void _projectorProject(RigidBodyConstraintProjector<IsFirstOrder, Constraints...>& projector, CoordinateUpdate* coordinate_updates, RigidBodyUpdate* rigid_body_updates)
+    {
+        projector.project(coordinate_updates, rigid_body_updates);
     }
 };
 

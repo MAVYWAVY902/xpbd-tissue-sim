@@ -72,7 +72,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::setup()
 
     // set size of collision constraint projector vectors
     using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
-    using RigidCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
+    using RigidCollisionConstraintType = Solver::RigidBodyConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
     // _solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(_mesh->numFaces() + _mesh->numVertices());
     // _solver.template setNumProjectorsOfType<RigidCollisionConstraintType>(_mesh->numFaces());
 
@@ -191,7 +191,7 @@ void XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::clearCollisionCon
     // set any collision constraint projectors in the solver invalid
     // NOTE: because the collision constraint
     using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
-    using RigidCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
+    using RigidCollisionConstraintType = Solver::RigidBodyConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
     // _solver.template setAllProjectorsOfTypeInvalid<StaticCollisionConstraintType>();
     // _solver.template setAllProjectorsOfTypeInvalid<RigidCollisionConstraintType>();
     _solver.template clearProjectorsOfType<StaticCollisionConstraintType>();

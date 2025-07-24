@@ -19,7 +19,13 @@ class RigidBodyConstraintProjector
 {
     public:
     constexpr static int NUM_CONSTRAINTS = 1;
-    constexpr static int NUM_COORDINATES = RBConstraint::NUM_COORDINATES;
+    constexpr static int NUM_RIGID_BODIES = RBConstraint::NUM_RIGID_BODIES;
+    constexpr static int MAX_NUM_COORDINATES = RBConstraint::NUM_COORDINATES;
+
+    /** List of constraint types being projected (will be a single constraint for this projector) */
+    using constraint_type_list = TypeList<RBConstraint>;
+    /** Whether or not the 1st-Order algorithm is used */
+    constexpr static bool is_first_order = IsFirstOrder;
 
     public:
     explicit RigidBodyConstraintProjector(Real dt, RBConstraint* constraint_ptr)
@@ -27,8 +33,16 @@ class RigidBodyConstraintProjector
     {
     }
 
+    /** Default constructor - projector marked invalid */
+    explicit RigidBodyConstraintProjector()
+        : _valid(false)
+    {   
+    }
+
     void setValidity(bool valid) { _valid = valid; }
     bool isValid() { return _valid; }
+
+    int numCoordinates() { return MAX_NUM_COORDINATES; }
 
     void initialize()
     {
@@ -62,7 +76,7 @@ class RigidBodyConstraintProjector
         
         for (int i = 0; i < RBConstraint::NUM_POSITIONS; i++)
         {
-            LHS += _constraint->positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
+            LHS += positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
         }
 
         // compute RHS of lambda update: -C - alpha_tilde*lambda

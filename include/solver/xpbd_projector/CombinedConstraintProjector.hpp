@@ -30,6 +30,10 @@ class CombinedConstraintProjector
     public:
     /** Number of constraints projected */
     constexpr static int NUM_CONSTRAINTS = 2;
+    /** Number of rigid bodies involved in the constraint projection. This will be 0 because rigid bodies are handled specially
+     * with a different type of constraint projector.
+     */
+    constexpr static int NUM_RIGID_BODIES = 0;
     /** Maximum number of coordinates involved in the constraint projection (may actually be less due to sharing of coordinates between constraints) */
     constexpr static int MAX_NUM_COORDINATES = Constraint1::NUM_COORDINATES + Constraint2::NUM_COORDINATES;
     

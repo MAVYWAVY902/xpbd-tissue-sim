@@ -18,7 +18,7 @@ namespace Config
 
 namespace Sim
 {
-    // TODO: XPBDMeshObject_Base used as a band-aid for now...try to remove most (if not all) external references to it
+    // template<bool IsFirstOrder>
     class XPBDMeshObject_Base : public Object, public TetMeshObject
     {
         public:

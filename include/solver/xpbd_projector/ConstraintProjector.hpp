@@ -13,70 +13,6 @@
 namespace Solver
 {
 
-template<bool IsFirstOrder, class Constraint>
-class ConstraintProjector;
-
-/** A consistent reference to a ConstraintProjector.
- * ConstraintProjectors are stored in vectors that can change size. If a vector has to allocate more memory, any pointers or references
- * to its contents are invalidated. This becomes a problem for constraints that are dynamically added and removed (like collision constraints).
- * 
- * By storing a pointer to the container and its index, we can ensure that even if the vector changes sizes, we still have a valid
- * reference to the ConstraintProjector.
- */
-template<bool IsFirstOrder, class Constraint>
-class ConstraintProjectorReference
-{
-    public:
-
-    using constraint_projector_type = ConstraintProjector<IsFirstOrder, Constraint>;
-    using vector_type = std::vector<constraint_projector_type>;
-    public:
-    ConstraintProjectorReference(vector_type& vec, int index)
-        : _vec(vec), _index(index)
-    {
-
-    }
-
-    const constraint_projector_type& operator() const
-    {
-        return _vec.at(_index);
-    } 
-
-    constraint_projector_type& operator()
-    {
-        return _vec.at(_index);
-    }
-
-    private:
-    vector_type& _vec;
-    int _index;
-};
-
-/** A const-reference version of ConstraintProjectorReference. */
-template<bool IsFirstOrder, class Constraint>
-class ConstraintProjectorConstReference
-{
-    public:
-    using constraint_projector_type = const onstraintProjector<IsFirstOrder, Constraint>;
-    using vector_type = const std::vector<constraint_projector_type>;
-
-    public:
-    ConstraintProjectorConstReference(vector_type& vec, int index)
-        : _vec(vec), _index(index)
-    {
-
-    }
-
-    constraint_projector_type& operator() const
-    {
-        return _vec.at(_index);
-    }
-
-    private:
-    vector_type& _vec;
-    int _index;
-};
-
 /** Performs a XPBD constraint projection for a single constraint.
  *  
  * IsFirstOrder template parameter indicates if the projection follows the 1st-Order XPBD algorithm
@@ -89,6 +25,10 @@ class ConstraintProjector
     public:
     /** Number of constraints projected */
     constexpr static int NUM_CONSTRAINTS = 1;
+    /** Number of rigid bodies involved in the constraint projection. This will be 0 because rigid bodies are handled specially
+     * with a different type of constraint projector.
+     */
+    constexpr static int NUM_RIGID_BODIES = 0;
     /** Maximum number of coordinates involved in the contsraint projection */
     constexpr static int MAX_NUM_COORDINATES = Constraint::NUM_COORDINATES;
 

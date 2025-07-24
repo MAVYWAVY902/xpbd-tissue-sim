@@ -2,6 +2,7 @@
 #define __XPBD_TYPEDEFS_HPP
 
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
+#include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
 #include "solver/xpbd_projector/CombinedNeohookeanConstraintProjector.hpp"
 
@@ -43,7 +44,7 @@ struct XPBDMeshObjectConstraintConfigurations
     using HydProjector = Solver::ConstraintProjector<false, Solver::HydrostaticConstraint>;
     using DevHydProjector = Solver::CombinedConstraintProjector<false, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
     using StatCollProjector = Solver::ConstraintProjector<false, Solver::StaticDeformableCollisionConstraint>;
-    using RigiCollProjector = Solver::ConstraintProjector<false, Solver::RigidDeformableCollisionConstraint>;
+    using RigiCollProjector = Solver::RigidBodyConstraintProjector<false, Solver::RigidDeformableCollisionConstraint>;
     using AttProjector = Solver::ConstraintProjector<false, Solver::AttachmentConstraint>;
 
     // public typedefs represent XPBDMeshObject constraint configurations
@@ -67,7 +68,7 @@ struct FirstOrderXPBDMeshObjectConstraintConfigurations
     using HydProjector = Solver::ConstraintProjector<true, Solver::HydrostaticConstraint>;
     using DevHydProjector = Solver::CombinedConstraintProjector<true, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
     using StatCollProjector = Solver::ConstraintProjector<true, Solver::StaticDeformableCollisionConstraint>;
-    using RigiCollProjector = Solver::ConstraintProjector<true, Solver::RigidDeformableCollisionConstraint>;
+    using RigiCollProjector = Solver::RigidBodyConstraintProjector<true, Solver::RigidDeformableCollisionConstraint>;
     using AttProjector = Solver::ConstraintProjector<true, Solver::AttachmentConstraint>;
 
     // public typedefs represent XPBDMeshObject constraint configurations
