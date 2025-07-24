@@ -35,6 +35,8 @@ Geometry::TetMesh loadTetMeshFromGmshFile(const std::string& filename);
 
 void createBeamObj(const std::string& filename, const Real l, const Real w, const Real h,  const int num_subdivisions = 1);
 
+void createBeamMsh(const std::string& filename, Real l, Real w, Real h, int num_subdivisions=1);
+
 void createTissueBlock(const std::string& filename, const Real l, const Real w, const Real h, const int num_low_res_subdivisions, const int high_res_multiplier);
 
 void verticesAndFacesFromFixedFacesFile(const std::string& filename, std::set<int>& vertices, std::vector<int>& faces);

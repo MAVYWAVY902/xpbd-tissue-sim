@@ -63,6 +63,12 @@ class SimulationConfig : public Config
     }
 
     public:
+    explicit SimulationConfig()
+        : Config(), _render_config()
+    {
+
+    }
+
     /** Creates a Config from a YAML node, which consists of parameters needed for Simulation.
      * @param node : the YAML node (i.e. dictionary of key-value pairs) that information is pulled from
      */

@@ -151,6 +151,8 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
 
     Vec3r elasticForceAtVertex(int index);
 
+    virtual MatXr stiffnessMatrix() const override;
+
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override;
     virtual XPBDMeshObjectGPUResource* gpuResource() override;

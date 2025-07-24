@@ -166,6 +166,9 @@ target_link_libraries(VirtuosoStaticsModelTest Eigen3::Eigen SimObject Config)
 add_executable(VTKTest src/exec/test/vtk_test.cpp)
 target_link_libraries(VTKTest Graphics ${VTK_LIBRARIES})
 
+add_executable(StiffnessMatrixTest src/exec/test/stiffness_matrix_test.cpp)
+target_link_libraries(StiffnessMatrixTest Config SimObject Solver ResidualSimulation MeshUtils)
+
 vtk_module_autoinit(
   TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest
   MODULES ${VTK_LIBRARIES}

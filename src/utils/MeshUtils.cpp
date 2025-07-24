@@ -416,6 +416,250 @@ void MeshUtils::createBeamObj(const std::string& filename, const Real length, co
 
 }
 
+void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real width, Real height, int num_subdivisions)
+{
+    // try and discretize so that the elements are roughly cube
+    const Real elem_size = std::min(width, height) / num_subdivisions;
+    const int w = static_cast<int>(width/elem_size);
+    const int h = static_cast<int>(height/elem_size);
+    const int l = static_cast<int>(length/elem_size);
+    std::cout << "size in elements: " << h << "x" << w << "x" << l << std::endl;
+    
+    auto index = [w, h] (int li, int wi, int hi)
+    {
+        return hi + wi*(h+1) + li*(w+1)*(h+1);
+    };
+
+    Eigen::Matrix<Real, -1, 3> verts((h+1)*(w+1)*(l+1), 3);
+    for (int li = 0; li < l+1; li++) 
+    {
+        for (int wi = 0; wi < w+1; wi++)
+        {
+            for (int hi = 0; hi < h+1; hi++)
+            {
+                int ind = index(li, wi, hi);
+                Vec3r vert({wi*elem_size, li*elem_size, hi*elem_size});
+                verts.row(ind) = vert;
+            }
+        }
+    }
+
+    Eigen::Matrix<int, -1, 3> faces(4*w*h + 4*l*h + 4*l*w, 3);
+    int face_ind = 0;
+    // w*h faces
+    for (int wi = 0; wi < w; wi++)
+    {
+        for (int hi = 0; hi < h; hi++)
+        {
+            int ff1 = index(0, wi, hi);
+            int ff2 = index(0, wi+1, hi);
+            int ff3 = index(0, wi+1, hi+1);
+            int ff4 = index(0, wi, hi+1);
+
+            int a = wi%2 - hi%2;//rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i front_face1({ff1, ff2, ff3});
+                Eigen::Vector3i front_face2({ff1, ff3, ff4});
+                faces.row(face_ind) = front_face1;
+                faces.row(face_ind+1) = front_face2;
+            }
+            else
+            {
+                Eigen::Vector3i front_face1({ff1, ff2, ff4});
+                Eigen::Vector3i front_face2({ff2, ff3, ff4});
+                faces.row(face_ind) = front_face1;
+                faces.row(face_ind+1) = front_face2;
+            }
+            
+
+            int bf1 = index(l, wi, hi);
+            int bf2 = index(l, wi+1, hi);
+            int bf3 = index(l, wi+1, hi+1);
+            int bf4 = index(l, wi, hi+1);
+
+            // a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i back_face1({bf1, bf3, bf2});
+                Eigen::Vector3i back_face2({bf1, bf4, bf3});
+                faces.row(face_ind+2) = back_face1;
+                faces.row(face_ind+3) = back_face2;
+            }
+            else
+            {
+                Eigen::Vector3i back_face1({bf1, bf4, bf2});
+                Eigen::Vector3i back_face2({bf2, bf4, bf3});
+                faces.row(face_ind+2) = back_face1;
+                faces.row(face_ind+3) = back_face2;
+            }
+            
+
+            face_ind += 4;
+        }
+    }
+
+    // l*h faces
+    for (int hi = 0; hi < h; hi++)
+    {
+        for (int li = 0; li < l; li++)
+        {
+            int rf1 = index(li, w, hi);
+            int rf2 = index(li+1, w, hi);
+            int rf3 = index(li+1, w, hi+1);
+            int rf4 = index(li, w, hi+1);
+            
+            int a = hi%2 - li%2;//rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i right_face1({rf1, rf2, rf3});
+                Eigen::Vector3i right_face2({rf1, rf3, rf4});
+                faces.row(face_ind) = right_face1;
+                faces.row(face_ind+1) = right_face2;
+            }
+            else
+            {
+                Eigen::Vector3i right_face1({rf1, rf2, rf4});
+                Eigen::Vector3i right_face2({rf2, rf3, rf4});
+                faces.row(face_ind) = right_face1;
+                faces.row(face_ind+1) = right_face2;
+            }
+            
+
+            int lf1 = index(li, 0, hi);
+            int lf2 = index(li+1, 0, hi);
+            int lf3 = index(li+1, 0, hi+1);
+            int lf4 = index(li, 0, hi+1);
+            // a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i left_face1({lf1, lf3, lf2});
+                Eigen::Vector3i left_face2({lf1, lf4, lf3});
+                faces.row(face_ind+2) = left_face1;
+                faces.row(face_ind+3) = left_face2;
+            }
+            else
+            {
+                Eigen::Vector3i left_face1({lf1, lf4, lf2});
+                Eigen::Vector3i left_face2({lf2, lf4, lf3});
+                faces.row(face_ind+2) = left_face1;
+                faces.row(face_ind+3) = left_face2;
+            }
+            
+
+            face_ind += 4;
+        }
+    }
+
+    // l*w faces
+    for (int li = 0; li < l; li++)
+    {
+        for (int wi = 0; wi < w; wi++)
+        {
+            int tf1 = index(li, wi, h);
+            int tf2 = index(li, wi+1, h);
+            int tf3 = index(li+1, wi+1, h);
+            int tf4 = index(li+1, wi, h);
+            int a = li%2-wi%2; //rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i top_face1({tf1, tf2, tf3});
+                Eigen::Vector3i top_face2({tf1, tf3, tf4});
+                faces.row(face_ind) = top_face1;
+                faces.row(face_ind+1) = top_face2;
+            }
+            else
+            {
+                Eigen::Vector3i top_face1({tf1, tf2, tf4});
+                Eigen::Vector3i top_face2({tf2, tf3, tf4});
+                faces.row(face_ind) = top_face1;
+                faces.row(face_ind+1) = top_face2;
+            }
+            
+
+            int bf1 = index(li, wi, 0);
+            int bf2 = index(li, wi+1, 0);
+            int bf3 = index(li+1, wi+1, 0);
+            int bf4 = index(li+1, wi, 0);
+            // a = rand()%2;
+            if (a)
+            {
+                Eigen::Vector3i bottom_face1({bf1, bf3, bf2});
+                Eigen::Vector3i bottom_face2({bf1, bf4, bf3});
+                faces.row(face_ind+2) = bottom_face1;
+                faces.row(face_ind+3) = bottom_face2;
+            }
+            else
+            {
+                Eigen::Vector3i bottom_face1({bf1, bf4, bf2});
+                Eigen::Vector3i bottom_face2({bf2, bf4, bf3});
+                faces.row(face_ind+2) = bottom_face1;
+                faces.row(face_ind+3) = bottom_face2;
+            }
+            
+
+            face_ind += 4;
+        }
+    }
+
+    // elements
+    Eigen::Matrix<int, -1, 4> elements(5*l*w*h, 4);
+    // iterate through each hexahedron
+    int element_ind = 0;
+    for (int li = 0; li < l; li++)
+    {
+        for (int wi = 0; wi < w; wi++)
+        {
+            for (int hi = 0; hi < h; hi++)
+            {
+                int i1 = index(li, wi, hi);
+                int i2 = index(li, wi+1, hi);
+                int i3 = index(li+1, wi+1, hi);
+                int i4 = index(li+1, wi, hi);
+                int i5 = index(li, wi, hi+1);
+                int i6 = index(li, wi+1, hi+1);
+                int i7 = index(li+1, wi+1, hi+1);
+                int i8 = index(li+1, wi, hi+1);
+
+                // TODO: do the index orderings in the tet matter?
+                Eigen::Vector4i tet1(i1, i2, i3, i6);
+                Eigen::Vector4i tet2(i1, i3, i4, i8);
+                Eigen::Vector4i tet3(i1, i6, i5, i8);
+                Eigen::Vector4i tet4(i3, i6, i7, i8);
+                Eigen::Vector4i tet5(i1, i3, i6, i8);
+                elements.row(element_ind++) = tet1;
+                elements.row(element_ind++) = tet2;
+                elements.row(element_ind++) = tet3;
+                elements.row(element_ind++) = tet4;
+                elements.row(element_ind++) = tet5;
+            }
+        }
+    }
+
+    std::ofstream ss(filename);
+    ss << "$MeshFormat\n4.1 0 8\n$EndMeshFormat\n$Entities\n";
+    ss << "0 0 0 1\n";
+    ss << "1 0 0 0 " << (w+1)*elem_size << " " << (l+1)*elem_size << " " << (h+1)*elem_size << " 0 0 0\n";
+    ss << "$EndEntities\n$Nodes\n";
+    ss << "1 " << verts.rows() << " 1 " << verts.rows() << "\n";
+    ss << "2 1 0 " << verts.rows() << "\n";
+    for (int i = 0; i < verts.rows(); i++)
+        ss << i+1 << "\n";
+    for (int i = 0; i < verts.rows(); i++)
+        ss << verts(i,0) << " " << verts(i,1) << " " << verts(i,2) << "\n";
+    ss << "$EndNodes\n$Elements\n";
+    ss << "2 " << faces.rows() + elements.rows() << " 1 " << faces.rows() + elements.rows() << "\n";
+    ss << "2 1 2 " << faces.rows() << "\n";
+    for (int i = 0; i < faces.rows(); i++)
+        ss << i+1 << " " << faces(i,0)+1 << " " << faces(i,1)+1 << " " << faces(i,2)+1 << "\n";
+    ss << "3 1 4 " << elements.rows() << "\n";
+    for (int i = 0; i < elements.rows(); i++)
+        ss << faces.rows()+i+1 << " " << elements(i,0)+1 << " " << elements(i,1)+1 << " " << elements(i,2)+1 << " " << elements(i,3)+1 << "\n";
+    ss << "$EndElements";
+
+    ss.close();
+}
+
 void MeshUtils::createTissueBlock(const std::string& filename, const Real length, const Real width, const Real height, const int num_low_res_subdivisions, const int high_res_multiplier)
 {
     // try and discretize so that the elements are roughly cube
