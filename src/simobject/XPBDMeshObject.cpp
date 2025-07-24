@@ -459,6 +459,49 @@ Vec3r XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::elasticForceAtVe
     return total_force;
 }
 
+template<typename SolverType, typename... ConstraintTypes>
+MatXr XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::stiffnessMatrix() const
+{
+    // FOR NOW, WE ASSUME THAT IF WE ARE CALCULATING THE STIFFNESS MATRIX, WE DON'T HAVE ANY HARD CONSTRAINTS ON THE OBJECT
+    // these would have alpha=0 and thus alpha^-1 would be infinity, corresponding to infinite stiffness.
+
+    // assemble global delC matrix
+    size_t num_constraints = _constraints.size();
+    std::cout << "num constraints: " << num_constraints << std::endl;
+    MatXr delC(num_constraints, 3*_mesh->numVertices());
+    VecXr alpha_inv(num_constraints);
+
+    // iterate through each constraint and put its gradient into the global delC matrix
+    int constraint_index = 0;
+    _constraints.for_each_element([&delC, &alpha_inv, &constraint_index](const auto& constraint)
+    {
+        // get the gradient from the constraint
+        using ConstraintType = std::remove_cv_t<std::remove_reference_t<decltype(constraint)>>;
+        Real grad[ConstraintType::NUM_COORDINATES];
+        constraint.gradient(grad);
+
+        // get the positions that the constraint affects
+        const std::vector<Solver::PositionReference>& constraint_positions = constraint.positions();
+
+        for (unsigned i = 0; i < ConstraintType::NUM_POSITIONS; i++)
+        {
+            int position_index = constraint_positions[i].index;
+            const Vec3r grad_i = Eigen::Map<Vec3r>(grad + 3*i);
+
+            delC.block<1,3>(constraint_index, 3*position_index) = grad_i;
+        }
+
+        // add constraint stiffness to alpha
+        alpha_inv[constraint_index] = 1.0/constraint.alpha();
+
+        constraint_index++;
+    });
+
+    MatXr stiffness_matrix = delC.transpose() * alpha_inv.asDiagonal() * delC;
+    return stiffness_matrix;
+    
+}
+
 #ifdef HAVE_CUDA
 
 template<typename SolverType, typename... ConstraintTypes>

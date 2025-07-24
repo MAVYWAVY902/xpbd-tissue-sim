@@ -51,6 +51,7 @@ namespace Sim
         virtual void addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset) = 0;
         virtual void clearAttachmentConstraints() = 0;
         virtual Vec3r elasticForceAtVertex(int index) = 0;
+        virtual MatXr stiffnessMatrix() const = 0;
 
         virtual const SDFType* SDF() const override { return nullptr; }
     };

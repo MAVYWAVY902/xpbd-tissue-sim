@@ -30,6 +30,11 @@ class VariadicVectorContainer<L>
         return _vec;
     }
 
+    size_t _size() const
+    {
+        return _vec.size();
+    }
+
     void _resize(int size)
     {
         _vec.resize(size);
@@ -100,6 +105,11 @@ template<class L, class... R>
 class VariadicVectorContainer : public VariadicVectorContainer<L>, public VariadicVectorContainer<R...>
 {
     public:
+    size_t size() const
+    {
+        return _size_helper<L, R...>();
+    }
+
     template<class T>
     const std::vector<T>& get() const
     {
@@ -152,6 +162,12 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
     T& set(int index, T&& elem)
     {
         return this->VariadicVectorContainer<T>::_set(index, std::move(elem));
+    }
+
+    template<class T>
+    size_t size() const
+    {
+        return this->VariadicVectorContainer<T>::_size();
     }
 
     template<class T>
@@ -208,6 +224,19 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
         {
             _visit_elements<Ts...>(std::forward<Visitor>(visitor));
         }
+    }
+
+    template<typename T, typename... Ts>
+    size_t _size_helper() const
+    {
+        size_t sizeT = this->VariadicVectorContainer<T>::_size();
+        size_t sizeTs = 0;
+        if constexpr (sizeof...(Ts) > 0)
+        {
+            sizeTs = _size_helper<Ts...>();
+        }
+        
+        return sizeT + sizeTs;
     }
 };
 
