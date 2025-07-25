@@ -36,16 +36,17 @@ struct XPBDMeshObjectConstraintConfiguration
 };
 
 // Declare XPBDMeshObject constraint configurations
+template <bool IsFirstOrder>
 struct XPBDMeshObjectConstraintConfigurations
 {
     // typedefs for readability
     private:
-    using DevProjector = Solver::ConstraintProjector<false, Solver::DeviatoricConstraint>;
-    using HydProjector = Solver::ConstraintProjector<false, Solver::HydrostaticConstraint>;
-    using DevHydProjector = Solver::CombinedConstraintProjector<false, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
-    using StatCollProjector = Solver::ConstraintProjector<false, Solver::StaticDeformableCollisionConstraint>;
-    using RigiCollProjector = Solver::RigidBodyConstraintProjector<false, Solver::RigidDeformableCollisionConstraint>;
-    using AttProjector = Solver::ConstraintProjector<false, Solver::AttachmentConstraint>;
+    using DevProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint>;
+    using HydProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::HydrostaticConstraint>;
+    using DevHydProjector = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
+    using StatCollProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
+    using RigiCollProjector = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>;
+    using AttProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::AttachmentConstraint>;
 
     // public typedefs represent XPBDMeshObject constraint configurations
     public:
@@ -60,58 +61,58 @@ struct XPBDMeshObjectConstraintConfigurations
 };
 
 // Declare XPBDMeshObject constraint configurations
-struct FirstOrderXPBDMeshObjectConstraintConfigurations
-{
-    // typedefs for readability
-    private:
-    using DevProjector = Solver::ConstraintProjector<true, Solver::DeviatoricConstraint>;
-    using HydProjector = Solver::ConstraintProjector<true, Solver::HydrostaticConstraint>;
-    using DevHydProjector = Solver::CombinedConstraintProjector<true, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
-    using StatCollProjector = Solver::ConstraintProjector<true, Solver::StaticDeformableCollisionConstraint>;
-    using RigiCollProjector = Solver::RigidBodyConstraintProjector<true, Solver::RigidDeformableCollisionConstraint>;
-    using AttProjector = Solver::ConstraintProjector<true, Solver::AttachmentConstraint>;
+// struct FirstOrderXPBDMeshObjectConstraintConfigurations
+// {
+//     // typedefs for readability
+//     private:
+//     using DevProjector = Solver::ConstraintProjector<true, Solver::DeviatoricConstraint>;
+//     using HydProjector = Solver::ConstraintProjector<true, Solver::HydrostaticConstraint>;
+//     using DevHydProjector = Solver::CombinedConstraintProjector<true, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
+//     using StatCollProjector = Solver::ConstraintProjector<true, Solver::StaticDeformableCollisionConstraint>;
+//     using RigiCollProjector = Solver::RigidBodyConstraintProjector<true, Solver::RigidDeformableCollisionConstraint>;
+//     using AttProjector = Solver::ConstraintProjector<true, Solver::AttachmentConstraint>;
 
-    // public typedefs represent XPBDMeshObject constraint configurations
-    public:
-    using StableNeohookean = XPBDMeshObjectConstraintConfiguration<DevProjector, HydProjector, StatCollProjector, RigiCollProjector, AttProjector>;
-    using StableNeohookeanCombined = XPBDMeshObjectConstraintConfiguration<DevHydProjector, StatCollProjector, RigiCollProjector, AttProjector>;
+//     // public typedefs represent XPBDMeshObject constraint configurations
+//     public:
+//     using StableNeohookean = XPBDMeshObjectConstraintConfiguration<DevProjector, HydProjector, StatCollProjector, RigiCollProjector, AttProjector>;
+//     using StableNeohookeanCombined = XPBDMeshObjectConstraintConfiguration<DevHydProjector, StatCollProjector, RigiCollProjector, AttProjector>;
 
-    using type_list = TypeList<StableNeohookean, StableNeohookeanCombined>;
-    using variant_type = std::variant<StableNeohookean, StableNeohookeanCombined>;
+//     using type_list = TypeList<StableNeohookean, StableNeohookeanCombined>;
+//     using variant_type = std::variant<StableNeohookean, StableNeohookeanCombined>;
 
-    constexpr static StableNeohookean STABLE_NEOHOOKEAN{};
-    constexpr static StableNeohookeanCombined STABLE_NEOHOOKEAN_COMBINED{};
-};
+//     constexpr static StableNeohookean STABLE_NEOHOOKEAN{};
+//     constexpr static StableNeohookeanCombined STABLE_NEOHOOKEAN_COMBINED{};
+// };
 
-template<typename ProjectorTypeList> struct XPBDObjectSolverTypes;
+template<bool IsFirstOrder, typename ProjectorTypeList> struct XPBDObjectSolverTypes;
 
-template<typename ...Projectors>
-struct XPBDObjectSolverTypes<TypeList<Projectors...>>
+template<bool IsFirstOrder, typename ...Projectors>
+struct XPBDObjectSolverTypes<IsFirstOrder, TypeList<Projectors...>>
 {
     // check and make sure all projector types are NOT 1st order projectors
-    static_assert( (!Projectors::is_first_order && ...) );
-    using GaussSeidel = Solver::XPBDGaussSeidelSolver<false, Projectors...>;
-    using Jacobi = Solver::XPBDJacobiSolver<false, Projectors...>;
-    using ParallelJacobi = Solver::XPBDParallelJacobiSolver<false, Projectors...>;
+    static_assert( ( (Projectors::is_first_order == IsFirstOrder) && ...) );
+    using GaussSeidel = Solver::XPBDGaussSeidelSolver<IsFirstOrder, Projectors...>;
+    using Jacobi = Solver::XPBDJacobiSolver<IsFirstOrder, Projectors...>;
+    using ParallelJacobi = Solver::XPBDParallelJacobiSolver<IsFirstOrder, Projectors...>;
 
     using type_list = TypeList<GaussSeidel, Jacobi, ParallelJacobi>;
     using variant_type = std::variant<GaussSeidel, Jacobi, ParallelJacobi>;
 };
 
-template<typename ProjectorTypeList> struct FirstOrderXPBDObjectSolverTypes;
+// template<typename ProjectorTypeList> struct FirstOrderXPBDObjectSolverTypes;
 
-template<typename ...Projectors>
-struct FirstOrderXPBDObjectSolverTypes<TypeList<Projectors...>>
-{
-    // check and make sure all projector types are 1st order projectors
-    static_assert( (Projectors::is_first_order && ...) );
-    using GaussSeidel = Solver::XPBDGaussSeidelSolver<true, Projectors...>;
-    using Jacobi = Solver::XPBDJacobiSolver<true, Projectors...>;
-    using ParallelJacobi = Solver::XPBDParallelJacobiSolver<true, Projectors...>;
+// template<typename ...Projectors>
+// struct FirstOrderXPBDObjectSolverTypes<TypeList<Projectors...>>
+// {
+//     // check and make sure all projector types are 1st order projectors
+//     static_assert( (Projectors::is_first_order && ...) );
+//     using GaussSeidel = Solver::XPBDGaussSeidelSolver<true, Projectors...>;
+//     using Jacobi = Solver::XPBDJacobiSolver<true, Projectors...>;
+//     using ParallelJacobi = Solver::XPBDParallelJacobiSolver<true, Projectors...>;
 
-    using type_list = TypeList<GaussSeidel, Jacobi, ParallelJacobi>;
-    using variant_type = std::variant<GaussSeidel, Jacobi, ParallelJacobi>;
-};
+//     using type_list = TypeList<GaussSeidel, Jacobi, ParallelJacobi>;
+//     using variant_type = std::variant<GaussSeidel, Jacobi, ParallelJacobi>;
+// };
 
 
 

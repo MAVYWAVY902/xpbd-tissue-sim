@@ -2,11 +2,13 @@
 #define __VIRTUOSO_ARM_HPP
 
 #include "simobject/Object.hpp"
+#include "simobject/XPBDMeshObjectBaseWrapper.hpp"
 
 #include "geometry/CoordinateFrame.hpp"
 #include "geometry/VirtuosoArmSDF.hpp"
 
 #include <array>
+#include <variant>
 
 namespace Config
 {
@@ -16,7 +18,7 @@ namespace Config
 namespace Sim
 {
 
-class XPBDMeshObject_Base;
+class XPBDMeshObject_BasePtrWrapper;
 
 class VirtuosoArm : public Object
 {
@@ -190,8 +192,8 @@ class VirtuosoArm : public Object
     void setOuterTubeNodalForce(int node_index, const Vec3r& force);
     void setInnerTubeNodalForce(int node_index, const Vec3r& force);
 
-    const XPBDMeshObject_Base* toolManipulatedObject() const { return _tool_manipulated_object; }
-    void setToolManipulatedObject(XPBDMeshObject_Base* obj) { _tool_manipulated_object = obj; }
+    const XPBDMeshObject_BasePtrWrapper& toolManipulatedObject() const { return _tool_manipulated_object; }
+    void setToolManipulatedObject(const XPBDMeshObject_BasePtrWrapper& obj) { _tool_manipulated_object = obj; }
 
     void setJointState(double ot_rotation, double ot_translation, double it_rotation, double it_translation, int tool);
 
@@ -287,7 +289,7 @@ class VirtuosoArm : public Object
     int _tool_state; // state of the tool (i.e. 1=ON, 0=OFF)
     int _last_tool_state; // the previous state of the tool (needed so that we know when tool state has changed)
     ToolType _tool_type; // type of tool used on this arm
-    XPBDMeshObject_Base* _tool_manipulated_object; // the deformable object that this tool is manipulating
+    XPBDMeshObject_BasePtrWrapper _tool_manipulated_object; // the deformable object that this tool is manipulating
     Vec3r _tool_position; // position of the tool in global coordinates (note that this may be different than the inner tube tip position)
     Vec3r _commanded_tip_position; // tip position of the arm in the absence of tip forces (i.e. where we tell the arm tip to be at)
     std::vector<int> _grasped_vertices; // vertices that are actively being grasped

@@ -1,6 +1,10 @@
 #ifndef __CONSTRAINT_PROJECTOR_REFERENCE_HPP
 #define __CONSTRAINT_PROJECTOR_REFERENCE_HPP
 
+#include "solver/xpbd_projector/ConstraintProjectorTraits.hpp"
+
+#include <variant>
+
 namespace Solver
 {
 /** A consistent reference to a ConstraintProjector.
@@ -39,29 +43,32 @@ class ConstraintProjectorReference
     int _index;
 };
 
-/** A const-reference version of ConstraintProjectorReference. */
-template<typename ConstraintProjectorType>
-class ConstraintProjectorConstReference
+template<typename ...Constraints>
+class ConstraintProjectorReferenceWrapper
 {
-    public:
-    using constraint_projector_type = const ConstraintProjectorType;
-    using vector_type = const std::vector<constraint_projector_type>;
+public:
+    using projector_type_1st_order = typename ConstraintProjectorTraits<true, Constraints...>::type;
+    using projector_type_2nd_order = typename ConstraintProjectorTraits<false, Constraints...>::type;
 
-    public:
-    ConstraintProjectorConstReference(vector_type& vec, int index)
-        : _vec(vec), _index(index)
-    {
+    using variant_type = std::variant<ConstraintProjectorReference<projector_type_1st_order>, ConstraintProjectorReference<projector_type_2nd_order>>;
 
-    }
+    // template<bool IsFirstOrder>
+    // ConstraintProjectorReferenceWrapper(typename ConstraintProjectorReference<ConstraintProjectorTraits<IsFirstOrder, Constraints...>>::type&& proj_reference)
+    //     : _variant(std::move(proj_reference))
+    // {}
 
-    constraint_projector_type& operator()() const
-    {
-        return _vec.at(_index);
-    }
+    ConstraintProjectorReferenceWrapper(ConstraintProjectorReference<typename ConstraintProjectorTraits<false, Constraints...>::type>&& proj_reference)
+        : _variant(std::move(proj_reference))
+    {}
 
-    private:
-    vector_type& _vec;
-    int _index;
+    ConstraintProjectorReferenceWrapper(ConstraintProjectorReference<typename ConstraintProjectorTraits<true, Constraints...>::type>&& proj_reference)
+        : _variant(std::move(proj_reference))
+    {}
+    
+    /** TODO: add wrapper methods for interfacing with ConstraintProjector */
+
+private:
+    variant_type _variant;
 };
 
 } // namespace Solver

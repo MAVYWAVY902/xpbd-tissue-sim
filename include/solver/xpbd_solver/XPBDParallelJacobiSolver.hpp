@@ -217,7 +217,7 @@ namespace Solver
     class XPBDParallelJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
     {
         public:
-        explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
+        explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy) 
         { 
             assert(0 && "Not implemented for CPU!");

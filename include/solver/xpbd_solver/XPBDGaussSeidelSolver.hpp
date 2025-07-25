@@ -14,7 +14,7 @@ class XPBDGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjecto
 {
     public:
     /** Same constructor as XPBDSolver */
-    explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
+    explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
     {
     }

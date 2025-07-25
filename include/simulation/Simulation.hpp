@@ -4,7 +4,6 @@
 #include <assimp/Importer.hpp>
 
 #include "simobject/Object.hpp"
-#include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/RigidObject.hpp"

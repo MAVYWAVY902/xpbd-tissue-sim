@@ -29,7 +29,7 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
 
     _tool_state = 0;  // default tool state is off
     _tool_type = config->toolType();
-    _tool_manipulated_object = nullptr;
+    _tool_manipulated_object = (XPBDMeshObject_Base_<false>*)nullptr;
 
     _arm_base_position = config->baseInitialPosition();
     Vec3r initial_rot_xyz = config->baseInitialRotation() * M_PI / 180.0;
@@ -147,7 +147,7 @@ Geometry::AABB VirtuosoArm::boundingBox() const
 void VirtuosoArm::_toolAction()
 {
     // if the manipulated object has not been given, do nothing
-    if (!_tool_manipulated_object)
+    if (_tool_manipulated_object)
         return;
 
     if (_tool_type == ToolType::SPATULA)
@@ -182,13 +182,13 @@ void VirtuosoArm::_grasperToolAction()
                     const double x = _tool_position[0] + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
                     const double y = _tool_position[1] + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
                     const double z = _tool_position[2] + p*std::cos(phi*M_PI/180);
-                    int v = _tool_manipulated_object->mesh()->getClosestVertex(Vec3r(x, y, z));
+                    int v = _tool_manipulated_object.mesh()->getClosestVertex(Vec3r(x, y, z));
 
                     // make sure v is inside grasping sphere
-                    if ((_tool_position - _tool_manipulated_object->mesh()->vertex(v)).norm() <= GRASPING_RADIUS)
-                        if (!_tool_manipulated_object->vertexFixed(v))
+                    if ((_tool_position - _tool_manipulated_object.mesh()->vertex(v)).norm() <= GRASPING_RADIUS)
+                        if (!_tool_manipulated_object.vertexFixed(v))
                         {
-                            const Vec3r attachment_offset = (_tool_manipulated_object->mesh()->vertex(v) - _tool_position) * 0.9;
+                            const Vec3r attachment_offset = (_tool_manipulated_object.mesh()->vertex(v) - _tool_position) * 0.9;
                             vertices_to_grasp[v] = attachment_offset;
                         }
                 }
@@ -197,7 +197,7 @@ void VirtuosoArm::_grasperToolAction()
 
         for (const auto& [v, offset] : vertices_to_grasp)
         {
-            _tool_manipulated_object->addAttachmentConstraint(v, &_tool_position, offset);
+            _tool_manipulated_object.addAttachmentConstraint(v, &_tool_position, offset);
             
             _grasped_vertices.push_back(v);
         }
@@ -206,7 +206,7 @@ void VirtuosoArm::_grasperToolAction()
     // if tool state has changed from 1 to 0, stop grasping
     else if (_tool_state == 0 && _last_tool_state == 1)
     {
-        _tool_manipulated_object->clearAttachmentConstraints();
+        _tool_manipulated_object.clearAttachmentConstraints();
         _grasped_vertices.clear();
     }
 
@@ -214,7 +214,7 @@ void VirtuosoArm::_grasperToolAction()
     Vec3r total_force = Vec3r::Zero();
     for (const auto& v : _grasped_vertices)
     {
-        total_force += _tool_manipulated_object->elasticForceAtVertex(v);
+        total_force += _tool_manipulated_object.elasticForceAtVertex(v);
     }
 
     // smooth forces

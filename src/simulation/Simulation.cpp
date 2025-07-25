@@ -12,7 +12,6 @@
 
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
-#include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "simobject/RigidPrimitives.hpp"
 #include "simobject/VirtuosoArm.hpp"
 #include "simobject/VirtuosoRobot.hpp"
@@ -172,6 +171,11 @@ void Simulation::_timeStep()
         auto t1 = std::chrono::steady_clock::now();
         auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
         for (auto& obj : xpbd_mesh_objs)
+        {
+            obj->clearCollisionConstraints();
+        }
+        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (auto& obj : fo_xpbd_mesh_objs)
         {
             obj->clearCollisionConstraints();
         }

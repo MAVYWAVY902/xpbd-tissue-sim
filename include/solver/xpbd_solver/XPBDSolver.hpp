@@ -39,7 +39,7 @@ class XPBDSolver
     /** Whether or not solver is using 1st-Order projection */
     constexpr static bool is_first_order = IsFirstOrder;
 
-    explicit XPBDSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
+    explicit XPBDSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)
     {
         _rigid_body_updates.resize(14); // 14 doubles is enough to store 2 rigid body updates (no more than 2 rigid bodies will be involved in a single constraint projection)
@@ -243,7 +243,7 @@ class XPBDSolver
     protected:
     VariadicVectorContainer<ConstraintProjectors...> _constraint_projectors;    // stores the constraint projectors of different types
 
-    Sim::XPBDMeshObject_Base* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
+    Sim::XPBDMeshObject_Base_<IsFirstOrder>* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
     int _num_iter;                                         // number of solver iterations per solve() call
     Geometry::Mesh::VerticesMat _inertial_positions;                // stores the positions after the inertial update - useful for primary residual calculation
 

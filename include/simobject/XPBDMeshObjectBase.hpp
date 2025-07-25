@@ -1,6 +1,9 @@
 #ifndef __XPBD_MESH_OBJECT_BASE_HPP
 #define __XPBD_MESH_OBJECT_BASE_HPP
 
+// #include "config/simobject/XPBDMeshObjectConfig.hpp"
+// #include "config/simobject"
+
 #include "simobject/Object.hpp"
 #include "simobject/MeshObject.hpp"
 #include "simobject/ElasticMaterial.hpp"
@@ -9,19 +12,52 @@
 #include "solver/xpbd_projector/ConstraintProjectorReference.hpp"
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
+#include "solver/constraint/AttachmentConstraint.hpp"
 
 #include "geometry/DeformableMeshSDF.hpp"
 
 #include "common/XPBDEnumTypes.hpp"
 
+#include <variant>
+
 // TODO: resolve circular dependenciees! Too many bandaids everywhere
 namespace Config
 {
     class XPBDMeshObjectConfig;
+    class FirstOrderXPBDMeshObjectConfig;
+}
+
+// TODO: fix circular dependency and remove the need for this forward declaration
+namespace Solver
+{
+    class DeviatoricConstraint;
+    class HydrostaticConstraint;
+    class StaticDeformableCollisionConstraint;
+    class RigidDeformableCollisionConstraint;
+    class CollisionConstraint;
+    class AttachmentConstraint;
+
+    template<bool, class T>
+    class ConstraintProjector;
+
+    template<bool, class T>
+    class RigidBodyConstraintProjector;
+
+    template<bool, class T1, class T2>
+    class CombinedConstraintProjector;
+
+    template<bool, class... Ts>
+    class XPBDSolver;
 }
 
 namespace Sim
 {
+
+template<bool IsFirstOrder>
+class XPBDMeshObject_Base_;
+
+using XPBDMeshObject_Base = XPBDMeshObject_Base_<false>;
+using FirstOrderXPBDMeshObject_Base = XPBDMeshObject_Base_<true>;
 
 /** Base class for XPBDMeshObject. This is useful because then we can store a base pointer of this class type without worrying about the specific
  * XPBDSolver type and Constraint types used by the object (these show up as additional template parameters in XPBDMeshObject).
@@ -31,19 +67,16 @@ namespace Sim
  * necessasry additional methods and members for the 1st-order algorithm (such as per-vertex damping).
  */
 template<bool IsFirstOrder> 
-class XPBDMeshObject_Base : public Object, public TetMeshObject
+class XPBDMeshObject_Base_ : public Object, public TetMeshObject
 {
 public:
     using SDFType = Geometry::DeformableMeshSDF;
-    using ConfigType = std::conditional<IsFirstOrder, Config::XPBDMeshObjectConfig, Config::FirstOrderXPBDMeshObjectConfig>::type;
+    using ConfigType = typename std::conditional<IsFirstOrder, Config::FirstOrderXPBDMeshObjectConfig, Config::XPBDMeshObjectConfig>::type;
 
     public:
-    explicit XPBDMeshObject_Base(const Simulation* sim, const ConfigType* config)
-        : Object(sim, config), TetMeshObject(config, config)
-    {
-    }
+    explicit XPBDMeshObject_Base_(const Simulation* sim, const ConfigType* config);
 
-    virtual ~XPBDMeshObject_Base() {}
+    virtual ~XPBDMeshObject_Base_() {}
 
     /** Returns a const-ref to the elastic material for each tetrahedra in the mesh.
      * @returns the elastic material
@@ -51,11 +84,7 @@ public:
     const ElasticMaterial& material() const { return _material; }
 
     /** Creates the SDF if it doesn't exist already. */
-    virtual void createSDF() override
-    {
-        if (!_sdf.has_value())
-            _sdf = SDFType(this, _sim->embreeScene());
-    }
+    virtual void createSDF() override;
 
     /** Returns the SDF if it exists, null otherwise
      */
@@ -99,6 +128,19 @@ public:
      */
     Vec3r vertexPreviousPosition(int index) const { return _previous_vertices.col(index); }
 
+    /** Returns the "constraint inertia" associated with the vertex.
+     * For normal 2nd-order XPBD, this is just the vertex mass.
+     * For 1st-Order XPBD, the vertex damping is used as the "mass" in the XPBD updates.
+     * @param index : the index of the vertex
+     * @returns the appropriate "inertia", depending on IsFirstOrder, to be used in the XPBD update.
+     */
+    Real vertexConstraintInertia(int index) const
+    {
+        if constexpr (IsFirstOrder)
+            return vertexDamping(index);
+        else
+            return vertexMass(index);
+    }
 
     /** === Adding/removing additional constraints === */
 
@@ -123,7 +165,8 @@ public:
      * @param u,v,w : the barycentric coordinates of the point on the face in collision
      * @returns a reference to the constraint projector that was added for the collision constraint
      */
-    virtual void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+    virtual Solver::ConstraintProjectorReference<Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>>
+    addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
         int face_ind, const Real u, const Real v, const Real w) = 0;
 
     /** Clears all collision constraints that are on this object. */
@@ -134,7 +177,8 @@ public:
      * @param attach_pos_ptr : a pointer to the position for the vertex to be attached to
      * @param attachment_offset : an optional offset between the attachment position and the vertex. The vertex position will be (*attach_pos_ptr + attachment_offset).
      */
-    virtual void addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset) = 0;
+    virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::AttachmentConstraint>> 
+    addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset) = 0;
 
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() = 0;
@@ -147,7 +191,7 @@ public:
      * @param index : the index of the vertex
      * @returns the elastic force vector on the vertex at the specified index
      */
-    virtual Vec3r elasticForceAtVertex(int index) = 0;
+    virtual Vec3r elasticForceAtVertex(int index) const = 0;
 
     /** Computes the current global stiffness matrix of the mesh. This is done with a first-order approximation of delC^T * alpha * delC.
      * @returns the global stiffness matrix

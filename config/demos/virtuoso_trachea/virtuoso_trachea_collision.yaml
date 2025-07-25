@@ -30,7 +30,7 @@ end-time: 5000
 exposure: 0.2
 hdr-image-filename: "../resource/rendering/hdr/surgery_1k.hdr"
 create-skybox: true
-window-width: 1000
+window-width: 800
 window-height: 800
 
 objects:

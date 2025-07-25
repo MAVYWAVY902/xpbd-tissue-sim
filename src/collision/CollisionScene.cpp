@@ -44,7 +44,8 @@ void CollisionScene::_collideObjectPair(Sim::Object* obj1, Sim::Object* obj2)
     // do nothing in the general case
 }
 
-void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPBDMeshObject_Base* xpbd_mesh_obj)
+template <bool IsFirstOrder>
+void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj)
 {
     return;
     const typename Sim::XPBDMeshObject_Base::SDFType* mesh_sdf = xpbd_mesh_obj->SDF();
@@ -98,12 +99,14 @@ void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPB
     // std::cout << "DeformableSDF distance: " << dist << std::endl;
 }
 
-void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base* xpbd_mesh_obj2)
+template <bool IsFirstOrder>
+void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj2)
 {
     // deformable-deformable collision not supported for now
 }
 
-void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj, Sim::VirtuosoArm* virtuoso_arm)
+template <bool IsFirstOrder>
+void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj, Sim::VirtuosoArm* virtuoso_arm)
 {
     // iterate through faces of mesh
     const typename Sim::VirtuosoArm::SDFType* sdf = virtuoso_arm->SDF();
@@ -151,7 +154,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj,
     }
 }
 
-void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj, Sim::RigidObject* rigid_obj)
+template <bool IsFirstOrder>
+void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj, Sim::RigidObject* rigid_obj)
 {
     // iterate through faces of mesh
     const Geometry::SDF* sdf = rigid_obj->SDF();
@@ -195,7 +199,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj,
     }
 }
 
-void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj, Sim::Object* obj2)
+template <bool IsFirstOrder>
+void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj, Sim::Object* obj2)
 {
     // iterate through faces of mesh
     const Geometry::SDF* sdf = obj2->SDF();

@@ -4,6 +4,8 @@
 #include "simulation/VirtuosoSimulation.hpp"
 #include "config/simulation/VirtuosoTissueGraspingSimulationConfig.hpp"
 
+#include "simobject/XPBDMeshObjectBaseWrapper.hpp"
+
 namespace Sim
 {
 
@@ -29,7 +31,7 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 
     virtual void notifyMouseScrolled(double dx, double dy) override;
 
-    const Geometry::TetMesh* tissueMesh() const { assert(_tissue_obj); return _tissue_obj->tetMesh(); }
+    const Geometry::TetMesh* tissueMesh() const { assert(_tissue_obj); return _tissue_obj.tetMesh(); }
 
     protected:
 
@@ -46,7 +48,7 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 
     protected:
 
-    XPBDMeshObject_Base* _tissue_obj;    // the tissue XPBD object that is being manipulated
+    XPBDMeshObject_BasePtrWrapper _tissue_obj;    // the tissue XPBD object that is being manipulated
     std::optional<std::string> _fixed_faces_filename;   // a .txt filename that lists all the faces that should be held fixed
 
     std::optional<std::string> _tumor_faces_filename;   // a .txt filename that lists all the faces that are part of the tumor

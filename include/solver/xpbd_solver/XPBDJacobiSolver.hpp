@@ -13,7 +13,7 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
 {
     public:
     /** Same constructor as XPBDSolver */
-    explicit XPBDJacobiSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
+    explicit XPBDJacobiSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
     {}
 
@@ -24,7 +24,8 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
 
     // TODO: figure out how to "override" XPBDSolver functionality for addConstraintProjector
     template<class... Constraints>
-    void addConstraintProjector(Real dt, Constraints* ... constraints)
+    ConstraintProjectorReference<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type> 
+    addConstraintProjector(Real dt, Constraints* ... constraints)
     {
         using ProjectorType = typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type;
         ProjectorType projector(dt, constraints...);
@@ -37,6 +38,9 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
         this->_num_constraints += ProjectorType::NUM_CONSTRAINTS;
             
         this->_constraint_projectors.template push_back<ProjectorType>(std::move(projector));
+
+        std::vector<ProjectorType>& proj_vec = this->_constraint_projectors.template get<ProjectorType>();
+        return ConstraintProjectorReference<ProjectorType>(proj_vec, proj_vec.size()-1);
     }
 
 

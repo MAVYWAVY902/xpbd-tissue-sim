@@ -3,7 +3,6 @@
 
 // #include "simobject/MeshObject.hpp"
 #include "simobject/Object.hpp"
-#include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/RigidObject.hpp"
@@ -114,11 +113,16 @@ class CollisionScene
      * Overrides for specific pairs of objects are implemented.
      */
     void _collideObjectPair(Sim::Object* obj1, Sim::Object* obj2);  // most general, does nothing
-    void _collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPBDMeshObject_Base* xpbd_mesh_obj);
-    void _collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base* xpbd_mesh_obj2);
-    void _collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj, Sim::VirtuosoArm* virtuoso_arm);
-    void _collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj, Sim::RigidObject* rigid_obj);
-    void _collideObjectPair(Sim::XPBDMeshObject_Base* xpbd_mesh_obj, Sim::Object* obj);
+    template<bool IsFirstOrder>
+    void _collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj);
+    template<bool IsFirstOrder>
+    void _collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj2);
+    template<bool IsFirstOrder>
+    void _collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj, Sim::VirtuosoArm* virtuoso_arm);
+    template<bool IsFirstOrder>
+    void _collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj, Sim::RigidObject* rigid_obj);
+    template<bool IsFirstOrder>
+    void _collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj, Sim::Object* obj);
 
     /** Implements the Frank-Wolfe optimization algorithm applied to finding a contact point between a SDF and a 3D triangle face. 
      * @param sdf - the signed distance function (SDF) to collide against
