@@ -86,6 +86,10 @@ void VirtuosoRobot::update()
 void VirtuosoRobot::velocityUpdate()
 {
     // nothing for now
+    if (_arm1)
+        _arm1->velocityUpdate();
+    if (_arm2)
+        _arm2->velocityUpdate();
 }
 
 } // namespace Sim

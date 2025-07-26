@@ -68,6 +68,13 @@ class CombinedConstraintProjector
 
     int numCoordinates() { return Constraint1::NUM_COORDINATES; } // TODO: for now we're assuming that constraint1 and constraint2 share the same coords exactly
 
+    /** @returns the positions (as PositionReferences) affect by the constraint projection. This will just be the 
+     * positions of the single projected constraint.
+     * 
+     * TODO: assuming constraint1 and constraint2 share the same positions in the same order
+    */
+    const std::vector<PositionReference>& positions() const { return _constraint1->positions(); }
+
     /** The constraint forces on each of the affected positions caused by this constraint.
      * @returns the constraint forces on each of the affected positions of this constraint. The returned vector is ordered such that
      * the forces are applied to the corresponding position at the same index in the positions() vector.

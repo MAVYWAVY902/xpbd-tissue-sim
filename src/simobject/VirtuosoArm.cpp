@@ -130,12 +130,13 @@ void VirtuosoArm::update()
         _recomputeCoordinateFramesStaticsModelWithNodalForces();
     }
 
-    _toolAction();
+    // _toolAction();
 }
 
 void VirtuosoArm::velocityUpdate()
 {
     // nothing for now
+    _toolAction();
 }
 
 /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
