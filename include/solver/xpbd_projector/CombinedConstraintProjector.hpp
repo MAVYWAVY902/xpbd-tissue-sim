@@ -1,10 +1,13 @@
 #ifndef __COMBINED_CONSTRAINT_PROJECTOR_HPP
 #define __COMBINED_CONSTRAINT_PROJECTOR_HPP
 
-#include "solver/constraint/Constraint.hpp"
+#include "solver/constraint/PositionReference.hpp"
+#include "solver/constraint/ConstraintReference.hpp"
 #include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 
 #include "common/TypeList.hpp"
+
+#include <iostream>
 
 #ifdef HAVE_CUDA
 #include "gpu/projector/GPUCombinedConstraintProjector.cuh"
@@ -44,8 +47,8 @@ class CombinedConstraintProjector
 
     public:
     /** Constructor */
-    explicit CombinedConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
-        : _dt(dt), _constraint1(constraint1), _constraint2(constraint2)
+    explicit CombinedConstraintProjector(Real dt, ConstraintReference<Constraint1>&& constraint1, ConstraintReference<Constraint2>&& constraint2)
+        : _dt(dt), _constraint1(constraint1), _constraint2(constraint2), _valid(true)
     {
     }
 
@@ -174,8 +177,8 @@ class CombinedConstraintProjector
     private:
     Real _dt;
     Real _lambda[2];
-    Constraint1* _constraint1;
-    Constraint2* _constraint2;
+    ConstraintReference<Constraint1> _constraint1;
+    ConstraintReference<Constraint2> _constraint2;
     bool _valid;
 };
 

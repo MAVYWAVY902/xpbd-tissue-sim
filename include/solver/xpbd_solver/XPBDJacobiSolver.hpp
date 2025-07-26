@@ -25,10 +25,10 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
     // TODO: figure out how to "override" XPBDSolver functionality for addConstraintProjector
     template<class... Constraints>
     ConstraintProjectorReference<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type> 
-    addConstraintProjector(Real dt, Constraints* ... constraints)
+    addConstraintProjector(Real dt, ConstraintReference<Constraints>&&... constraints)
     {
         using ProjectorType = typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type;
-        ProjectorType projector(dt, constraints...);
+        ProjectorType projector(dt, std::forward<ConstraintReference<Constraints>>(constraints)...);
     
         // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
         this->_coordinate_updates.resize(this->_coordinate_updates.size() + projector.numCoordinates());

@@ -51,8 +51,6 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
     // make sure that if this object is using the 1st-Order formulation, that the XPBDSolver is too
     static_assert(SolverType::is_first_order == IsFirstOrder, "XPBD solver order much match object order!");
 
-    std::cout << "XPBDMeshObject constructor! IsFirstOrder: " << IsFirstOrder << std::endl;
-
     /* extract values from the Config object */
     
     // set initial velocity if specified in config
@@ -141,10 +139,11 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addStat
     // IN ORDER FOR THIS TO WORK, COLLISION CONSTRAINTS MUST BE RECENTLY CLEARED
     // OTHERWISE, VECTOR MIGHT EXCEED ITS CAPACITY AND POINTERS TO CONSTRAINTS IN CONSTRAINT PROJECTORS WILL BECOME INVALID
     // TODO: is there a better way?
-    Solver::StaticDeformableCollisionConstraint& collision_constraint = 
-        _constraints.template emplace_back<Solver::StaticDeformableCollisionConstraint>(sdf, p, n, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
+    std::vector<Solver::StaticDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::StaticDeformableCollisionConstraint>();
+    constraint_vec.emplace_back(sdf, p, n, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
-    return _solver.addConstraintProjector(_sim->dt(), &collision_constraint);
+    using ConstraintRefType = Solver::ConstraintReference<Solver::StaticDeformableCollisionConstraint>;
+    return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -165,10 +164,11 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addRigi
     Real m2 = vertexConstraintInertia(v2);
     Real m3 = vertexConstraintInertia(v3);
 
-    Solver::RigidDeformableCollisionConstraint& collision_constraint = 
-        _constraints.template emplace_back<Solver::RigidDeformableCollisionConstraint>(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
+    std::vector<Solver::RigidDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::RigidDeformableCollisionConstraint>();
+    constraint_vec.emplace_back(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
-    return _solver.addConstraintProjector(_sim->dt(), &collision_constraint);
+    using ConstraintRefType = Solver::ConstraintReference<Solver::RigidDeformableCollisionConstraint>;
+    return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -195,10 +195,11 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addAtta
     Real* v_ptr = _mesh->vertexPointer(v_ind);
     Real mass = vertexConstraintInertia(v_ind);
 
-    Solver::AttachmentConstraint& attachment_constraint = 
-        _constraints.template emplace_back<Solver::AttachmentConstraint>(v_ind, v_ptr, mass, attach_pos_ptr, attachment_offset);
+    std::vector<Solver::AttachmentConstraint>& constraint_vec = _constraints.template get<Solver::AttachmentConstraint>();
+    constraint_vec.emplace_back(v_ind, v_ptr, mass, attach_pos_ptr, attachment_offset);
     
-    return _solver.addConstraintProjector(_sim->dt(), &attachment_constraint);
+    using ConstraintRefType = Solver::ConstraintReference<Solver::AttachmentConstraint>;
+    return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -262,16 +263,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_createElasticConstraints()
 {
-    // TODO: think about this... we need to resize each vector initially so that pointers to constraints are still valid...
-    // alternative: use vector unique_ptr<Constraint> 
-    // std::cout << "reserving " << tetMesh()->numElements() << " for elastic constraints..." << std::endl;
+    // reserve space for the elastic constraints we're creating
     _constraints.template reserve<Solver::HydrostaticConstraint>(tetMesh()->numElements());
     _constraints.template reserve<Solver::DeviatoricConstraint>(tetMesh()->numElements());
-    // std::cout << "reserving " << _mesh->numFaces() << " for collision constraints..." << std::endl;
-    _constraints.template reserve<Solver::StaticDeformableCollisionConstraint>(1000*_mesh->numFaces());
-    _constraints.template reserve<Solver::RigidDeformableCollisionConstraint>(_mesh->numFaces());
-
-    _constraints.template reserve<Solver::AttachmentConstraint>(_mesh->numVertices());
 
     // create constraint(s) for each element
     for (int i = 0; i < tetMesh()->numElements(); i++)
@@ -295,26 +289,32 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         // if the constraint configuration is StableNeohookean, add separate constraint projectors for the hydrostatic and deviatoric constraints
         if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookean::projector_type_list>)
         {
-            Solver::HydrostaticConstraint& hyd_constraint = 
-                _constraints.template emplace_back<Solver::HydrostaticConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
-            Solver::DeviatoricConstraint& dev_constraint = 
-                _constraints.template emplace_back<Solver::DeviatoricConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            std::vector<Solver::HydrostaticConstraint>& hyd_constraint_vec = _constraints.template get<Solver::HydrostaticConstraint>();
+            std::vector<Solver::DeviatoricConstraint>& dev_constraint_vec = _constraints.template get<Solver::DeviatoricConstraint>();
+            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
             
+            using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
+            using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;
             // TODO: support separate constraints - maybe though SeparateConstraintProjector class?.
-            _solver.addConstraintProjector(_sim->dt(), &hyd_constraint);
-            _solver.addConstraintProjector(_sim->dt(), &dev_constraint);
-            // _solver.addConstraintProjector(_sim->dt(), projector_options, &dev_constraint, &hyd_constraint);
+            _solver.addConstraintProjector(_sim->dt(), HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1));
+            _solver.addConstraintProjector(_sim->dt(), DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1));
             
         }
         // if the constraint configuration is StableNeohookeanCombined, add a combined constraint projector for the hydrostatic and deviatoric constraints
         if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
         {
-            Solver::HydrostaticConstraint& hyd_constraint = 
-                _constraints.template emplace_back<Solver::HydrostaticConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
-            Solver::DeviatoricConstraint& dev_constraint = 
-                _constraints.template emplace_back<Solver::DeviatoricConstraint>(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            std::vector<Solver::HydrostaticConstraint>& hyd_constraint_vec = _constraints.template get<Solver::HydrostaticConstraint>();
+            std::vector<Solver::DeviatoricConstraint>& dev_constraint_vec = _constraints.template get<Solver::DeviatoricConstraint>();
+            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
 
-            _solver.addConstraintProjector(_sim->dt(), &dev_constraint, &hyd_constraint);
+            using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
+            using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;
+            _solver.addConstraintProjector(_sim->dt(), 
+                DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
+                HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
+            );
         }
     }
 }

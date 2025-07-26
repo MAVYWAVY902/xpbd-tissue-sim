@@ -1,6 +1,8 @@
 #ifndef __RIGID_BODY_CONSTRAINT_PROJECTOR_HPP
 #define __RIGID_BODY_CONSTRAINT_PROJECTOR_HPP
 
+#include "solver/constraint/PositionReference.hpp"
+#include "solver/constraint/ConstraintReference.hpp"
 #include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 #include "solver/constraint/RigidBodyConstraint.hpp"
 
@@ -28,8 +30,8 @@ class RigidBodyConstraintProjector
     constexpr static bool is_first_order = IsFirstOrder;
 
     public:
-    explicit RigidBodyConstraintProjector(Real dt, RBConstraint* constraint_ptr)
-        : _dt(dt), _constraint(constraint_ptr), _valid(true)
+    explicit RigidBodyConstraintProjector(Real dt, ConstraintReference<RBConstraint>&& constraint_ref)
+        : _dt(dt), _constraint(constraint_ref), _valid(true)
     {
     }
 
@@ -122,7 +124,7 @@ class RigidBodyConstraintProjector
     private:
     Real _dt;
     Real _lambda;
-    RBConstraint* _constraint;
+    ConstraintReference<RBConstraint> _constraint;
     bool _valid;
 };
 

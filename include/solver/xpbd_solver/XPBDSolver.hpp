@@ -5,6 +5,7 @@
 #include "common/XPBDEnumTypes.hpp"
 
 #include "solver/constraint/Constraint.hpp"
+#include "solver/constraint/ConstraintReference.hpp"
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
 #include "solver/xpbd_projector/ConstraintProjectorReference.hpp"
@@ -121,10 +122,10 @@ class XPBDSolver
      */
     template<class... Constraints>
     ConstraintProjectorReference<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type> 
-    addConstraintProjector(Real dt, Constraints* ... constraints)
+    addConstraintProjector(Real dt, ConstraintReference<Constraints>&&... constraints)
     {
         using ProjectorType = typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type;
-        ProjectorType projector(dt, constraints...);
+        ProjectorType projector(dt, std::forward<ConstraintReference<Constraints>>(constraints)...);
     
         // make sure that the data buffer of the coordinate updates vector is large enough to accommodate the new projector
         if (static_cast<unsigned>(projector.numCoordinates()) > _coordinate_updates.size())

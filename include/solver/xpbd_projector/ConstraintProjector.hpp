@@ -1,7 +1,8 @@
 #ifndef __CONSTRAINT_PROJECTOR_HPP
 #define __CONSTRAINT_PROJECTOR_HPP
 
-#include "solver/constraint/DeviatoricConstraint.hpp"
+#include "solver/constraint/PositionReference.hpp"
+#include "solver/constraint/ConstraintReference.hpp"
 #include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 
 #include "common/TypeList.hpp"
@@ -39,8 +40,8 @@ class ConstraintProjector
 
     public:
     /** Constructor */
-    explicit ConstraintProjector(Real dt, Constraint* constraint_ptr)
-        : _dt(dt), _constraint(constraint_ptr), _valid(true)
+    explicit ConstraintProjector(Real dt, ConstraintReference<Constraint>&& constraint_ref)
+        : _dt(dt), _constraint(constraint_ref), _valid(true)
     {
     }
 
@@ -107,8 +108,6 @@ class ConstraintProjector
         // compute RHS of lambda update: -C - alpha_tilde*lambda
         Real RHS = -C - alpha_tilde * _lambda;
 
-        // std::cout << "\t\tRHS: " << RHS << " LHS: " << LHS << std::endl; 
-
         // compute lambda update
         Real dlam = RHS / LHS;
         _lambda += dlam;
@@ -119,8 +118,6 @@ class ConstraintProjector
             Real update_x = positions[i].inv_mass * delC[3*i] * dlam;
             Real update_y = positions[i].inv_mass * delC[3*i+1] * dlam;
             Real update_z = positions[i].inv_mass * delC[3*i+2] * dlam;
-
-            // std::cout << "update: " << update_x << ", " << update_y << ", " << update_z << std::endl;
             
             coordinate_updates_ptr[3*i].ptr = positions[i].position_ptr;
             coordinate_updates_ptr[3*i].update = update_x;
@@ -128,11 +125,6 @@ class ConstraintProjector
             coordinate_updates_ptr[3*i+1].update = update_y;
             coordinate_updates_ptr[3*i+2].ptr = positions[i].position_ptr+2;
             coordinate_updates_ptr[3*i+2].update = update_z;
-
-            // if (positions[i].index == 337)
-            // {
-            //     std::cout << "Index 337 position update: "  << update_x << ", " << update_y << ", " << update_z << std::endl;
-            // }
         }
     }
 
@@ -148,7 +140,7 @@ class ConstraintProjector
     private:
     Real _dt;       // time step of the simulation
     Real _lambda;   // Lagrange multiplier for the projection
-    Constraint* _constraint;    // the constraint being projected
+    ConstraintReference<Constraint> _constraint;    // a consistent reference to the constraint being projected
     bool _valid;    // whether or not this projector is valid (if invalid, projection will not occur)
     
 
