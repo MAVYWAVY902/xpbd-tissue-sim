@@ -58,10 +58,42 @@ class CombinedConstraintProjector
     {
     }
 
+    /** Sets the validity of the ConstraintProjector. When valid, it is assumed the Constraint exists to be projected.
+     * @param valid : the new validity of the ConstraintProjector
+     */
     void setValidity(bool valid) { _valid = valid; }
+
+    /** @returns whether or not the ConstraintProjector is valid */
     bool isValid() const { return _valid; }
 
     int numCoordinates() { return Constraint1::NUM_COORDINATES; } // TODO: for now we're assuming that constraint1 and constraint2 share the same coords exactly
+
+    /** The constraint forces on each of the affected positions caused by this constraint.
+     * @returns the constraint forces on each of the affected positions of this constraint. The returned vector is ordered such that
+     * the forces are applied to the corresponding position at the same index in the positions() vector.
+     * 
+     * This method must be called AFTER constraint projection has been performed (i.e. after lambda has been calculated). 
+     */
+    std::vector<Vec3r> constraintForces() const
+    {
+        /** TODO: FOR NOW assuming that both constraints share exactly the same coordinates, in exactly the same order. FIND A MORE GENERAL WAY */
+        std::vector<Vec3r> forces( Constraint1::NUM_POSITIONS );
+        Real delC1[Constraint1::NUM_COORDINATES];
+        Real delC2[Constraint2::NUM_COORDINATES];
+        _constraint1->gradient(delC1);
+        _constraint2->gradient(delC2);
+        for (int i = 0; i < Constraint1::NUM_POSITIONS; i++)
+        {
+            // if 1st-order, F = delC^T * lambda / dt
+            // if 2nd-order, F = delC^T * lambda / (dt*dt)
+            if constexpr (IsFirstOrder)
+                forces[i] = (Eigen::Map<Vec3r>(delC1 + 3*i) * _lambda[0] + Eigen::Map<Vec3r>(delC2 + 3*i) * _lambda[1])  / _dt;
+            else
+                forces[i] = (Eigen::Map<Vec3r>(delC1 + 3*i) * _lambda[0] + Eigen::Map<Vec3r>(delC2 + 3*i) * _lambda[1]) / (_dt*_dt);
+        }
+
+        return forces;
+    }
 
     /** Initialize the Lagrange multipliers. */
     void initialize()

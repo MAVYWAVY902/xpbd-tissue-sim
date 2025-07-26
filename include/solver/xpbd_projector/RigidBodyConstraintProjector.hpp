@@ -41,10 +41,47 @@ class RigidBodyConstraintProjector
     {   
     }
 
+    /** Sets the validity of the ConstraintProjector. When valid, it is assumed the Constraint exists to be projected.
+     * @param valid : the new validity of the ConstraintProjector
+     */
     void setValidity(bool valid) { _valid = valid; }
-    bool isValid() { return _valid; }
 
+    /** @returns whether or not the ConstraintProjector is valid */
+    bool isValid() const { return _valid; }
+
+    /** @returns The number of coordinates that the constraint projector affects.
+     * For a single constraint projector, this is just the number of coordinates affected by the single constraint.
+     */
     int numCoordinates() { return MAX_NUM_COORDINATES; }
+
+    /** @returns the positions (as PositionReferences) affect by the constraint projection. This will just be the 
+     * positions of the single projected constraint.
+    */
+    const std::vector<PositionReference>& positions() const { return _constraint->positions(); }
+
+    /** The constraint forces on each of the affected positions caused by this constraint.
+     * @returns the constraint forces on each of the affected positions of this constraint. The returned vector is ordered such that
+     * the forces are applied to the corresponding position at the same index in the positions() vector.
+     * 
+     * This method must be called AFTER constraint projection has been performed (i.e. after lambda has been calculated). 
+     */
+    std::vector<Vec3r> constraintForces() const
+    {
+        std::vector<Vec3r> forces( RBConstraint::NUM_POSITIONS );
+        Real delC[RBConstraint::NUM_COORDINATES];
+        _constraint->gradient(delC);
+        for (int i = 0; i < RBConstraint::NUM_POSITIONS; i++)
+        {
+            // if 1st-order, F = delC^T * lambda / dt
+            // if 2nd-order, F = delC^T * lambda / (dt*dt)
+            if constexpr (IsFirstOrder)
+                forces[i] = Eigen::Map<Vec3r>(delC + 3*i) * _lambda / _dt;
+            else
+                forces[i] = Eigen::Map<Vec3r>(delC + 3*i) * _lambda / (_dt*_dt);
+        }
+
+        return forces;
+    }
 
     void initialize()
     {

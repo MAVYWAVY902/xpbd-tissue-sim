@@ -43,6 +43,17 @@ class ConstraintProjectorReference
     int _index;
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/** A wrapper around ConstraintProjectorReference that is agnostic to whether the underlying ConstraintProjector is 1st-Order or 2nd-Order.
+ * This is useful for treating references to ConstraintProjectors the same way regardless of the underlying algorithm, while maintaining the 
+ * strong compile-time typing of the templated classes.
+ * 
+ * What's nice is that we don't actually need the ConstraintProjector type directly, we can infer it from the Constraints template parameter. This
+ * completely removes the need for the IsFirstOrder template parameter, which is exactly what we want.
+ */
 template<typename ...Constraints>
 class ConstraintProjectorReferenceWrapper
 {
@@ -64,8 +75,51 @@ public:
     ConstraintProjectorReferenceWrapper(ConstraintProjectorReference<typename ConstraintProjectorTraits<true, Constraints...>::type>&& proj_reference)
         : _variant(std::move(proj_reference))
     {}
+
+    /** Return the stored object as the specified type, if the type matches.
+     * If the type doesn't match, return nullptr
+     */
+    template<bool IsFirstOrder>
+    typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type* getAs()
+    {
+        if (std::holds_alternative<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type>(_variant))
+        {
+            return std::get<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type>(_variant);
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+
+    template<bool IsFirstOrder>
+    const typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type* getAs() const
+    {
+        if (std::holds_alternative<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type>(_variant))
+        {
+            return std::get<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type>(_variant);
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
     
     /** TODO: add wrapper methods for interfacing with ConstraintProjector */
+    std::vector<Vec3r> constraintForces() const
+    {
+        return std::visit([](const auto& obj) { return obj.constraintForces(); }, _variant);
+    }
+
+    void setValidity(bool valid)
+    {
+        return std::visit([&](auto& obj) { return obj.setValidity(valid); }, _variant);
+    }
+
+    bool isValid() const
+    {
+        return std::visit([](const auto& obj) { return obj.isValid(); }, _variant);
+    }
 
 private:
     variant_type _variant;
