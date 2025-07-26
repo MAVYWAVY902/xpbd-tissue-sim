@@ -147,7 +147,7 @@ Geometry::AABB VirtuosoArm::boundingBox() const
 void VirtuosoArm::_toolAction()
 {
     // if the manipulated object has not been given, do nothing
-    if (_tool_manipulated_object)
+    if (!_tool_manipulated_object)
         return;
 
     if (_tool_type == ToolType::SPATULA)

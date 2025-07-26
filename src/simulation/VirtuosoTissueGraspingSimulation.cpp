@@ -39,7 +39,7 @@ void VirtuosoTissueGraspingSimulation::setup()
     else if (xpbd_objs.size() > 0)
         _tissue_obj = xpbd_objs.front().get();
     else
-        assert((xpbd_objs.size() > 0) && "There must be at least 1 XPBDMeshObject or FirstOrderXPBDMeshObject in the simulation (there is no tissue object!).");
+        assert((xpbd_objs.size() + fo_xpbd_objs.size() > 0) && "There must be at least 1 XPBDMeshObject or FirstOrderXPBDMeshObject in the simulation (there is no tissue object!).");
     
 
     

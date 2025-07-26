@@ -18,7 +18,7 @@ g-accel: 0 # m/s2
 sim-mode: "AFAP"
 time-step: 3.33e-3 # for FO XPBD
 # time-step: 3.33e-5 # for normal XPBD
-collision-rate: 1000
+collision-rate: 100
 fps: 30
 end-time: 10000
 

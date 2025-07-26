@@ -38,6 +38,24 @@ public:
     /** When not initialized, the variant will store nullptr. */
     XPBDMeshObject_BasePtrWrapper() : _variant( (XPBDMeshObject_Base_<true>*)nullptr ) {}
 
+    /** If the current stored pointer is not nullptr, evaluates to true. */
+    explicit operator bool() const
+    {
+        return std::visit([](const auto& obj) { 
+            return (obj != nullptr); 
+        }, _variant);
+    }
+
+    void operator=(FirstOrderXPBDMeshObject_Base* other)
+    {
+        _variant = other;
+    }
+
+    void operator=(XPBDMeshObject_Base* other)
+    {
+        _variant = other;
+    }
+
     /** Return the stored object as the specified type, if the type matches.
      * If the type doesn't match, return nullptr
      */
@@ -65,12 +83,6 @@ public:
         {
             return nullptr;
         }
-    }
-
-    /** If the current stored pointer is not nullptr, evaluates to true. */
-    explicit operator bool() const
-    {
-        return std::visit([](const auto& obj) { return obj != nullptr; }, _variant);
     }
 
     /** === XPBDMeshObject_Base_ functionality === */
