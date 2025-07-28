@@ -52,7 +52,7 @@ objects:
     with-damping: false
     # damping-multiplier: 400000000
     damping-multiplier: 6000000000
-    collisions: true
+    collisions: false
     
     color: [1.0, 0.3, 0.2]
     render-type: "PBR"

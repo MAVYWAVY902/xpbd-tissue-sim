@@ -28,6 +28,12 @@ class ConstraintProjectorReference
 
     }
 
+    ConstraintProjectorReference(ConstraintProjectorReference&&) = default;
+    ConstraintProjectorReference& operator=(ConstraintProjectorReference&&) = default;
+    
+    ConstraintProjectorReference(const ConstraintProjectorReference&) = default;
+    ConstraintProjectorReference& operator=(const ConstraintProjectorReference&) = default;
+
     const constraint_projector_type* operator->() const
     {
         return &_vec.at(_index);
@@ -108,17 +114,17 @@ public:
     /** TODO: add wrapper methods for interfacing with ConstraintProjector */
     std::vector<Vec3r> constraintForces() const
     {
-        return std::visit([](const auto& obj) { return obj.constraintForces(); }, _variant);
+        return std::visit([](const auto& obj) { return obj->constraintForces(); }, _variant);
     }
 
     void setValidity(bool valid)
     {
-        return std::visit([&](auto& obj) { return obj.setValidity(valid); }, _variant);
+        return std::visit([&](auto& obj) { return obj->setValidity(valid); }, _variant);
     }
 
     bool isValid() const
     {
-        return std::visit([](const auto& obj) { return obj.isValid(); }, _variant);
+        return std::visit([](const auto& obj) { return obj->isValid(); }, _variant);
     }
 
 private:

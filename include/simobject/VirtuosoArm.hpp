@@ -114,6 +114,28 @@ class VirtuosoArm : public Object
         Vec3r K_inv;            // inverse stiffnesses of the tube (in body frame, hence K is diagonal and can be represented by a 3-vector)
     };
 
+    /** Stores information for applying collision forces onto the tube at the appropriate location.
+     * This includes the constraint projector for the collision constraint on the deformable object (calculates the force)
+     * as well as the node index and interpolation (between 0 and 1) of the force.
+     * The force is assumed to be applied between the node at node index and the next node.
+     */
+    struct CollisionConstraintInfo
+    {
+        using ProjectorRefType = Solver::ConstraintProjectorReferenceWrapper<Solver::StaticDeformableCollisionConstraint>;
+
+        ProjectorRefType proj_ref;  // the constraint projector reference that can calculate the constraint force
+        int node_index; // "global" node index, i.e. from 0 to NUM_OT_FRAMES + NUM_IT_FRAMES
+        Real interp;    // between 0 and 1
+
+        CollisionConstraintInfo(ProjectorRefType&& proj_ref_, int node_index_, Real interp_)
+            : proj_ref(proj_ref_), node_index(node_index_), interp(interp_)
+        {}
+
+        CollisionConstraintInfo(const ProjectorRefType& proj_ref_, int node_index_, Real interp_)
+            : proj_ref(proj_ref_), node_index(node_index_), interp(interp_)
+        {}
+        };
+
     public:
     VirtuosoArm(const Simulation* sim, const ConfigType* config);
 
@@ -189,6 +211,11 @@ class VirtuosoArm : public Object
     void setTipMoment(const Vec3r& new_tip_moment);
     void setTipForceAndMoment(const Vec3r& new_tip_force, const Vec3r& new_tip_moment);
 
+    void addCollisionConstraint(CollisionConstraintInfo::ProjectorRefType&& proj_ref, int node_index, Real interp);
+    void clearCollisionConstraints();
+
+    const Vec3r& outerTubeNodalForce(int node_index) const { return _ot_nodal_forces[node_index]; }
+    const Vec3r& innerTubeNodalForce(int node_index) const { return _it_nodal_forces[node_index]; }
     void setOuterTubeNodalForce(int node_index, const Vec3r& force);
     void setInnerTubeNodalForce(int node_index, const Vec3r& force);
 
@@ -293,6 +320,8 @@ class VirtuosoArm : public Object
     Vec3r _tool_position; // position of the tool in global coordinates (note that this may be different than the inner tube tip position)
     Vec3r _commanded_tip_position; // tip position of the arm in the absence of tip forces (i.e. where we tell the arm tip to be at)
     std::vector<int> _grasped_vertices; // vertices that are actively being grasped
+    std::vector<Solver::ConstraintProjectorReferenceWrapper<Solver::AttachmentConstraint>> _grasping_constraints; // attachment constraints associated with the grasping
+    std::vector<CollisionConstraintInfo> _collision_constraints;
 
     Vec3r _arm_base_position;
     Mat3r _arm_base_rotation;

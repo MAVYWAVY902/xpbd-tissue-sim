@@ -8,6 +8,7 @@
 
 #include <math.h>
 #include <algorithm>
+#include <numeric>
 
 namespace Sim 
 {
@@ -115,6 +116,16 @@ void VirtuosoArm::setJointState(double ot_rotation, double ot_translation, doubl
     _stale_frames = true;
 }
 
+void VirtuosoArm::addCollisionConstraint(VirtuosoArm::CollisionConstraintInfo::ProjectorRefType&& proj_ref, int node_index, Real interp)
+{
+    _collision_constraints.emplace_back(std::move(proj_ref), node_index, interp);
+}
+
+void VirtuosoArm::clearCollisionConstraints()
+{
+    _collision_constraints.clear();
+}
+
 void VirtuosoArm::setup()
 {
     _recomputeCoordinateFrames();
@@ -135,8 +146,34 @@ void VirtuosoArm::update()
 
 void VirtuosoArm::velocityUpdate()
 {
-    // nothing for now
+    // perform the tool action AFTER the update step so that the XPBD update for deformable objects has already occurred so that
+    // we can compute the constraint forces associated with projections of various constraints
     _toolAction();
+
+    // apply forces from collision constraints
+    std::vector<Vec3r> new_forces(NUM_OT_FRAMES + NUM_IT_FRAMES, Vec3r::Zero());
+    for (const auto& collision : _collision_constraints)
+    {
+        std::vector<Vec3r> forces = collision.proj_ref.constraintForces();
+        Vec3r net_force = std::reduce(forces.cbegin(), forces.cend());
+        new_forces[collision.node_index] += net_force*(1-collision.interp);
+        new_forces[collision.node_index+1] += net_force*collision.interp;
+    }
+
+    const Real frac = 0.01;
+    for (int i = 0; i < NUM_OT_FRAMES; i++)
+    {
+        const Vec3r& cur_force = outerTubeNodalForce(i);
+        Vec3r new_force = (1-frac)*cur_force + frac*new_forces[i];
+        setOuterTubeNodalForce(i, new_force);
+    }
+    for (int i = 0; i < NUM_IT_FRAMES; i++)
+    {
+        const Vec3r& cur_force = innerTubeNodalForce(i);
+        Vec3r new_force = (1-frac)*cur_force + frac*new_forces[NUM_OT_FRAMES + i];
+        setInnerTubeNodalForce(i, new_force);
+    }
+    _stale_frames = true;
 }
 
 /** Returns the axis-aligned bounding-box (AABB) for this Object in global simulation coordinates. */
@@ -198,28 +235,30 @@ void VirtuosoArm::_grasperToolAction()
 
         for (const auto& [v, offset] : vertices_to_grasp)
         {
-            _tool_manipulated_object.addAttachmentConstraint(v, &_tool_position, offset);
-            
-            _grasped_vertices.push_back(v);
+            Solver::ConstraintProjectorReferenceWrapper<Solver::AttachmentConstraint> proj_ref =
+                _tool_manipulated_object.addAttachmentConstraint(v, &_tool_position, offset);
+            _grasping_constraints.push_back(std::move(proj_ref));
         }
     }
 
     // if tool state has changed from 1 to 0, stop grasping
     else if (_tool_state == 0 && _last_tool_state == 1)
     {
+        /** TODO: remove just the attachment constraints associated with grasping with this object */
         _tool_manipulated_object.clearAttachmentConstraints();
-        _grasped_vertices.clear();
+        _grasping_constraints.clear();
     }
 
     // apply tip forces
     Vec3r total_force = Vec3r::Zero();
-    for (const auto& v : _grasped_vertices)
+    for (const auto& proj : _grasping_constraints)
     {
-        total_force += _tool_manipulated_object.elasticForceAtVertex(v);
+        std::vector<Vec3r> forces = proj.constraintForces();
+        total_force += forces[0]; // attachment constraint only affects one vertex, so the vector only has 1 element
     }
 
     // smooth forces
-    Vec3r new_tip_force = 0.99*tipForce() + 0.01* -total_force/1;   // TODO: investigate why negative sign is needed here
+    Vec3r new_tip_force = 0.99*tipForce() + -0.01* -total_force/1;
     setTipForce(new_tip_force);
     
 }

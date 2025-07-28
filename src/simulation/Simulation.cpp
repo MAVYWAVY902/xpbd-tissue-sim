@@ -179,6 +179,19 @@ void Simulation::_timeStep()
         {
             obj->clearCollisionConstraints();
         }
+        auto& virtuoso_robots = _objects.get<std::unique_ptr<VirtuosoRobot>>();
+        for (auto& obj : virtuoso_robots)
+        {
+            if (obj->hasArm1())
+                obj->arm1()->clearCollisionConstraints();
+            if (obj->hasArm2())
+                obj->arm2()->clearCollisionConstraints();
+        }
+        auto& virtuoso_arms = _objects.get<std::unique_ptr<VirtuosoArm>>();
+        for (auto& obj : virtuoso_arms)
+        {
+            obj->clearCollisionConstraints();
+        }
         // update the Embree scene before colliding objects
         // auto embree_t1 = std::chrono::steady_clock::now();
         // _embree_scene->update();

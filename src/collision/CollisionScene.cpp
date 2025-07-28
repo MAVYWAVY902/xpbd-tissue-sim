@@ -146,7 +146,10 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
                     // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
                     const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
                     const Vec3r surface_x = x - result.gradient*result.distance;
-                    xpbd_mesh_obj->addStaticCollisionConstraint(sdf, surface_x, result.gradient, i, u, v, w);
+                    Solver::ConstraintProjectorReferenceWrapper<Solver::StaticDeformableCollisionConstraint> proj_ref = 
+                        xpbd_mesh_obj->addStaticCollisionConstraint(sdf, surface_x, result.gradient, i, u, v, w);
+                    
+                    virtuoso_arm->addCollisionConstraint(std::move(proj_ref), result.node_index, result.interp_factor);
                     
                 }
             }
