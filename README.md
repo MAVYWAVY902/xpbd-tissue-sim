@@ -4,6 +4,7 @@ A place to prototype and test algorithms and approaches for simulation of highly
 ## Table of Contents
 * [Building and running a first simulation](#building-and-running-a-first-simulation)
   * [Linux](#linux)
+  * [Linux without Docker](#linux-without-docker)
   * [Windows](#windows)
 * [Changing simulation parameters](#changing-simulation-parameters)
   * [Config files](#config-files)
@@ -28,7 +29,7 @@ Different `Dockerfile`s and Docker compose files have been provided that will se
 
 Currently there are 3 configurations:
 * **CPU only** - `Dockerfile.CPU` and `docker-compose-cpu.yml`. This creates a Docker container for running the simulation purely on the CPU, and without ROS.
-* **GPU** - `Dockerfile.GPU` and `docker-compose-gpu.yml`. This creates a Docker container for running the simulation with the GPU, and without ROS.
+* **GPU** (GPU VERSION NOT FUNCTIONAL) - `Dockerfile.GPU` and `docker-compose-gpu.yml`. This creates a Docker container for running the simulation with the GPU, and without ROS.
 * **ROS** - `Dockerfile.ROS` and `docker-compose-ros.yml`. This creates a Docker container for running the simulation purely on the CPU with a ROS bridge.
 
 ### Linux
@@ -36,7 +37,7 @@ First, install the Docker engine (instructions for Ubuntu [here](https://docs.do
 
 Then, install the [Docker compose plugin](https://docs.docker.com/compose/install/linux/#install-using-the-repository).
 
-If using a NVIDIA GPU, install the NVIDIA Container Toolkit (instructions for Linux [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)). Be sure to restart the Docker daemon after installing.
+If using a NVIDIA GPU, install the NVIDIA Container Toolkit (instructions for Linux [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)). Be sure to restart the Docker daemon after installing. (NO NEED TO DO THIS AS THE GPU IMPLEMENTATION IS NOT CURRENTLY FUNCTIONAL)
 
 Then, run 
 
@@ -99,6 +100,64 @@ When spinning up and attaching to the container again, you **do not need to rebu
 ```
 docker compose up -d
 docker exec -it sim-*-dev-1 /bin/bash
+```
+### Linux without Docker
+With Ubuntu 24.04 (and possibly earlier versions of Ubuntu), the repository can also be set up to run without Docker. This process basically just mimics what is done to set up the Docker container.
+
+The following will walk you through installation of all the dependencies required to use the simulator. Many of them are Github repositories, and they do not have to be cloned within the folder structure of this repository (i.e. feel free to clone them anywhere on your computer).
+
+#### yaml-cpp
+`yaml-cpp` is used to parse the simulation configuration YAML files.
+```
+git clone https://github.com/jbeder/yaml-cpp.git
+mkdir yaml-cpp/build && cd yaml-cpp/build
+cmake ..
+make -j 8
+sudo make install
+```
+
+#### Eigen
+`Eigen` is used for all vector and matrix operations.
+```
+git clone https://gitlab.com/libeigen/eigen.git
+mkdir eigen/build && cd eigen/build
+cmake ..
+make -j 8
+sudo make install
+```
+
+#### Easy3D
+`easy3d` is one of the graphics backends used by the simulator.
+```
+git clone https://github.com/LiangliangNan/Easy3D.git
+mkdir Easy3D/build && cd Easy3D/build
+cmake ..
+make -j 8
+sudo make install
+# not sure if this is needed
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/easy3d-2.6.1/lib/
+```
+
+#### Gmsh
+`gmsh` is used to generate tetrahedral meshes from STL and OBJ mesh files, and its `.msh` file format is used to store tetrahedral meshes.
+```
+git clone https://gitlab.onelab.info/gmsh/gmsh.git
+mkdir gmsh/build && cd gmsh/build
+# install from source as a dynamic library for access to C++ API
+cmake -DENABLE_BUILD_DYNAMIC=1 ..
+make -j 8
+sudo make install
+```
+
+#### Mesh2SDF
+`Mesh2SDF` is used to generate signed distance functions for arbitrary meshes, used in collision detection and response.
+```
+git clone https://github.com/smtobin/Mesh2SDF.git
+mkdir Mesh2SDF/build && cd Mesh2SDF/build
+# when running on the CPU, double precision is used, so DUSE_DOUBLE_PRECISION=1 should be used
+cmake .. -DUSE_DOUBLE_PRECISION=1
+make -j 8
+sudo make install
 ```
 
 ### Windows
