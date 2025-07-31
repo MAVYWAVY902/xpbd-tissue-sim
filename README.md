@@ -4,7 +4,7 @@ A place to prototype and test algorithms and approaches for simulation of highly
 ## Table of Contents
 * [Building and running a first simulation](#building-and-running-a-first-simulation)
   * [Linux](#linux)
-  * [Linux without Docker](#linux-without-docker)
+  * [Linux (without Docker)](#linux-without-docker)
   * [Windows](#windows)
 * [Changing simulation parameters](#changing-simulation-parameters)
   * [Config files](#config-files)
@@ -101,10 +101,28 @@ When spinning up and attaching to the container again, you **do not need to rebu
 docker compose up -d
 docker exec -it sim-*-dev-1 /bin/bash
 ```
-### Linux without Docker
+### Linux (without Docker)
 With Ubuntu 24.04 (and possibly earlier versions of Ubuntu), the repository can also be set up to run without Docker. This process basically just mimics what is done to set up the Docker container.
 
 The following will walk you through installation of all the dependencies required to use the simulator. Many of them are Github repositories, and they do not have to be cloned within the folder structure of this repository (i.e. feel free to clone them anywhere on your computer).
+
+#### Required packages
+I don't exactly know if these are all necessary, but here they are:
+```
+sudo apt-get update && sudo apt-get install -y \
+    g++ \
+    git \
+    cmake \
+    xorg-dev \
+    libassimp-dev \
+    wget \
+    gdb \
+    # needed by OpenHaptics API
+    libncurses-dev \
+    freeglut3-dev \
+    build-essential \
+    libusb-1.0-0-dev
+```
 
 #### yaml-cpp
 `yaml-cpp` is used to parse the simulation configuration YAML files.
@@ -155,10 +173,58 @@ sudo make install
 git clone https://github.com/smtobin/Mesh2SDF.git
 mkdir Mesh2SDF/build && cd Mesh2SDF/build
 # when running on the CPU, double precision is used, so DUSE_DOUBLE_PRECISION=1 should be used
+# when running on the CPU+GPU, single precision is used, so DUSE_DOUBLE_PRECISION=0 should be used
 cmake .. -DUSE_DOUBLE_PRECISION=1
 make -j 8
 sudo make install
 ```
+
+#### Embree
+Intel's `embree` library is used to generate bounding volume hierarchies (BVHs) of the scene, used for raycasting and collision.
+```
+# packages needed for Embree
+sudo apt-get update && apt-get -y install cmake-curses-gui \
+    libtbb-dev \
+    libglfw3-dev
+
+git clone https://github.com/RenderKit/embree.git
+mkdir embree/build && cd embree/build
+cmake ..
+make -j 8
+sudo make install
+```
+
+#### VTK
+`VTK` is another graphics backend used by the simulator.
+```
+git clone https://gitlab.kitware.com/vtk/vtk.git
+mkdir vtk/build && cd vtk/build
+cmake ..
+make -j 8
+sudo make install
+```
+
+#### OpenHaptics SDK
+The `OpenHaptics` SDK and drivers are used to interface with Geomagic Touch haptic devices. In the future, this will be optional to install, but right now it is required.
+```
+# install OpenHaptics drivers
+wget https://s3.amazonaws.com/dl.3dsystems.com/binaries/support/downloads/KB+Files/Open+Haptics/openhaptics_3.4-0-developer-edition-amd64.tar.gz
+tar -xvf openhaptics_3.4-0-developer-edition-amd64.tar.gz
+wget https://s3.amazonaws.com/dl.3dsystems.com/binaries/Sensable/Linux/TouchDriver_2023_11_15.tgz
+tar -xvf TouchDriver_2023_11_15.tgz
+sudo ./openhaptics_3.4-0-developer-edition-amd64/install
+sudo ./TouchDriver_2023_11_15/install_haptic_driver
+
+# make symbolic links so API examples build
+sudo ln -s /usr/lib/x86_64-linux-gnu/libglut.so /usr/lib/libglut.so.3
+sudo ln -s /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/libncurses.so.5
+sudo ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/libtinfo.so.5
+
+export GTDD_HOME=/root/.3dsystems
+```
+
+#### ROS
+**TODO**
 
 ### Windows
 Using WSL, the process should be similar, though there might be some extra stuff to do with the X11 forwarding.
