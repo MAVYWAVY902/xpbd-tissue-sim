@@ -42,6 +42,12 @@ class VirtuosoSimulation : public Simulation
     void setArm1JointState(double ot_rot, double ot_trans, double it_rot, double it_trans, int tool);
     void setArm2JointState(double ot_rot, double ot_trans, double it_rot, double it_trans, int tool);
 
+    void setArm1TipPosition(const Vec3r& new_pos);
+    void setArm2TipPosition(const Vec3r& new_pos);
+
+    void setArm1ToolState(int tool);
+    void setArm2ToolState(int tool);
+
     protected:
 
     struct VirtuosoArmJointState
@@ -68,16 +74,32 @@ class VirtuosoSimulation : public Simulation
     void _moveCursor(const Vec3r& dp);
 
     protected:
+    /** Struct for receiving state updates in a thread-safe way.
+     * Parts of the simulation (Virtuoso arm state) may be set through ROS, from a different thread. We need to make sure that these updates
+     * do not get applied in the middle of a time step, but instead inbetween time steps.
+     */
+    template<typename State>
+    struct _AsyncState
+    {
+        std::mutex mtx;
+        std::atomic<bool> has_new;
+        State state;
+
+        _AsyncState()
+            : has_new(false) {}
+    };
 
     VirtuosoRobot* _virtuoso_robot; // the Virtuoso robot (includes both arms)
     VirtuosoArm* _active_arm;       // whichever arm is being actively controlled (assuming only one input device)
 
-    std::mutex _arm1_joint_state_mtx;
-    std::mutex _arm2_joint_state_mtx;
-    std::atomic<bool> _has_new_arm1_joint_state;
-    std::atomic<bool> _has_new_arm2_joint_state;
-    VirtuosoArmJointState _new_arm1_joint_state;
-    VirtuosoArmJointState _new_arm2_joint_state;
+    _AsyncState<VirtuosoArmJointState> _arm1_joint_state;   // arm1's joint state may be set through ROS    
+    _AsyncState<VirtuosoArmJointState> _arm2_joint_state;   // arm2's joint state may be set through ROS
+
+    _AsyncState<Vec3r> _arm1_tip_pos;   // arm1's commanded tip position may be set through ROS
+    _AsyncState<Vec3r> _arm2_tip_pos;   // arm2's commanded tip position may be set through ROS
+
+    _AsyncState<int> _arm1_tool_state;  // arm1's tool state may be set through ROS
+    _AsyncState<int> _arm2_tool_state;  // arm2's tool state may be set through ROS
 
     
     SimulationInput::Device _input_device;    // the type of input device used (Keyboard, Mouse, or Haptic)

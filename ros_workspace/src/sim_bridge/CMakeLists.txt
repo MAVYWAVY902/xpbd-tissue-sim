@@ -21,6 +21,23 @@ find_package(Eigen3 3.3 REQUIRED)   # find Eigen
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
 find_package(embree 4 REQUIRED)
+find_package(VTK 9.5 COMPONENTS
+    CommonColor
+    CommonCore
+    CommonDataModel
+    CommonExecutionModel
+    FiltersSources
+    IOImage
+    InteractionStyle
+    RenderingContextOpenGL2
+    RenderingCore
+    RenderingFreeType
+    RenderingGL2PSOpenGL2
+    RenderingOpenGL2
+)
+if (NOT VTK_FOUND)
+  message(FATAL_ERROR "Unable to find the VTK build folder.")
+endif()
 
 add_executable(${PROJECT_NAME}_node src/sim_bridge_node.cpp)
 ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs geometry_msgs shape_msgs sensor_msgs)
@@ -50,8 +67,13 @@ target_link_libraries(${PROJECT_NAME}_node
   HD
   HDU
   mesh2sdf
+  ${VTK_LIBRARIES}
 )
 
+vtk_module_autoinit(
+  TARGETS ${PROJECT_NAME}_node
+  MODULES ${VTK_LIBRARIES}
+)
 
 target_include_directories(${PROJECT_NAME}_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
