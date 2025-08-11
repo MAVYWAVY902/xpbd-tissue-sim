@@ -1,7 +1,7 @@
 #include "sim_bridge/SimBridge.hpp"
 
-#include "geometry_msgs/msg/vector3.hpp"
-#include "std_msgs/msg/int32.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "std_msgs/msg/int8.hpp"
 
 #include "simulation/VirtuosoSimulation.hpp"
 #include "simulation/VirtuosoTissueGraspingSimulation.hpp"
@@ -393,48 +393,53 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
         if (_sim->virtuosoRobot()->hasArm1())
         {
             auto arm1_tip_pos_callback = 
-                [this](geometry_msgs::msg::Vector3::UniquePtr msg) -> void {
-                    Vec3r tip_pos(msg->x, msg->y, msg->z);
+                [this](geometry_msgs::msg::PoseStamped::UniquePtr msg) -> void {
+                    const Vec3r local_pos(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
 
-                    this->_sim->setArm1TipPosition(tip_pos);
+                    const Geometry::CoordinateFrame& frame = this->_sim->virtuosoRobot()->VBFrame();
+                    const Vec3r global_pos = frame.transform().rotMat()*local_pos + frame.origin();
+                    this->_sim->setArm1TipPosition(global_pos);
             };
 
-            _arm1_tip_position_subscriber = this->create_subscription<geometry_msgs::msg::Vector3>("/input/arm1_tip_pos", 10, arm1_tip_pos_callback);
+            _arm1_tip_position_subscriber = this->create_subscription<geometry_msgs::msg::PoseStamped>("/input/arm1_tip_pos", 10, arm1_tip_pos_callback);
         }
 
         // set up subscriber callback to take in tip position for arm2
         if (_sim->virtuosoRobot()->hasArm2())
         {
             auto arm2_tip_pos_callback =
-                [this](geometry_msgs::msg::Vector3::UniquePtr msg) -> void {
-                    Vec3r tip_pos(msg->x, msg->y, msg->z);
+                [this](geometry_msgs::msg::PoseStamped::UniquePtr msg) -> void {
+                    const Vec3r local_pos(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
 
-                    this->_sim->setArm2TipPosition(tip_pos);
+                    const Geometry::CoordinateFrame& frame = this->_sim->virtuosoRobot()->VBFrame();
+                    const Vec3r global_pos = frame.transform().rotMat()*local_pos + frame.origin();
+
+                    this->_sim->setArm2TipPosition(global_pos);
             };
 
-            _arm2_tip_position_subscriber = this->create_subscription<geometry_msgs::msg::Vector3>("/input/arm2_tip_pos", 10, arm2_tip_pos_callback);
+            _arm2_tip_position_subscriber = this->create_subscription<geometry_msgs::msg::PoseStamped>("/input/arm2_tip_pos", 10, arm2_tip_pos_callback);
         }
 
         // set up subscriber callback to take in tool state for arm 1
         if (_sim->virtuosoRobot()->hasArm1())
         {
             auto arm1_tool_state_callback = 
-                [this](std_msgs::msg::Int32::UniquePtr msg) -> void {
+                [this](std_msgs::msg::Int8::UniquePtr msg) -> void {
                     this->_sim->setArm1ToolState(msg->data);
             };
 
-            _arm1_tool_state_subscriber = this->create_subscription<std_msgs::msg::Int32>("/input/arm1_tool_state", 10, arm1_tool_state_callback);
+            _arm1_tool_state_subscriber = this->create_subscription<std_msgs::msg::Int8>("/input/arm1_tool_state", 10, arm1_tool_state_callback);
         }
 
         // set up subscriber callback to take in tool state for arm 2
         if (_sim->virtuosoRobot()->hasArm2())
         {
             auto arm2_tool_state_callback = 
-                [this](std_msgs::msg::Int32::UniquePtr msg) -> void {
+                [this](std_msgs::msg::Int8::UniquePtr msg) -> void {
                     this->_sim->setArm2ToolState(msg->data);
             };
 
-            _arm2_tool_state_subscriber = this->create_subscription<std_msgs::msg::Int32>("/intput/arm2_tool_state", 10, arm2_tool_state_callback);
+            _arm2_tool_state_subscriber = this->create_subscription<std_msgs::msg::Int8>("/intput/arm2_tool_state", 10, arm2_tool_state_callback);
         }
         
     }
@@ -539,10 +544,10 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
     /** Subscriptions */
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _arm1_joint_state_subscriber;     // subscribes to joint state commands for arm1
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _arm2_joint_state_subscriber;     // subscribes to joint state commands for arm2
-    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr _arm1_tip_position_subscriber;     // subscribes to tip position commands for arm1
-    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr _arm2_tip_position_subscriber;     // subscribes to tip position commands for arm2
-    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr _arm1_tool_state_subscriber;              // subscribes to tool state commands for arm1
-    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr _arm2_tool_state_subscriber;              // subscribes to tool state commands for arm2
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _arm1_tip_position_subscriber;     // subscribes to tip position commands for arm1
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _arm2_tip_position_subscriber;     // subscribes to tip position commands for arm2
+    rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr _arm1_tool_state_subscriber;              // subscribes to tool state commands for arm1
+    rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr _arm2_tool_state_subscriber;              // subscribes to tool state commands for arm2
 
 
     /** Pointer to the actively running Simulation object */
