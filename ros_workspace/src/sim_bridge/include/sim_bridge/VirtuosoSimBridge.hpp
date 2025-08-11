@@ -231,7 +231,8 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
         // set up callback to publish mesh vertices as a point cloud
         if (Sim::VirtuosoTissueGraspingSimulation* tissue_sim = dynamic_cast<Sim::VirtuosoTissueGraspingSimulation*>(_sim))
         {
-            _partial_view_pc_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/output/partial_view_pc", 3);
+            _trachea_partial_view_pc_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/output/trachea_partial_view_pc", 3);
+            _tumor_partial_view_pc_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/output/tumor_partial_view_pc", 3);
             
             this->declare_parameter("partial_view_pc", true);
             this->declare_parameter("partial_view_pc_hfov", 80.0);
@@ -242,36 +243,53 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
             Real vfov_deg = this->get_parameter("partial_view_pc_vfov").as_double();
             Real sample_density = this->get_parameter("partial_view_pc_sample_density").as_double();
 
-            // set header
-            _partial_view_pc_message.header.stamp = this->now();
-            _partial_view_pc_message.header.frame_id = "/world";
+            // lambda function to configure point cloud messages
+            auto configure_pcl_message = [&](sensor_msgs::msg::PointCloud2& pcl_msg)
+            {
 
-            // add point fields
-            _partial_view_pc_message.fields.resize(3);
-            _partial_view_pc_message.fields[0].name = "x";
-            _partial_view_pc_message.fields[0].offset = 0;
-            _partial_view_pc_message.fields[0].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
-            _partial_view_pc_message.fields[0].count = 1;
+                // sensor_msgs::PointCloud2Modifier modifier(pcl_msg);
+                // auto datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+                // modifier.setPointCloud2Fields(3,
+                //     "x", 1, datatype,
+                //     "y", 1, datatype,
+                //     "z", 1, datatype
+                // );
 
-            _partial_view_pc_message.fields[1].name = "y";
-            _partial_view_pc_message.fields[1].offset = sizeof(Real);
-            _partial_view_pc_message.fields[1].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
-            _partial_view_pc_message.fields[1].count = 1;
+                // set header
+                pcl_msg.header.stamp = this->now();
+                pcl_msg.header.frame_id = "/world";
 
-            _partial_view_pc_message.fields[2].name = "z";
-            _partial_view_pc_message.fields[2].offset = 2*sizeof(Real);
-            _partial_view_pc_message.fields[2].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
-            _partial_view_pc_message.fields[2].count = 1;
+                // // add point fields
+                pcl_msg.fields.resize(3);
+                pcl_msg.fields[0].name = "x";
+                pcl_msg.fields[0].offset = 0;
+                pcl_msg.fields[0].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+                pcl_msg.fields[0].count = 1;
 
-            _partial_view_pc_message.height = 1;
-            _partial_view_pc_message.width = hfov_deg * vfov_deg * sample_density * sample_density;
-            _partial_view_pc_message.is_dense = true;
-            _partial_view_pc_message.is_bigendian = false;
+                pcl_msg.fields[1].name = "y";
+                pcl_msg.fields[1].offset = sizeof(Real);
+                pcl_msg.fields[1].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+                pcl_msg.fields[1].count = 1;
 
-            _partial_view_pc_message.point_step = 3*sizeof(Real);
-            _partial_view_pc_message.row_step = _partial_view_pc_message.point_step * _partial_view_pc_message.width;
+                pcl_msg.fields[2].name = "z";
+                pcl_msg.fields[2].offset = 2*sizeof(Real);
+                pcl_msg.fields[2].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+                pcl_msg.fields[2].count = 1;
 
-            _partial_view_pc_message.data.resize(_partial_view_pc_message.row_step);
+                pcl_msg.height = 1;
+                pcl_msg.width = hfov_deg * vfov_deg * sample_density * sample_density;
+                pcl_msg.is_dense = true;
+                pcl_msg.is_bigendian = false;
+
+                pcl_msg.point_step = 3*sizeof(Real);
+                pcl_msg.row_step = pcl_msg.point_step * pcl_msg.width;
+
+                pcl_msg.data.resize(pcl_msg.row_step);
+            };
+
+            configure_pcl_message(_trachea_partial_view_pc_message);
+            configure_pcl_message(_tumor_partial_view_pc_message);
+            
 
             auto partial_view_pc_callback = 
                 [this]() -> void {
@@ -288,24 +306,57 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                     Real sample_density = this->get_parameter("partial_view_pc_sample_density").as_double();
 
                     this->_sim->updateEmbreeScene();
-                    std::vector<Vec3r> points = this->_sim->embreeScene()->partialViewPointCloud(cam_position, cam_view_dir, cam_up_dir, hfov_deg, vfov_deg, sample_density);
-                    this->_partial_view_pc_message.width = points.size();
-
-                    // make sure we have enough space allocated (this only won't be the case if the user changes the parameters of the partial view point cloud in the middle of running the sim)
-                    size_t data_size = hfov_deg * vfov_deg * sample_density * sample_density * this->_partial_view_pc_message.point_step;
-                    this->_partial_view_pc_message.row_step = data_size;
-                    if (data_size != this->_partial_view_pc_message.data.size())
-                    {
-                        this->_partial_view_pc_message.data.resize(data_size);
-                    }
-
-                    for (unsigned i = 0; i < points.size(); i++)
-                    {
-                        memcpy((Real*)this->_partial_view_pc_message.data.data() + 3*i, points[i].data(), sizeof(Real)*3);
-                    }
+                    std::vector<Geometry::PointsWithClass> point_clouds = 
+                        this->_sim->embreeScene()->partialViewPointCloudsWithClass(cam_position, cam_view_dir, cam_up_dir, hfov_deg, vfov_deg, sample_density);
                     
+                    // go through returned point clouds and find the ones that match the trachea and tumor classes
+                    for (const auto& pc : point_clouds)
+                    {
+                        if (pc.classification == Sim::VirtuosoTissueGraspingSimulation::TissueClasses::TRACHEA)
+                        {
+                            this->_trachea_partial_view_pc_message.header.stamp = this->now();
+                            this->_trachea_partial_view_pc_message.width = pc.points.size();
+                            this->_trachea_partial_view_pc_message.row_step = this->_trachea_partial_view_pc_message.width * this->_trachea_partial_view_pc_message.point_step;
+                            this->_trachea_partial_view_pc_message.data.resize(this->_trachea_partial_view_pc_message.row_step);
+                            // make sure we have enough space allocated (this only won't be the case if the user changes the parameters of the partial view point cloud in the middle of running the sim)
+                            // size_t data_size = hfov_deg * vfov_deg * sample_density * sample_density * this->_trachea_partial_view_pc_message.point_step;
+                            
+                            // if (data_size != this->_trachea_partial_view_pc_message.data.size())
+                            // {
+                            //     this->_trachea_partial_view_pc_message.data.resize(data_size);
+                            // }
 
-                    this->_partial_view_pc_publisher->publish(this->_partial_view_pc_message);
+                            for (unsigned i = 0; i < pc.points.size(); i++)
+                            {
+                                memcpy((Real*)this->_trachea_partial_view_pc_message.data.data() + 3*i, pc.points[i].data(), sizeof(Real)*3);
+                            }
+                        }
+
+                        else if (pc.classification == Sim::VirtuosoTissueGraspingSimulation::TissueClasses::TUMOR)
+                        {
+                            this->_tumor_partial_view_pc_message.header.stamp = this->now();
+                            this->_tumor_partial_view_pc_message.width = pc.points.size();
+                            this->_tumor_partial_view_pc_message.row_step = this->_tumor_partial_view_pc_message.width * this->_tumor_partial_view_pc_message.point_step;
+                            this->_tumor_partial_view_pc_message.data.resize(this->_tumor_partial_view_pc_message.row_step);
+
+                            // make sure we have enough space allocated (this only won't be the case if the user changes the parameters of the partial view point cloud in the middle of running the sim)
+                            // size_t data_size = hfov_deg * vfov_deg * sample_density * sample_density * this->_tumor_partial_view_pc_message.point_step;
+                            // this->_tumor_partial_view_pc_message.row_step = data_size;
+                            // if (data_size != this->_tumor_partial_view_pc_message.data.size())
+                            // {
+                            //     this->_tumor_partial_view_pc_message.data.resize(data_size);
+                            // }
+
+                            for (unsigned i = 0; i < pc.points.size(); i++)
+                            {
+                                memcpy((Real*)this->_tumor_partial_view_pc_message.data.data() + 3*i, pc.points[i].data(), sizeof(Real)*3);
+                            }
+                        }
+                    }
+
+                    // publish the messages
+                    this->_trachea_partial_view_pc_publisher->publish(this->_trachea_partial_view_pc_message);
+                    this->_tumor_partial_view_pc_publisher->publish(this->_tumor_partial_view_pc_message);
                 };
             
             _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), partial_view_pc_callback);
@@ -480,8 +531,10 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
     sensor_msgs::msg::PointCloud2 _mesh_pcl_message;    // pre-allocated mesh point cloud ROS message for speed (assuming number of vertices stays the same)
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _mesh_pcl_publisher;    // publishes the current mesh vertices as a ROS point cloud (for easy ROS visualization)
 
-    sensor_msgs::msg::PointCloud2 _partial_view_pc_message;
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _partial_view_pc_publisher;
+    sensor_msgs::msg::PointCloud2 _trachea_partial_view_pc_message;
+    sensor_msgs::msg::PointCloud2 _tumor_partial_view_pc_message;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _trachea_partial_view_pc_publisher;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _tumor_partial_view_pc_publisher;
 
     /** Subscriptions */
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _arm1_joint_state_subscriber;     // subscribes to joint state commands for arm1
