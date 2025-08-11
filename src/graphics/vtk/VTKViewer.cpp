@@ -38,15 +38,8 @@
 #include <vtkTranslucentPass.h>
 
 #include <vtkAutoInit.h>
-// VTK_MODULE_INIT(CommonColor);
-// VTK_MODULE_INIT(CommonCore);
-// VTK_MODULE_INIT(FiltersSources);
-// VTK_MODULE_INIT(IOImage);
 VTK_MODULE_INIT(vtkInteractionStyle);
-// VTK_MODULE_INIT(RenderingContextOpenGL2);
-// VTK_MODULE_INIT(RenderingCore);
 VTK_MODULE_INIT(vtkRenderingFreeType);
-// VTK_MODULE_INIT(RenderingGL2PSOpenGL2);
 VTK_MODULE_INIT(vtkRenderingOpenGL2);
 
 namespace Graphics

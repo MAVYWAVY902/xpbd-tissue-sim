@@ -9,7 +9,7 @@ namespace Sim
 {
 
 VirtuosoSimulation::VirtuosoSimulation(const Config::VirtuosoSimulationConfig* config)
-    : Simulation(config), _virtuoso_robot(nullptr), _active_arm(nullptr), _has_new_arm1_joint_state(false), _has_new_arm2_joint_state(false)
+    : Simulation(config), _virtuoso_robot(nullptr), _active_arm(nullptr)
 {
     _input_device = config->inputDevice();
     _show_tip_cursor = config->showTipCursor();
@@ -179,9 +179,9 @@ void VirtuosoSimulation::setArm1JointState(double ot_rot, double ot_trans, doubl
     assert(_virtuoso_robot && _virtuoso_robot->hasArm1());
 
     {
-        std::lock_guard<std::mutex> l(_arm1_joint_state_mtx);
-        _new_arm1_joint_state = VirtuosoArmJointState(ot_rot, ot_trans, it_rot, it_trans, tool);
-        _has_new_arm1_joint_state = true;
+        std::lock_guard<std::mutex> l(_arm1_joint_state.mtx);
+        _arm1_joint_state.state = VirtuosoArmJointState(ot_rot, ot_trans, it_rot, it_trans, tool);
+        _arm1_joint_state.has_new = true;
     }
 }
 void VirtuosoSimulation::setArm2JointState(double ot_rot, double ot_trans, double it_rot, double it_trans, int tool)
@@ -189,9 +189,49 @@ void VirtuosoSimulation::setArm2JointState(double ot_rot, double ot_trans, doubl
     assert(_virtuoso_robot && _virtuoso_robot->hasArm2());
 
     {
-        std::lock_guard<std::mutex> l(_arm2_joint_state_mtx);
-        _new_arm2_joint_state = VirtuosoArmJointState(ot_rot, ot_trans, it_rot, it_trans, tool);
-        _has_new_arm2_joint_state = true;
+        std::lock_guard<std::mutex> l(_arm2_joint_state.mtx);
+        _arm2_joint_state.state = VirtuosoArmJointState(ot_rot, ot_trans, it_rot, it_trans, tool);
+        _arm2_joint_state.has_new = true;
+    }
+}
+void VirtuosoSimulation::setArm1TipPosition(const Vec3r& tip_pos)
+{
+    assert(_virtuoso_robot && _virtuoso_robot->hasArm1());
+
+    {
+        std::lock_guard<std::mutex> l(_arm1_tip_pos.mtx);
+        _arm1_tip_pos.state = tip_pos;
+        _arm1_tip_pos.has_new = true;
+    }
+}
+void VirtuosoSimulation::setArm2TipPosition(const Vec3r& tip_pos)
+{
+    assert(_virtuoso_robot && _virtuoso_robot->hasArm2());
+
+    {
+        std::lock_guard<std::mutex> l(_arm2_tip_pos.mtx);
+        _arm2_tip_pos.state = tip_pos;
+        _arm2_tip_pos.has_new = true;
+    }
+}
+void VirtuosoSimulation::setArm1ToolState(int tool_state)
+{
+    assert(_virtuoso_robot && _virtuoso_robot->hasArm1());
+
+    {
+        std::lock_guard<std::mutex> l(_arm1_tool_state.mtx);
+        _arm1_tool_state.state = tool_state;
+        _arm1_tool_state.has_new = true;
+    }
+}
+void VirtuosoSimulation::setArm2ToolState(int tool_state)
+{
+    assert(_virtuoso_robot && _virtuoso_robot->hasArm2());
+
+    {
+        std::lock_guard<std::mutex> l(_arm2_tool_state.mtx);
+        _arm2_tool_state.state = tool_state;
+        _arm2_tool_state.has_new = true;
     }
 }
 
@@ -289,31 +329,58 @@ void VirtuosoSimulation::_timeStep()
 
 
     // check if the joint state has been updated externally
-    if (_has_new_arm1_joint_state.load())
+    if (_arm1_joint_state.has_new.load())
     {
-        std::lock_guard<std::mutex> l(_arm1_joint_state_mtx);
+        std::lock_guard<std::mutex> l(_arm1_joint_state.mtx);
         _virtuoso_robot->arm1()->setJointState(
-            _new_arm1_joint_state.outer_tube_rotation,
-            _new_arm1_joint_state.outer_tube_translation,
-            _new_arm1_joint_state.inner_tube_rotation,
-            _new_arm1_joint_state.inner_tube_translation,
-            _new_arm1_joint_state.tool
+            _arm1_joint_state.state.outer_tube_rotation,
+            _arm1_joint_state.state.outer_tube_translation,
+            _arm1_joint_state.state.inner_tube_rotation,
+            _arm1_joint_state.state.inner_tube_translation,
+            _arm1_joint_state.state.tool
         );
-        _has_new_arm1_joint_state = false;
+        _arm1_joint_state.has_new = false;
     }
 
-    if (_has_new_arm2_joint_state.load())
+    if (_arm2_joint_state.has_new.load())
     {
-        std::lock_guard<std::mutex> l(_arm2_joint_state_mtx);
+        std::lock_guard<std::mutex> l(_arm2_joint_state.mtx);
         _virtuoso_robot->arm2()->setJointState(
-            _new_arm2_joint_state.outer_tube_rotation,
-            _new_arm2_joint_state.outer_tube_translation,
-            _new_arm2_joint_state.inner_tube_rotation,
-            _new_arm2_joint_state.inner_tube_translation,
-            _new_arm2_joint_state.tool
+            _arm2_joint_state.state.outer_tube_rotation,
+            _arm2_joint_state.state.outer_tube_translation,
+            _arm2_joint_state.state.inner_tube_rotation,
+            _arm2_joint_state.state.inner_tube_translation,
+            _arm2_joint_state.state.tool
         );
-        _has_new_arm2_joint_state = false;
+        _arm2_joint_state.has_new = false;
     }
+
+    if (_arm1_tip_pos.has_new.load())
+    {
+        std::lock_guard<std::mutex> l(_arm1_tip_pos.mtx);
+        _virtuoso_robot->arm1()->setCommandedTipPosition(_arm1_tip_pos.state);
+        _arm1_tip_pos.has_new = false;
+    }
+    if (_arm2_tip_pos.has_new.load())
+    {
+        std::lock_guard<std::mutex> l(_arm2_tip_pos.mtx);
+        _virtuoso_robot->arm2()->setCommandedTipPosition(_arm2_tip_pos.state);
+        _arm2_tip_pos.has_new = false;
+    }
+
+    if (_arm1_tool_state.has_new.load())
+    {
+        std::lock_guard<std::mutex> l(_arm1_tool_state.mtx);
+        _virtuoso_robot->arm1()->setToolState(_arm1_tool_state.state);
+        _arm1_tool_state.has_new = false;
+    }
+    if (_arm2_tool_state.has_new.load())
+    {
+        std::lock_guard<std::mutex> l(_arm2_tool_state.mtx);
+        _virtuoso_robot->arm2()->setToolState(_arm2_tool_state.state);
+        _arm2_tool_state.has_new = false;
+    }
+
     
 
     Simulation::_timeStep();

@@ -207,6 +207,11 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
     }
 
     Geometry::TetMesh tet_mesh(vertices, faces, elements);
+
+    // write the loaded surface mesh part to file
+    const std::string surface_mesh_filename = filename.substr(0,filename.length()-4) + "_surface_mesh.obj";
+    tet_mesh.writeMeshToObjFile(surface_mesh_filename);
+
     return tet_mesh;
 
 }

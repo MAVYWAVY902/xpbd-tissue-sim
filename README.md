@@ -4,6 +4,7 @@ A place to prototype and test algorithms and approaches for simulation of highly
 ## Table of Contents
 * [Building and running a first simulation](#building-and-running-a-first-simulation)
   * [Linux](#linux)
+  * [Linux (without Docker)](#linux-without-docker)
   * [Windows](#windows)
 * [Changing simulation parameters](#changing-simulation-parameters)
   * [Config files](#config-files)
@@ -28,7 +29,7 @@ Different `Dockerfile`s and Docker compose files have been provided that will se
 
 Currently there are 3 configurations:
 * **CPU only** - `Dockerfile.CPU` and `docker-compose-cpu.yml`. This creates a Docker container for running the simulation purely on the CPU, and without ROS.
-* **GPU** - `Dockerfile.GPU` and `docker-compose-gpu.yml`. This creates a Docker container for running the simulation with the GPU, and without ROS.
+* **GPU** (GPU VERSION NOT FUNCTIONAL) - `Dockerfile.GPU` and `docker-compose-gpu.yml`. This creates a Docker container for running the simulation with the GPU, and without ROS.
 * **ROS** - `Dockerfile.ROS` and `docker-compose-ros.yml`. This creates a Docker container for running the simulation purely on the CPU with a ROS bridge.
 
 ### Linux
@@ -36,7 +37,7 @@ First, install the Docker engine (instructions for Ubuntu [here](https://docs.do
 
 Then, install the [Docker compose plugin](https://docs.docker.com/compose/install/linux/#install-using-the-repository).
 
-If using a NVIDIA GPU, install the NVIDIA Container Toolkit (instructions for Linux [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)). Be sure to restart the Docker daemon after installing.
+If using a NVIDIA GPU, install the NVIDIA Container Toolkit (instructions for Linux [here](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)). Be sure to restart the Docker daemon after installing. (NO NEED TO DO THIS AS THE GPU IMPLEMENTATION IS NOT CURRENTLY FUNCTIONAL)
 
 Then, run 
 
@@ -99,6 +100,43 @@ When spinning up and attaching to the container again, you **do not need to rebu
 ```
 docker compose up -d
 docker exec -it sim-*-dev-1 /bin/bash
+```
+### Linux (without Docker)
+With Ubuntu 24.04 (and possibly earlier versions of Ubuntu), the repository can also be set up to run without Docker. This process basically just mimics what is done to set up the Docker container.
+
+The dependency installation and environment variables setup is done with the script located in `scripts/install.sh`. The script installs all required external Github repositories and drivers in a directory specified by the user. Example usage:
+```
+bash scripts/install.sh ../ThirdParty
+```
+where `../ThirdParty` is the directory where external Github repositories will be cloned and built from source.
+
+Part of `scripts/install.sh` is an environment setup script `scripts/set_env.sh`, which sets a couple of environment variables that are necessary for CMake to find some of the installed repositories. **This does not get added to `~/.bashrc` (though you can manually add it there), so every time the terminal closes and reopens, you will have to rerun `scripts/set_env.sh`.** Like with `scripts/install.sh`, the third-party directory is a required input, and should match the directory given to `scripts/install.sh`. For the example above:
+```
+bash scripts/set_env.sh ../ThirdParty
+```
+
+Once the dependencies are installed, building should be as simple as
+```
+mkdir build/ && cd build
+cmake .. -DNO_GPU=1
+make -j12
+```
+Since the GPU implementation is broken currently, use `DNO_GPU=1` to not build the GPU part of the code (this is only necessary if you have CUDA installed on your system).
+
+You can run a first test with
+```
+./Test ../config/config.yaml
+```
+
+See [Demos](#demos) for other demos to test out.
+
+
+#### ROS
+If wanting to use ROS, it is assumed that is already installed on your system. Installation instructions for Ubuntu 24.04 can be found [here](https://docs.ros.org/en/rolling/Installation/Alternatives/Ubuntu-Development-Setup.html).
+
+Some of the launch files simulatenously launch a Rosbridge server for connecting to Foxglove for visualization. This can be installed with
+```
+sudo apt-get install ros-jazzy-rosbridge-server -y
 ```
 
 ### Windows

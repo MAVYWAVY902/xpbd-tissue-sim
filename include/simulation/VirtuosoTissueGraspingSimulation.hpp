@@ -12,6 +12,12 @@ namespace Sim
 class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 {
     public:
+    struct TissueClasses
+    {
+        constexpr static int TRACHEA=0;
+        constexpr static int TUMOR=1;
+    };
+
     VirtuosoTissueGraspingSimulation(const Config::VirtuosoTissueGraspingSimulationConfig* config);
 
     virtual std::string type() const override { return "VirtuosoTissueGraspingSimulation"; }

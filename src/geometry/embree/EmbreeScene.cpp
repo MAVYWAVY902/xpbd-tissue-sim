@@ -295,4 +295,68 @@ std::vector<Vec3r> EmbreeScene::partialViewPointCloud(const Vec3r& origin, const
     return hit_points;
 }
 
+std::vector<PointsWithClass> EmbreeScene::partialViewPointCloudsWithClass(const Vec3r& origin, const Vec3r& view_dir, const Vec3r& up_dir, Real hfov_deg, Real vfov_deg, Real sample_density) const
+{
+    // calculate "right" direction from view direction and up direction
+    const Vec3r right_dir = up_dir.cross(view_dir);
+    Mat3r R_camera;
+    R_camera.col(0) = right_dir;    // x-axis is "right" direction
+    R_camera.col(1) = up_dir;       // y-axis is "up" direction
+    R_camera.col(2) = view_dir;     // z-axis is "view" direction
+
+    // create rays by sampling spherical coordinates and transforming into local frame
+    Real angle_increment = 1.0/sample_density;
+
+    // keep track of which classes we have put where - maps classification to index in the vector
+    std::unordered_map<int, int> class_to_vector_index;
+
+    // store point clouds
+    std::vector<PointsWithClass> point_clouds;
+
+    for (Real h_angle = -hfov_deg/2.0; h_angle < hfov_deg/2.0; h_angle += angle_increment)
+    {
+        for (Real v_angle = -vfov_deg/2.0; v_angle < vfov_deg/2.0; v_angle += angle_increment)
+        {
+            Real x_local = std::sin(h_angle * M_PI/180.0) * std::cos(v_angle * M_PI/180.0);
+            Real y_local = std::sin(v_angle * M_PI/180.0);
+            Real z_local = std::cos(h_angle * M_PI/180.0) * std::cos(v_angle * M_PI/180.0);
+            const Vec3r dir_local(x_local, y_local, z_local);
+            const Vec3r ray_dir = R_camera * dir_local;
+
+            EmbreeHit hit = castRay(origin, ray_dir);
+            if (hit.obj)
+            {
+                // get the class of the face that we hit
+                int classification;
+                if (hit.obj->mesh()->hasFaceProperty<int>("class"))
+                    classification = hit.obj->mesh()->getFaceProperty<int>("class").get(hit.prim_index);
+                else
+                    classification = -1; // some default
+
+                // put the point in the appropriate vector
+                auto map_it = class_to_vector_index.find(classification);
+                if (map_it != class_to_vector_index.end())  // we already have a points vector started for this class
+                {
+                    point_clouds[map_it->second].points.push_back(hit.hit_point);
+                }
+                else
+                {
+                    // create a point cloud and conservatively reserve space for the points that will go in it
+                    PointsWithClass point_cloud;
+                    point_cloud.classification = classification;
+                    point_cloud.points.reserve(hfov_deg * vfov_deg * sample_density * sample_density);
+                    point_cloud.points.push_back(hit.hit_point);
+
+                    point_clouds.push_back(std::move(point_cloud));
+
+                    // add an entry to the map so we know which index in the vector is associated with this class
+                    class_to_vector_index[classification] = point_clouds.size()-1;
+                }
+            }
+        }
+    }
+
+    return point_clouds;
+}
+
 } // namespace Geometry
