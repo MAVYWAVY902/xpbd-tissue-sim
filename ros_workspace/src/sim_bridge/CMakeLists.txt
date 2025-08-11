@@ -6,9 +6,10 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # include_directories("/usr/local/include/XPBDSim")
-include_directories("/workspace/include")
+# include_directories("/workspace/include")
+include_directories($ENV{XPBD_SIM_BASE_DIR}/include)
 
-list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build") # needed in order to find Easy3D
+list(APPEND CMAKE_PREFIX_PATH $ENV{XPBD_SIM_EASY3D_CMAKE_PREFIX_PATH}) # needed in order to find Easy3D
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
