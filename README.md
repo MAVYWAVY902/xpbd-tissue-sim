@@ -104,127 +104,40 @@ docker exec -it sim-*-dev-1 /bin/bash
 ### Linux (without Docker)
 With Ubuntu 24.04 (and possibly earlier versions of Ubuntu), the repository can also be set up to run without Docker. This process basically just mimics what is done to set up the Docker container.
 
-The following will walk you through installation of all the dependencies required to use the simulator. Many of them are Github repositories, and they do not have to be cloned within the folder structure of this repository (i.e. feel free to clone them anywhere on your computer).
-
-#### Required packages
-I don't exactly know if these are all necessary, but here they are:
+The dependency installation and environment variables setup is done with the script located in `scripts/install.sh`. The script installs all required external Github repositories and drivers in a directory specified by the user. Example usage:
 ```
-sudo apt-get update && sudo apt-get install -y \
-    g++ \
-    git \
-    cmake \
-    xorg-dev \
-    libassimp-dev \
-    wget \
-    gdb \
-    # needed by OpenHaptics API
-    libncurses-dev \
-    freeglut3-dev \
-    build-essential \
-    libusb-1.0-0-dev
+bash scripts/install.sh ../ThirdParty
+```
+where `../ThirdParty` is the directory where external Github repositories will be cloned and built from source.
+
+Part of `scripts/install.sh` is an environment setup script `scripts/set_env.sh`, which sets a couple of environment variables that are necessary for CMake to find some of the installed repositories. **This does not get added to `~/.bashrc` (though you can manually add it there), so every time the terminal closes and reopens, you will have to rerun `scripts/set_env.sh`.** Like with `scripts/install.sh`, the third-party directory is a required input, and should match the directory given to `scripts/install.sh`. For the example above:
+```
+bash scripts/set_env.sh ../ThirdParty
 ```
 
-#### yaml-cpp
-`yaml-cpp` is used to parse the simulation configuration YAML files.
+Once the dependencies are installed, building should be as simple as
 ```
-git clone https://github.com/jbeder/yaml-cpp.git
-mkdir yaml-cpp/build && cd yaml-cpp/build
-cmake ..
-make -j 8
-sudo make install
+mkdir build/ && cd build
+cmake .. -DNO_GPU=1
+make -j12
+```
+Since the GPU implementation is broken currently, use `DNO_GPU=1` to not build the GPU part of the code (this is only necessary if you have CUDA installed on your system).
+
+You can run a first test with
+```
+./Test ../config/config.yaml
 ```
 
-#### Eigen
-`Eigen` is used for all vector and matrix operations.
-```
-git clone https://gitlab.com/libeigen/eigen.git
-mkdir eigen/build && cd eigen/build
-cmake ..
-make -j 8
-sudo make install
-```
+See [Demos](#demos) for other demos to test out.
 
-#### Easy3D
-`easy3d` is one of the graphics backends used by the simulator.
-```
-git clone https://github.com/LiangliangNan/Easy3D.git
-mkdir Easy3D/build && cd Easy3D/build
-cmake ..
-make -j 8
-sudo make install
-# not sure if this is needed
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/easy3d-2.6.1/lib/
-```
-
-#### Gmsh
-`gmsh` is used to generate tetrahedral meshes from STL and OBJ mesh files, and its `.msh` file format is used to store tetrahedral meshes.
-```
-git clone https://gitlab.onelab.info/gmsh/gmsh.git
-mkdir gmsh/build && cd gmsh/build
-# install from source as a dynamic library for access to C++ API
-cmake -DENABLE_BUILD_DYNAMIC=1 ..
-make -j 8
-sudo make install
-```
-
-#### Mesh2SDF
-`Mesh2SDF` is used to generate signed distance functions for arbitrary meshes, used in collision detection and response.
-```
-git clone https://github.com/smtobin/Mesh2SDF.git
-mkdir Mesh2SDF/build && cd Mesh2SDF/build
-# when running on the CPU, double precision is used, so DUSE_DOUBLE_PRECISION=1 should be used
-# when running on the CPU+GPU, single precision is used, so DUSE_DOUBLE_PRECISION=0 should be used
-cmake .. -DUSE_DOUBLE_PRECISION=1
-make -j 8
-sudo make install
-```
-
-#### Embree
-Intel's `embree` library is used to generate bounding volume hierarchies (BVHs) of the scene, used for raycasting and collision.
-```
-# packages needed for Embree
-sudo apt-get update && apt-get -y install cmake-curses-gui \
-    libtbb-dev \
-    libglfw3-dev
-
-git clone https://github.com/RenderKit/embree.git
-mkdir embree/build && cd embree/build
-cmake ..
-make -j 8
-sudo make install
-```
-
-#### VTK
-`VTK` is another graphics backend used by the simulator.
-```
-git clone https://gitlab.kitware.com/vtk/vtk.git
-mkdir vtk/build && cd vtk/build
-cmake ..
-make -j 8
-sudo make install
-```
-
-#### OpenHaptics SDK
-The `OpenHaptics` SDK and drivers are used to interface with Geomagic Touch haptic devices. In the future, this will be optional to install, but right now it is required.
-```
-# install OpenHaptics drivers
-wget https://s3.amazonaws.com/dl.3dsystems.com/binaries/support/downloads/KB+Files/Open+Haptics/openhaptics_3.4-0-developer-edition-amd64.tar.gz
-tar -xvf openhaptics_3.4-0-developer-edition-amd64.tar.gz
-wget https://s3.amazonaws.com/dl.3dsystems.com/binaries/Sensable/Linux/TouchDriver_2023_11_15.tgz
-tar -xvf TouchDriver_2023_11_15.tgz
-sudo ./openhaptics_3.4-0-developer-edition-amd64/install
-sudo ./TouchDriver_2023_11_15/install_haptic_driver
-
-# make symbolic links so API examples build
-sudo ln -s /usr/lib/x86_64-linux-gnu/libglut.so /usr/lib/libglut.so.3
-sudo ln -s /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/libncurses.so.5
-sudo ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/libtinfo.so.5
-
-export GTDD_HOME=/root/.3dsystems
-```
 
 #### ROS
-**TODO**
+If wanting to use ROS, it is assumed that is already installed on your system. Installation instructions for Ubuntu 24.04 can be found [here](https://docs.ros.org/en/rolling/Installation/Alternatives/Ubuntu-Development-Setup.html).
+
+Some of the launch files simulatenously launch a Rosbridge server for connecting to Foxglove for visualization. This can be installed with
+```
+sudo apt-get install ros-jazzy-rosbridge-server -y
+```
 
 ### Windows
 Using WSL, the process should be similar, though there might be some extra stuff to do with the X11 forwarding.
