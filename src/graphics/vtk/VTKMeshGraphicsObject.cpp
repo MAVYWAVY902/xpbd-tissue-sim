@@ -11,6 +11,7 @@
 #include <vtkCellArray.h>
 #include <vtkFloatArray.h>
 #include <vtkProperty.h>
+#include <vtkCellData.h>
 
 #include <vtkTexture.h>
 #include <vtkTriangleFilter.h>

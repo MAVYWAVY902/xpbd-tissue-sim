@@ -20,7 +20,7 @@ set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 set(CMAKE_BUILD_TYPE Debug)
 
-list(APPEND CMAKE_PREFIX_PATH "/thirdparty/Easy3D/build") # needed in order to find Easy3D
+list(APPEND CMAKE_PREFIX_PATH $ENV{XPBD_SIM_EASY3D_CMAKE_PREFIX_PATH}) # needed in order to find Easy3D
 
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
@@ -28,7 +28,7 @@ find_package(Eigen3 3.3 REQUIRED)   # find Eigen
 find_package(embree 4 REQUIRED)
 
 # find VTK
-find_package(VTK COMPONENTS
+find_package(VTK 9.5 REQUIRED COMPONENTS
     CommonColor
     CommonCore
     FiltersSources
@@ -44,7 +44,9 @@ find_package(VTK COMPONENTS
 if (NOT VTK_FOUND)
   message(FATAL_ERROR "Unable to find the VTK build folder.")
 endif()
-
+message(STATUS "VTK_VERSION: ${VTK_VERSION}")
+message(STATUS "VTK_LIBRARIES: ${VTK_LIBRARIES}")
+message(STATUS "VTK_INCLUDE_DIRS: ${VTK_INCLUDE_DIRS}")
 
 
 include_directories("./include")
