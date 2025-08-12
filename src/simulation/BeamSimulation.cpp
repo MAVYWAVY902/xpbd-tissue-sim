@@ -2,7 +2,6 @@
 #include "utils/MeshUtils.hpp"
 
 #include "simobject/XPBDMeshObject.hpp"
-#include "simobject/FirstOrderXPBDMeshObject.hpp"
 #include "solver/xpbd_solver/XPBDSolver.hpp"
 
 #include <regex>

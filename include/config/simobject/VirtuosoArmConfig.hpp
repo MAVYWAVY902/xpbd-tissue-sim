@@ -30,6 +30,9 @@ class VirtuosoArmConfig : public ObjectConfig
         return tool_type_options;
     }
 
+    explicit VirtuosoArmConfig()
+        : ObjectConfig()
+    {}
 
     explicit VirtuosoArmConfig(const YAML::Node& node)
         : ObjectConfig(node)

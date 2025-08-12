@@ -9,7 +9,7 @@ namespace Config
 class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
 {
     public:
-    using ObjectType = Sim::XPBDMeshObject_Base;
+    using ObjectType = Sim::XPBDMeshObject_Base_<true>;
 
     public:
     /** Creates a Config from a YAML node, which consists of the specialized parameters needed for XPBDMeshObject.

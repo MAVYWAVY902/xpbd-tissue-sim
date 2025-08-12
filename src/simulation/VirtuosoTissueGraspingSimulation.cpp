@@ -31,9 +31,18 @@ void VirtuosoTissueGraspingSimulation::setup()
     VirtuosoSimulation::setup();
 
     // find the XPBDMeshObject (which we're assuming to be the tissue)
+    // first check 1st-order XPBDMeshObjects
+    auto& fo_xpbd_objs = _objects.template get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
     auto& xpbd_objs = _objects.template get<std::unique_ptr<XPBDMeshObject_Base>>();
-    assert((xpbd_objs.size() > 0) && "There must be at least 1 XPBDMeshObject or FirstOrderXPBDMeshObject in the simulation (there is no tissue object!).");
-    _tissue_obj = xpbd_objs.front().get();
+    if (fo_xpbd_objs.size() > 0)
+        _tissue_obj = fo_xpbd_objs.front().get();
+    else if (xpbd_objs.size() > 0)
+        _tissue_obj = xpbd_objs.front().get();
+    else
+        assert((xpbd_objs.size() + fo_xpbd_objs.size() > 0) && "There must be at least 1 XPBDMeshObject or FirstOrderXPBDMeshObject in the simulation (there is no tissue object!).");
+    
+
+    
 
     // once we've found the tissue object, make sure that each virtuoso arm knows that this is the object that they're manipulating
     // (the VirtuosoArm class handles the grasping logic)
@@ -50,7 +59,7 @@ void VirtuosoTissueGraspingSimulation::setup()
         MeshUtils::verticesAndFacesFromFixedFacesFile(_fixed_faces_filename.value(), vertices, faces);
         for (const auto& v : vertices)
         {
-            _tissue_obj->fixVertex(v);
+            _tissue_obj.fixVertex(v);
         }
     }
     
@@ -68,7 +77,7 @@ void VirtuosoTissueGraspingSimulation::setup()
             goal_obj->mesh()->addFaceProperty<bool>("draw", false);
             
             // align meshes based on the first face (the meshes are loaded and moved about their center of mass, which may be different between the two)
-            const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);
+            const Vec3r& v0_f0_tissue_obj = _tissue_obj.mesh()->vertex(_tissue_obj.mesh()->face(0)[0]);
             const Vec3r& v0_f0_goal_obj = goal_obj->mesh()->vertex(goal_obj->mesh()->face(0)[0]);
 
             goal_obj->setPosition( goal_obj->position() + (v0_f0_tissue_obj - v0_f0_goal_obj) );
@@ -91,7 +100,7 @@ void VirtuosoTissueGraspingSimulation::setup()
         goal_obj->mesh()->addFaceProperty<bool>("draw", false);
 
         // align meshes based on the first face (the meshes are loaded and moved about their center of mass, which may be different between the two)
-        const Vec3r& v0_f0_tissue_obj = _tissue_obj->mesh()->vertex(_tissue_obj->mesh()->face(0)[0]);
+        const Vec3r& v0_f0_tissue_obj = _tissue_obj.mesh()->vertex(_tissue_obj.mesh()->face(0)[0]);
         const Vec3r& v0_f0_goal_obj = goal_obj->mesh()->vertex(goal_obj->mesh()->face(0)[0]);
 
         goal_obj->setPosition( goal_obj->position() + (v0_f0_tissue_obj - v0_f0_goal_obj) );
@@ -154,7 +163,7 @@ void VirtuosoTissueGraspingSimulation::notifyKeyPressed(SimulationInput::Key key
     if (key == SimulationInput::Key::B && action == SimulationInput::KeyAction::PRESS)
     {
         const std::string filename = "tissue_mesh_" + std::to_string(_time) + "_s.obj";
-        _tissue_obj->mesh()->writeMeshToObjFile(filename);
+        _tissue_obj.mesh()->writeMeshToObjFile(filename);
     }
 
     // if 'Z' is pressed, toggle the goal
@@ -254,10 +263,10 @@ int VirtuosoTissueGraspingSimulation::_calculateScore()
     double total_mse = 0;
     for (const auto& face_index : _tumor_faces)
     {
-        const Vec3i& tissue_face = _tissue_obj->mesh()->face(face_index);
-        const Vec3r& tissue_v1 = _tissue_obj->mesh()->vertex(tissue_face[0]);
-        const Vec3r& tissue_v2 = _tissue_obj->mesh()->vertex(tissue_face[1]);
-        const Vec3r& tissue_v3 = _tissue_obj->mesh()->vertex(tissue_face[2]);
+        const Vec3i& tissue_face = _tissue_obj.mesh()->face(face_index);
+        const Vec3r& tissue_v1 = _tissue_obj.mesh()->vertex(tissue_face[0]);
+        const Vec3r& tissue_v2 = _tissue_obj.mesh()->vertex(tissue_face[1]);
+        const Vec3r& tissue_v3 = _tissue_obj.mesh()->vertex(tissue_face[2]);
 
         const Vec3i& goal_face = goal_obj->mesh()->face(face_index);
         const Vec3r& goal_v1 = goal_obj->mesh()->vertex(goal_face[0]);

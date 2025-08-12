@@ -19,66 +19,66 @@
 #ifdef HAVE_CUDA
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
 #endif
-// #include "solver/XPBDSolver.hpp"
-// #include "solver/Constraint.hpp"
-
-// TODO: fix circular dependency and remove the need for this forward declaration
-namespace Solver
-{
-    class DeviatoricConstraint;
-    class HydrostaticConstraint;
-    class StaticDeformableCollisionConstraint;
-    class RigidDeformableCollisionConstraint;
-    class CollisionConstraint;
-    class AttachmentConstraint;
-
-    template<bool, class T>
-    class ConstraintProjector;
-
-    template<bool, class T1, class T2>
-    class CombinedConstraintProjector;
-
-    template<bool, class... Ts>
-    class XPBDSolver;
-}
 
 namespace Sim
 {
 
 class RigidObject;
 
-struct XPBDCollisionConstraint
-{
-    std::unique_ptr<Solver::CollisionConstraint> constraint;
-    int projector_index;
-    int num_steps_unused;
-};
-
-struct XPBDAttachmentConstraint
-{
-    std::unique_ptr<Solver::AttachmentConstraint> constraint;
-    int projector_index;
-};
-
 /** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
  *  "A Constraint-based Formulation of Stable Neo-Hookean Materials" by Macklin and Muller (2021).
  *  Refer to the paper and preceding papers for details on the XPBD approach.
  */
-template<typename SolverType, typename ConstraintTypeList> class XPBDMeshObject;
+template<bool IsFirstOrder, typename SolverType, typename ConstraintTypeList> class XPBDMeshObject_;
+
+template<typename SolverType, typename ConstraintTypeList>
+using XPBDMeshObject = XPBDMeshObject_<false, SolverType, ConstraintTypeList>;
+
+template<typename SolverType, typename ConstraintTypeList>
+using FirstOrderXPBDMeshObject = XPBDMeshObject_<true, SolverType, ConstraintTypeList>;
 
 // TODO: should the template parameters be SolverType, XPBDMeshObjectConstraintConfiguration?
 // if we have an XPBDObject base class that is templated with <SolverType, ...ConstraintTypes>, we can get constraints from XPBDMeshObjectConstraintConfiguration
 // this way, we can use if constexpr (std::is_same_v<XPBDMeshObjectConstraintConfiguration, XPBDMeshObjectConstraintConfigurations::StableNeohookean) which is maybe a more direct comparison
 //  instead of using a variant variable
-template<typename SolverType, typename... ConstraintTypes>
-class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMeshObject_Base
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : public XPBDMeshObject_Base_<IsFirstOrder>
 {
+    using Base = XPBDMeshObject_Base_<IsFirstOrder>;
+    // bring members and methods of base class into current scope (then we don't have to use this-> everywhere)
+    // methods
+    using Base::fixVertex;
+    using Base::vertexFixed;
+    using Base::vertexMass;
+    using Base::vertexAttachedElements;
+    using Base::vertexVelocity;
+    using Base::vertexPreviousPosition;
+    using Base::vertexConstraintInertia;
+
+    using Base::tetMesh;
+    using Base::loadAndConfigureMesh;
+    // members
+    using Base::_previous_vertices;
+    using Base::_vertex_velocities;
+    using Base::_initial_velocity;
+    using Base::_material;
+    using Base::_vertex_masses;
+    using Base::_vertex_volumes;
+    using Base::_vertex_attached_elements;
+    using Base::_is_fixed_vertex;
+    using Base::_sdf;
+    using Base::_damping_multiplier;
+    using Base::_vertex_B;
+
+    using Base::_mesh;
+
+    using Base::_sim;
    #ifdef HAVE_CUDA
     friend class XPBDMeshObjectGPUResource;
    #endif
     public:
-    using SDFType = Geometry::DeformableMeshSDF;
-    using ConfigType = Config::XPBDMeshObjectConfig;
+    using SDFType = typename Base::SDFType;
+    using ConfigType =  typename Base::ConfigType;
 
     public:
     /** Creates a new XPBDMeshObject from a YAML config node
@@ -86,33 +86,12 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
      * @param config : the YAML node dictionary describing the parameters for the new XPBDMeshObject
      */
     // TODO: parameter pack in constructor for ConstraintTypes type deduction. Maybe move this to XPBDMeshObjectConfig?
-    explicit XPBDMeshObject(const Simulation* sim, const ConfigType* config);
+    explicit XPBDMeshObject_(const Simulation* sim, const ConfigType* config);
 
-    virtual ~XPBDMeshObject();
+    virtual ~XPBDMeshObject_();
 
     virtual std::string toString(const int indent) const override;
     virtual std::string type() const override { return "XPBDMeshObject"; }
-
-    const ElasticMaterial& material() const { return _material; }
-
-    // int numConstraints() const { return _elastic_constraints.size() + _collision_constraints.size(); }
-    // const std::vector<std::unique_ptr<Solver::Constraint>>& elasticConstraints() const { return _elastic_constraints; }
-
-    Real* vertexPreviousPositionPointer(const int index) const { return const_cast<Real*>(_previous_vertices.col(index).data()); }
-
-    void fixVertex(int index) { _is_fixed_vertex[index] = true; }
-
-    bool vertexFixed(int index) const { return _is_fixed_vertex[index]; }
-
-    Real vertexMass(int index) const { return _vertex_masses[index]; }
-
-    Real vertexInvMass(int index) const { return _vertex_inv_masses[index]; }
-
-    int vertexAttachedElements(int index) const { return _vertex_attached_elements[index]; }
-
-    Vec3r vertexVelocity(int index) const { return _vertex_velocities.col(index); }
-
-    Vec3r vertexPreviousPosition(int index) const { return _previous_vertices.col(index); }
 
     /** Performs any one-time setup that needs to be done outside the constructor. */
     virtual void setup() override;
@@ -125,32 +104,59 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
     /** Returns the AABB around this object. */
     virtual Geometry::AABB boundingBox() const override;
 
-    virtual void createSDF() override;
-    virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; };
+    /** === Adding/removing additional constraints === */
 
-    /** Returns the number of constraints that share the position at the specified index.
-     * This is the factor by which to scale the residual in the distributed primary residual update methods.
+    /** Adds a collision constraint between a face on this object and a point on a static object in the scene.
+     * @param sdf : the SDF of the static object
+     * @param surface_point : the surface point on the static object
+     * @param collision_normal : the collision normal
+     * @param face_ind : the index of the face in collision
+     * @param u,v,w : the barycentric coordinates of the point on the face in collision
+     * @returns a reference to the constraint projector that was added for the collision constraint
      */
-    int numConstraintsForPosition(const int index) const;
+    virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>>
+    addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& surface_point, const Vec3r& collision_normal,
+        int face_ind, const Real u, const Real v, const Real w) override;
 
-    void addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n,
-                                    int face_ind, const Real u, const Real v, const Real w);
+    /** Adds a collision constraint between a face on this object and a point on a rigid object in the scene.
+     * @param sdf : the SDF of the rigid object
+     * @param rigid_obj : a pointer to the rigid object in collision
+     * @param rigid_body_point : the surface point on the rigid object in collision (global coordinates)
+     * @param collision_normal : the collision normal
+     * @param face_ind : the index of the face in collision
+     * @param u,v,w : the barycentric coordinates of the point on the face in collision
+     * @returns a reference to the constraint projector that was added for the collision constraint
+     */
+    virtual Solver::ConstraintProjectorReference<Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>>
+    addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+        int face_ind, const Real u, const Real v, const Real w) override;
 
-    void addVertexStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& p, const Vec3r& n, int vert_ind);
+    /** Clears all collision constraints that are on this object. */
+    virtual void clearCollisionConstraints() override;
+    
+    /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
+     * @param v_ind : the index of the vertex
+     * @param attach_pos_ptr : a pointer to the position for the vertex to be attached to
+     * @param attachment_offset : an optional offset between the attachment position and the vertex. The vertex position will be (*attach_pos_ptr + attachment_offset).
+     */
+    virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::AttachmentConstraint>>  
+    addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset) override;
 
-    void addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
-                                       int face_ind, const Real u, const Real v, const Real w);
+    /** Clears all attachment constraint that are on this object. */
+    virtual void clearAttachmentConstraints() override;
 
-    void clearCollisionConstraints();
+    /** === Miscellaneous useful methods === */
 
-    void removeOldCollisionConstraints(const int threshold);
+    /** Computes the elastic force on the vertex at the specified index. This is essentially just the current constraint force for all "elastic" constraints
+     * that affect the specified vertex. An "elastic" constraint is one that is internal to the mesh and corresponds to the mechanics of the mesh material.
+     * @param index : the index of the vertex
+     * @returns the elastic force vector on the vertex at the specified index
+     */
+    virtual Vec3r elasticForceAtVertex(int index) const override;
 
-    void addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset);
-
-    void clearAttachmentConstraints();
-
-    Vec3r elasticForceAtVertex(int index);
-
+    /** Computes the current global stiffness matrix of the mesh. This is done with a first-order approximation of delC^T * alpha * delC.
+     * @returns the global stiffness matrix
+     */
     virtual MatXr stiffnessMatrix() const override;
 
  #ifdef HAVE_CUDA
@@ -181,38 +187,20 @@ class XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>> : public XPBDMesh
     void _createElasticConstraints();
 
     protected:
-    Geometry::Mesh::VerticesMat _previous_vertices;
-    Geometry::Mesh::VerticesMat _vertex_velocities;
+    /** The specific constraint configuration used to define internal constraints for the XPBD mesh. Set by the Config object
+     * TODO: is this necessary? Should XPBDMeshObjectConstraintConfiguration be a struct that can create the elastic constraints for the mesh?
+     */
+    XPBDMeshObjectConstraintConfigurationEnum _constraint_type;
 
-    Vec3r _initial_velocity;
-
-    ElasticMaterial _material;
-
-    std::vector<Real> _vertex_masses;
-    std::vector<Real> _vertex_inv_masses;
-    std::vector<Real> _vertex_volumes;
-    std::vector<int> _vertex_attached_elements;
-    std::vector<bool> _is_fixed_vertex;
-
-    XPBDMeshObjectConstraintConfigurationEnum _constraint_type;    // the type of constraints to create - set by the Config object
-    
-    // TODO: generalize constraints somehow
-    // std::unique_ptr<    Solver::XPBDSolver<Solver::CombinedConstraintProjector<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>,
-    //                     Solver::ConstraintProjector<Solver::StaticDeformableCollisionConstraint>,
-    //                     Solver::ConstraintProjector<Solver::RigidDeformableCollisionConstraint> > > _solver;
-
+    /** The XPBD solver. Responsible for iterating through constraints and computing the XPBD positional updates.
+     * The XPBD projection is implemented in ConstraintProjector. The solver is just responsible for iterating/aggregating and 
+     * applying the results from the XPBD projections.
+     */
     SolverType _solver;
 
+    /** A heterogeneous container of all the constraints.
+     */
     VariadicVectorContainer<ConstraintTypes...> _constraints;
-
-    // std::unique_ptr<Solver::XPBDSolver> _solver;       // the XPBDSolver that will project the constraints
-    // std::vector<std::unique_ptr<Solver::Constraint>> _elastic_constraints;  // the array of constraints applied to the elements of the mesh
-    // std::vector<std::unique_ptr<Solver::CollisionConstraint>> _collision_constraints;
-    // std::vector<int> _collision_constraint_projector_indices;
-    // std::vector<XPBDCollisionConstraint> _collision_constraints;
-
-    /** Signed Distance Field for the deformable object. Must be created explicitly with createSDF(). */
-    std::optional<SDFType> _sdf;
 };
 
 } // namespace Sim

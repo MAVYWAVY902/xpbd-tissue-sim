@@ -18,6 +18,10 @@ class ObjectConfig : public Config
 {
     public:
     
+    explicit ObjectConfig()
+        : Config(), _render_config()
+    {}
+
     explicit ObjectConfig(const YAML::Node& node)
         : Config(node), _render_config(node)
     {

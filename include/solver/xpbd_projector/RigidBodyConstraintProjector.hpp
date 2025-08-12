@@ -1,6 +1,8 @@
 #ifndef __RIGID_BODY_CONSTRAINT_PROJECTOR_HPP
 #define __RIGID_BODY_CONSTRAINT_PROJECTOR_HPP
 
+#include "solver/constraint/PositionReference.hpp"
+#include "solver/constraint/ConstraintReference.hpp"
 #include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 #include "solver/constraint/RigidBodyConstraint.hpp"
 
@@ -19,16 +21,67 @@ class RigidBodyConstraintProjector
 {
     public:
     constexpr static int NUM_CONSTRAINTS = 1;
-    constexpr static int NUM_COORDINATES = RBConstraint::NUM_COORDINATES;
+    constexpr static int NUM_RIGID_BODIES = RBConstraint::NUM_RIGID_BODIES;
+    constexpr static int MAX_NUM_COORDINATES = RBConstraint::NUM_COORDINATES;
+
+    /** List of constraint types being projected (will be a single constraint for this projector) */
+    using constraint_type_list = TypeList<RBConstraint>;
+    /** Whether or not the 1st-Order algorithm is used */
+    constexpr static bool is_first_order = IsFirstOrder;
 
     public:
-    explicit RigidBodyConstraintProjector(Real dt, RBConstraint* constraint_ptr)
-        : _dt(dt), _constraint(constraint_ptr), _valid(true)
+    explicit RigidBodyConstraintProjector(Real dt, ConstraintReference<RBConstraint>&& constraint_ref)
+        : _dt(dt), _constraint(constraint_ref), _valid(true)
     {
     }
 
+    /** Default constructor - projector marked invalid */
+    explicit RigidBodyConstraintProjector()
+        : _valid(false)
+    {   
+    }
+
+    /** Sets the validity of the ConstraintProjector. When valid, it is assumed the Constraint exists to be projected.
+     * @param valid : the new validity of the ConstraintProjector
+     */
     void setValidity(bool valid) { _valid = valid; }
-    bool isValid() { return _valid; }
+
+    /** @returns whether or not the ConstraintProjector is valid */
+    bool isValid() const { return _valid; }
+
+    /** @returns The number of coordinates that the constraint projector affects.
+     * For a single constraint projector, this is just the number of coordinates affected by the single constraint.
+     */
+    int numCoordinates() { return MAX_NUM_COORDINATES; }
+
+    /** @returns the positions (as PositionReferences) affect by the constraint projection. This will just be the 
+     * positions of the single projected constraint.
+    */
+    const std::vector<PositionReference>& positions() const { return _constraint->positions(); }
+
+    /** The constraint forces on each of the affected positions caused by this constraint.
+     * @returns the constraint forces on each of the affected positions of this constraint. The returned vector is ordered such that
+     * the forces are applied to the corresponding position at the same index in the positions() vector.
+     * 
+     * This method must be called AFTER constraint projection has been performed (i.e. after lambda has been calculated). 
+     */
+    std::vector<Vec3r> constraintForces() const
+    {
+        std::vector<Vec3r> forces( RBConstraint::NUM_POSITIONS );
+        Real delC[RBConstraint::NUM_COORDINATES];
+        _constraint->gradient(delC);
+        for (int i = 0; i < RBConstraint::NUM_POSITIONS; i++)
+        {
+            // if 1st-order, F = delC^T * lambda / dt
+            // if 2nd-order, F = delC^T * lambda / (dt*dt)
+            if constexpr (IsFirstOrder)
+                forces[i] = Eigen::Map<Vec3r>(delC + 3*i) * _lambda / _dt;
+            else
+                forces[i] = Eigen::Map<Vec3r>(delC + 3*i) * _lambda / (_dt*_dt);
+        }
+
+        return forces;
+    }
 
     void initialize()
     {
@@ -62,7 +115,7 @@ class RigidBodyConstraintProjector
         
         for (int i = 0; i < RBConstraint::NUM_POSITIONS; i++)
         {
-            LHS += _constraint->positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
+            LHS += positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
         }
 
         // compute RHS of lambda update: -C - alpha_tilde*lambda
@@ -108,7 +161,7 @@ class RigidBodyConstraintProjector
     private:
     Real _dt;
     Real _lambda;
-    RBConstraint* _constraint;
+    ConstraintReference<RBConstraint> _constraint;
     bool _valid;
 };
 

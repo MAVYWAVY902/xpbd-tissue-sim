@@ -1,5 +1,6 @@
 #include "solver/constraint/HydrostaticConstraint.hpp"
 
+#include <iostream>
 
 namespace Solver
 {

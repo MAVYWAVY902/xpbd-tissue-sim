@@ -5,8 +5,11 @@
 #include "common/XPBDEnumTypes.hpp"
 
 #include "solver/constraint/Constraint.hpp"
+#include "solver/constraint/ConstraintReference.hpp"
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
+#include "solver/xpbd_projector/ConstraintProjectorReference.hpp"
+#include "solver/xpbd_projector/ConstraintProjectorTraits.hpp"
 #include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 
 #include "common/TypeList.hpp"
@@ -37,7 +40,7 @@ class XPBDSolver
     /** Whether or not solver is using 1st-Order projection */
     constexpr static bool is_first_order = IsFirstOrder;
 
-    explicit XPBDSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
+    explicit XPBDSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : _obj(obj), _num_iter(num_iter), _residual_policy(residual_policy), _constraints_using_primary_residual(false), _num_constraints(0)
     {
         _rigid_body_updates.resize(14); // 14 doubles is enough to store 2 rigid body updates (no more than 2 rigid bodies will be involved in a single constraint projection)
@@ -115,22 +118,34 @@ class XPBDSolver
     /** Creates a projector for the passed in constraints and adds it to the associated projector array.
      * @param dt - the time step used by the constraint projector (i.e. the simulation time step)
      * @param constraints - variadic list of constraint pointers (right now, only 1 or 2 constraints are supported)
+     * @returns a reference to the added projector as a ConstraintProjectorReference
      */
     template<class... Constraints>
-    void addConstraintProjector(Real dt, Constraints* ... constraints)
+    ConstraintProjectorReference<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type> 
+    addConstraintProjector(Real dt, ConstraintReference<Constraints>&&... constraints)
     {
-        auto projector = _createConstraintProjector(dt, constraints...);
+        using ProjectorType = typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type;
+        ProjectorType projector(dt, std::forward<ConstraintReference<Constraints>>(constraints)...);
     
-        // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
+        // make sure that the data buffer of the coordinate updates vector is large enough to accommodate the new projector
         if (static_cast<unsigned>(projector.numCoordinates()) > _coordinate_updates.size())
         {
             _coordinate_updates.resize(projector.numCoordinates());
         }
+
+        // make sure that the data buffer of the rigid body updates vector is large eneough to accommodate the new projector
+        if (static_cast<unsigned>(ProjectorType::NUM_RIGID_BODIES) > _rigid_body_updates.size())
+        {
+            _rigid_body_updates.resize(ProjectorType::NUM_RIGID_BODIES);
+        }
     
         // increase the total number of constraints (needed for the constraint residual size)
-        _num_constraints += decltype(projector)::NUM_CONSTRAINTS;
+        _num_constraints += ProjectorType::NUM_CONSTRAINTS;
             
-        _constraint_projectors.template push_back<decltype(projector)>(std::move(projector));
+        _constraint_projectors.template push_back<ProjectorType>(std::move(projector));
+
+        std::vector<ProjectorType>& proj_vec = _constraint_projectors.template get<ProjectorType>();
+        return ConstraintProjectorReference<ProjectorType>(proj_vec, proj_vec.size()-1);
     }
 
     /** Creates a projector for the passed in constraints and puts it at the specified index.
@@ -139,16 +154,21 @@ class XPBDSolver
      * @param constraints - variadic list of constraint pointers (right now, only 1 or 2 constraints are supported)
      */
     template<class... Constraints>
-    void setConstraintProjector(int index, Real dt, Constraints* ... constraints)
+    ConstraintProjectorReference<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type>
+    setConstraintProjector(int index, Real dt, Constraints* ... constraints)
     {
-        auto projector = _createConstraintProjector(dt, constraints...);
+        using ProjectorType = typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type;
+        ProjectorType projector(dt, constraints...);
             
         // if current constraint projector at this index is invalid, increase total number of constraints
-        if (!_constraint_projectors.template get<decltype(projector)>()[index].isValid())
-            _num_constraints += decltype(projector)::NUM_CONSTRAINTS;
+        if (!_constraint_projectors.template get<ProjectorType>()[index].isValid())
+            _num_constraints += ProjectorType::NUM_CONSTRAINTS;
         
         // set constraint projector at index
-        _constraint_projectors.template set<decltype(projector)>(index, std::move(projector));
+        _constraint_projectors.template set<ProjectorType>(index, std::move(projector));
+
+        std::vector<ProjectorType>& proj_vec = _constraint_projectors.template get<ProjectorType>();
+        return ConstraintProjectorReference<ProjectorType>(proj_vec, index);
     }
 
     /** Returns the projector at the specified index. */
@@ -221,37 +241,10 @@ class XPBDSolver
     // TODO: Actually implement this
     void _calculateConstraintResidual() {}
 
-    
-    /** Creates a constraint projector that projects a single constraint
-     * @param dt - the time step used by the constraint projector (i.e. time step of the sim)
-     * @param constraint - a pointer to the constraint to be projected
-    */
-    template <class Constraint>
-    ConstraintProjector<IsFirstOrder, Constraint> _createConstraintProjector(Real dt, Constraint* constraint)
-    {
-        ConstraintProjector<IsFirstOrder, Constraint> projector = ConstraintProjector<IsFirstOrder, Constraint>(dt, constraint);
-
-        return projector;
-    }
-
-    /** Creates a constraint projector that projects two constraints simultaneously
-     * @param dt - the time step used by the constraint projector (i.e. time step of the sim)
-     * @param constraint1 - a pointer to one constraint to be projected
-     * @param constraint2 - a pointer to second consraint to be projected
-    */
-    template <class Constraint1, class Constraint2>
-    CombinedConstraintProjector<IsFirstOrder, Constraint1, Constraint2> _createConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
-    {
-        CombinedConstraintProjector<IsFirstOrder, Constraint1, Constraint2> projector = 
-            CombinedConstraintProjector<IsFirstOrder, Constraint1, Constraint2>(dt, constraint1, constraint2);
-
-        return projector;
-    }
-
     protected:
     VariadicVectorContainer<ConstraintProjectors...> _constraint_projectors;    // stores the constraint projectors of different types
 
-    Sim::XPBDMeshObject_Base* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
+    Sim::XPBDMeshObject_Base_<IsFirstOrder>* _obj;                                 // pointer to the XPBDMeshObject that owns this Solver and is updated by the solver loop
     int _num_iter;                                         // number of solver iterations per solve() call
     Geometry::Mesh::VerticesMat _inertial_positions;                // stores the positions after the inertial update - useful for primary residual calculation
 
@@ -264,7 +257,6 @@ class XPBDSolver
     std::vector<Real> _primary_residual;                      // primary residual vector
     std::vector<Real> _constraint_residual;                   // constraint residual vector - use std::vector instead of VecXr to minimize dynamic reallocations as number of constraints change
 
-    // mutable std::vector<Real> _data;                          // the vector class is used to pre-allocate data for the solver loop
     std::vector<CoordinateUpdate> _coordinate_updates;                    // stores updates to the coordinates determined by the constraint projections - also pre-allocated. Needs to be have a size >= the max number of positions affected by a single constraint projection.
     std::vector<RigidBodyUpdate> _rigid_body_updates;                    // stores updates to any rigid bodies involved in the constraint projections - also pre-allocated. Each rigid body update consists of a position update and an orientation update, which is 7 doubles.
 };

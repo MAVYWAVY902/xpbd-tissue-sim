@@ -35,6 +35,7 @@ class RigidDeformableCollisionConstraint : public CollisionConstraint, public Ri
     public:
     constexpr static int NUM_POSITIONS = 3;
     constexpr static int NUM_COORDINATES = 9;
+    constexpr static int NUM_RIGID_BODIES = 1;
 
     public:
     /** 

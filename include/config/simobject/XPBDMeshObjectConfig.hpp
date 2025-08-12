@@ -11,7 +11,8 @@
 
 namespace Sim
 {
-    class XPBDMeshObject_Base;
+    template<bool IsFirstOrder>
+    class XPBDMeshObject_Base_;
 }
 
 namespace Config
@@ -20,7 +21,7 @@ namespace Config
 class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 {
     public:
-    using ObjectType = Sim::XPBDMeshObject_Base;
+    using ObjectType = Sim::XPBDMeshObject_Base_<false>;
 
     static std::map<std::string, XPBDObjectSolverTypeEnum>& SOLVER_TYPE_OPTIONS() 
     {

@@ -1,10 +1,13 @@
 #ifndef __COMBINED_CONSTRAINT_PROJECTOR_HPP
 #define __COMBINED_CONSTRAINT_PROJECTOR_HPP
 
-#include "solver/constraint/Constraint.hpp"
+#include "solver/constraint/PositionReference.hpp"
+#include "solver/constraint/ConstraintReference.hpp"
 #include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 
 #include "common/TypeList.hpp"
+
+#include <iostream>
 
 #ifdef HAVE_CUDA
 #include "gpu/projector/GPUCombinedConstraintProjector.cuh"
@@ -30,6 +33,10 @@ class CombinedConstraintProjector
     public:
     /** Number of constraints projected */
     constexpr static int NUM_CONSTRAINTS = 2;
+    /** Number of rigid bodies involved in the constraint projection. This will be 0 because rigid bodies are handled specially
+     * with a different type of constraint projector.
+     */
+    constexpr static int NUM_RIGID_BODIES = 0;
     /** Maximum number of coordinates involved in the constraint projection (may actually be less due to sharing of coordinates between constraints) */
     constexpr static int MAX_NUM_COORDINATES = Constraint1::NUM_COORDINATES + Constraint2::NUM_COORDINATES;
     
@@ -40,8 +47,8 @@ class CombinedConstraintProjector
 
     public:
     /** Constructor */
-    explicit CombinedConstraintProjector(Real dt, Constraint1* constraint1, Constraint2* constraint2)
-        : _dt(dt), _constraint1(constraint1), _constraint2(constraint2)
+    explicit CombinedConstraintProjector(Real dt, ConstraintReference<Constraint1>&& constraint1, ConstraintReference<Constraint2>&& constraint2)
+        : _dt(dt), _constraint1(constraint1), _constraint2(constraint2), _valid(true)
     {
     }
 
@@ -51,10 +58,49 @@ class CombinedConstraintProjector
     {
     }
 
+    /** Sets the validity of the ConstraintProjector. When valid, it is assumed the Constraint exists to be projected.
+     * @param valid : the new validity of the ConstraintProjector
+     */
     void setValidity(bool valid) { _valid = valid; }
+
+    /** @returns whether or not the ConstraintProjector is valid */
     bool isValid() const { return _valid; }
 
     int numCoordinates() { return Constraint1::NUM_COORDINATES; } // TODO: for now we're assuming that constraint1 and constraint2 share the same coords exactly
+
+    /** @returns the positions (as PositionReferences) affect by the constraint projection. This will just be the 
+     * positions of the single projected constraint.
+     * 
+     * TODO: assuming constraint1 and constraint2 share the same positions in the same order
+    */
+    const std::vector<PositionReference>& positions() const { return _constraint1->positions(); }
+
+    /** The constraint forces on each of the affected positions caused by this constraint.
+     * @returns the constraint forces on each of the affected positions of this constraint. The returned vector is ordered such that
+     * the forces are applied to the corresponding position at the same index in the positions() vector.
+     * 
+     * This method must be called AFTER constraint projection has been performed (i.e. after lambda has been calculated). 
+     */
+    std::vector<Vec3r> constraintForces() const
+    {
+        /** TODO: FOR NOW assuming that both constraints share exactly the same coordinates, in exactly the same order. FIND A MORE GENERAL WAY */
+        std::vector<Vec3r> forces( Constraint1::NUM_POSITIONS );
+        Real delC1[Constraint1::NUM_COORDINATES];
+        Real delC2[Constraint2::NUM_COORDINATES];
+        _constraint1->gradient(delC1);
+        _constraint2->gradient(delC2);
+        for (int i = 0; i < Constraint1::NUM_POSITIONS; i++)
+        {
+            // if 1st-order, F = delC^T * lambda / dt
+            // if 2nd-order, F = delC^T * lambda / (dt*dt)
+            if constexpr (IsFirstOrder)
+                forces[i] = (Eigen::Map<Vec3r>(delC1 + 3*i) * _lambda[0] + Eigen::Map<Vec3r>(delC2 + 3*i) * _lambda[1])  / _dt;
+            else
+                forces[i] = (Eigen::Map<Vec3r>(delC1 + 3*i) * _lambda[0] + Eigen::Map<Vec3r>(delC2 + 3*i) * _lambda[1]) / (_dt*_dt);
+        }
+
+        return forces;
+    }
 
     /** Initialize the Lagrange multipliers. */
     void initialize()
@@ -170,8 +216,8 @@ class CombinedConstraintProjector
     private:
     Real _dt;
     Real _lambda[2];
-    Constraint1* _constraint1;
-    Constraint2* _constraint2;
+    ConstraintReference<Constraint1> _constraint1;
+    ConstraintReference<Constraint2> _constraint2;
     bool _valid;
 };
 

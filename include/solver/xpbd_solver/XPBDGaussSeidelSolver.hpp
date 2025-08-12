@@ -14,7 +14,7 @@ class XPBDGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjecto
 {
     public:
     /** Same constructor as XPBDSolver */
-    explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject_Base* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
+    explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
     {
     }
@@ -31,38 +31,51 @@ class XPBDGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjecto
             if (!proj.isValid())
                 return;
 
-            // TODO: check if proj is a RigidBodyConstraintProjector
-            // if constexpr ()
-            proj.project(this->_coordinate_updates.data());
-
-            // apply the position updates
-            for (int i = 0; i < proj.numCoordinates(); i++)
-            {
-                if (this->_coordinate_updates[i].ptr)
-                    *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
-            }
+            _projectAndUpdate(proj);
         });
+    }
 
-        // std::cout << "===Second Projection of Static Collision Cosntraints"  << std::endl;
-        // int num_valid = 0;
-        // for (auto& proj : this->_constraint_projectors.template get<ConstraintProjector<IsFirstOrder, StaticDeformableCollisionConstraint>>())
-        // {
-        //     if (!proj.isValid())
-        //         continue;
-            
-        //     num_valid++;
 
-        //     proj.initialize();
-        //     proj.project(this->_coordinate_updates.data());
+    template<class ProjectorType>
+    void _projectAndUpdate(ProjectorType& projector)
+    {
+        projector.project(this->_coordinate_updates.data());
+        _applyPositionUpdates(projector);
+    }
 
-        //     // apply the position updates
-        //     for (int i = 0; i < proj.numCoordinates(); i++)
-        //     {
-        //         if (this->_coordinate_updates[i].ptr)
-        //             *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
-        //     }
-        // }
-        // std::cout << "Num valid static collision constraint projectors: " << num_valid << std::endl;
+    template<class ...Constraints>
+    void _projectAndUpdate(RigidBodyConstraintProjector<IsFirstOrder, Constraints...>& projector)
+    {
+        projector.project(this->_coordinate_updates.data(), this->_rigid_body_updates.data());
+        _applyPositionUpdates(projector);
+        _applyRigidBodyUpdates(projector);
+    }
+
+    template<class ProjectorType>
+    void _applyPositionUpdates(ProjectorType& projector)
+    {
+        // apply the position updates
+        for (int i = 0; i < projector.numCoordinates(); i++)
+        {
+            if (this->_coordinate_updates[i].ptr)
+                *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
+        }
+    }
+
+    template<class ...Constraints>
+    void _applyRigidBodyUpdates(RigidBodyConstraintProjector<IsFirstOrder, Constraints...>&)
+    {
+        using ProjectorType = RigidBodyConstraintProjector<IsFirstOrder, Constraints...>;
+        // apply the rigid body updates
+        for (unsigned i = 0; i < ProjectorType::NUM_RIGID_BODIES; i++)
+        {
+            const RigidBodyUpdate& rb_update = this->_rigid_body_updates[i];
+            if (rb_update.obj_ptr)
+            {
+                rb_update.obj_ptr->setPosition(rb_update.obj_ptr->position() + Eigen::Map<const Vec3r>(rb_update.position_update));
+                rb_update.obj_ptr->setOrientation(rb_update.obj_ptr->orientation() + Eigen::Map<const Vec4r>(rb_update.orientation_update));
+            }
+        }
     }
 };
 

@@ -2,11 +2,13 @@
 #define __VIRTUOSO_ARM_HPP
 
 #include "simobject/Object.hpp"
+#include "simobject/XPBDMeshObjectBaseWrapper.hpp"
 
 #include "geometry/CoordinateFrame.hpp"
 #include "geometry/VirtuosoArmSDF.hpp"
 
 #include <array>
+#include <variant>
 
 namespace Config
 {
@@ -16,14 +18,15 @@ namespace Config
 namespace Sim
 {
 
-class XPBDMeshObject_Base;
+class XPBDMeshObject_BasePtrWrapper;
 
 class VirtuosoArm : public Object
 {
 
     private:
     constexpr static int NUM_OT_CURVE_FRAMES = 10;      // number of coordinate frames defined along the curved section of the outer tube
-    constexpr static int NUM_OT_STRAIGHT_FRAMES = 10;    // number of coordinate frames defined along the straight distal section of the outer tube
+    constexpr static int NUM_OT_STRAIGHT_FRAMES = 5;    // number of coordinate frames defined along the straight distal section of the outer tube
+    constexpr static int NUM_OT_FRAMES = NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES; // total number of coordinate frames defined along the outer tube
     constexpr static int NUM_IT_FRAMES = 10;            // number of coordinate frames defined along the inner tube
 
     constexpr static int MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
@@ -84,6 +87,20 @@ class VirtuosoArm : public Object
             return state;
         }
 
+        // helpers for getting/setting parts of the state when it is represented as a vector
+        // this way, we can edit the state directly as a vector without having to convert the whole thing back and forth
+        static Vec3r positionFromVec(const VecType& vec) { return vec.head<3>(); }
+        static Mat3r orientationFromVec(const VecType& vec) { return vec( Eigen::seqN(3,9) ).reshaped(3,3); }
+        static Vec3r internalForceFromVec(const VecType& vec) { return vec( Eigen::seqN(12,3) ); }
+        static Vec3r internalMomentFromVec(const VecType& vec) { return vec( Eigen::seqN(15,3) ); }
+        static Real torsionalDisplacementFromVec(const VecType& vec) { return vec(18); }
+
+        static void setPositionInVec(VecType& vec, const Vec3r& pos) { vec( Eigen::seqN(0,3) ) = pos; }
+        static void setOrientationInVec(VecType& vec, const Mat3r& ori) { vec( Eigen::seqN(3,9) ) = ori.reshaped(); }
+        static void setInternalForceInVec(VecType& vec, const Vec3r& int_f) { vec( Eigen::seqN(12,3) ) = int_f; }
+        static void setInternalMomentInVec(VecType& vec, const Vec3r& int_m) { vec( Eigen::seqN(15,3) ) = int_m; }
+        static void setTorsionalDisplacementInVec(VecType& vec, Real tor_disp) { vec(18) = tor_disp; }
+
     };
 
     /** Parameters of a tube needed for integration.
@@ -96,6 +113,28 @@ class VirtuosoArm : public Object
         Vec3r precurvature;     // precurvature of the tube
         Vec3r K_inv;            // inverse stiffnesses of the tube (in body frame, hence K is diagonal and can be represented by a 3-vector)
     };
+
+    /** Stores information for applying collision forces onto the tube at the appropriate location.
+     * This includes the constraint projector for the collision constraint on the deformable object (calculates the force)
+     * as well as the node index and interpolation (between 0 and 1) of the force.
+     * The force is assumed to be applied between the node at node index and the next node.
+     */
+    struct CollisionConstraintInfo
+    {
+        using ProjectorRefType = Solver::ConstraintProjectorReferenceWrapper<Solver::StaticDeformableCollisionConstraint>;
+
+        ProjectorRefType proj_ref;  // the constraint projector reference that can calculate the constraint force
+        int node_index; // "global" node index, i.e. from 0 to NUM_OT_FRAMES + NUM_IT_FRAMES
+        Real interp;    // between 0 and 1
+
+        CollisionConstraintInfo(ProjectorRefType&& proj_ref_, int node_index_, Real interp_)
+            : proj_ref(proj_ref_), node_index(node_index_), interp(interp_)
+        {}
+
+        CollisionConstraintInfo(const ProjectorRefType& proj_ref_, int node_index_, Real interp_)
+            : proj_ref(proj_ref_), node_index(node_index_), interp(interp_)
+        {}
+        };
 
     public:
     VirtuosoArm(const Simulation* sim, const ConfigType* config);
@@ -144,13 +183,13 @@ class VirtuosoArm : public Object
     Real outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
     int toolState() const { return _tool_state; }
 
-    void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
-    void setInnerTubeRotation(double r) { _it_rotation = r; _recomputeCoordinateFrames(); }
-    void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _recomputeCoordinateFrames(); }
-    void setOuterTubeRotation(double r) { _ot_rotation = r; _recomputeCoordinateFrames(); }
+    void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _stale_frames = true; }
+    void setInnerTubeRotation(double r) { _it_rotation = r; _stale_frames = true; }
+    void setOuterTubeTranslation(double t) { _ot_translation = (t >= 0) ? t : 0; _stale_frames = true; }
+    void setOuterTubeRotation(double r) { _ot_rotation = r; _stale_frames = true; }
     void setToolState(int tool) { _tool_state = tool; }
-    void setBasePosition(const Vec3r& pos) { _arm_base_position = pos; _recomputeCoordinateFrames(); }
-    void setBaseRotation(const Mat3r& rot_mat) { _arm_base_rotation = rot_mat; _recomputeCoordinateFrames();}
+    void setBasePosition(const Vec3r& pos) { _arm_base_position = pos; _stale_frames = true; }
+    void setBaseRotation(const Mat3r& rot_mat) { _arm_base_rotation = rot_mat; _stale_frames = true;}
 
     const Geometry::CoordinateFrame& armBaseFrame() const { return _arm_base_frame; }
     const Geometry::CoordinateFrame& outerTubeStartFrame() const { return _ot_frames[0]; }
@@ -172,8 +211,16 @@ class VirtuosoArm : public Object
     void setTipMoment(const Vec3r& new_tip_moment);
     void setTipForceAndMoment(const Vec3r& new_tip_force, const Vec3r& new_tip_moment);
 
-    const XPBDMeshObject_Base* toolManipulatedObject() const { return _tool_manipulated_object; }
-    void setToolManipulatedObject(XPBDMeshObject_Base* obj) { _tool_manipulated_object = obj; }
+    void addCollisionConstraint(CollisionConstraintInfo::ProjectorRefType&& proj_ref, int node_index, Real interp);
+    void clearCollisionConstraints();
+
+    const Vec3r& outerTubeNodalForce(int node_index) const { return _ot_nodal_forces[node_index]; }
+    const Vec3r& innerTubeNodalForce(int node_index) const { return _it_nodal_forces[node_index]; }
+    void setOuterTubeNodalForce(int node_index, const Vec3r& force);
+    void setInnerTubeNodalForce(int node_index, const Vec3r& force);
+
+    const XPBDMeshObject_BasePtrWrapper& toolManipulatedObject() const { return _tool_manipulated_object; }
+    void setToolManipulatedObject(const XPBDMeshObject_BasePtrWrapper& obj) { _tool_manipulated_object = obj; }
 
     void setJointState(double ot_rotation, double ot_translation, double it_rotation, double it_translation, int tool);
 
@@ -188,7 +235,18 @@ class VirtuosoArm : public Object
      */
     void _recomputeCoordinateFramesStaticsModel();
 
-    std::vector<TubeIntegrationState::VecType> _integrateTubeRK4(const TubeIntegrationState& tube_base_state, const std::vector<Real>& s, const Vec3r& K_inv, const Vec3r& u_star) const;
+    /** Recomputes coordinate frames along the Virtuoso arm using a small-deflection assumption statics model,
+     * with forces at each "node" (i.e. coordinate frame along the backbone) included.
+     */
+    void _recomputeCoordinateFramesStaticsModelWithNodalForces();
+
+    std::vector<TubeIntegrationState::VecType> _integrateTubeRK4(
+        const TubeIntegrationState& tube_base_state, const std::vector<Real>& s, const Vec3r& K_inv, const Vec3r& u_star) const;
+
+    template <typename ForceIterator>
+    std::vector<TubeIntegrationState::VecType> _integrateTubeWithForceBoundariesRK4(
+        const TubeIntegrationState& tube_base_state, const std::vector<Real>& s, ForceIterator force_iterator,
+        const Vec3r& K_inv, const Vec3r& u_star) const;
 
     /** Performs any tool actions, if applicable.
      * 
@@ -258,10 +316,12 @@ class VirtuosoArm : public Object
     int _tool_state; // state of the tool (i.e. 1=ON, 0=OFF)
     int _last_tool_state; // the previous state of the tool (needed so that we know when tool state has changed)
     ToolType _tool_type; // type of tool used on this arm
-    XPBDMeshObject_Base* _tool_manipulated_object; // the deformable object that this tool is manipulating
+    XPBDMeshObject_BasePtrWrapper _tool_manipulated_object; // the deformable object that this tool is manipulating
     Vec3r _tool_position; // position of the tool in global coordinates (note that this may be different than the inner tube tip position)
     Vec3r _commanded_tip_position; // tip position of the arm in the absence of tip forces (i.e. where we tell the arm tip to be at)
     std::vector<int> _grasped_vertices; // vertices that are actively being grasped
+    std::vector<Solver::ConstraintProjectorReferenceWrapper<Solver::AttachmentConstraint>> _grasping_constraints; // attachment constraints associated with the grasping
+    std::vector<CollisionConstraintInfo> _collision_constraints;
 
     Vec3r _arm_base_position;
     Mat3r _arm_base_rotation;
@@ -274,6 +334,9 @@ class VirtuosoArm : public Object
     
     OuterTubeFramesArray _ot_frames;  // coordinate frames along the backbone of the outer tube
     InnerTubeFramesArray _it_frames;  // coordinate frames along the backbone of the inner tube
+
+    std::array<Vec3r, NUM_OT_FRAMES> _ot_nodal_forces;
+    std::array<Vec3r, NUM_IT_FRAMES> _it_nodal_forces;
 
     bool _stale_frames;     // true if the joint variables have been updated and the coordinate frames need to be recomputed
 
