@@ -205,9 +205,19 @@ public:
         return std::visit([](const auto& obj) { return obj->mesh(); }, _variant);
     }
 
+    Geometry::Mesh* mesh()
+    {
+        return std::visit([](auto& obj) { return obj->mesh(); }, _variant);
+    }
+
     const Geometry::TetMesh* tetMesh() const
     {
         return std::visit([](const auto& obj) { return obj->tetMesh(); }, _variant);
+    }
+
+    Geometry::TetMesh* tetMesh()
+    {
+        return std::visit([](auto& obj) { return obj->tetMesh(); }, _variant);
     }
 
 private:
