@@ -474,17 +474,20 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
 
     // assemble global delC matrix
     size_t num_constraints = _constraints.size();
-    MatXr delC(num_constraints, 3*_mesh->numVertices());
+    VecXr C_vec(num_constraints);
+    MatXr orig_delC(num_constraints, 3*_mesh->numVertices());
     VecXr alpha_inv(num_constraints);
+
 
     // iterate through each constraint and put its gradient into the global delC matrix
     int constraint_index = 0;
-    _constraints.for_each_element([&delC, &alpha_inv, &constraint_index](const auto& constraint)
+    _constraints.for_each_element([&orig_delC, &alpha_inv, &C_vec, &constraint_index](const auto& constraint)
     {
         // get the gradient from the constraint
         using ConstraintType = std::remove_cv_t<std::remove_reference_t<decltype(constraint)>>;
         Real grad[ConstraintType::NUM_COORDINATES];
-        constraint.gradient(grad);
+        Real C;
+        constraint.evaluateWithGradient(&C, grad);
 
         // get the positions that the constraint affects
         const std::vector<Solver::PositionReference>& constraint_positions = constraint.positions();
@@ -494,16 +497,73 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
             int position_index = constraint_positions[i].index;
             const Vec3r grad_i = Eigen::Map<Vec3r>(grad + 3*i);
 
-            delC.block<1,3>(constraint_index, 3*position_index) = grad_i;
+            orig_delC.block<1,3>(constraint_index, 3*position_index) = grad_i;
         }
 
         // add constraint stiffness to alpha
         alpha_inv[constraint_index] = 1.0/constraint.alpha();
 
+        C_vec[constraint_index] = C;
+
         constraint_index++;
     });
 
-    MatXr stiffness_matrix = delC.transpose() * alpha_inv.asDiagonal() * delC;
+    // compute the Hessian term (through numerical differentiation)
+    Real* data_ptr = _mesh->vertices().data();
+    Real delta = 0.0001;
+    MatXr delC(num_constraints, 3*_mesh->numVertices());
+    MatXr grad_delC_i(num_constraints, 3*_mesh->numVertices());
+    MatXr hessian_term(3*_mesh->numVertices(), 3*_mesh->numVertices());
+    for (int dof = 0; dof < _mesh->vertices().size(); dof++)
+    {
+        delC = MatXr::Zero(num_constraints, 3*_mesh->numVertices());
+
+        // vary each DOF
+        data_ptr[dof] += delta;
+
+        // loop through constraints to calculate the change in delC
+        int constraint_index = 0;
+        _constraints.for_each_element([&delC, &constraint_index](const auto& constraint)
+        {
+            // get the gradient from the constraint
+            using ConstraintType = std::remove_cv_t<std::remove_reference_t<decltype(constraint)>>;
+            Real grad[ConstraintType::NUM_COORDINATES];
+            constraint.gradient(grad);
+
+            // get the positions that the constraint affects
+            const std::vector<Solver::PositionReference>& constraint_positions = constraint.positions();
+
+            for (unsigned i = 0; i < ConstraintType::NUM_POSITIONS; i++)
+            {
+                int position_index = constraint_positions[i].index;
+                const Vec3r grad_i = Eigen::Map<Vec3r>(grad + 3*i);
+
+                delC.block<1,3>(constraint_index, 3*position_index) = grad_i;
+            }
+
+            constraint_index++;
+        });
+
+        // compute gradient
+        grad_delC_i = (delC - orig_delC) / delta;
+
+        // compute associated column in the Hessian term
+        hessian_term.col(dof) = grad_delC_i.transpose() * alpha_inv.asDiagonal() * C_vec;
+
+        data_ptr[dof] -= delta;
+    }
+
+    MatXr stiffness_matrix = hessian_term + orig_delC.transpose() * alpha_inv.asDiagonal() * orig_delC;
+
+    // "fix" all the fixed vertices in the mesh by adding a large amount to the diagonal corresponding to their 3 DOF
+    for (int i = 0; i < _mesh->numVertices(); i++)
+    {
+        if (vertexFixed(i))
+        {
+            for (int j = 0; j < 3; j++)
+                stiffness_matrix(3*i+j,3*i+j) += 1e9;
+        }
+    }
     return stiffness_matrix;
     
 }
