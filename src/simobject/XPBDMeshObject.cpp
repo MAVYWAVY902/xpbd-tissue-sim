@@ -63,6 +63,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
     if constexpr (IsFirstOrder)
     {
         _damping_multiplier = config->dampingMultiplier();
+        _accelerate_convergence = config->accelerateConvergence();
     }
 }
 
@@ -394,37 +395,47 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_m
         // reset the damping updates
         _vertex_B_updates.assign(_mesh->numVertices(), 0);
 
-        // run through each element and compute the deformation gradient
-        const std::vector<Solver::DeviatoricConstraint>& dev_constraints = _constraints.template get<Solver::DeviatoricConstraint>();
-        for (int i = 0; i < tetMesh()->numElements(); i++)
+        if (_accelerate_convergence)
         {
-            const Solver::DeviatoricConstraint& constraint = dev_constraints[i];
-            Mat3r F = constraint.computeF();
-            // Real err = (F - Mat3r::Identity()).reshaped().norm();
-            Real hyd_err = (F.determinant() - 1);
-            Real dev_err = ((F.transpose()*F).trace() - 3);
-            Real err = hyd_err*hyd_err + dev_err*dev_err;
-            // std::cout << "err: " << err << std::endl;
-            bool tet_in_rest_configuration = (err < 1e-4);
-
-            // set projector validity based on if element is in rest configuration
-            using ProjectorType = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
-            if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+            // run through each element and compute the deformation gradient
+            const std::vector<Solver::DeviatoricConstraint>& dev_constraints = _constraints.template get<Solver::DeviatoricConstraint>();
+            int num_deformed_elements = 0;
+            for (int i = 0; i < tetMesh()->numElements(); i++)
             {
-                _solver.template setProjectorValidity<ProjectorType>(i, !tet_in_rest_configuration);
+                const Solver::DeviatoricConstraint& constraint = dev_constraints[i];
+                Mat3r F = constraint.computeF();
+                // Real err = (F - Mat3r::Identity()).reshaped().norm();
+                Real hyd_err = (F.determinant() - 1);
+                Real dev_err = ((F.transpose()*F).trace() - 3);
+                Real err = hyd_err*hyd_err + dev_err*dev_err;
+                // std::cout << "err: " << err << std::endl;
+                bool tet_in_rest_configuration = (err < 1e-8);
+
+                // set projector validity based on if element is in rest configuration
+                using ProjectorType = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
+                if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+                {
+                    _solver.template setProjectorValidity<ProjectorType>(i, !tet_in_rest_configuration);
+                }
+
+                // if element is in its rest configuration, subtract 50% of its damping contribution to each of its vertices
+                if (tet_in_rest_configuration)
+                {
+                    // std::cout << "Tet in rest config!" << std::endl;
+                    const Eigen::Vector4i& element = tetMesh()->element(i);
+                    const Real volume = tetMesh()->elementRestVolume(i);
+                    _vertex_B_updates[element[0]] -= 0.9 * (volume*_damping_multiplier/4.0);
+                    _vertex_B_updates[element[1]] -= 0.9 * (volume*_damping_multiplier/4.0);
+                    _vertex_B_updates[element[2]] -= 0.9 * (volume*_damping_multiplier/4.0);
+                    _vertex_B_updates[element[3]] -= 0.9 * (volume*_damping_multiplier/4.0);
+                }
+                else
+                {
+                    num_deformed_elements++;
+                }
             }
 
-            // if element is in its rest configuration, subtract 50% of its damping contribution to each of its vertices
-            if (tet_in_rest_configuration)
-            {
-                // std::cout << "Tet in rest config!" << std::endl;
-                const Eigen::Vector4i& element = tetMesh()->element(i);
-                const Real volume = tetMesh()->elementVolume(i);
-                _vertex_B_updates[element[0]] -= 0.7 * (volume*_damping_multiplier/4.0);
-                _vertex_B_updates[element[1]] -= 0.7 * (volume*_damping_multiplier/4.0);
-                _vertex_B_updates[element[2]] -= 0.7 * (volume*_damping_multiplier/4.0);
-                _vertex_B_updates[element[3]] -= 0.7 * (volume*_damping_multiplier/4.0);
-            }
+            std::cout << "Number of deformed elements: " << num_deformed_elements << "/" << tetMesh()->numElements() << std::endl;
         }
 
         for (int i = 0; i < _mesh->numVertices(); i++)

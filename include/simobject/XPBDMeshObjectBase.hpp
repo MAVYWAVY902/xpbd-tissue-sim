@@ -244,6 +244,8 @@ protected:
 
     /** The damping multiplier for the mesh (this is b from the 1st-order paper) */
     typename std::conditional<IsFirstOrder, Real, std::monostate>::type _damping_multiplier;
+    /** Whether or not we should accelerate convergence to steady-state. */
+    typename std::conditional<IsFirstOrder, bool, std::monostate>::type _accelerate_convergence;
     /** The damping at each vertex */
     typename std::conditional<IsFirstOrder, std::vector<Real>, std::monostate>::type _vertex_B;
     /** Per-frame damping updates at each vertex */

@@ -39,6 +39,12 @@ TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const Eleme
 
         _element_inv_undeformed_basis[i] = X.inverse();
     }
+
+    _element_rest_volumes.resize(numElements());
+    for (int i = 0; i < numElements(); i++)
+    {
+        _element_rest_volumes[i] = elementVolume(i);
+    }
 }
 
 TetMesh::TetMesh(const TetMesh& other)
@@ -47,6 +53,7 @@ TetMesh::TetMesh(const TetMesh& other)
     _elements = other._elements;
     _attached_elements_to_vertex = other._attached_elements_to_vertex;
     _element_inv_undeformed_basis = other._element_inv_undeformed_basis;
+    _element_rest_volumes = other._element_rest_volumes;
 }
 
 TetMesh::TetMesh(TetMesh&& other)
@@ -55,6 +62,7 @@ TetMesh::TetMesh(TetMesh&& other)
     _elements = std::move(other._elements);
     _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);
     _element_inv_undeformed_basis = std::move(other._element_inv_undeformed_basis);
+    _element_rest_volumes = std::move(other._element_rest_volumes);
 }
 
 Real TetMesh::elementVolume(int index) const

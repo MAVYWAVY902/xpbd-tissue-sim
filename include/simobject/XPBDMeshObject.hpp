@@ -69,6 +69,7 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::_is_fixed_vertex;
     using Base::_sdf;
     using Base::_damping_multiplier;
+    using Base::_accelerate_convergence;
     using Base::_vertex_B;
     using Base::_vertex_B_updates;
     using Base::_B_inv;

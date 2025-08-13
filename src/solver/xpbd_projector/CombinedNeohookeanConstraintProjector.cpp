@@ -43,27 +43,27 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
         }
     }
 
-    // for (int ci = 0; ci < 2; ci++)
-    // {
-    //     Real* delC_i = delC + ci*DeviatoricConstraint::NUM_COORDINATES;
-    //     for (int cj = ci; cj < 2; cj++)
-    //     {
-    //         Real* delC_j = delC + cj*DeviatoricConstraint::NUM_COORDINATES;
+    for (int ci = 0; ci < 2; ci++)
+    {
+        Real* delC_i = delC + ci*DeviatoricConstraint::NUM_COORDINATES;
+        for (int cj = ci; cj < 2; cj++)
+        {
+            Real* delC_j = delC + cj*DeviatoricConstraint::NUM_COORDINATES;
 
-    //         for (int i = 0; i < DeviatoricConstraint::NUM_POSITIONS; i++)
-    //         {
-    //             LHS[cj*2 + ci] += _constraint1->positions()[i].inv_mass * (delC_i[3*i]*delC_j[3*i] + delC_i[3*i+1]*delC_j[3*i+1] + delC_i[3*i+2]*delC_j[3*i+2]);
-    //         }
+            for (int i = 0; i < DeviatoricConstraint::NUM_POSITIONS; i++)
+            {
+                LHS[cj*2 + ci] += _constraint1->positions()[i].inv_mass * (delC_i[3*i]*delC_j[3*i] + delC_i[3*i+1]*delC_j[3*i+1] + delC_i[3*i+2]*delC_j[3*i+2]);
+            }
 
-    //         LHS[ci*2 + cj] = LHS[cj*2 + ci];
-    //     }
+            LHS[ci*2 + cj] = LHS[cj*2 + ci];
+        }
         
-    // }
+    }
 
-    using delCMatType = Eigen::Matrix<Real, 2, 12, Eigen::RowMajor>;
-    Eigen::Map<delCMatType> delC_mat(delC);
-    Eigen::Map<Mat2r> LHS_mat(LHS);
-    LHS_mat += delC_mat * _B_e_inv * delC_mat.transpose();
+    // using delCMatType = Eigen::Matrix<Real, 2, 12, Eigen::RowMajor>;
+    // Eigen::Map<delCMatType> delC_mat(delC);
+    // Eigen::Map<Mat2r> LHS_mat(LHS);
+    // LHS_mat += delC_mat * _B_e_inv * delC_mat.transpose();
     
 
     // compute RHS of lambda update: -C - alpha_tilde * lambda

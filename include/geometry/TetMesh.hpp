@@ -38,6 +38,9 @@ class TetMesh : public Mesh
     /** Returns the current volume of the specified element. */
     Real elementVolume(int index) const;
 
+    /** Returns the rest volume of the specified element. */
+    Real elementRestVolume(int index) const { return _element_rest_volumes[index]; }
+
     /** Returns deformation gradient for the specified element.
      * Assumes linear shape functions (deformation gradient is constant throughout the element)
      */
@@ -56,6 +59,8 @@ class TetMesh : public Mesh
 
     protected:
     ElementsMat _elements;  // the matrix of tetrahedral elements
+
+    std::vector<Real> _element_rest_volumes;
 
     /** inverse undeformed basis for each element
      *   - used in calculating the deformation gradient (F = XQ) where X is current deformed basis, Q is inverse undeformed basis
