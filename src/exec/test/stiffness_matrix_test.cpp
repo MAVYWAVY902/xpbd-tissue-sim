@@ -43,10 +43,10 @@ int main()
     int v2 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.min[0], bbox.max[1], bbox.min[2]));
     int v3 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.max[0], bbox.max[1], bbox.min[2]));
     int v4 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.max[0], bbox.min[1], bbox.min[2]));
-    xpbd_mesh_obj->fixVertex(v1);
-    xpbd_mesh_obj->fixVertex(v2);
-    xpbd_mesh_obj->fixVertex(v3);
-    xpbd_mesh_obj->fixVertex(v4);
+    // xpbd_mesh_obj->fixVertex(v1);
+    // xpbd_mesh_obj->fixVertex(v2);
+    // xpbd_mesh_obj->fixVertex(v3);
+    // xpbd_mesh_obj->fixVertex(v4);
 
     // perturb all the vertices a little bit
     // for (int i = 0; i < xpbd_mesh_obj->mesh()->numVertices(); i++)

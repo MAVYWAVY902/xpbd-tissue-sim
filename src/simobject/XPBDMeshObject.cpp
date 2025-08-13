@@ -219,6 +219,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     _vertex_masses.resize(_mesh->numVertices());
     _vertex_volumes.resize(_mesh->numVertices());
     _vertex_attached_elements.resize(_mesh->numVertices());
+    _vertex_adjacent_vertices.resize(_mesh->numVertices());
     _is_fixed_vertex.resize(_mesh->numVertices(), false);
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
@@ -246,6 +247,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         _vertex_attached_elements[element[1]]++;
         _vertex_attached_elements[element[2]]++;
         _vertex_attached_elements[element[3]]++;
+
+        // update the adjacent vertices list for each vertex in the element
+        _vertex_adjacent_vertices[element[0]].insert({element[1], element[2], element[3]});
+        _vertex_adjacent_vertices[element[1]].insert({element[0], element[2], element[3]});
+        _vertex_adjacent_vertices[element[2]].insert({element[0], element[1], element[3]});
+        _vertex_adjacent_vertices[element[3]].insert({element[0], element[1], element[2]});
     }
 
     // for 1st-order objects, calculate per-vertex damping
@@ -256,6 +263,29 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         {
             _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier;
         }
+
+        // calculate B_rel matrix
+        Real frac = 0.5;
+        _B_rel = MatXr::Zero(_mesh->numVertices(), _mesh->numVertices());
+        for (int vi = 0; vi < _mesh->numVertices(); vi++)
+        {
+            _B_rel(vi,vi) = _vertex_B[vi]*frac;
+
+            for (const auto& adj_vert : _vertex_adjacent_vertices[vi])
+            {
+                _B_rel(vi, adj_vert) = -_B_rel(vi,vi) / _vertex_adjacent_vertices[vi].size();
+            }
+        }
+
+        // calculate B_abs matrix
+        _B_abs = MatXr::Zero(_mesh->numVertices(), _mesh->numVertices());
+        for (int vi = 0; vi < _mesh->numVertices(); vi++)
+        {
+            _B_abs(vi,vi) = _vertex_B[vi];
+        }
+        
+        // calculate B^-1
+        _B_inv = (_B_rel + _B_abs).inverse();
     }
     
 }
@@ -311,10 +341,28 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
 
             using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
             using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;
-            _solver.addConstraintProjector(_sim->dt(), 
-                DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
-                HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
-            );
+            
+            if constexpr (IsFirstOrder)
+            {
+                Eigen::Matrix<Real,12,12> B_e_inv = _elementBInv(i);
+                // Eigen::Matrix<Real,12,12> B_e_inv = Eigen::Matrix<Real,12,12>::Zero();
+                // for (int k = 0; k < 4; k++)
+                //     for (int l = 0; l < 3; l++)
+                //         B_e_inv(3*k+l, 3*k+l) = 1/vertexConstraintInertia(element[k]);
+
+                _solver.addConstraintProjector(_sim->dt(), 
+                    B_e_inv,
+                    DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
+                    HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
+                );
+            }
+            else
+            {
+                _solver.addConstraintProjector(_sim->dt(),
+                    DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
+                    HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
+                );
+            }
         }
     }
 }
@@ -407,6 +455,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
+
+    if constexpr (IsFirstOrder)
+    {
+        // VecXr B_rel_x_dot(_mesh->numVertices()*3);
+        // VecXr x_dot(_mesh->numVertices()*3);
+        MatXr B_rel_x_dot = _B_rel * _vertex_velocities.transpose();
+        std::cout << "B_rel * x_dot norm: " <<  B_rel_x_dot.reshaped().norm() << std::endl;
+    }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>

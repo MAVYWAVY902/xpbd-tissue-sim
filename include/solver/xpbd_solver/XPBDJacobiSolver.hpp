@@ -43,6 +43,32 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
         return ConstraintProjectorReference<ProjectorType>(proj_vec, proj_vec.size()-1);
     }
 
+    /** Creates a projector for the passed in constraints and adds it to the associated projector array.
+     * @param dt - the time step used by the constraint projector (i.e. the simulation time step)
+     * @param B_e_inv - inverse damping matrix for the element
+     * @param constraints - variadic list of constraint pointers (right now, only 1 or 2 constraints are supported)
+     * @returns a reference to the added projector as a ConstraintProjectorReference
+     */
+    template<class... Constraints>
+    ConstraintProjectorReference<typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type> 
+    addConstraintProjector(Real dt, const Eigen::Matrix<Real,12,12>& B_e_inv, ConstraintReference<Constraints>&&... constraints)
+    {
+        using ProjectorType = typename ConstraintProjectorTraits<IsFirstOrder, Constraints...>::type;
+        ProjectorType projector(dt, std::forward<ConstraintReference<Constraints>>(constraints)..., B_e_inv);
+    
+        // make sure that the data buffer of the coordinate updates vector is large enough to accomodate the new projector
+        this->_coordinate_updates.resize(this->_coordinate_updates.size() + projector.numCoordinates());
+        this->_rigid_body_updates.resize(this->_rigid_body_updates.size() + ProjectorType::NUM_RIGID_BODIES);
+    
+        // increase the total number of constraints (needed for the constraint residual size)
+        this->_num_constraints += ProjectorType::NUM_CONSTRAINTS;
+            
+        this->_constraint_projectors.template push_back<ProjectorType>(std::move(projector));
+
+        std::vector<ProjectorType>& proj_vec = this->_constraint_projectors.template get<ProjectorType>();
+        return ConstraintProjectorReference<ProjectorType>(proj_vec, proj_vec.size()-1);
+    }
+
 
     protected:
     /** Implements a Jacobi update strategy for constraint projection.
