@@ -118,7 +118,7 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
         assert(0);
     }
 
-    gmsh::open(filename);
+    gmsh::open(file_path.string());
 
     // Get all the elementary entities in the model, as a vector of (dimension,
     // tag) pairs:
