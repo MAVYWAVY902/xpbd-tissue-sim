@@ -56,9 +56,9 @@ objects:
     draw-faces: true    # draw mesh faces
 
     ## initial configuration
-    max-size: 1   # size of largest model dimension (preserves aspect ratio)
+    max-size: 1.0   # size of largest model dimension (preserves aspect ratio)
     # size: [1, 1, 1]   # specify size of each dimension
-    position: [0, 0, 1.2]   # initial position of mesh center of mass [m]
+    position: [0, 0, 5]   # initial position of mesh center of mass [m]
     velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
     rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
 

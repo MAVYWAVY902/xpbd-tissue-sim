@@ -246,6 +246,8 @@ protected:
     typename std::conditional<IsFirstOrder, Real, std::monostate>::type _damping_multiplier;
     /** The damping at each vertex */
     typename std::conditional<IsFirstOrder, std::vector<Real>, std::monostate>::type _vertex_B;
+    /** Per-frame damping updates at each vertex */
+    typename std::conditional<IsFirstOrder, std::vector<Real>, std::monostate>::type _vertex_B_updates;
     /** The "relative" damping component of B */
     typename std::conditional<IsFirstOrder, MatXr, std::monostate>::type _B_rel;
     /** The "absolute" damping component of B */
