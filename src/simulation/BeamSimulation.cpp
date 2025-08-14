@@ -23,7 +23,7 @@ void BeamSimulation::setup()
 
     _out_file << toString(0) << std::endl;
 
-    for (const auto& xpbd_mo : _objects.template get<std::unique_ptr<XPBDMeshObject_Base>>()) 
+    for (const auto& xpbd_mo : _objects.template get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>()) 
     {
         Geometry::AABB aabb = xpbd_mo->boundingBox();
         std::vector<int> vertices_to_fix = xpbd_mo->mesh()->getVerticesWithY(aabb.min[1]);
@@ -41,7 +41,7 @@ void BeamSimulation::setup()
 
     // write appropriate CSV column headers
     _out_file << "\nTime(s)";
-    for (const auto& xpbd_mo : _objects.template get<std::unique_ptr<XPBDMeshObject_Base>>())
+    for (const auto& xpbd_mo : _objects.template get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>())
     {
         std::regex r("\\s+");
         const std::string& name = std::regex_replace(xpbd_mo->name(), r, "");
@@ -58,32 +58,30 @@ void BeamSimulation::setup()
 
 void BeamSimulation::printInfo() const
 {
-    // _out_file << _time;
-    // for (size_t i = 0; i < _objects.size(); i++) {
+    _out_file << _time;
+    const std::vector<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>& fo_xpbd_objs = _objects.template get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+    for (unsigned i = 0; i < fo_xpbd_objs.size(); i++)
+    {
+        const Vec3r& beam_deflection = _beams_tip_start[i] - fo_xpbd_objs[i]->mesh()->vertex(_beams_tip_vertex[i]);
 
-    //     if (XPBDMeshObject_Base* xpbd = dynamic_cast<XPBDMeshObject_Base*>(_objects[i].get()))
-    //     {
-    //         const Vec3r& beam_deflection = _beams_tip_start[i] - xpbd->mesh()->vertex(_beams_tip_vertex[i]);
-
-    //         Real dynamics_residual = 0;
-    //         Real primary_residual = 0;
-    //         Real constraint_residual = 0;
-    //         Real volume_ratio = 1;
+        Real dynamics_residual = 0;
+        Real primary_residual = 0;
+        Real constraint_residual = 0;
+        Real volume_ratio = 1;
+    
+        // TODO: get residuals from solver somehow
         
-    //         // TODO: get residuals from solver somehow
-            
-    //         // VecXr pres_vec = xpbd->solver()->primaryResidual();
-    //         // primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
-    //         // VecXr cres_vec = xpbd->solver()->constraintResidual();
-    //         // constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
+        // VecXr pres_vec = xpbd->solver()->primaryResidual();
+        // primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
+        // VecXr cres_vec = xpbd->solver()->constraintResidual();
+        // constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
 
-    //         _out_file << " " << beam_deflection[0] << " " << beam_deflection[2] << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio;
-    //     }
+        _out_file << " " << beam_deflection[0] << " " << beam_deflection[2] << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio;
 
         
         
-    // }
-    // _out_file << std::endl;
+    }
+    _out_file << std::endl;
 }
 
 } // namespace Sim

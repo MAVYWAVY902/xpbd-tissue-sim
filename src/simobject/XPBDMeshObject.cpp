@@ -267,23 +267,29 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         }
 
         // calculate B_rel matrix
-        Real frac = 0.5;
-        _B_rel = MatXr::Zero(_mesh->numVertices(), _mesh->numVertices());
+        Real frac = 10;
+        _B_rel = MatXr::Zero(_mesh->numVertices()*3, _mesh->numVertices()*3);
         for (int vi = 0; vi < _mesh->numVertices(); vi++)
         {
-            _B_rel(vi,vi) = _vertex_B[vi]*frac;
+            _B_rel(3*vi,3*vi) = _vertex_B[vi]*frac;
+            _B_rel(3*vi+1, 3*vi+1) = _vertex_B[vi]*frac;
+            _B_rel(3*vi+2, 3*vi+2) = _vertex_B[vi]*frac;
 
             for (const auto& adj_vert : _vertex_adjacent_vertices[vi])
             {
-                _B_rel(vi, adj_vert) = -_B_rel(vi,vi) / _vertex_adjacent_vertices[vi].size();
+                Real val = -_B_rel(3*vi,3*vi) / _vertex_adjacent_vertices[vi].size();
+                _B_rel(3*vi, 3*adj_vert) = val; 
+                _B_rel(3*vi+1, 3*adj_vert+1) = val;
+                _B_rel(3*vi+2, 3*adj_vert+2) = val;
             }
         }
 
         // calculate B_abs matrix
-        _B_abs = MatXr::Zero(_mesh->numVertices(), _mesh->numVertices());
+        _B_abs = MatXr::Zero(_mesh->numVertices()*3, _mesh->numVertices()*3);
         for (int vi = 0; vi < _mesh->numVertices(); vi++)
         {
-            _B_abs(vi,vi) = _vertex_B[vi];
+            for (int k = 0; k < 3; k++)
+                _B_abs(3*vi+k,3*vi+k) = _vertex_B[vi];
         }
         
         // calculate B^-1
@@ -346,11 +352,19 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
             
             if constexpr (IsFirstOrder)
             {
-                // Eigen::Matrix<Real,12,12> B_e_inv = _elementBInv(i);
-                Eigen::Matrix<Real,12,12> B_e_inv = Eigen::Matrix<Real,12,12>::Zero();
-                for (int k = 0; k < 4; k++)
-                    for (int l = 0; l < 3; l++)
-                        B_e_inv(3*k+l, 3*k+l) = 1/vertexConstraintInertia(element[k]);
+                Eigen::Matrix<Real,12,12> B_e_inv;
+                if (_accelerate_convergence)
+                {
+                    B_e_inv = _elementBInv(i);
+                }
+                else
+                {
+                    B_e_inv = Eigen::Matrix<Real,12,12>::Zero();
+                    for (int k = 0; k < 4; k++)
+                        for (int l = 0; l < 3; l++)
+                            B_e_inv(3*k+l, 3*k+l) = 1/vertexConstraintInertia(element[k]);
+                }
+                
 
                 _solver.addConstraintProjector(_sim->dt(), 
                     B_e_inv,
@@ -395,54 +409,74 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_m
         // reset the damping updates
         _vertex_B_updates.assign(_mesh->numVertices(), 0);
 
+        // if (_accelerate_convergence)
+        // {
+        //     // run through each element and compute the deformation gradient
+        //     const std::vector<Solver::DeviatoricConstraint>& dev_constraints = _constraints.template get<Solver::DeviatoricConstraint>();
+        //     int num_deformed_elements = 0;
+        //     for (int i = 0; i < tetMesh()->numElements(); i++)
+        //     {
+        //         const Solver::DeviatoricConstraint& constraint = dev_constraints[i];
+        //         Mat3r F = constraint.computeF();
+        //         // Real err = (F - Mat3r::Identity()).reshaped().norm();
+        //         Real hyd_err = (F.determinant() - 1);
+        //         Real dev_err = ((F.transpose()*F).trace() - 3);
+        //         Real err = hyd_err*hyd_err + dev_err*dev_err;
+        //         // std::cout << "err: " << err << std::endl;
+        //         bool tet_in_rest_configuration = (err < 1e-8);
+
+        //         // set projector validity based on if element is in rest configuration
+        //         using ProjectorType = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
+        //         if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+        //         {
+        //             _solver.template setProjectorValidity<ProjectorType>(i, !tet_in_rest_configuration);
+        //         }
+
+        //         // if element is in its rest configuration, subtract 50% of its damping contribution to each of its vertices
+        //         if (tet_in_rest_configuration)
+        //         {
+        //             // std::cout << "Tet in rest config!" << std::endl;
+        //             const Eigen::Vector4i& element = tetMesh()->element(i);
+        //             const Real volume = tetMesh()->elementRestVolume(i);
+        //             _vertex_B_updates[element[0]] -= 0.9 * (volume*_damping_multiplier/4.0);
+        //             _vertex_B_updates[element[1]] -= 0.9 * (volume*_damping_multiplier/4.0);
+        //             _vertex_B_updates[element[2]] -= 0.9 * (volume*_damping_multiplier/4.0);
+        //             _vertex_B_updates[element[3]] -= 0.9 * (volume*_damping_multiplier/4.0);
+        //         }
+        //         else
+        //         {
+        //             num_deformed_elements++;
+        //         }
+        //     }
+
+        //     std::cout << "Number of deformed elements: " << num_deformed_elements << "/" << tetMesh()->numElements() << std::endl;
+        // }
+
+        // assemble force vector - TODO: change this to preallocated
         if (_accelerate_convergence)
         {
-            // run through each element and compute the deformation gradient
-            const std::vector<Solver::DeviatoricConstraint>& dev_constraints = _constraints.template get<Solver::DeviatoricConstraint>();
-            int num_deformed_elements = 0;
-            for (int i = 0; i < tetMesh()->numElements(); i++)
+            VecXr force_vector(_mesh->numVertices()*3);
+            for (int i = 0; i < _mesh->numVertices(); i++)
             {
-                const Solver::DeviatoricConstraint& constraint = dev_constraints[i];
-                Mat3r F = constraint.computeF();
-                // Real err = (F - Mat3r::Identity()).reshaped().norm();
-                Real hyd_err = (F.determinant() - 1);
-                Real dev_err = ((F.transpose()*F).trace() - 3);
-                Real err = hyd_err*hyd_err + dev_err*dev_err;
-                // std::cout << "err: " << err << std::endl;
-                bool tet_in_rest_configuration = (err < 1e-8);
-
-                // set projector validity based on if element is in rest configuration
-                using ProjectorType = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
-                if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
-                {
-                    _solver.template setProjectorValidity<ProjectorType>(i, !tet_in_rest_configuration);
-                }
-
-                // if element is in its rest configuration, subtract 50% of its damping contribution to each of its vertices
-                if (tet_in_rest_configuration)
-                {
-                    // std::cout << "Tet in rest config!" << std::endl;
-                    const Eigen::Vector4i& element = tetMesh()->element(i);
-                    const Real volume = tetMesh()->elementRestVolume(i);
-                    _vertex_B_updates[element[0]] -= 0.9 * (volume*_damping_multiplier/4.0);
-                    _vertex_B_updates[element[1]] -= 0.9 * (volume*_damping_multiplier/4.0);
-                    _vertex_B_updates[element[2]] -= 0.9 * (volume*_damping_multiplier/4.0);
-                    _vertex_B_updates[element[3]] -= 0.9 * (volume*_damping_multiplier/4.0);
-                }
-                else
-                {
-                    num_deformed_elements++;
-                }
+                force_vector(Eigen::seqN(3*i,3)) = Vec3r(0, 0, -_sim->gAccel() * _vertex_masses[i]);
             }
 
-            std::cout << "Number of deformed elements: " << num_deformed_elements << "/" << tetMesh()->numElements() << std::endl;
+            VecXr dt_Binv_F = dt * (_B_inv * force_vector);
+            for (int i = 0; i < _mesh->numVertices(); i++)
+            {
+                // const Real dz = -_sim->gAccel() * _vertex_masses[i] * dt / (_vertex_B[i] + _vertex_B_updates[i]);
+                _mesh->displaceVertex(i, dt_Binv_F(Eigen::seqN(3*i,3)));
+            }
         }
-
-        for (int i = 0; i < _mesh->numVertices(); i++)
+        else
         {
-            const Real dz = -_sim->gAccel() * _vertex_masses[i] * dt / (_vertex_B[i] + _vertex_B_updates[i]);
-            _mesh->displaceVertex(i, Vec3r(0, 0, dz));
+            for (int i = 0; i < _mesh->numVertices(); i++)
+            {
+                const Real dz = -_sim->gAccel() * _vertex_masses[i] * dt / _vertex_B[i];
+                _mesh->displaceVertex(i, Vec3r(0,0,dz));
+            }
         }
+        
     }
     else
     {
@@ -507,9 +541,11 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
     if constexpr (IsFirstOrder)
     {
         // VecXr B_rel_x_dot(_mesh->numVertices()*3);
-        // VecXr x_dot(_mesh->numVertices()*3);
-        MatXr B_rel_x_dot = _B_rel * _vertex_velocities.transpose();
-        std::cout << "B_rel * x_dot norm: " <<  B_rel_x_dot.reshaped().norm() << std::endl;
+        VecXr x_dot(_mesh->numVertices()*3);
+        for (int i = 0; i < _mesh->numVertices(); i++)
+            x_dot(Eigen::seqN(3*i,3)) = vertexVelocity(i);
+            
+        // std::cout << "B_rel * x_dot norm: " <<  (_B_rel*x_dot).norm() << std::endl;
     }
 }
 

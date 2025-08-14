@@ -211,11 +211,14 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
                 {
                     for (int kj = 0; kj < 3; kj++)
                     {
-                        B_e_inv(3*pi + ki, 3*pj + kj) = _B_inv(element[pi], element[pj]);
+                        B_e_inv(3*pi + ki, 3*pj + kj) = _B_inv(3*element[pi]+ki, 3*element[pj]+kj);
                     }
                 }
             }
         }
+
+        // std::cout << "\n\nB_e_inv:\n" << B_e_inv << "\n_B_inv:\n" << _B_inv << std::endl;
+
         return B_e_inv;
     }
 
