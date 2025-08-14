@@ -35,12 +35,19 @@ class EmbreeMeshGeometry
     /** Returns a pointer to the vertices. */
     const float* vertices() const;
 
+    /** Returns a pointer to the initial vertices of the mesh. */
+    const float* initialVertices() const { return _initial_vertex_buffer.data(); }
+
     /** Copies mesh vertices to float vertex buffer. */
     void copyVertices();
 
     static void boundsFuncTriangle(const struct RTCBoundsFunctionArguments *args);
     static void intersectFuncTriangle(const RTCIntersectFunctionNArguments *args);
     static bool pointQueryFuncTriangle(RTCPointQueryFunctionArguments *args);
+
+    static void boundsFuncTriangleInitialVertices(const struct RTCBoundsFunctionArguments *args);
+    static void intersectFuncTriangleInitialVertices(const RTCIntersectFunctionNArguments *args);
+    static bool pointQueryFuncTriangleInitialVertices(RTCPointQueryFunctionArguments *args);
 
     private:
 
@@ -54,6 +61,7 @@ class EmbreeMeshGeometry
 
     const Geometry::Mesh* _mesh;
     std::vector<float> _vertex_buffer;
+    std::vector<float> _initial_vertex_buffer;
     unsigned _mesh_geom_id;
 
     unsigned _undeformed_mesh_geom_id;

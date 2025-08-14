@@ -74,9 +74,9 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
     rtcSetGeometryPointQueryFunction(rtc_geom, EmbreeMeshGeometry::pointQueryFuncTriangle);
 
     // set custom callbacks
-    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangle, &geom);
-    rtcSetGeometryIntersectFunction(rtc_undeformed_geom, EmbreeMeshGeometry::intersectFuncTriangle);
-    rtcSetGeometryPointQueryFunction(rtc_undeformed_geom, EmbreeMeshGeometry::pointQueryFuncTriangle);
+    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangleInitialVertices, &geom);
+    rtcSetGeometryIntersectFunction(rtc_undeformed_geom, EmbreeMeshGeometry::intersectFuncTriangleInitialVertices);
+    rtcSetGeometryPointQueryFunction(rtc_undeformed_geom, EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices);
 
     // commit geometry to scene
     rtcCommitGeometry(rtc_geom);
@@ -151,9 +151,9 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     rtcSetGeometryPointQueryFunction(rtc_tet_mesh_geom, EmbreeTetMeshGeometry::pointQueryFuncTetrahedra);
 
     // set custom callbacks
-    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangle, &geom);
-    rtcSetGeometryIntersectFunction(rtc_undeformed_geom, EmbreeMeshGeometry::intersectFuncTriangle);
-    rtcSetGeometryPointQueryFunction(rtc_undeformed_geom, EmbreeMeshGeometry::pointQueryFuncTriangle);
+    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangleInitialVertices, &geom);
+    rtcSetGeometryIntersectFunction(rtc_undeformed_geom, EmbreeMeshGeometry::intersectFuncTriangleInitialVertices);
+    rtcSetGeometryPointQueryFunction(rtc_undeformed_geom, EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices);
 
     // commit geometry to scene
     rtcCommitGeometry(rtc_mesh_geom);
@@ -242,22 +242,22 @@ EmbreeHit EmbreeScene::castRay(const Vec3r& ray_origin, const Vec3r& ray_dir) co
 EmbreeHit EmbreeScene::closestPointSurfaceMesh(const Vec3r& point, const Sim::MeshObject* obj_ptr) const
 {
     const EmbreeMeshGeometry* geom = _mesh_to_embree_geom.at(obj_ptr);
-    return _closestPointQuery(point, obj_ptr, geom, _ray_scene);
+    return _closestPointQuery(point, obj_ptr, geom);
 }
 
 EmbreeHit EmbreeScene::closestPointTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const
 {
     const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
-    return _closestPointQuery(point, obj_ptr, geom, _ray_scene);
+    return _closestPointQuery(point, obj_ptr, geom);
 }
 
 EmbreeHit EmbreeScene::closestPointUndeformedTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const
 {
     const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
-    return _closestPointQuery(point, obj_ptr, geom, geom->undeformedScene());
+    return _closestPointQueryUndeformed(point, obj_ptr, geom);
 }
 
-EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom, RTCScene scene) const
+EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const
 {
     EmbreeClosestPointQueryUserData point_query_data;
     point_query_data.obj_ptr = obj_ptr;
@@ -275,7 +275,31 @@ EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObj
 
     RTCPointQueryContext context;
     rtcInitPointQueryContext(&context);
-    rtcPointQuery(scene, &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangle, &point_query_data);
+    rtcPointQuery(_ray_scene, &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangle, &point_query_data);
+
+    return point_query_data.result;
+
+}
+
+EmbreeHit EmbreeScene::_closestPointQueryUndeformed(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const
+{
+    EmbreeClosestPointQueryUserData point_query_data;
+    point_query_data.obj_ptr = obj_ptr;
+    point_query_data.geom = geom;
+
+    float p[3];
+    p[0] = point[0]; p[1] = point[1]; p[2] = point[2];
+    point_query_data.point = p;
+
+    RTCPointQuery query;
+    query.x = p[0];
+    query.y = p[1];
+    query.z = p[2];
+    query.radius = std::numeric_limits<float>::infinity(); // the query radius will get refined as we go
+
+    RTCPointQueryContext context;
+    rtcInitPointQueryContext(&context);
+    rtcPointQuery(geom->undeformedScene(), &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices, &point_query_data);
 
     return point_query_data.result;
 

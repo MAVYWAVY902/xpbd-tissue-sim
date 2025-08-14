@@ -125,7 +125,8 @@ class EmbreeScene
     std::set<EmbreeHit> tetMeshSelfCollisionQuery(int vertex_index, const Sim::TetMeshObject* obj_ptr) const;
 
     private:
-    EmbreeHit _closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom, RTCScene scene) const;
+    EmbreeHit _closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const;
+    EmbreeHit _closestPointQueryUndeformed(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const;
 
     /** Embree device and scene */
     RTCDevice _device;

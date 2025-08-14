@@ -727,6 +727,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
         {
             int face_index = _sdf->closestSurfaceFaceToPointInTet(_mesh->vertex(i), hits.begin()->prim_index);
 
+            if (face_index < 0)
+                continue;
+
             const Eigen::Vector3i& face = _mesh->face(face_index);
 
             Real* q_ptr = _mesh->vertexPointer(i);
@@ -740,7 +743,11 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
             Real p3m = vertexConstraintInertia(face[2]);
 
             
-            std::cout << " SELF COLLISION WITH VERTEX " << i << " WITH FACE " << face_index << "!" << std::endl;
+            std::cout << "  SELF COLLISION WITH VERTEX " << i << " WITH FACE " << face_index << "!" << std::endl;
+            std::cout << "  Tet indices: " << tetMesh()->element(hits.begin()->prim_index).transpose() << std::endl;
+            std::cout << "  Face indices: " << face.transpose() << std::endl;
+            // std::cout << "  Vertex: " << _mesh->vertex(i).transpose() << 
+            //     "  Face:\n\t" << _mesh->vertex(face[0]).transpose() << ",\n\t" << _mesh->vertex(face[1]).transpose()  << ",\n\t" << _mesh->vertex(face[2]).transpose() << std::endl;
             std::vector<Solver::DeformableDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::DeformableDeformableCollisionConstraint>();
             constraint_vec.emplace_back(i, q_ptr, qm, face[0], p1_ptr, p1m, face[1], p2_ptr, p2m, face[2], p3_ptr, p3m);
 
