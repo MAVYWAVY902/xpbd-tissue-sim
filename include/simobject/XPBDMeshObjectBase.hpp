@@ -183,6 +183,12 @@ public:
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() = 0;
 
+    /** Performs a check for self collision.
+     * If any surface vertices are inside tetrahedra (queries made using Embree), add a collision constraint to fix that.
+     * Assumes that the Embree scene is up to date.
+     */
+    virtual void selfCollisionCheck() = 0;
+
 
     /** === Miscellaneous useful methods === */
 

@@ -66,6 +66,9 @@ public:
     /** Returns a single vertex as an Eigen 3-vector, given the vertex index. */
     Vec3r vertex(const int index) const { return _vertices.col(index); }
 
+    /** Returns whether or not the vertex is on the surface of the mesh. */
+    bool vertexOnSurface(int index) const { const auto& prop = getVertexProperty<bool>("surface"); return prop.get(index); }
+
     /** Returns a pointer to the vertex data in memory, given the vertex index.
      * This is useful to avoid multiple pointer dereferences in critical code sections (i.e. the Constraint projection)
      */

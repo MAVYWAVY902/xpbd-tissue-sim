@@ -10,11 +10,17 @@ namespace Geometry
 {
 
 EmbreeMeshGeometry::EmbreeMeshGeometry(const Geometry::Mesh* mesh)
-: _mesh(mesh)
+: _mesh(mesh), _undeformed_scene(nullptr)
 {
     // if double precision is being used in the sim, we must allocate space fo the float vertex buffer
     if constexpr (std::is_same_v<Real, double>)
         _vertex_buffer.resize(mesh->numVertices()*3);
+}
+
+EmbreeMeshGeometry::~EmbreeMeshGeometry()
+{
+    if (_undeformed_scene)
+        rtcReleaseScene(_undeformed_scene);
 }
 
 const float* EmbreeMeshGeometry::vertices() const

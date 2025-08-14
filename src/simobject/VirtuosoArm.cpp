@@ -629,7 +629,7 @@ std::vector<VirtuosoArm::TubeIntegrationState::VecType> VirtuosoArm::_integrateT
         const Vec3r u = params.precurvature + params.K_inv.asDiagonal() * state.orientation.transpose() * state.internal_moment;
 
         // R_dot = R * u^
-        state_dot.orientation = state.orientation * Skew3(u);
+        state_dot.orientation = state.orientation * MathUtils::Skew3(u);
 
         // internal force is constant ==> n_dot = 0
         state_dot.internal_force = Vec3r::Zero();
@@ -648,7 +648,7 @@ std::vector<VirtuosoArm::TubeIntegrationState::VecType> VirtuosoArm::_integrateT
     params.precurvature = u_star;
     params.K_inv = K_inv;
 
-    return RK4<TubeIntegrationState::VecType, TubeIntegrationParams>(TubeIntegrationState::toVec(tube_base_state), s, params, ode_func);
+    return MathUtils::RK4<TubeIntegrationState::VecType, TubeIntegrationParams>(TubeIntegrationState::toVec(tube_base_state), s, params, ode_func);
 }
 
 template <typename ForceIterator>
@@ -669,7 +669,7 @@ std::vector<VirtuosoArm::TubeIntegrationState::VecType> VirtuosoArm::_integrateT
         const Vec3r u = params.precurvature + params.K_inv.asDiagonal() * state.orientation.transpose() * state.internal_moment;
 
         // R_dot = R * u^
-        state_dot.orientation = state.orientation * Skew3(u);
+        state_dot.orientation = state.orientation * MathUtils::Skew3(u);
 
         // internal force is constant ==> n_dot = 0
         state_dot.internal_force = Vec3r::Zero();
@@ -726,7 +726,7 @@ std::vector<VirtuosoArm::TubeIntegrationState::VecType> VirtuosoArm::_integrateT
         const Vec3r current_internal_force = TubeIntegrationState::internalForceFromVec(states[int_start]);
         TubeIntegrationState::setInternalForceInVec(states[int_start], current_internal_force - applied_force);
 
-        RK4<TubeIntegrationState::VecType, TubeIntegrationParams>(states[int_start], s.cbegin()+int_start, s.cbegin()+int_end+1, params, ode_func, states.begin()+int_start);
+        MathUtils::RK4<TubeIntegrationState::VecType, TubeIntegrationParams>(states[int_start], s.cbegin()+int_start, s.cbegin()+int_end+1, params, ode_func, states.begin()+int_start);
     }
 
     return states;

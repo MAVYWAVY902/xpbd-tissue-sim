@@ -165,6 +165,13 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      */
     virtual MatXr stiffnessMatrix() const override;
 
+    /** Performs a check for self collision.
+     * If any surface vertices are inside tetrahedra (queries made using Embree), add a collision constraint to fix that.
+     * Assumes that the Embree scene is up to date.
+     */
+    virtual void selfCollisionCheck() override;
+
+
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override;
     virtual XPBDMeshObjectGPUResource* gpuResource() override;

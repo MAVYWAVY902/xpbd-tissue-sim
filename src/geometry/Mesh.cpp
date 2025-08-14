@@ -16,6 +16,17 @@ Mesh::Mesh(const VerticesMat& vertices, const FacesMat& faces)
 {
     AABB bbox = boundingBox();
     _unrotated_size_xyz = bbox.size();
+
+    // create surface vertex property
+    addVertexProperty<bool>("surface");
+    auto& surface_property = getVertexProperty<bool>("surface");
+    for (int i = 0; i < numFaces(); i++)
+    {
+        const Eigen::Vector3i& cur_face = face(i);
+        surface_property.set(cur_face[0], true);
+        surface_property.set(cur_face[1], true);
+        surface_property.set(cur_face[2], true);
+    }
 }
 
 Mesh::Mesh(const Mesh& other)
@@ -23,6 +34,8 @@ Mesh::Mesh(const Mesh& other)
     _vertices = other._vertices;
     _faces = other._faces;
     _unrotated_size_xyz = other._unrotated_size_xyz;
+    _vertex_properties = other._vertex_properties;
+    _face_properties = other._face_properties;
 
     // NOTE: we do NOT do anything with the GPU resource - if we are copying this mesh, we don't want to just automatically create a new GPU resource if we don't need to
     // (we can't copy the GPU resource since it's a unique_ptr)
@@ -33,6 +46,8 @@ Mesh::Mesh(Mesh&& other)
     _vertices = std::move(other._vertices);
     _faces = std::move(other._faces);
     _unrotated_size_xyz = std::move(other._unrotated_size_xyz);
+    _vertex_properties = std::move(other._vertex_properties);
+    _face_properties = std::move(other._face_properties);
 
  #ifdef HAVE_CUDA
     _gpu_resource = std::move(other._gpu_resource);

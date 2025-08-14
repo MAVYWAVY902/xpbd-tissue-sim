@@ -87,13 +87,18 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
     _lambda[1] += dlam[1];
 
     // compute position updates
+    Eigen::Map<Vec2r> dlam_vec(dlam);
+    Eigen::Vector<Real, 12> pos_updates_vec = _B_e_inv * delC_mat.transpose() * dlam_vec;
     Real* delC_c2 = delC + HydrostaticConstraint::NUM_COORDINATES;
     for (int i = 0; i < DeviatoricConstraint::NUM_POSITIONS; i++)
     {
-        Real update_x = _constraint1->positions()[i].inv_mass * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]);
-        Real update_y = _constraint1->positions()[i].inv_mass * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]);
-        Real update_z = _constraint1->positions()[i].inv_mass * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]);
+        // Real update_x = _constraint1->positions()[i].inv_mass * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]);
+        // Real update_y = _constraint1->positions()[i].inv_mass * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]);
+        // Real update_z = _constraint1->positions()[i].inv_mass * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]);
         
+        Real update_x = pos_updates_vec[3*i];
+        Real update_y = pos_updates_vec[3*i+1];
+        Real update_z = pos_updates_vec[3*i+2];
         coordinate_updates_ptr[3*i].ptr = _constraint1->positions()[i].position_ptr;
         coordinate_updates_ptr[3*i].update = update_x;
         coordinate_updates_ptr[3*i+1].ptr = _constraint1->positions()[i].position_ptr+1;

@@ -11,6 +11,7 @@
 #include "solver/xpbd_solver/XPBDParallelJacobiSolver.hpp"
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
+#include "solver/constraint/DeformableDeformableCollisionConstraint.hpp"
 #include "solver/constraint/HydrostaticConstraint.hpp"
 #include "solver/constraint/DeviatoricConstraint.hpp"
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
@@ -37,7 +38,7 @@ template<bool IsFirstOrder>
 void XPBDMeshObject_Base_<IsFirstOrder>::createSDF()
 {
     if (!_sdf.has_value())
-        _sdf = SDFType(this, _sim->embreeScene());
+        _sdf.emplace(this, _sim->embreeScene());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -178,12 +179,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
     // set any collision constraint projectors in the solver invalid
     // NOTE: because the collision constraint
     using StaticCollisionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
+    using DeformableCollisionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::DeformableDeformableCollisionConstraint>;
     using RigidCollisionConstraintType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>;
     _solver.template clearProjectorsOfType<StaticCollisionConstraintType>();
+    _solver.template clearProjectorsOfType<DeformableCollisionConstraintType>();
     _solver.template clearProjectorsOfType<RigidCollisionConstraintType>();
 
     // clear the collision constraints lists
     _constraints.template clear<Solver::StaticDeformableCollisionConstraint>();
+    _constraints.template clear<Solver::DeformableDeformableCollisionConstraint>();
     _constraints.template clear<Solver::RigidDeformableCollisionConstraint>();
 
 
@@ -267,7 +271,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         }
 
         // calculate B_rel matrix
-        Real frac = 10;
+        Real frac = 0.5;
         _B_rel = MatXr::Zero(_mesh->numVertices()*3, _mesh->numVertices()*3);
         for (int vi = 0; vi < _mesh->numVertices(); vi++)
         {
@@ -705,6 +709,45 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
         }
     }
     return stiffness_matrix;
+    
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::selfCollisionCheck()
+{
+    std::cout << "Self collision check..." << std::endl;
+    const Geometry::EmbreeScene* embree_scene = _sim->embreeScene();
+    for (int i = 0; i < _mesh->numVertices(); i++)
+    {
+        if (!_mesh->vertexOnSurface(i))
+            continue;
+
+        std::set<Geometry::EmbreeHit> hits = embree_scene->tetMeshSelfCollisionQuery(i, this);
+        if (hits.size() > 0)
+        {
+            int face_index = _sdf->closestSurfaceFaceToPointInTet(_mesh->vertex(i), hits.begin()->prim_index);
+
+            const Eigen::Vector3i& face = _mesh->face(face_index);
+
+            Real* q_ptr = _mesh->vertexPointer(i);
+            Real* p1_ptr = _mesh->vertexPointer(face[0]);
+            Real* p2_ptr = _mesh->vertexPointer(face[1]);
+            Real* p3_ptr = _mesh->vertexPointer(face[2]);
+
+            Real qm = vertexConstraintInertia(i);
+            Real p1m = vertexConstraintInertia(face[0]);
+            Real p2m = vertexConstraintInertia(face[1]);
+            Real p3m = vertexConstraintInertia(face[2]);
+
+            
+            std::cout << " SELF COLLISION WITH VERTEX " << i << " WITH FACE " << face_index << "!" << std::endl;
+            std::vector<Solver::DeformableDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::DeformableDeformableCollisionConstraint>();
+            constraint_vec.emplace_back(i, q_ptr, qm, face[0], p1_ptr, p1m, face[1], p2_ptr, p2m, face[2], p3_ptr, p3m);
+
+            using ConstraintRefType = Solver::ConstraintReference<Solver::DeformableDeformableCollisionConstraint>;
+            _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
+        }
+    }
     
 }
 

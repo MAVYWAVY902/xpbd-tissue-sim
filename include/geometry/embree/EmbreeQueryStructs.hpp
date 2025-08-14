@@ -42,6 +42,7 @@ struct EmbreePointQueryUserData
     const EmbreeTetMeshGeometry* geom;  // the geometry being queried
     std::set<EmbreeHit> result;          // the "result" of the point query - i.e. unique list of elements the point is inside
     const float* point;                 // the query point
+    int vertex_ind;                     // (for self-collision queries) the vertex index of the queried point - used to exclude tetrahedra that contain the vertex
 };
 
 /** User-defined Embree point query data for closest point queries. */

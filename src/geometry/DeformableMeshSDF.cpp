@@ -5,10 +5,29 @@
 namespace Geometry
 {
 DeformableMeshSDF::DeformableMeshSDF(const Sim::TetMeshObject* mesh_obj, const EmbreeScene* embree_scene)
-    : _mesh_obj(mesh_obj), _embree_scene(embree_scene)
+    : _mesh_obj(mesh_obj),
+     _initial_vertices(mesh_obj->mesh()->vertices()),
+    // _sdf(mesh_obj->mesh()->vertices(), mesh_obj->mesh()->faces(), 128),
+    _embree_scene(embree_scene)
 {
 
 }
+
+// DeformableMeshSDF::DeformableMeshSDF(const DeformableMeshSDF& other)
+// {
+//     _mesh_obj = other._mesh_obj;
+//     _initial_vertices = other._initial_vertices;
+//     _sdf = other._sdf;
+//     _embree_scene = other._embree_scene;
+// }
+
+// DeformableMeshSDF::DeformableMeshSDF(DeformableMeshSDF&& other)
+// {
+//     _mesh_obj = std::move(other._mesh_obj);
+//     _initial_vertices = std::move(other._initial_vertices);
+//     _sdf = std::move(other._sdf);
+//     _embree_scene = std::move(other._embree_scene);
+// }
 
 Real DeformableMeshSDF::evaluate(const Vec3r& x) const
 {
@@ -26,13 +45,7 @@ Real DeformableMeshSDF::evaluate(const Vec3r& x) const
     //     return (hit.hit_point - x).norm();
     // }
     
-    // map query point back to undeformed configuration (Xm = F^-1 (x - v4) + v4)
-    // int elem_index = query_result.begin()->prim_index;
-    // const Mat3r F = _mesh_obj->tetMesh()->elementDeformationGradient(elem_index);
-    // const Eigen::Vector4i& elem = _mesh_obj->tetMesh()->element(elem_index);
-    // const Vec3r& v4 = _mesh_obj->tetMesh()->vertex(elem[3]);
-
-    // const Vec3r X_m = F.inverse() * (x - v4) + v4;
+    
 
     // query MeshSDF with Xm
     
@@ -50,6 +63,19 @@ Vec3r DeformableMeshSDF::gradient(const Vec3r& x) const
     // TODO
     EmbreeHit hit = _embree_scene->closestPointTetMesh(x, _mesh_obj);
     return (hit.hit_point - x).normalized();
+}
+
+int DeformableMeshSDF::closestSurfaceFaceToPointInTet(const Vec3r& x, int tet_index) const
+{
+    // map query point back to undeformed configuration (Xm = F^-1 (x - v4) + v4)
+    const Mat3r F = _mesh_obj->tetMesh()->elementDeformationGradient(tet_index);
+    const Eigen::Vector4i& elem = _mesh_obj->tetMesh()->element(tet_index);
+    const Vec3r& v4 = _mesh_obj->tetMesh()->vertex(elem[3]);
+
+    const Vec3r X_m = F.inverse() * (x - v4) + _initial_vertices.col(elem[3]);
+
+    EmbreeHit cp = _embree_scene->closestPointUndeformedTetMesh(X_m, _mesh_obj);
+    return cp.prim_index;
 }
 
 std::pair<int, Vec3r> DeformableMeshSDF::closestSurfacePoint(const Vec3r& x) const
