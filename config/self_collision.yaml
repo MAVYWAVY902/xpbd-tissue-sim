@@ -8,8 +8,8 @@ visualization: "Easy3D" # what graphics to use ('Easy3D' for Easy3D graphics or 
 g-accel: 9.81 # downward acceleration due to gravity (in the z-direction) [m/s2]
 
 ## different simulation "modes"
-sim-mode: "Frame-by-frame"  # "Frame-by-frame" lets you advance the simulation one frame at a time by pressing any key
-# sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
+# sim-mode: "Frame-by-frame"  # "Frame-by-frame" lets you advance the simulation one frame at a time by pressing any key
+sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
 # sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
 time-step: 1e-3   # simulation time step [s]
@@ -29,8 +29,8 @@ objects:
     # type: "XPBDMeshObject"          # use the standard, 2nd-order XPBD method
 
     ## filename to load from (.msh is GMSH's volumetric mesh format, but if .obj or .stl is provided, will automatically turn surface mesh to volume mesh)
-    filename: "../resource/general/stanford_bunny_lowpoly.msh"
-    # filename: "../resource/general/stanford_bunny_medpoly.msh"
+    # filename: "../resource/general/stanford_bunny_lowpoly.msh"
+    filename: "../resource/general/stanford_bunny_medpoly.msh"
     # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/general/single.msh"
     # filename: "../resource/cube/cube2.msh"
@@ -80,7 +80,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 20000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 50000   # 'b' from the 1st-Order XPBD paper
     accelerate-convergence: false
   
 

@@ -12,6 +12,31 @@ namespace Geometry
 TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const ElementsMat& elements)
     : Mesh(vertices, faces), _elements(elements)
 {
+    setCurrentStateAsUndeformedState();
+}
+
+TetMesh::TetMesh(const TetMesh& other)
+    : Mesh(other)
+{
+    _elements = other._elements;
+    _attached_elements_to_vertex = other._attached_elements_to_vertex;
+    _element_inv_undeformed_basis = other._element_inv_undeformed_basis;
+    _element_rest_volumes = other._element_rest_volumes;
+}
+
+TetMesh::TetMesh(TetMesh&& other)
+    : Mesh(other)
+{
+    _elements = std::move(other._elements);
+    _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);
+    _element_inv_undeformed_basis = std::move(other._element_inv_undeformed_basis);
+    _element_rest_volumes = std::move(other._element_rest_volumes);
+}
+
+void TetMesh::setCurrentStateAsUndeformedState()
+{
+    Mesh::setCurrentStateAsUndeformedState();
+
     // compute mesh properties
     _attached_elements_to_vertex.resize(numVertices());
     for (int i = 0; i < numElements(); i++)
@@ -45,24 +70,6 @@ TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const Eleme
     {
         _element_rest_volumes[i] = elementVolume(i);
     }
-}
-
-TetMesh::TetMesh(const TetMesh& other)
-    : Mesh(other)
-{
-    _elements = other._elements;
-    _attached_elements_to_vertex = other._attached_elements_to_vertex;
-    _element_inv_undeformed_basis = other._element_inv_undeformed_basis;
-    _element_rest_volumes = other._element_rest_volumes;
-}
-
-TetMesh::TetMesh(TetMesh&& other)
-    : Mesh(other)
-{
-    _elements = std::move(other._elements);
-    _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);
-    _element_inv_undeformed_basis = std::move(other._element_inv_undeformed_basis);
-    _element_rest_volumes = std::move(other._element_rest_volumes);
 }
 
 Real TetMesh::elementVolume(int index) const

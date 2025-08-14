@@ -29,7 +29,7 @@ void DeformableDeformableCollisionConstraint::evaluate(Real* C) const
     Real a_norm = a.norm();
 
 
-    *C = (q - p1).dot(a) / a_norm ;
+    *C = (q - p1).dot(a) / a_norm + 1e-4;
 
     std::cout << "Constraint: " << *C << std::endl;
 }

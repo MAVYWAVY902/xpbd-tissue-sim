@@ -57,6 +57,11 @@ public:
     /** Number of faces in the mesh. */
     int numFaces() const { return _faces.cols(); }
 
+    /** Essentially "sets up" the mesh - treats the current state as the initial, undeformed state of the mesh.
+     * This should be called after performing the initial translations and rotations setting up the mesh.
+     */
+    virtual void setCurrentStateAsUndeformedState() {} // nothing for now
+
     /** Updates the vertex normals in the mesh */
     void updateVertexNormals();
 

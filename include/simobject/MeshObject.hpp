@@ -55,6 +55,8 @@ class MeshObject
 
         // then do rigid transformation - rotation and translation
         _mesh->rotateAbout(_initial_position, _initial_rotation);
+
+        _mesh->setCurrentStateAsUndeformedState();
     }
 
     protected:

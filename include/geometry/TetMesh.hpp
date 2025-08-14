@@ -23,6 +23,11 @@ class TetMesh : public Mesh
 
     TetMesh(TetMesh&& other);
 
+    /** Essentially "sets up" the mesh - treats the current state as the initial, undeformed state of the mesh.
+     * This should be called after performing the initial translations and rotations setting up the mesh.
+     */
+    virtual void setCurrentStateAsUndeformedState() override;
+
     /** Returns a const-reference to the elements of the mesh. */
     const ElementsMat& elements() const { return _elements; }
 
