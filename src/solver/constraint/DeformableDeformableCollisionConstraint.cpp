@@ -9,11 +9,11 @@ DeformableDeformableCollisionConstraint::DeformableDeformableCollisionConstraint
                                                                         int fv1, Real* fp1, Real fm1,
                                                                         int fv2, Real* fp2, Real fm2,
                                                                         int fv3, Real* fp3, Real fm3)
-    : CollisionConstraint(std::vector<PositionReference>({
+    : Constraint(std::vector<PositionReference>({
     PositionReference(v, p, m),
     PositionReference(fv1, fp1, fm1),
     PositionReference(fv2, fp2, fm2),
-    PositionReference(fv3, fp3, fm3)}), Vec3r::Zero())
+    PositionReference(fv3, fp3, fm3)}), 1e-8)
 {
 
 }
@@ -29,9 +29,7 @@ void DeformableDeformableCollisionConstraint::evaluate(Real* C) const
     Real a_norm = a.norm();
 
 
-    *C = (q - p1).dot(a) / a_norm + 1e-4;
-
-    std::cout << "Constraint: " << *C << std::endl;
+    *C = (q - p1).dot(a) / a_norm + 1e-5;
 }
 
 void DeformableDeformableCollisionConstraint::gradient(Real* delC) const
@@ -86,7 +84,7 @@ StaticDeformableCollisionConstraint::GPUConstraintType StaticDeformableCollision
 }
 #endif
 
-void DeformableDeformableCollisionConstraint::applyFriction(Real, Real, Real) const {}
+// void DeformableDeformableCollisionConstraint::applyFriction(Real, Real, Real) const {}
 // inline virtual void applyFriction(Real lam, Real mu_s, Real mu_k) const override
 // {
 //     // since we are colliding with a static point/body, only need to apply frictional forces to the deformable body

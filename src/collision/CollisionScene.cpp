@@ -102,7 +102,7 @@ void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPB
 template <bool IsFirstOrder>
 void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj2)
 {
-    std::cout << "Colliding two deformable objects!" << std::endl;
+    // std::cout << "Colliding two deformable objects!" << std::endl;
     // deformable-deformable collision not supported for now
     if (xpbd_mesh_obj1 == xpbd_mesh_obj2)
     {

@@ -63,7 +63,7 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     damping-multiplier: 20000000000
     # damping-multiplier: 40000000000
-    collisions: true
+    collisions: false
 
     # rendering settings
     color: [1.0, 0.3, 0.2]

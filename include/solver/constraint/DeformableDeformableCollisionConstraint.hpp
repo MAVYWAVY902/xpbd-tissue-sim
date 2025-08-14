@@ -10,8 +10,8 @@
 namespace Solver
 {
 
-/** Collision constraint between a point on a static rigid body and a point on a deformable body. */
-class DeformableDeformableCollisionConstraint : public CollisionConstraint
+/** Collision constraint between a point on a point on a deformable body and a face on a deformable body. */
+class DeformableDeformableCollisionConstraint : public Constraint
 {
     public:
     constexpr static int NUM_POSITIONS = 4;
@@ -64,7 +64,7 @@ class DeformableDeformableCollisionConstraint : public CollisionConstraint
      * @param mu_s - the coefficient of static friction between the two bodies
      * @param mu_k - the coefficient of kinetic friction between the two bodies
      */
-    inline virtual void applyFriction(Real, Real, Real) const override;
+    // inline virtual void applyFriction(Real, Real, Real) const override;
     // inline virtual void applyFriction(Real lam, Real mu_s, Real mu_k) const override
     // {
     //     // since we are colliding with a static point/body, only need to apply frictional forces to the deformable body

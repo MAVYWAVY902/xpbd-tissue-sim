@@ -56,6 +56,8 @@ class MeshObject
         // then do rigid transformation - rotation and translation
         _mesh->rotateAbout(_initial_position, _initial_rotation);
 
+        // important: the current state of the mesh is the "initial" state that we would like to treat as the undeformed state
+        // as such, tell the mesh to recompute quantities so that it treats this state as the undeformed state
         _mesh->setCurrentStateAsUndeformedState();
     }
 

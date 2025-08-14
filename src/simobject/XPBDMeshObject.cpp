@@ -297,7 +297,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         }
         
         // calculate B^-1
-        _B_inv = (_B_rel + _B_abs).inverse();
+        // _B_inv = (_B_rel + _B_abs).inverse();
     }
     
 }
@@ -357,7 +357,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
             if constexpr (IsFirstOrder)
             {
                 Eigen::Matrix<Real,12,12> B_e_inv;
-                if (_accelerate_convergence)
+                if (_accelerate_convergence && false)
                 {
                     B_e_inv = _elementBInv(i);
                 }
@@ -457,7 +457,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_m
         // }
 
         // assemble force vector - TODO: change this to preallocated
-        if (_accelerate_convergence)
+        if (_accelerate_convergence && false)
         {
             VecXr force_vector(_mesh->numVertices()*3);
             for (int i = 0; i < _mesh->numVertices(); i++)
@@ -715,7 +715,7 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::selfCollisionCheck()
 {
-    std::cout << "Self collision check..." << std::endl;
+    // std::cout << "Self collision check..." << std::endl;
     const Geometry::EmbreeScene* embree_scene = _sim->embreeScene();
     for (int i = 0; i < _mesh->numVertices(); i++)
     {
@@ -743,9 +743,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
             Real p3m = vertexConstraintInertia(face[2]);
 
             
-            std::cout << "  SELF COLLISION WITH VERTEX " << i << " WITH FACE " << face_index << "!" << std::endl;
-            std::cout << "  Tet indices: " << tetMesh()->element(hits.begin()->prim_index).transpose() << std::endl;
-            std::cout << "  Face indices: " << face.transpose() << std::endl;
+            // std::cout << "  SELF COLLISION WITH VERTEX " << i << " WITH FACE " << face_index << "!" << std::endl;
+            // std::cout << "  Tet indices: " << tetMesh()->element(hits.begin()->prim_index).transpose() << std::endl;
+            // std::cout << "  Face indices: " << face.transpose() << std::endl;
             // std::cout << "  Vertex: " << _mesh->vertex(i).transpose() << 
             //     "  Face:\n\t" << _mesh->vertex(face[0]).transpose() << ",\n\t" << _mesh->vertex(face[1]).transpose()  << ",\n\t" << _mesh->vertex(face[2]).transpose() << std::endl;
             std::vector<Solver::DeformableDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::DeformableDeformableCollisionConstraint>();
