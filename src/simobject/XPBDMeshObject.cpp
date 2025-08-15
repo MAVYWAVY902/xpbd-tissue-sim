@@ -501,14 +501,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_p
     _solver.solve();
 
     // TODO: remove
-    for (int i = 0; i < _mesh->numVertices(); i++)
-    {
-        const Vec3r& v = _mesh->vertex(i);
-        if (v[2] < 0)
-        {
-            _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
-        }
-    }
+    // for (int i = 0; i < _mesh->numVertices(); i++)
+    // {
+    //     const Vec3r& v = _mesh->vertex(i);
+    //     if (v[2] < 0)
+    //     {
+    //         _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
+    //     }
+    // }
 
     // TODO: replace with constraints?
     // enforce fixed vertices (move them back to previous position)
@@ -715,7 +715,6 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::selfCollisionCheck()
 {
-    // std::cout << "Self collision check..." << std::endl;
     const Geometry::EmbreeScene* embree_scene = _sim->embreeScene();
     for (int i = 0; i < _mesh->numVertices(); i++)
     {

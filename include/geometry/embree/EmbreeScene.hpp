@@ -69,8 +69,17 @@ class EmbreeScene
     /** Add a surface mesh object to the EmbreeScene */
     void addObject(const Sim::MeshObject* obj);
 
-    /** Updates the Embree scene. */
+    /** Updates all Embree scenes. */
     void update();
+
+    /** Updates the Embree scenes for a specific object. */
+    void updateObject(const Sim::MeshObject* obj);
+
+    /** Updates the Embree scenes for a specific object. */
+    void updateObject(const Sim::TetMeshObject* obj);
+
+    /** Updates only the ray-casting scene but not the individual object scenes. */
+    void updateRayScene();
 
     /** Samples a point cloud from the surfaces of objects in the Embree scene from a given viewpoint.
      * Rays are cast from the view origin, with horizontal angles in [-hfov_deg/2, hfov_deg/2] and vertical angles in [-vfov_deg/2, vfov_deg/2].

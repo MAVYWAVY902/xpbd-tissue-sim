@@ -194,6 +194,41 @@ void EmbreeScene::update()
     rtcCommitScene(_ray_scene);
 }
 
+void EmbreeScene::updateObject(const Sim::MeshObject* /*mesh_obj*/)
+{
+    // don't need to do anything here since there are no dynamic scenes that EmbreeMeshGeometry owns 
+}
+
+void EmbreeScene::updateObject(const Sim::TetMeshObject* tet_mesh_obj)
+{
+    EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom[tet_mesh_obj];
+    geom->copyVertices(); 
+
+    RTCGeometry rtc_tet_mesh_geom = rtcGetGeometry(geom->tetScene(), geom->tetMeshGeomID());
+    rtcCommitGeometry(rtc_tet_mesh_geom);
+    rtcCommitScene(geom->tetScene());
+}
+
+void EmbreeScene::updateRayScene()
+{
+    for (auto& geom : _embree_mesh_geoms)
+    {
+        geom.copyVertices();
+        RTCGeometry rtc_geom = rtcGetGeometry(_ray_scene, geom.meshGeomID());
+        rtcCommitGeometry(rtc_geom);
+    }
+
+    for (auto& geom : _embree_tet_mesh_geoms)
+    {
+        // only update the ray scene geometry (not the tetrahedral mesh geometry)
+        geom.copyVertices();
+        RTCGeometry rtc_mesh_geom = rtcGetGeometry(_ray_scene, geom.meshGeomID());
+        rtcCommitGeometry(rtc_mesh_geom);
+    }
+
+    rtcCommitScene(_ray_scene);
+}
+
 EmbreeHit EmbreeScene::castRay(const Vec3r& ray_origin, const Vec3r& ray_dir) const
 {
     RTCRayHit rayhit;

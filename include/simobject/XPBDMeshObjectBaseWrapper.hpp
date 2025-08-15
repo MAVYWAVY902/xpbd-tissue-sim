@@ -85,6 +85,16 @@ public:
         }
     }
 
+    TetMeshObject* getAsTetMeshObject()
+    {
+        return std::visit([](auto& obj) { return (TetMeshObject*)obj; }, _variant);
+    }
+
+    const TetMeshObject* getAsTetMeshObject() const
+    {
+        return std::visit([](const auto& obj) { return (const TetMeshObject*)obj; }, _variant);
+    }
+
     /** === XPBDMeshObject_Base_ functionality === */
     /** TODO: should some of these methods use perfect forwarding? */
 
@@ -195,6 +205,11 @@ public:
     MatXr stiffnessMatrix() const
     {
         return std::visit([](const auto& obj) { return obj->stiffnessMatrix(); }, _variant);
+    }
+
+    void selfCollisionCheck()
+    {
+        return std::visit([](auto& obj) { return obj->selfCollisionCheck(); }, _variant);
     }
 
 
