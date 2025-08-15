@@ -271,9 +271,62 @@ class XPBDSolver
     // TODO: Actually implement this
     void _calculatePrimaryResidual() {}
 
-    /** Calculates the constraint residual (Equation (9) from XPBD paper). */
-    // TODO: Actually implement this
-    void _calculateConstraintResidual() {}
+    /** Calculates the constraint residual (Equation (9) from XPBD paper).
+     * This should be called AFTER solve() so that the constraint projectors have nonzero lambdas.
+     */
+    void _calculateConstraintResidual()
+    {
+        // resize constraint residual to the number of constraints
+        // due to inequality constraints being ignored, it may not be this large, but at least we guarantee we have enough space
+        _constraint_residual.resize(_num_constraints);
+
+        int constraint_index = 0;
+        this->_constraint_projectors.for_each_element([&](auto& proj)
+        {
+            if (!proj.isValid())
+                return;
+
+            using ProjectorType = std::remove_reference_t<decltype(proj)>;
+            // CombinedConstraintProjector case
+            if constexpr (ProjectorType::NUM_CONSTRAINTS == 2)
+            {
+                const auto& constraint1 = proj.constraint1();
+                const auto& constraint2 = proj.constraint2();
+                Real C1, C2;
+                constraint1->evaluate(&C1);
+                constraint2->evaluate(&C2);
+                Real alpha1 = constraint1->alpha();
+                Real alpha2 = constraint2->alpha();
+                Vec2r lambda = proj.lambda();
+
+                _constraint_residual[constraint_index++] = C1 + alpha1/(proj.dt()*proj.dt()) * lambda[0];
+                _constraint_residual[constraint_index++] = C2 + alpha2/(proj.dt()*proj.dt()) * lambda[1];
+            }
+
+            // single constraint projector case
+            else
+            {
+                const auto& constraint = proj.constraint();
+
+                // skip inequality constraints (for now)
+                if (constraint->isInequality())
+                    return;
+                
+                Real C;
+                constraint->evaluate(&C);
+                Real alpha = constraint->alpha();
+                Real lambda = proj.lambda();
+
+                _constraint_residual[constraint_index++] = C + alpha/(proj.dt()*proj.dt()) * lambda;
+            }
+
+        });
+
+        // resize the constraint residual down to the actual number of constraints included in the residual calculation
+        // this should just truncate the junk indices in the vector that we didn't fill out
+        _constraint_residual.resize(constraint_index);
+        
+    }
 
     protected:
     VariadicVectorContainer<ConstraintProjectors...> _constraint_projectors;    // stores the constraint projectors of different types

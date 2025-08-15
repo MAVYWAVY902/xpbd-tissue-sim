@@ -86,6 +86,13 @@ class CombinedConstraintProjector
     */
     const std::vector<PositionReference>& positions() const { return _constraint1->positions(); }
 
+    const ConstraintReference<Constraint1>& constraint1() const { return _constraint1; }
+    const ConstraintReference<Constraint2>& constraint2() const { return _constraint2; }
+
+    Vec2r lambda() const { return Vec2r(_lambda[0], _lambda[1]); }
+
+    Real dt() const { return _dt; }
+
     /** The constraint forces on each of the affected positions caused by this constraint.
      * @returns the constraint forces on each of the affected positions of this constraint. The returned vector is ordered such that
      * the forces are applied to the corresponding position at the same index in the positions() vector.
