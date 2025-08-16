@@ -50,7 +50,6 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::fixVertex;
     using Base::vertexFixed;
     using Base::vertexMass;
-    using Base::vertexAttachedElements;
     using Base::vertexVelocity;
     using Base::vertexPreviousPosition;
     using Base::vertexConstraintInertia;
@@ -64,8 +63,6 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::_material;
     using Base::_vertex_masses;
     using Base::_vertex_volumes;
-    using Base::_vertex_attached_elements;
-    using Base::_vertex_adjacent_vertices;
     using Base::_is_fixed_vertex;
     using Base::_sdf;
     using Base::_damping_multiplier;

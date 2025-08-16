@@ -60,7 +60,7 @@ public:
     /** Essentially "sets up" the mesh - treats the current state as the initial, undeformed state of the mesh.
      * This should be called after performing the initial translations and rotations setting up the mesh.
      */
-    virtual void setCurrentStateAsUndeformedState() {} // nothing for now
+    virtual void setCurrentStateAsUndeformedState();
 
     /** Updates the vertex normals in the mesh */
     void updateVertexNormals();
@@ -80,9 +80,11 @@ public:
     Real *vertexPointer(const int index) const;
 
     /** Sets the vertex at the specified to a new position. */
-    void setVertex(const int index, const Vec3r &new_pos) { _vertices.col(index) = new_pos; }
+    void setVertex(int index, const Vec3r &new_pos) { _vertices.col(index) = new_pos; }
 
-    void displaceVertex(const int index, const Vec3r &offset) { _vertices.col(index) += offset; }
+    void displaceVertex(int index, const Vec3r &offset) { _vertices.col(index) += offset; }
+
+    const std::vector<int>& vertexAdjacentVertices(int index) { return _vertex_adjacent_vertices[index]; }
 
     /** Displaces the vertex at the specified index by a certain amount. */
     //  void displaceVertex(const int index, const Real dx, const Real dy, const Real dz)
@@ -315,9 +317,17 @@ public:
 #endif
 
 protected:
+    /** Finds adjacent vertices for each vertex in the mesh.
+     * Two vertices are "adjacent" if they are connected by a face or element.
+     */
+    virtual void _computeAdjacentVertices();
+
+protected:
     VerticesMat _vertices; // the vertices of the mesh
     FacesMat _faces;       // the faces of the mesh
     VerticesMat _vertex_normals; // vertex normals of the mesh
+
+    std::vector<std::vector<int>> _vertex_adjacent_vertices;
 
     Vec3r _unrotated_size_xyz; // the size of the mesh in each dimension in its unrotated state
 

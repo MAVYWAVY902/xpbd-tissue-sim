@@ -223,8 +223,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     // calculate masses for each vertex
     _vertex_masses.resize(_mesh->numVertices());
     _vertex_volumes.resize(_mesh->numVertices());
-    _vertex_attached_elements.resize(_mesh->numVertices());
-    _vertex_adjacent_vertices.resize(_mesh->numVertices());
     _is_fixed_vertex.resize(_mesh->numVertices(), false);
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
@@ -246,18 +244,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         _vertex_volumes[element[1]] += volume/4.0;
         _vertex_volumes[element[2]] += volume/4.0;
         _vertex_volumes[element[3]] += volume/4.0;
-
-        // increment number of elements attached to each vertex in this element
-        _vertex_attached_elements[element[0]]++;
-        _vertex_attached_elements[element[1]]++;
-        _vertex_attached_elements[element[2]]++;
-        _vertex_attached_elements[element[3]]++;
-
-        // update the adjacent vertices list for each vertex in the element
-        _vertex_adjacent_vertices[element[0]].insert({element[1], element[2], element[3]});
-        _vertex_adjacent_vertices[element[1]].insert({element[0], element[2], element[3]});
-        _vertex_adjacent_vertices[element[2]].insert({element[0], element[1], element[3]});
-        _vertex_adjacent_vertices[element[3]].insert({element[0], element[1], element[2]});
     }
 
     // for 1st-order objects, calculate per-vertex damping
@@ -279,9 +265,10 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
             _B_rel(3*vi+1, 3*vi+1) = _vertex_B[vi]*frac;
             _B_rel(3*vi+2, 3*vi+2) = _vertex_B[vi]*frac;
 
-            for (const auto& adj_vert : _vertex_adjacent_vertices[vi])
+            const std::vector<int>& adj_verts = _mesh->vertexAdjacentVertices(vi);
+            for (const auto& adj_vert : adj_verts)
             {
-                Real val = -_B_rel(3*vi,3*vi) / _vertex_adjacent_vertices[vi].size();
+                Real val = -_B_rel(3*vi,3*vi) / adj_verts.size();
                 _B_rel(3*vi, 3*adj_vert) = val; 
                 _B_rel(3*vi+1, 3*adj_vert+1) = val;
                 _B_rel(3*vi+2, 3*adj_vert+2) = val;
