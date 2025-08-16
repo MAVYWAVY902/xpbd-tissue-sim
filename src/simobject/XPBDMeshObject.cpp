@@ -538,6 +538,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
     //     }
     // }
 
+    for (int i = 0; i < tetMesh()->numElements(); i++)
+    {
+        Mat3r F = tetMesh()->elementDeformationGradient(i);
+        if (F.determinant() < 0)
+        {
+            std::cout << "det(F) < 0 for element " << i << std::endl;
+        }
+    }
+
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
