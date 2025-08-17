@@ -37,6 +37,10 @@ class XPBDSolver
     using projector_type_list = TypeList<ConstraintProjectors...>;
     /** List of constraint types */
     using constraint_type_list = typename ConcatenateTypeLists<typename ConstraintProjectors::constraint_type_list...>::type;
+    /** Container for projectors */
+    using projector_container_type = VariadicVectorContainer<ConstraintProjectors...>;
+    /** Container for projector references */
+    using projector_reference_container_type = VariadicVectorContainer<ConstraintProjectorReference<ConstraintProjectors>...>;
     /** Whether or not solver is using 1st-Order projection */
     constexpr static bool is_first_order = IsFirstOrder;
 
@@ -89,6 +93,32 @@ class XPBDSolver
         {
             _calculatePrimaryResidual();
             _calculateConstraintResidual();
+        }
+    }
+
+    /** Project the constraints and apply the position updates.
+     * This will only project the constraints associated with the projectors passed in with the project_references parameter.
+     * @param projector_references - a heterogenous container of ConstraintProjectorReferences which are the constraints to project
+     * @param num_iter - the number of times to go through the constraints
+     * @param initialize - whether or not to initialize the projectors
+     */
+    void solve(projector_reference_container_type& projector_references, int num_iter=1, bool initialize=false)
+    {
+        // if initializing, initialize the projectors
+        if (initialize)
+        {
+            projector_references.for_each_element([&](auto& proj_ref)
+            {
+                if (proj_ref->isValid())
+                {
+                    proj_ref->initialize();
+                }
+            });
+        }
+
+        for (int i = 0; i < num_iter; i++)
+        {
+            _iterateConstraints(projector_references);
         }
     }
 
@@ -212,6 +242,20 @@ class XPBDSolver
         return _constraint_projectors.template get<Projector>()[index];
     }
 
+    /** Returns all projectors of a specified type. */
+    template<class Projector>
+    const std::vector<Projector>& getConstraintProjectorsOfType() const
+    {
+        return _constraint_projectors.template get<Projector>();
+    }
+
+    /** Returns all projectors of a specified type. */
+    template<class Projector>
+    std::vector<Projector>& getConstraintProjectorsOfType()
+    {
+        return _constraint_projectors.template get<Projector>();
+    }
+
     /** Sets the validity of a single projector.
      * @param index - the index of the projector
      * @param is_valid - whether the proejctor should be marked valid or invalid
@@ -263,9 +307,13 @@ class XPBDSolver
 
     /** Helper function that will perform 1 iteration of the solver. 
      * This method is pure virtual because its implementation depends on the solver type (Gauss-Seidel, Jacobi, etc.) to know what to do with the position updates given by the ConstraintProjectors.
-     * @param data - the pre-allocated data block to use for evaluating the constraints and their gradients. Assumes that it is large enough to accomodate the ConstraintProjector with the largest memory requirement.
      */
     virtual void _iterateConstraints() = 0;
+
+    /** Helper function that will perform 1 iteration of the solver for the specified list of projectors.
+     * This method is pure virtual because its implementation depends on the solver type (Gauss-Seidel, Jacobi, etc.) to know what to do with the position updates given by the ConstraintProjectors.
+     */
+    virtual void _iterateConstraints(projector_reference_container_type& projector_references) = 0;
     
     /** Calculates the primary residual (Equation (8) from XPBD paper). */
     // TODO: Actually implement this

@@ -55,13 +55,13 @@ objects:
     position: [0, 0, -0.005]
     velocity: [0, 0, 0]
     rotation: [90, 0, 0]
-    num-solver-iters: 3
+    num-solver-iters: 1
     residual-policy: "Never"
     solver-type: "Gauss-Seidel"
     # solver-type: "Jacobi"
     # solver-type: "Parallel-Jacobi"
     constraint-type: "Stable-Neohookean-Combined"
-    damping-multiplier: 20000000000
+    damping-multiplier: 2000000000
     # damping-multiplier: 40000000000
     collisions: true
     self-collisions: false

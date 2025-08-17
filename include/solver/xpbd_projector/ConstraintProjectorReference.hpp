@@ -39,9 +39,19 @@ class ConstraintProjectorReference
         return &_vec.at(_index);
     } 
 
-    constraint_projector_type operator->()
+    constraint_projector_type* operator->()
     {
         return &_vec.at(_index);
+    }
+
+    const constraint_projector_type& operator*() const
+    {
+        return _vec.at(_index);
+    }
+
+    constraint_projector_type& operator*()
+    {
+        return _vec.at(_index);
     }
 
     private:

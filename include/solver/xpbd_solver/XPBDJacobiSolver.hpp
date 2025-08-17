@@ -12,6 +12,9 @@ template <bool IsFirstOrder, typename ...ConstraintProjectors>
 class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
 {
     public:
+    using projector_reference_container_type = typename XPBDSolver<IsFirstOrder, ConstraintProjectors...>::projector_reference_container_type;
+
+    public:
     /** Same constructor as XPBDSolver */
     explicit XPBDJacobiSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
@@ -88,6 +91,46 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
 
             _projectorProject(proj, this->_coordinate_updates.data() + total_coord_updates, this->_rigid_body_updates.data() + total_rb_updates);
             total_coord_updates += proj.numCoordinates();
+            total_rb_updates += ProjectorType::NUM_RIGID_BODIES;
+        });
+
+        // apply the position updates
+        for (int i = 0; i < total_coord_updates; i++)
+        {
+            if (this->_coordinate_updates[i].ptr)
+                *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
+        }
+
+        // apply the rigid body updates
+        for (int i = 0; i < total_rb_updates; i++)
+        {
+            const RigidBodyUpdate& rb_update = this->_rigid_body_updates[i];
+            if (rb_update.obj_ptr)
+            {
+                rb_update.obj_ptr->setPosition(rb_update.obj_ptr->position() + Eigen::Map<const Vec3r>(rb_update.position_update));
+                rb_update.obj_ptr->setOrientation(rb_update.obj_ptr->orientation() + Eigen::Map<const Vec4r>(rb_update.orientation_update));
+            }
+        }
+    }
+
+    /** Helper function that will perform 1 iteration of the solver for the specified list of projectors.
+     * This method is pure virtual because its implementation depends on the solver type (Gauss-Seidel, Jacobi, etc.) to know what to do with the position updates given by the ConstraintProjectors.
+     */
+    virtual void _iterateConstraints(projector_reference_container_type& projector_references) override
+    {
+        int total_coord_updates = 0;
+        int total_rb_updates = 0;
+        projector_references.for_each_element([&](auto& proj_ref)
+        {
+            using ProjectorType = typename std::remove_cv_t<std::remove_reference_t<decltype(proj_ref)>>::constraint_projector_type;
+            if (!proj_ref->isValid())
+                return;
+
+            // TODO: check if proj is a RigidBodyConstraintProjector
+            // if constexpr ()
+
+            _projectorProject(*proj_ref, this->_coordinate_updates.data() + total_coord_updates, this->_rigid_body_updates.data() + total_rb_updates);
+            total_coord_updates += proj_ref->numCoordinates();
             total_rb_updates += ProjectorType::NUM_RIGID_BODIES;
         });
 

@@ -255,36 +255,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         {
             _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier;
         }
-
-        // calculate B_rel matrix
-        Real frac = 0.5;
-        _B_rel = MatXr::Zero(_mesh->numVertices()*3, _mesh->numVertices()*3);
-        for (int vi = 0; vi < _mesh->numVertices(); vi++)
-        {
-            _B_rel(3*vi,3*vi) = _vertex_B[vi]*frac;
-            _B_rel(3*vi+1, 3*vi+1) = _vertex_B[vi]*frac;
-            _B_rel(3*vi+2, 3*vi+2) = _vertex_B[vi]*frac;
-
-            const std::vector<int>& adj_verts = _mesh->vertexAdjacentVertices(vi);
-            for (const auto& adj_vert : adj_verts)
-            {
-                Real val = -_B_rel(3*vi,3*vi) / adj_verts.size();
-                _B_rel(3*vi, 3*adj_vert) = val; 
-                _B_rel(3*vi+1, 3*adj_vert+1) = val;
-                _B_rel(3*vi+2, 3*adj_vert+2) = val;
-            }
-        }
-
-        // calculate B_abs matrix
-        _B_abs = MatXr::Zero(_mesh->numVertices()*3, _mesh->numVertices()*3);
-        for (int vi = 0; vi < _mesh->numVertices(); vi++)
-        {
-            for (int k = 0; k < 3; k++)
-                _B_abs(3*vi+k,3*vi+k) = _vertex_B[vi];
-        }
-        
-        // calculate B^-1
-        // _B_inv = (_B_rel + _B_abs).inverse();
     }
     
 }
@@ -341,35 +311,10 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
             using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
             using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;
             
-            if constexpr (IsFirstOrder)
-            {
-                Eigen::Matrix<Real,12,12> B_e_inv;
-                if (_accelerate_convergence && false)
-                {
-                    B_e_inv = _elementBInv(i);
-                }
-                else
-                {
-                    B_e_inv = Eigen::Matrix<Real,12,12>::Zero();
-                    for (int k = 0; k < 4; k++)
-                        for (int l = 0; l < 3; l++)
-                            B_e_inv(3*k+l, 3*k+l) = 1/vertexConstraintInertia(element[k]);
-                }
-                
-
-                _solver.addConstraintProjector(_sim->dt(), 
-                    B_e_inv,
-                    DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
-                    HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
-                );
-            }
-            else
-            {
-                _solver.addConstraintProjector(_sim->dt(),
-                    DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
-                    HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
-                );
-            }
+            _solver.addConstraintProjector(_sim->dt(),
+                DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
+                HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
+            );
         }
     }
 }
@@ -487,6 +432,48 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_p
 {
     _solver.solve();
 
+    // create a container to store all the constraint projectors that we should re-project
+    typename SolverType::projector_reference_container_type proj_to_reproject;
+
+    // go through each collision constraint and find the ones that were actually projected (lambda != 0)
+    using StaticCollisionProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
+    using StaticCollisionProjectorTypeRef = Solver::ConstraintProjectorReference<StaticCollisionProjectorType>;
+    std::vector<StaticCollisionProjectorType>& collision_projectors = _solver.template getConstraintProjectorsOfType<StaticCollisionProjectorType>();
+
+    for (unsigned i = 0; i < collision_projectors.size(); i++)
+    {
+        // add the collision constraint to be re-projected
+        // TODO: should we add all the collision projectors?
+        proj_to_reproject.template emplace_back<StaticCollisionProjectorTypeRef>(collision_projectors, i);
+
+        if (collision_projectors[i].lambda() != 0)
+        {
+            // get the vertices affected by this collision constraint
+            const std::vector<Solver::PositionReference>& positions = collision_projectors[i].positions();
+
+            if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+            {
+                using DevHydProjectorType = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
+                using DevHydProjectorTypeRef = Solver::ConstraintProjectorReference<DevHydProjectorType>;
+                std::vector<DevHydProjectorType>& elastic_projectors = _solver.template getConstraintProjectorsOfType<DevHydProjectorType>();
+
+                // for each of the positions in the collision face, get the elements that they are attached to and add the elastic per-element constraints
+                // to be reprojected
+                for (const auto& position : positions)
+                {
+                    for (const auto& element_index : tetMesh()->vertexAttachedElements(position.index))
+                    {
+                        proj_to_reproject.template emplace_back<DevHydProjectorTypeRef>(elastic_projectors, element_index);
+                    }
+                }
+                
+            }
+        }
+    }
+
+    // reproject the added constraints with 3 solver iterations and no re-initialization
+    _solver.solve(proj_to_reproject, 3, false);
+
     // TODO: remove
     // for (int i = 0; i < _mesh->numVertices(); i++)
     // {
@@ -525,35 +512,35 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
     //     }
     // }
 
-    for (int i = 0; i < tetMesh()->numElements(); i++)
-    {
-        Mat3r F = tetMesh()->elementDeformationGradient(i);
-        if (F.determinant() < 0)
-        {
-            std::cout << "det(F) < 0 for element " << i << std::endl;
-        }
-    }
+    // for (int i = 0; i < tetMesh()->numElements(); i++)
+    // {
+    //     Mat3r F = tetMesh()->elementDeformationGradient(i);
+    //     if (F.determinant() < 0)
+    //     {
+    //         std::cout << "det(F) < 0 for element " << i << std::endl;
+    //     }
+    // }
 
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
 
-    if constexpr (IsFirstOrder)
-    {
-        // VecXr B_rel_x_dot(_mesh->numVertices()*3);
-        VecXr x_dot(_mesh->numVertices()*3);
-        for (int i = 0; i < _mesh->numVertices(); i++)
-            x_dot(Eigen::seqN(3*i,3)) = vertexVelocity(i);
+    // if constexpr (IsFirstOrder)
+    // {
+    //     // VecXr B_rel_x_dot(_mesh->numVertices()*3);
+    //     VecXr x_dot(_mesh->numVertices()*3);
+    //     for (int i = 0; i < _mesh->numVertices(); i++)
+    //         x_dot(Eigen::seqN(3*i,3)) = vertexVelocity(i);
             
-        // std::cout << "B_rel * x_dot norm: " <<  (_B_rel*x_dot).norm() << std::endl;
-    }
+    //     // std::cout << "B_rel * x_dot norm: " <<  (_B_rel*x_dot).norm() << std::endl;
+    // }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 Vec3r XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::elasticForceAtVertex(int index) const
 {
     // get elements attached to the vertex in the mesh
-    const std::vector<int>& _attached_elements = tetMesh()->attachedElementsToVertex(index);
+    const std::vector<int>& _attached_elements = tetMesh()->vertexAttachedElements(index);
 
     /** TODO: figure out which approach is correct. */
     Vec3r total_force = Vec3r::Zero();

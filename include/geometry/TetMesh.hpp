@@ -60,7 +60,7 @@ class TetMesh : public Mesh
     virtual void createGPUResource() override;
 #endif
 
-    const std::vector<int>& attachedElementsToVertex(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
+    const std::vector<int>& vertexAttachedElements(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
 
     protected:
     /** Finds adjacent vertices for each vertex in the mesh.
