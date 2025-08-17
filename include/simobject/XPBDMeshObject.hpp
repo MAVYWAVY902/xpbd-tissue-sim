@@ -66,12 +66,7 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::_is_fixed_vertex;
     using Base::_sdf;
     using Base::_damping_multiplier;
-    using Base::_accelerate_convergence;
     using Base::_vertex_B;
-    using Base::_vertex_B_updates;
-    using Base::_B_inv;
-    using Base::_B_abs;
-    using Base::_B_rel;
 
     using Base::_mesh;
 
@@ -195,36 +190,6 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     /** Creates constraints according to the constraint type.
      */
     void _createElasticConstraints();
-
-    /** === Methods specific to First Order === */
-
-    /** Returns the dense B^-1 matrix for a specific element.
-     * This will be 12x12 and be the rows and columns of B^-1 corresponding to the DOF in the element.
-     */
-    template<bool B = IsFirstOrder>
-    typename std::enable_if<B, Eigen::Matrix<Real, 12, 12>>::type _elementBInv(int element_index) const
-    {
-        Eigen::Matrix<Real, 12, 12> B_e_inv;
-        const Eigen::Vector4i& element = tetMesh()->element(element_index);
-        
-        for (int pi = 0; pi < 4; pi++)
-        {
-            for (int pj = 0; pj < 4; pj++)
-            {
-                for (int ki = 0; ki < 3; ki++)
-                {
-                    for (int kj = 0; kj < 3; kj++)
-                    {
-                        B_e_inv(3*pi + ki, 3*pj + kj) = _B_inv(3*element[pi]+ki, 3*element[pj]+kj);
-                    }
-                }
-            }
-        }
-
-        // std::cout << "\n\nB_e_inv:\n" << B_e_inv << "\n_B_inv:\n" << _B_inv << std::endl;
-
-        return B_e_inv;
-    }
 
     protected:
     /** The specific constraint configuration used to define internal constraints for the XPBD mesh. Set by the Config object

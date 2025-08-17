@@ -98,6 +98,7 @@ class XPBDSolver
 
     /** Project the constraints and apply the position updates.
      * This will only project the constraints associated with the projectors passed in with the project_references parameter.
+     * This is useful for only projecting a subset of the overall constraints, such as when we want to do local iterations for collision constraints.
      * @param projector_references - a heterogenous container of ConstraintProjectorReferences which are the constraints to project
      * @param num_iter - the number of times to go through the constraints
      * @param initialize - whether or not to initialize the projectors
@@ -116,6 +117,7 @@ class XPBDSolver
             });
         }
 
+        // iterate repeatedly through the specified constraint projectors
         for (int i = 0; i < num_iter; i++)
         {
             _iterateConstraints(projector_references);
