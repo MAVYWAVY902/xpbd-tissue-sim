@@ -123,11 +123,6 @@ public:
         return std::visit([&](const auto& obj) { return obj->vertexMass(index); }, _variant);
     }
 
-    int vertexAttachedElements(int index) const
-    {
-        return std::visit([&](const auto& obj) { return obj->vertexAttachedElements(index); }, _variant);
-    }
-
     Vec3r vertexVelocity(int index) const
     {
         return std::visit([&](const auto& obj) { return obj->vertexVelocity(index); }, _variant);

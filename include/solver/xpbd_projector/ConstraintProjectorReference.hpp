@@ -34,14 +34,30 @@ class ConstraintProjectorReference
     ConstraintProjectorReference(const ConstraintProjectorReference&) = default;
     ConstraintProjectorReference& operator=(const ConstraintProjectorReference&) = default;
 
+    
+    /** === Overloading arrow operator === */
+
     const constraint_projector_type* operator->() const
     {
         return &_vec.at(_index);
     } 
 
-    constraint_projector_type operator->()
+    constraint_projector_type* operator->()
     {
         return &_vec.at(_index);
+    }
+
+
+    /** === Overloading dereference operator === */
+
+    const constraint_projector_type& operator*() const
+    {
+        return _vec.at(_index);
+    }
+
+    constraint_projector_type& operator*()
+    {
+        return _vec.at(_index);
     }
 
     private:

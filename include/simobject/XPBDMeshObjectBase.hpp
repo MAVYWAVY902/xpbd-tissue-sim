@@ -110,12 +110,6 @@ public:
      */
     Real vertexMass(int index) const { return _vertex_masses[index]; }
 
-    /** The number of elements attached to the vertex at the specified index.
-     * @param index : the index of the vertex
-     * @returns the number of elements attached to the vertex at the specified index
-     */
-    int vertexAttachedElements(int index) const { return _vertex_attached_elements[index]; }
-
     /** The velocity of the vertex at the specified index.
      * @param index : the index of the vertex
      * @returns the velocity of the vertex at the specified index
@@ -240,12 +234,6 @@ protected:
     std::vector<Real> _vertex_masses;
     /** Stores the vertex "volumes". This is the total volume of all tetrahedra attached to a vertex, divided by 4. */
     std::vector<Real> _vertex_volumes;
-    /** Number of tetrahedral elements attached to each vertex in the mesh. */
-    std::vector<int> _vertex_attached_elements;
-    /** The set of vertices adjacent to a each vertex in the mesh
-     * TODO: probably should move this to Geometry::Mesh
-     */
-    std::vector<std::set<int>> _vertex_adjacent_vertices;
     /** Whether or not a given vertex is fixed. */
     std::vector<bool> _is_fixed_vertex;
 
@@ -259,18 +247,8 @@ protected:
 
     /** The damping multiplier for the mesh (this is b from the 1st-order paper) */
     typename std::conditional<IsFirstOrder, Real, std::monostate>::type _damping_multiplier;
-    /** Whether or not we should accelerate convergence to steady-state. */
-    typename std::conditional<IsFirstOrder, bool, std::monostate>::type _accelerate_convergence;
     /** The damping at each vertex */
     typename std::conditional<IsFirstOrder, std::vector<Real>, std::monostate>::type _vertex_B;
-    /** Per-frame damping updates at each vertex */
-    typename std::conditional<IsFirstOrder, std::vector<Real>, std::monostate>::type _vertex_B_updates;
-    /** The "relative" damping component of B */
-    typename std::conditional<IsFirstOrder, MatXr, std::monostate>::type _B_rel;
-    /** The "absolute" damping component of B */
-    typename std::conditional<IsFirstOrder, MatXr, std::monostate>::type _B_abs;
-    /** The inverse B_rel + B_abs */
-    typename std::conditional<IsFirstOrder, MatXr, std::monostate>::type _B_inv;
 };
 
 }

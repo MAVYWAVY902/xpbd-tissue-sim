@@ -1,5 +1,5 @@
 name: "Virtuoso Trachea"
-visualization: "Easy3D"
+visualization: "VTK"
 
 # Tissue grasping simulation-specific parameters
 input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
@@ -61,7 +61,7 @@ objects:
     # solver-type: "Jacobi"
     # solver-type: "Parallel-Jacobi"
     constraint-type: "Stable-Neohookean-Combined"
-    damping-multiplier: 2000000000
+    damping-multiplier: 20000000000
     # damping-multiplier: 40000000000
     collisions: true
     self-collisions: false

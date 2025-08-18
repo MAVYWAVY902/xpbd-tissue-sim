@@ -217,6 +217,9 @@ namespace Solver
     class XPBDParallelJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
     {
         public:
+        using projector_reference_container_type = typename XPBDSolver<IsFirstOrder, ConstraintProjectors...>::projector_reference_container_type;
+
+        public:
         explicit XPBDParallelJacobiSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy) 
         { 
@@ -224,6 +227,12 @@ namespace Solver
         }
         // not needed - constraint solve happens on GPU
         virtual void _iterateConstraints() override
+        {
+            assert(0 && "Not implemented for CPU!");
+        }
+
+        // not needed - constraint solve happens on GPU
+        virtual void _iterateConstraints(projector_reference_container_type& /*projector_references*/) override
         {
             assert(0 && "Not implemented for CPU!");
         }

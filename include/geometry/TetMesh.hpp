@@ -56,13 +56,21 @@ class TetMesh : public Mesh
      */
     std::pair<int, Real> averageTetEdgeLength() const;
 
- #ifdef HAVE_CUDA
+#ifdef HAVE_CUDA
     virtual void createGPUResource() override;
- #endif
+#endif
 
-    const std::vector<int>& attachedElementsToVertex(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
+    const std::vector<int>& vertexAttachedElements(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
 
     protected:
+    /** Finds adjacent vertices for each vertex in the mesh.
+     * Two vertices are "adjacent" if they are connected by a face or element.
+     * 
+     * Overrides the behavior in Geometry::Mesh to consider tetrahedral elements instead of only surface faces.
+     */
+    virtual void _computeAdjacentVertices() override;
+
+
     ElementsMat _elements;  // the matrix of tetrahedral elements
 
     std::vector<Real> _element_rest_volumes;

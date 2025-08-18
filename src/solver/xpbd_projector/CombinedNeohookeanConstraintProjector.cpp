@@ -43,28 +43,22 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
         }
     }
 
-    // for (int ci = 0; ci < 2; ci++)
-    // {
-    //     Real* delC_i = delC + ci*DeviatoricConstraint::NUM_COORDINATES;
-    //     for (int cj = ci; cj < 2; cj++)
-    //     {
-    //         Real* delC_j = delC + cj*DeviatoricConstraint::NUM_COORDINATES;
+    for (int ci = 0; ci < 2; ci++)
+    {
+        Real* delC_i = delC + ci*DeviatoricConstraint::NUM_COORDINATES;
+        for (int cj = ci; cj < 2; cj++)
+        {
+            Real* delC_j = delC + cj*DeviatoricConstraint::NUM_COORDINATES;
 
-    //         for (int i = 0; i < DeviatoricConstraint::NUM_POSITIONS; i++)
-    //         {
-    //             LHS[cj*2 + ci] += _constraint1->positions()[i].inv_mass * (delC_i[3*i]*delC_j[3*i] + delC_i[3*i+1]*delC_j[3*i+1] + delC_i[3*i+2]*delC_j[3*i+2]);
-    //         }
+            for (int i = 0; i < DeviatoricConstraint::NUM_POSITIONS; i++)
+            {
+                LHS[cj*2 + ci] += _constraint1->positions()[i].inv_mass * (delC_i[3*i]*delC_j[3*i] + delC_i[3*i+1]*delC_j[3*i+1] + delC_i[3*i+2]*delC_j[3*i+2]);
+            }
 
-    //         LHS[ci*2 + cj] = LHS[cj*2 + ci];
-    //     }
+            LHS[ci*2 + cj] = LHS[cj*2 + ci];
+        }
         
-    // }
-
-    using delCMatType = Eigen::Matrix<Real, 2, 12, Eigen::RowMajor>;
-    Eigen::Map<delCMatType> delC_mat(delC);
-    Eigen::Map<Mat2r> LHS_mat(LHS);
-    LHS_mat += delC_mat * _B_e_inv * delC_mat.transpose();
-    
+    }
 
     // compute RHS of lambda update: -C - alpha_tilde * lambda
     Real RHS[2];
@@ -80,36 +74,24 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
     dlam[0] = (RHS[0]*LHS[3] - RHS[1]*LHS[2]) / det;
     dlam[1] = (RHS[1]*LHS[0] - RHS[0]*LHS[1]) / det;
 
-    // std::cout << "dlam[0]: " << dlam[0] << ", dlam[1]: " << dlam[1] << std::endl;
-
     // update lambdas
     _lambda[0] += dlam[0];
     _lambda[1] += dlam[1];
 
     // compute position updates
-    Eigen::Map<Vec2r> dlam_vec(dlam);
-    Eigen::Vector<Real, 12> pos_updates_vec = _B_e_inv * delC_mat.transpose() * dlam_vec;
     Real* delC_c2 = delC + HydrostaticConstraint::NUM_COORDINATES;
     for (int i = 0; i < DeviatoricConstraint::NUM_POSITIONS; i++)
     {
-        // Real update_x = _constraint1->positions()[i].inv_mass * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]);
-        // Real update_y = _constraint1->positions()[i].inv_mass * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]);
-        // Real update_z = _constraint1->positions()[i].inv_mass * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]);
+        Real update_x = _constraint1->positions()[i].inv_mass * (delC[3*i] * dlam[0] + delC_c2[3*i] * dlam[1]);
+        Real update_y = _constraint1->positions()[i].inv_mass * (delC[3*i+1] * dlam[0] + delC_c2[3*i+1] * dlam[1]);
+        Real update_z = _constraint1->positions()[i].inv_mass * (delC[3*i+2] * dlam[0] + delC_c2[3*i+2] * dlam[1]);
         
-        Real update_x = pos_updates_vec[3*i];
-        Real update_y = pos_updates_vec[3*i+1];
-        Real update_z = pos_updates_vec[3*i+2];
         coordinate_updates_ptr[3*i].ptr = _constraint1->positions()[i].position_ptr;
         coordinate_updates_ptr[3*i].update = update_x;
         coordinate_updates_ptr[3*i+1].ptr = _constraint1->positions()[i].position_ptr+1;
         coordinate_updates_ptr[3*i+1].update = update_y;
         coordinate_updates_ptr[3*i+2].ptr = _constraint1->positions()[i].position_ptr+2;
         coordinate_updates_ptr[3*i+2].update = update_z;
-
-        // if (_constraint1->positions()[i].index == 337)
-        // {
-        //     std::cout << "Index 337 combined position update: "  << update_x << ", " << update_y << ", " << update_z << std::endl;
-        // }
     }
 }
 

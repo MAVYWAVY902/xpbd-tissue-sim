@@ -120,7 +120,20 @@ class HydrostaticConstraint : public ElementConstraint
     void _evaluate(Real* C, Real* F) const
     {
         // compute C(x) = det(F) - (1 + gamma)
-    *C = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2] - (1+_gamma);
+        Real detF = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2];
+        Real detF_min_gamma = detF - (1+_gamma);
+        // *C = detF_min_gamma;
+        *C = detF_min_gamma 
+            - detF_min_gamma*detF_min_gamma/2.0
+            + detF_min_gamma*detF_min_gamma*detF_min_gamma/3.0
+            - detF_min_gamma*detF_min_gamma*detF_min_gamma*detF_min_gamma/4.0
+            + detF_min_gamma*detF_min_gamma*detF_min_gamma*detF_min_gamma*detF_min_gamma/5.0;
+
+        // if (detF < 0)
+        // {
+        //     std::cout << "det(F) - gamma = " << detF_min_gamma << std::endl;
+        //     std::cout << "C = " << *C << std::endl;
+        // }
     }
 
     /** Helper method to evaluate the constraint gradient given the deformation gradient, F, useing pre-allocated memory.
@@ -145,20 +158,29 @@ class HydrostaticConstraint : public ElementConstraint
         // delC wrt 4th position is (-1st column - 2nd column - 3rd column)
         // see supplementary material of Macklin paper for more details
 
+        // the factor out front (1 - (J-1) + (J-1)^2)
+        Real detF = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2];
+        Real detF_min_gamma = detF - (1+_gamma);
+        Real fac = 1 - (detF_min_gamma)
+                    + detF_min_gamma*detF_min_gamma
+                    - detF_min_gamma*detF_min_gamma*detF_min_gamma
+                    + detF_min_gamma*detF_min_gamma*detF_min_gamma*detF_min_gamma;
+        // Real fac = 1;
+
         // calculation of delC wrt 1st position
-        delC[0] = (F_cross[0]*_Q(0,0) + F_cross[3]*_Q(0,1) + F_cross[6]*_Q(0,2));
-        delC[1] = (F_cross[1]*_Q(0,0) + F_cross[4]*_Q(0,1) + F_cross[7]*_Q(0,2));
-        delC[2] = (F_cross[2]*_Q(0,0) + F_cross[5]*_Q(0,1) + F_cross[8]*_Q(0,2));
+        delC[0] = fac*(F_cross[0]*_Q(0,0) + F_cross[3]*_Q(0,1) + F_cross[6]*_Q(0,2));
+        delC[1] = fac*(F_cross[1]*_Q(0,0) + F_cross[4]*_Q(0,1) + F_cross[7]*_Q(0,2));
+        delC[2] = fac*(F_cross[2]*_Q(0,0) + F_cross[5]*_Q(0,1) + F_cross[8]*_Q(0,2));
 
         // calculation of delC wrt 2nd postion
-        delC[3] = (F_cross[0]*_Q(1,0) + F_cross[3]*_Q(1,1) + F_cross[6]*_Q(1,2));
-        delC[4] = (F_cross[1]*_Q(1,0) + F_cross[4]*_Q(1,1) + F_cross[7]*_Q(1,2));
-        delC[5] = (F_cross[2]*_Q(1,0) + F_cross[5]*_Q(1,1) + F_cross[8]*_Q(1,2));
+        delC[3] = fac*(F_cross[0]*_Q(1,0) + F_cross[3]*_Q(1,1) + F_cross[6]*_Q(1,2));
+        delC[4] = fac*(F_cross[1]*_Q(1,0) + F_cross[4]*_Q(1,1) + F_cross[7]*_Q(1,2));
+        delC[5] = fac*(F_cross[2]*_Q(1,0) + F_cross[5]*_Q(1,1) + F_cross[8]*_Q(1,2));
 
         // calculation of delC wrt 3rd position
-        delC[6] = (F_cross[0]*_Q(2,0) + F_cross[3]*_Q(2,1) + F_cross[6]*_Q(2,2));
-        delC[7] = (F_cross[1]*_Q(2,0) + F_cross[4]*_Q(2,1) + F_cross[7]*_Q(2,2));
-        delC[8] = (F_cross[2]*_Q(2,0) + F_cross[5]*_Q(2,1) + F_cross[8]*_Q(2,2));
+        delC[6] = fac*(F_cross[0]*_Q(2,0) + F_cross[3]*_Q(2,1) + F_cross[6]*_Q(2,2));
+        delC[7] = fac*(F_cross[1]*_Q(2,0) + F_cross[4]*_Q(2,1) + F_cross[7]*_Q(2,2));
+        delC[8] = fac*(F_cross[2]*_Q(2,0) + F_cross[5]*_Q(2,1) + F_cross[8]*_Q(2,2));
 
         // calculation of delC wrt 4th position
         delC[9]  = -delC[0] - delC[3] - delC[6];
