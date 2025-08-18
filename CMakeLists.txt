@@ -117,7 +117,7 @@ add_library(GraspingSimulation)
 add_library(VirtuosoSimulation)
 # add_library(BeamStretchSimulation)
 # add_library(TissueGraspingSimulation)
-# add_library(InitialDeformationSimulation)
+add_library(InitialDeformationSimulation)
 add_subdirectory("src/simulation")
 
 target_link_libraries(ResidualSimulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp ${VTK_LIBRARIES})
@@ -126,7 +126,7 @@ target_link_libraries(GraspingSimulation ResidualSimulation)
 target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
 # target_link_libraries(BeamStretchSimulation ResidualSimulation)
 # target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
-# target_link_libraries(InitialDeformationSimulation ResidualSimulation)
+target_link_libraries(InitialDeformationSimulation Config ResidualSimulation)
 
 ### Create executables
 add_executable(Test src/exec/main.cpp)
@@ -150,8 +150,8 @@ target_link_libraries(VirtuosoTracheaDemo VirtuosoSimulation)
 # add_executable(BeamStretchTest src/exec/beam_stretch_test_main.cpp)
 # target_link_libraries(BeamStretchTest BeamStretchSimulation)
 
-# add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
-# target_link_libraries(InitialDeformationTest XPBD easy3d::viewer gmsh)
+add_executable(InitialDeformationTest src/exec/initial_deformation_test_main.cpp)
+target_link_libraries(InitialDeformationTest InitialDeformationSimulation)
 
 # add_executable(StaticLoadingTest src/exec/static_loading_test_main.cpp)
 # target_link_libraries(StaticLoadingTest XPBD easy3d::viewer gmsh)
@@ -172,7 +172,7 @@ add_executable(StiffnessMatrixTest src/exec/test/stiffness_matrix_test.cpp)
 target_link_libraries(StiffnessMatrixTest Config SimObject Solver ResidualSimulation MeshUtils)
 
 vtk_module_autoinit(
-  TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest VirtuosoStaticsModelTest
+  TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest VirtuosoStaticsModelTest InitialDeformationTest
   MODULES ${VTK_LIBRARIES}
 )
 

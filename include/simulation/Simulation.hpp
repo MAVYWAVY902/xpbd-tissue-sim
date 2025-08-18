@@ -186,6 +186,8 @@ class Simulation
 
         /** Current sim time */
         Real _time;
+        /** Wall clock sim start time */
+        std::chrono::time_point<std::chrono::steady_clock> _wall_time_start;
         /** The time step to take */
         Real _time_step;
         /** End time of the simulation */

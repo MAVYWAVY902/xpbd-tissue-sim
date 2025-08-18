@@ -96,17 +96,36 @@ install(FILES ${VIRTUOSO_SIMULATION_HEADERS}
     DESTINATION include/${PROJECT_NAME}/simulation)
 
 
+####################################
+# Initial deformation simulation
+#####################################
+set (INITIAL_DEFORMATION_SIMULATION_HEADERS
+    "${SIMULATION_INCLUDE_DIR}/InitialDeformationSimulation.hpp"
+)
+set (INITIAL_DEFORMATION_SIMULATION_SOURCES
+    "${SIMULATION_SRC_DIR}/InitialDeformationSimulation.cpp"
+)
+
+target_sources(InitialDeformationSimulation
+    PRIVATE
+        ${INITIAL_DEFORMATION_SIMULATION_HEADERS}
+        ${INITIAL_DEFORMATION_SIMULATION_SOURCES}
+)
+install(TARGETS InitialDeformationSimulation EXPORT InitialDeformationSimulation-targets
+    RUNTIME DESTINATION bin/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
+)
+install(FILES ${INITIAL_DEFORMATION_SIMULATION_HEADERS}
+    DESTINATION include/${PROJECT_NAME}/simulation)
+
+
 # target_sources(BeamStretchSimulation
 #     PRIVATE
 #         ${SIMULATION_INCLUDE_DIR}/BeamStretchSimulation.hpp
 #         ${SIMULATION_SRC_DIR}/BeamStretchSimulation.cpp
 # )
 
-# target_sources(InitialDeformationSimulation
-#     PRIVATE
-#         ${SIMULATION_INCLUDE_DIR}/InitialDeformationSimulation.hpp
-#         ${SIMULATION_SRC_DIR}/InitialDeformationSimulation.cpp
-# )
+
 
 # target_sources(TissueGraspingSimulation
 #     PRIVATE

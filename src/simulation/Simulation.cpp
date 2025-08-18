@@ -112,7 +112,7 @@ void Simulation::update()
     auto start = std::chrono::steady_clock::now();
 
     // the start time in wall clock time of the simulation
-    auto wall_time_start = std::chrono::steady_clock::now();
+    _wall_time_start = std::chrono::steady_clock::now();
     // the wall time of the last viewer redraw
     auto last_redraw = std::chrono::steady_clock::now();
 
@@ -120,7 +120,7 @@ void Simulation::update()
     while(_time < _end_time)
     {
         // the elapsed seconds in wall time since the simulation has started
-        Real wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
+        Real wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - _wall_time_start).count() / 1000000000.0;
         
         // check if any callbacks need to be called
         for (auto& cb : _callbacks)

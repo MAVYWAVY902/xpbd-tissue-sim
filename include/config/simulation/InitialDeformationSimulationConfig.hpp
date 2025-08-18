@@ -1,29 +1,29 @@
 #ifndef __INITIAL_DEFORMATION_SIMULATION_CONFIG_HPP
 #define __INITIAL_DEFORMATION_SIMULATION_CONFIG_HPP
 
-#include "config/simulationOutputSimulationConfig.hpp"
+#include "config/simulation/SimulationConfig.hpp"
 
 #include "simulation/InitialDeformationSimulation.hpp"
 
 namespace Config
 {
 
-class InitialDeformationSimulationConfig : public OutputSimulationConfig
+class InitialDeformationSimulationConfig : public SimulationConfig
 {
     /** Static predifined options for the simulation mode. Maps strings to the Simulation mode enum. */
     static std::map<std::string, Sim::InitialDeformationSimulation::DeformationType> DEFORMATION_TYPE_OPTIONS()
     {
         static std::map<std::string, Sim::InitialDeformationSimulation::DeformationType> deformation_type_options{
-            {"Volumetric-Expansion", Sim::InitialDeformationSimulation::DeformationType::VOLUMETRIC_EXPANSION},
-            {"Volumetric-Compression", Sim::InitialDeformationSimulation::DeformationType::VOLUMETRIC_COMPRESSION},
-            {"Collapse-To-Plane", Sim::InitialDeformationSimulation::DeformationType::COLLAPSE_TO_PLANE},
-            {"Scramble", Sim::InitialDeformationSimulation::DeformationType::SCRAMBLE}};
+            {"volumetric-expansion", Sim::InitialDeformationSimulation::DeformationType::VOLUMETRIC_EXPANSION},
+            {"volumetric-compression", Sim::InitialDeformationSimulation::DeformationType::VOLUMETRIC_COMPRESSION},
+            {"collapse-to-plane", Sim::InitialDeformationSimulation::DeformationType::COLLAPSE_TO_PLANE},
+            {"scramble", Sim::InitialDeformationSimulation::DeformationType::SCRAMBLE}};
         return deformation_type_options;
     }
 
     public:
     explicit InitialDeformationSimulationConfig(const YAML::Node& node)
-        : OutputSimulationConfig(node)
+        : SimulationConfig(node)
     {
         // extract the parameters from the config file
         _extractParameterWithOptions("deformation-type", node,_deformation_type, DEFORMATION_TYPE_OPTIONS());
@@ -32,7 +32,7 @@ class InitialDeformationSimulationConfig : public OutputSimulationConfig
 
     // getters
     Real deformationFactor() const { return _deformation_factor.value; }
-    DeformationType deformationType() const { return _deformation_type.value; }
+    Sim::InitialDeformationSimulation::DeformationType deformationType() const { return _deformation_type.value; }
 
     protected:
     /** The scale factor of the initial deformation.
@@ -41,7 +41,8 @@ class InitialDeformationSimulationConfig : public OutputSimulationConfig
     ConfigParameter<Real> _deformation_factor = ConfigParameter<Real>(1);
 
     /** The type of initial deformation to perform. */
-    ConfigParameter<DeformationType> _deformation_type = ConfigParameter<DeformationType>(DeformationType::VOLUMETRIC_EXPANSION);
+    ConfigParameter<Sim::InitialDeformationSimulation::DeformationType> _deformation_type 
+        = ConfigParameter<Sim::InitialDeformationSimulation::DeformationType>(Sim::InitialDeformationSimulation::DeformationType::VOLUMETRIC_EXPANSION);
 };
 
 } // namespace Config
