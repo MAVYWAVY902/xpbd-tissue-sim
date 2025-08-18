@@ -26,7 +26,7 @@ int main()
         filename, std::nullopt, std::nullopt,
         false, true, true, Vec4r(1,1,1,1),
         1000, 1e6, 0.3, 0.5, 0.2,
-        false, 10, XPBDObjectSolverTypeEnum::GAUSS_SEIDEL,
+        false, 10, 5, XPBDObjectSolverTypeEnum::GAUSS_SEIDEL,
         XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED,
         XPBDSolverResidualPolicyEnum::NEVER,
         Config::ObjectRenderConfig()

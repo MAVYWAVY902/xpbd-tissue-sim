@@ -30,7 +30,8 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
 
                                     Real density, Real E, Real nu, Real mu_s, Real mu_k,                                                    // ElasticMaterial params
 
-                                    bool self_collisions, int num_solver_iters, XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
+                                    bool self_collisions, int num_solver_iters, int num_local_collision_iters, 
+                                    XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
                                     XPBDSolverResidualPolicyEnum residual_policy,
                                 
                                     Real damping_multiplier,
@@ -40,7 +41,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
         : XPBDMeshObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions, graphics_only,
                                 filename, max_size, size, draw_points, draw_edges, draw_faces, color,
                                 density, E, nu, mu_s, mu_k,
-                                self_collisions, num_solver_iters, solver_type, constraint_type, residual_policy,
+                                self_collisions, num_solver_iters, num_local_collision_iters, solver_type, constraint_type, residual_policy,
                                 render_config)
     {
         _damping_multiplier.value = damping_multiplier;

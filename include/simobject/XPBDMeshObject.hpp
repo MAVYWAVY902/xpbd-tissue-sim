@@ -199,6 +199,18 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      */
     void _createElasticConstraints();
 
+    /** Assembles a vector of constraint projector references corresponding to constraints that are nearby active collision constraints.
+     * These are then passed to the solver to re-project and update the mesh.
+     * We also include all collision constraints (including currently inactive ones) to maintain a consistent contact manifold.
+     * 
+     * "Nearby" constraints are those that share a vertex with an active collision constraint. E.g., the hydrostatic and deviatoric constraints
+     * for all elements that share a vertex with an active collision constraint.
+     * 
+     * We are not concerned with duplicate constraint projectors in this vector since we are doing multiple iterations anyways - probably just
+     * faster to add all constraint projectors than try and make a unique set.
+     */
+    typename SolverType::projector_reference_container_type _gatherProjectorsForLocalCollisionIterations();
+
     protected:
     /** The specific constraint configuration used to define internal constraints for the XPBD mesh. Set by the Config object
      * TODO: is this necessary? Should XPBDMeshObjectConstraintConfiguration be a struct that can create the elastic constraints for the mesh?
@@ -214,6 +226,15 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     /** A heterogeneous container of all the constraints.
      */
     VariadicVectorContainer<ConstraintTypes...> _constraints;
+
+    /** The number of local iterations for collision area.
+     * Constraint projectors in the vicinity of active collision constraints (see _gatherProjectorsForLocalCollisionIterations) are assembled
+     * and re-projected multiple times, which helps propagate the deformation imposed by collision constraints to the rest of the mesh.
+     * Called "local" iterations since only a subset of the constraint projectors are being re-projected.
+     * 
+     * This is set by the config object.
+     */
+    int _num_local_collision_iters;
 };
 
 } // namespace Sim
