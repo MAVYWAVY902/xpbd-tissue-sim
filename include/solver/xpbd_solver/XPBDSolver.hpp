@@ -299,8 +299,17 @@ class XPBDSolver
                 Real alpha2 = constraint2->alpha();
                 Vec2r lambda = proj.lambda();
 
-                _constraint_residual[constraint_index++] = C1 + alpha1/(proj.dt()*proj.dt()) * lambda[0];
-                _constraint_residual[constraint_index++] = C2 + alpha2/(proj.dt()*proj.dt()) * lambda[1];
+                if constexpr (IsFirstOrder)
+                {
+                    _constraint_residual[constraint_index++] = C1 + alpha1/proj.dt() * lambda[0];
+                    _constraint_residual[constraint_index++] = C2 + alpha2/proj.dt() * lambda[1];
+                }
+                else
+                {
+                    _constraint_residual[constraint_index++] = C1 + alpha1/(proj.dt()*proj.dt()) * lambda[0];
+                    _constraint_residual[constraint_index++] = C2 + alpha2/(proj.dt()*proj.dt()) * lambda[1];
+                }
+                
             }
 
             // single constraint projector case
@@ -317,7 +326,10 @@ class XPBDSolver
                 Real alpha = constraint->alpha();
                 Real lambda = proj.lambda();
 
-                _constraint_residual[constraint_index++] = C + alpha/(proj.dt()*proj.dt()) * lambda;
+                if constexpr (IsFirstOrder)
+                    _constraint_residual[constraint_index++] = C + alpha/proj.dt() * lambda;
+                else
+                    _constraint_residual[constraint_index++] = C + alpha/(proj.dt()*proj.dt()) * lambda;
             }
 
         });

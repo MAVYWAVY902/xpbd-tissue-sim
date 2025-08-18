@@ -73,8 +73,8 @@ void BeamSimulation::printInfo() const
         
         // VecXr pres_vec = xpbd->solver()->primaryResidual();
         // primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
-        // VecXr cres_vec = xpbd->solver()->constraintResidual();
-        // constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
+        VecXr cres_vec = fo_xpbd_objs[i]->lastConstraintResidual();
+        constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
 
         _out_file << " " << beam_deflection[0] << " " << beam_deflection[2] << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio;
 

@@ -132,7 +132,6 @@ class Simulation
             // handle XPBDMeshObjects slightly differently so that we can tell the CollisionScene if self-collisions are enabled
             if constexpr (std::is_convertible_v<ConfigType*, Config::XPBDMeshObjectConfig*>)
             {
-                std::cout << "Self collisions enabled: " << obj_config->selfCollisions() << std::endl;
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
                     _collision_scene->addObject(new_obj.get(), obj_config->selfCollisions());
             }

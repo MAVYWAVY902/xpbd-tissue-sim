@@ -151,6 +151,14 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() override;
 
+    /** === Querying the solver === */
+
+    /** @returns the most recently calculated primary residual from the solver object */
+    virtual VecXr lastPrimaryResidual() const override { return _solver.primaryResidual(); };
+
+    /** @returns the most recently calculated constraint residual from the solver object */
+    virtual VecXr lastConstraintResidual() const override { return _solver.constraintResidual(); }
+
     /** === Miscellaneous useful methods === */
 
     /** Computes the elastic force on the vertex at the specified index. This is essentially just the current constraint force for all "elastic" constraints
