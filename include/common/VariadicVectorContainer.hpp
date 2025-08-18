@@ -176,17 +176,19 @@ class VariadicVectorContainer : public VariadicVectorContainer<L>, public Variad
         return this->VariadicVectorContainer<T>::_clear();
     }
 
-    // visit all elements in one vector
-    template<typename T, typename Visitor>
-    void for_each_element(Visitor&& visitor) const
+    // visit all elements in a subset of types - only enable this overload if sizeof(Ts) > 0
+    template<typename... Ts, typename Visitor>
+    std::enable_if_t<(sizeof...(Ts) > 0), void>
+    for_each_element(Visitor&& visitor) const
     {
-        _visit_elements<T>(std::forward<Visitor>(visitor));
+        _visit_elements<Ts...>(std::forward<Visitor>(visitor));
     }
 
-    template<typename T, typename Visitor>
-    void for_each_element(Visitor&& visitor)
+    template<typename... Ts, typename Visitor>
+    std::enable_if_t<(sizeof...(Ts) > 0), void>
+    for_each_element(Visitor&& visitor)
     {
-        _visit_elements<T>(std::forward<Visitor>(visitor));
+        _visit_elements<Ts...>(std::forward<Visitor>(visitor));
     }
 
     // visit all elements across all vectors
