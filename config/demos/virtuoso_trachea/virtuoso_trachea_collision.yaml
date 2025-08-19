@@ -1,5 +1,5 @@
 name: "Virtuoso Trachea"
-visualization: "Easy3D"
+visualization: "VTK"
 
 # Tissue grasping simulation-specific parameters
 input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)

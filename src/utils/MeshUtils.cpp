@@ -920,16 +920,32 @@ void MeshUtils::convertSTLtoMSH(const std::string& filename)
         return;
     }
 
-    // open the STL file with GMSH
     gmsh::open(filename);
+    gmsh::option::setNumber("General.Verbosity", 5);
 
+    // Get bounding box for mesh sizing
+    double xmin, ymin, zmin, xmax, ymax, zmax;
+    gmsh::model::getBoundingBox(-1, -1, xmin, ymin, zmin, xmax, ymax, zmax);
+    double bbox_diagonal = sqrt(pow(xmax-xmin, 2) + pow(ymax-ymin, 2) + pow(zmax-zmin, 2));
+    gmsh::option::setNumber("Mesh.CharacteristicLengthMax", bbox_diagonal/100);
+    gmsh::option::setNumber("Mesh.CharacteristicLengthMin", bbox_diagonal/1000);
 
-    int surface_loop_tag = gmsh::model::geo::addSurfaceLoop(std::vector<int>{1});
+    // Get the surface (should be tag 1)
+    std::vector<std::pair<int, int>> surfaces;
+    gmsh::model::getEntities(surfaces, 2);
+    std::cout << "Surface tag: " << surfaces[0].second << std::endl;
 
-    gmsh::model::geo::addVolume(std::vector<int>{surface_loop_tag});
-
+    // Method 1: Force create volume with the actual surface tag
+    int surface_tag = surfaces[0].second;
+    int surface_loop_tag = gmsh::model::geo::addSurfaceLoop(std::vector<int>{surface_tag});
+    int volume_tag = gmsh::model::geo::addVolume(std::vector<int>{surface_loop_tag});
     gmsh::model::geo::synchronize();
+
+    std::cout << "Created volume with tag: " << volume_tag << std::endl;
+
+    // Generate mesh
     gmsh::model::mesh::generate(3);
+
 
     const std::string& msh_filename = file_path.replace_extension(".msh").string();
     gmsh::write(msh_filename);
