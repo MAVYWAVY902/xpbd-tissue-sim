@@ -45,7 +45,15 @@ void InitialDeformationSimulation::setup()
     {
         _xpbd_objs.push_back(obj.get());
     });
-    
+
+    // add logged variables
+    for (auto& xpbd_obj : _xpbd_objs)
+    {
+        const std::string var_name = xpbd_obj.name() + "_2*t";
+        _logger->addOutput(var_name, [this](){
+            return 2*_time;
+        });
+    }
 
     // initialize the various states of initial deformation for each XPBDMeshObject
     for (auto& xpbd_obj : _xpbd_objs)

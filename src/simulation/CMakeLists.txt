@@ -13,11 +13,13 @@ set(RESIDUAL_SIMULATION_HEADERS
     "${SIMULATION_INCLUDE_DIR}/Simulation.hpp"
     "${SIMULATION_INCLUDE_DIR}/OutputSimulation.hpp"
     "${SIMULATION_INCLUDE_DIR}/ResidualSimulation.hpp"
+    "${SIMULATION_INCLUDE_DIR}/SimulationLogger.hpp"
 )
 set(RESIDUAL_SIMULATION_SOURCES
     "${SIMULATION_SRC_DIR}/Simulation.cpp"
     "${SIMULATION_SRC_DIR}/OutputSimulation.cpp"
     "${SIMULATION_SRC_DIR}/ResidualSimulation.cpp"
+    "${SIMULATION_SRC_DIR}/SimulationLogger.cpp"
 )
 
 target_sources(ResidualSimulation

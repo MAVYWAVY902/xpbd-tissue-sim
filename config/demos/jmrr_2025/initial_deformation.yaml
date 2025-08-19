@@ -7,6 +7,10 @@ visualization: "Easy3D" # what graphics to use ('Easy3D' for Easy3D graphics or 
 
 g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 
+## logging
+logging: true
+logging-output-folder: "../output/initial_deformation/"
+
 ## specific to InitialDeformationSimulation
 # deformation-type: "collapse-to-plane"
 deformation-type: "scramble"

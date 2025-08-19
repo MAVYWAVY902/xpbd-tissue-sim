@@ -81,6 +81,8 @@ class SimulationConfig : public Config
         _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS());
         _extractParameterWithOptions("visualization", node, _visualization, VISUALIZATION_OPTIONS());
         _extractParameter("enable-mouse-interaction", node, _enable_mouse_interaction);
+        _extractParameter("logging", node, _logging);
+        _extractParameter("logging-output-folder", node, _logging_output_dir);
         _extractParameter("g-accel", node, _g_accel);
         _extractParameter("description", node, _description);
         _extractParameter("fps", node, _fps);
@@ -131,8 +133,9 @@ class SimulationConfig : public Config
 
     explicit SimulationConfig(const std::string& name, const std::string& description,
                              Real time_step, Real end_time, Real g_accel,
-                             SimulationMode sim_mode, Visualization visualization, bool enable_mouse_interaction, Real fps,
-                             Real collision_rate, const SimulationRenderConfig& render_config)
+                             SimulationMode sim_mode, Visualization visualization, bool enable_mouse_interaction, 
+                             bool logging, const std::string& logging_output_dir,
+                            Real fps,  Real collision_rate, const SimulationRenderConfig& render_config)
         : Config(name), _render_config(render_config)
     {
         _description.value = description;
@@ -142,6 +145,8 @@ class SimulationConfig : public Config
         _sim_mode.value = sim_mode;
         _visualization.value = visualization;
         _enable_mouse_interaction.value = enable_mouse_interaction;
+        _logging.value = logging;
+        _logging_output_dir.value = logging_output_dir;
         _fps.value = fps;
         _collision_rate.value = collision_rate;
     }
@@ -155,6 +160,8 @@ class SimulationConfig : public Config
     SimulationMode simMode() const { return _sim_mode.value; }
     Visualization visualization() const { return _visualization.value; }
     bool enableMouseInteraction() const { return _enable_mouse_interaction.value; }
+    bool logging() const { return _logging.value; }
+    std::string loggingOutputDir() const { return _logging_output_dir.value; }
     Real gAccel() const { return _g_accel.value; }
     std::string description() const { return _description.value; }
     Real fps() const { return _fps.value; }
@@ -173,6 +180,8 @@ class SimulationConfig : public Config
     ConfigParameter<SimulationMode> _sim_mode = ConfigParameter<SimulationMode>(SimulationMode::VISUALIZATION);
     ConfigParameter<Visualization> _visualization = ConfigParameter<Visualization>(Visualization::VTK);
     ConfigParameter<bool> _enable_mouse_interaction = ConfigParameter<bool>(true);
+    ConfigParameter<bool> _logging = ConfigParameter<bool>(false);
+    ConfigParameter<std::string> _logging_output_dir = ConfigParameter<std::string>("../output/");
     ConfigParameter<Real> _g_accel = ConfigParameter<Real>(9.81);
     ConfigParameter<Real> _fps = ConfigParameter<Real>(30.0);
     ConfigParameter<Real> _collision_rate = ConfigParameter<Real>(100);

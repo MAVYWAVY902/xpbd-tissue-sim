@@ -3,6 +3,8 @@
 
 #include <assimp/Importer.hpp>
 
+#include "simulation/SimulationLogger.hpp"
+
 #include "simobject/Object.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/RigidMeshObject.hpp"
@@ -216,11 +218,21 @@ class Simulation
          */
         ObjectVectorType _graphics_only_objects;
 
+        /** Manages collision detection and creating constraints for collision response.
+         * Only objects with collisions enabled will be added to the CollisionScene.
+         */
         std::unique_ptr<CollisionScene> _collision_scene;
 
+        /** Manages graphics objects and displaying things to the screen. */
         std::unique_ptr<Graphics::GraphicsScene> _graphics_scene;
 
+        /** Embree is used to make some ray-tracing and collision queries.
+         * The EmbreeScene acts as an interface between the Simulation and the Embree library.
+          */
         std::unique_ptr<Geometry::EmbreeScene> _embree_scene;
+
+        /** Responsible for logging various simulation quantities. */
+        std::unique_ptr<SimulationLogger> _logger;
 };
 
 } // namespace Sim

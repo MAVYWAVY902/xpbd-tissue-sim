@@ -95,6 +95,12 @@ public:
         return std::visit([](const auto& obj) { return (const TetMeshObject*)obj; }, _variant);
     }
 
+    /** === Object functionality === */
+    std::string name() const
+    {
+        return std::visit([](const auto& obj) { return obj->name(); }, _variant);
+    }
+
     /** === XPBDMeshObject_Base_ functionality === */
     /** TODO: should some of these methods use perfect forwarding? */
 
