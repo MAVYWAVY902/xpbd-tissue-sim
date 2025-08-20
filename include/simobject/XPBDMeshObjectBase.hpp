@@ -110,12 +110,6 @@ public:
      */
     Real vertexMass(int index) const { return _vertex_masses[index]; }
 
-    /** The number of elements attached to the vertex at the specified index.
-     * @param index : the index of the vertex
-     * @returns the number of elements attached to the vertex at the specified index
-     */
-    int vertexAttachedElements(int index) const { return _vertex_attached_elements[index]; }
-
     /** The velocity of the vertex at the specified index.
      * @param index : the index of the vertex
      * @returns the velocity of the vertex at the specified index
@@ -183,6 +177,21 @@ public:
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() = 0;
 
+    /** Performs a check for self collision.
+     * If any surface vertices are inside tetrahedra (queries made using Embree), add a collision constraint to fix that.
+     * Assumes that the Embree scene is up to date.
+     */
+    virtual void selfCollisionCheck() = 0;
+
+
+    /** === Querying the solver === */
+
+    /** @returns the most recently calculated primary residual from the solver object */
+    virtual VecXr lastPrimaryResidual() const = 0;
+
+    /** @returns the most recently calculated constraint residual from the solver object */
+    virtual VecXr lastConstraintResidual() const = 0;
+
 
     /** === Miscellaneous useful methods === */
 
@@ -225,8 +234,6 @@ protected:
     std::vector<Real> _vertex_masses;
     /** Stores the vertex "volumes". This is the total volume of all tetrahedra attached to a vertex, divided by 4. */
     std::vector<Real> _vertex_volumes;
-    /** Number of tetrahedral elements attached to each vertex in the mesh. */
-    std::vector<int> _vertex_attached_elements;
     /** Whether or not a given vertex is fixed. */
     std::vector<bool> _is_fixed_vertex;
 

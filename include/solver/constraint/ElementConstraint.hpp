@@ -52,11 +52,9 @@ class ElementConstraint : public Constraint
 
     Real restVolume() const { return _volume; }
 
-    protected:
-
     /** Compute the deformation gradient and return it, using the 4 positions referenced by this constraint.
      */
-    inline Mat3r _computeF() const
+    inline Mat3r computeF() const
     {
         Mat3r X;
         const Vec3r& X3 = Eigen::Map<Vec3r>(_positions[3].position_ptr);
@@ -68,6 +66,10 @@ class ElementConstraint : public Constraint
         // compute and return F
         return X * _Q;
     }
+
+    protected:
+
+    
 
     /** Compute the deformation gradient with pre-allocated memory.
      * @param F (OUTPUT) - the pointer to the (currently empty) 3x3 deformation gradient matrix. Expects that F is COLUMN-MAJOR and 3x3.

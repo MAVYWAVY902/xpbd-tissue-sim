@@ -3,6 +3,8 @@
 
 #include <assimp/Importer.hpp>
 
+#include "simulation/SimulationLogger.hpp"
+
 #include "simobject/Object.hpp"
 #include "simobject/XPBDMeshObject.hpp"
 #include "simobject/RigidMeshObject.hpp"
@@ -129,24 +131,19 @@ class Simulation
             ObjPtrType new_obj = obj_config->createObject(this);
             new_obj->setup();
 
-            // add tetrahedral mesh objects to Embree scene
-            // TODO: better way to do this?
-            if constexpr (std::is_convertible_v<typename ConfigType::ObjectType*, TetMeshObject*>)
+            // handle XPBDMeshObjects slightly differently so that we can tell the CollisionScene if self-collisions are enabled
+            if constexpr (std::is_convertible_v<ConfigType*, Config::XPBDMeshObjectConfig*>)
             {
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
-                    _embree_scene->addObject( (TetMeshObject*)new_obj.get() );  // explicitly cast to TetMeshObject* so the correct overload of addObject() is called
+                    _collision_scene->addObject(new_obj.get(), obj_config->selfCollisions());
             }
-            else if (std::is_convertible_v<typename ConfigType::ObjectType*, MeshObject*>)
+            else
             {
+                // add the new object to the collision scene if collisions are enabled
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
-                    _embree_scene->addObject( (MeshObject*)new_obj.get() );     // explicitly cast to MeshObject* so the correct overload of addObject() is called
+                    _collision_scene->addObject(new_obj.get());
             }
-
-            // add the new object to the collision scene if collisions are enabled
-            if (obj_config->collisions() && !obj_config->graphicsOnly())
-            {
-                _collision_scene->addObject(new_obj.get());
-            }
+            
             // add the new object to the graphics scene to be visualized
             if (_graphics_scene)
             {
@@ -191,6 +188,8 @@ class Simulation
 
         /** Current sim time */
         Real _time;
+        /** Wall clock sim start time */
+        std::chrono::time_point<std::chrono::steady_clock> _wall_time_start;
         /** The time step to take */
         Real _time_step;
         /** End time of the simulation */
@@ -219,11 +218,21 @@ class Simulation
          */
         ObjectVectorType _graphics_only_objects;
 
+        /** Manages collision detection and creating constraints for collision response.
+         * Only objects with collisions enabled will be added to the CollisionScene.
+         */
         std::unique_ptr<CollisionScene> _collision_scene;
 
+        /** Manages graphics objects and displaying things to the screen. */
         std::unique_ptr<Graphics::GraphicsScene> _graphics_scene;
 
+        /** Embree is used to make some ray-tracing and collision queries.
+         * The EmbreeScene acts as an interface between the Simulation and the Embree library.
+          */
         std::unique_ptr<Geometry::EmbreeScene> _embree_scene;
+
+        /** Responsible for logging various simulation quantities. */
+        std::unique_ptr<SimulationLogger> _logger;
 };
 
 } // namespace Sim

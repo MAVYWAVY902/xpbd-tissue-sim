@@ -25,7 +25,12 @@ class MeshProperty
 
     const std::string& name() const { return _name; }
 
-    const T& get(int index) const { return _properties[index]; }
+    // Specialize the getter for bool to return by value
+    std::conditional_t<std::is_same_v<T, bool>, T, const T&> 
+    get(int index) const { 
+        return _properties.at(index); 
+    }
+
     void set(int index, const T& new_val) { _properties[index] = new_val; }
 
     const std::vector<T>& properties() const { return _properties; }

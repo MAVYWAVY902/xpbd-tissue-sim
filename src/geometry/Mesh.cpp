@@ -14,8 +14,18 @@ namespace Geometry
 Mesh::Mesh(const VerticesMat& vertices, const FacesMat& faces)
     : _vertices(vertices), _faces(faces)
 {
-    AABB bbox = boundingBox();
-    _unrotated_size_xyz = bbox.size();
+    // create surface vertex property
+    addVertexProperty<bool>("surface");
+    auto& surface_property = getVertexProperty<bool>("surface");
+    for (int i = 0; i < numFaces(); i++)
+    {
+        const Eigen::Vector3i& cur_face = face(i);
+        surface_property.set(cur_face[0], true);
+        surface_property.set(cur_face[1], true);
+        surface_property.set(cur_face[2], true);
+    }
+
+    setCurrentStateAsUndeformedState();
 }
 
 Mesh::Mesh(const Mesh& other)
@@ -23,6 +33,9 @@ Mesh::Mesh(const Mesh& other)
     _vertices = other._vertices;
     _faces = other._faces;
     _unrotated_size_xyz = other._unrotated_size_xyz;
+    _vertex_properties = other._vertex_properties;
+    _face_properties = other._face_properties;
+    _vertex_adjacent_vertices = other._vertex_adjacent_vertices;
 
     // NOTE: we do NOT do anything with the GPU resource - if we are copying this mesh, we don't want to just automatically create a new GPU resource if we don't need to
     // (we can't copy the GPU resource since it's a unique_ptr)
@@ -33,10 +46,54 @@ Mesh::Mesh(Mesh&& other)
     _vertices = std::move(other._vertices);
     _faces = std::move(other._faces);
     _unrotated_size_xyz = std::move(other._unrotated_size_xyz);
+    _vertex_properties = std::move(other._vertex_properties);
+    _face_properties = std::move(other._face_properties);
+    _vertex_adjacent_vertices = std::move(other._vertex_adjacent_vertices);
 
  #ifdef HAVE_CUDA
     _gpu_resource = std::move(other._gpu_resource);
  #endif
+}
+
+void Mesh::_computeAdjacentVertices()
+{
+    _vertex_adjacent_vertices.resize(numVertices());
+    
+    // clear all the adjacency lists
+    for (int i = 0; i < numVertices(); i++)
+    {
+        _vertex_adjacent_vertices[i].clear();
+    }
+
+    // go through each of the faces and add adjacent vertices for each vertex in the face
+    for (int i = 0; i < numFaces(); i++)
+    {
+        const Eigen::Vector3i& cur_face = face(i);
+
+        std::vector<int>& adj_verts0 = _vertex_adjacent_vertices[cur_face[0]];
+        std::vector<int>& adj_verts1 = _vertex_adjacent_vertices[cur_face[1]];
+        std::vector<int>& adj_verts2 = _vertex_adjacent_vertices[cur_face[2]];
+
+        // for v0
+        if (std::find(adj_verts0.begin(), adj_verts0.end(), cur_face[1]) == adj_verts0.end())   adj_verts0.push_back(cur_face[1]);
+        if (std::find(adj_verts0.begin(), adj_verts0.end(), cur_face[2]) == adj_verts0.end())   adj_verts0.push_back(cur_face[2]);
+
+        // for v1
+        if (std::find(adj_verts1.begin(), adj_verts1.end(), cur_face[0]) == adj_verts1.end())   adj_verts1.push_back(cur_face[0]);
+        if (std::find(adj_verts1.begin(), adj_verts1.end(), cur_face[2]) == adj_verts1.end())   adj_verts1.push_back(cur_face[2]);
+
+        // for v2
+        if (std::find(adj_verts2.begin(), adj_verts2.end(), cur_face[0]) == adj_verts2.end())   adj_verts2.push_back(cur_face[0]);
+        if (std::find(adj_verts2.begin(), adj_verts2.end(), cur_face[1]) == adj_verts2.end())   adj_verts2.push_back(cur_face[1]);
+    }
+}
+
+void Mesh::setCurrentStateAsUndeformedState()
+{
+    AABB bbox = boundingBox();
+    _unrotated_size_xyz = bbox.size();
+
+    _computeAdjacentVertices();
 }
 
 void Mesh::updateVertexNormals()

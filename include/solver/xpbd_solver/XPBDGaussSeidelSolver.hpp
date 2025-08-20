@@ -13,6 +13,9 @@ template <bool IsFirstOrder, typename ...ConstraintProjectors>
 class XPBDGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
 {
     public:
+    using projector_reference_container_type = typename XPBDSolver<IsFirstOrder, ConstraintProjectors...>::projector_reference_container_type;
+
+    public:
     /** Same constructor as XPBDSolver */
     explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
@@ -32,6 +35,20 @@ class XPBDGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjecto
                 return;
 
             _projectAndUpdate(proj);
+        });
+    }
+
+    /** Helper function that will perform 1 iteration of the solver for the specified list of projectors.
+     * This method is pure virtual because its implementation depends on the solver type (Gauss-Seidel, Jacobi, etc.) to know what to do with the position updates given by the ConstraintProjectors.
+     */
+    virtual void _iterateConstraints(projector_reference_container_type& projector_references) override
+    {
+        projector_references.for_each_element([&](auto& proj_ref)
+        {
+            if (!proj_ref->isValid())
+                return;
+            
+            _projectAndUpdate(*proj_ref);
         });
     }
 

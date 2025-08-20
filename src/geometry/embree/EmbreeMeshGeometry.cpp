@@ -10,11 +10,24 @@ namespace Geometry
 {
 
 EmbreeMeshGeometry::EmbreeMeshGeometry(const Geometry::Mesh* mesh)
-: _mesh(mesh)
+: _mesh(mesh), _undeformed_scene(nullptr)
 {
     // if double precision is being used in the sim, we must allocate space fo the float vertex buffer
     if constexpr (std::is_same_v<Real, double>)
         _vertex_buffer.resize(mesh->numVertices()*3);
+    
+    _initial_vertex_buffer.resize(mesh->numVertices()*3);
+    const Real* mesh_vertices = _mesh->vertices().data();
+    for (int i = 0; i < _mesh->numVertices()*3; i++)
+    {
+        _initial_vertex_buffer[i] = static_cast<float>(mesh_vertices[i]);
+    }
+}
+
+EmbreeMeshGeometry::~EmbreeMeshGeometry()
+{
+    if (_undeformed_scene)
+        rtcReleaseScene(_undeformed_scene);
 }
 
 const float* EmbreeMeshGeometry::vertices() const
@@ -61,6 +74,24 @@ void EmbreeMeshGeometry::boundsFuncTriangle(const struct RTCBoundsFunctionArgume
     bounds->upper_z = std::max({v1[2], v2[2], v3[2]});
 }
 
+void EmbreeMeshGeometry::boundsFuncTriangleInitialVertices(const struct RTCBoundsFunctionArguments *args)
+{
+    const EmbreeMeshGeometry *geom = static_cast<const EmbreeMeshGeometry *>(args->geometryUserPtr);
+    const int *indices = geom->faceIndices() + 3 * args->primID;
+    const float *v1 = geom->initialVertices() + 3 * indices[0];
+    const float *v2 = geom->initialVertices() + 3 * indices[1];
+    const float *v3 = geom->initialVertices() + 3 * indices[2];
+
+    RTCBounds* bounds = args->bounds_o;
+    bounds->lower_x = std::min({v1[0], v2[0], v3[0]});
+    bounds->lower_y = std::min({v1[1], v2[1], v3[1]});
+    bounds->lower_z = std::min({v1[2], v2[2], v3[2]});
+
+    bounds->upper_x = std::max({v1[0], v2[0], v3[0]});
+    bounds->upper_y = std::max({v1[1], v2[1], v3[1]});
+    bounds->upper_z = std::max({v1[2], v2[2], v3[2]});
+}
+
 void EmbreeMeshGeometry::intersectFuncTriangle(const RTCIntersectFunctionNArguments *args)
 {
     const int* valid = args->valid;
@@ -95,6 +126,40 @@ void EmbreeMeshGeometry::intersectFuncTriangle(const RTCIntersectFunctionNArgume
     }
 }
 
+void EmbreeMeshGeometry::intersectFuncTriangleInitialVertices(const RTCIntersectFunctionNArguments *args)
+{
+    const int* valid = args->valid;
+    const EmbreeMeshGeometry* geom = static_cast<EmbreeMeshGeometry*>(args->geometryUserPtr);
+
+    // only consider the geometry we're interested in
+    // if args->geomId is "invalid", we are interested in all geometry
+    // if (args->geomID != RTC_INVALID_GEOMETRY_ID && args->geomID != geom->meshGeomID())
+    //     return;
+
+    assert(args->N == 1);
+
+    if (!valid[0])
+        return;
+
+    // get vertices of face
+    const int *indices = geom->faceIndices() + 3 * args->primID;
+    const float *v1 = geom->initialVertices() + 3 * indices[0];
+    const float *v2 = geom->initialVertices() + 3 * indices[1];
+    const float *v3 = geom->initialVertices() + 3 * indices[2];
+
+    // loop through cast rays (there may be more than 1 in a batch)
+    RTCRayHit* rayhit = (RTCRayHit*)args->rayhit;
+
+    // test intersection between ray and triangle
+    // this function will update the ray's tfar and the hit's u and v and geometry normal (if there is an intersection)
+    if (_rayTriangleIntersect(&rayhit->ray, &rayhit->hit, v1, v2, v3))
+    {
+        // if there is an intersection, update the hit's primID and geomID for the intersected face
+        rayhit->hit.primID = args->primID;
+        rayhit->hit.geomID = args->geomID;
+    }
+}
+
 bool EmbreeMeshGeometry::pointQueryFuncTriangle(RTCPointQueryFunctionArguments *args)
 {
     // Get user data containing the query point and results vector
@@ -112,6 +177,46 @@ bool EmbreeMeshGeometry::pointQueryFuncTriangle(RTCPointQueryFunctionArguments *
     const float *v1 = geom->vertices() + 3 * indices[0];
     const float *v2 = geom->vertices() + 3 * indices[1];
     const float *v3 = geom->vertices() + 3 * indices[2];
+
+    
+    const float *point = userData->point;
+    float closest_point[3]; closest_point[0] = 0; closest_point[1] = 0; closest_point[2] = 0;
+
+    _closestPointTriangle(point, v1, v2, v3, closest_point);
+    const float d = (Eigen::Map<const Eigen::Vector3f>(point) - Eigen::Map<const Eigen::Vector3f>(closest_point)).norm();
+
+    if (d < args->query->radius)
+    {
+        EmbreeHit& hit = userData->result;
+        args->query->radius = d;
+        hit.prim_index = args->primID;
+        hit.hit_point[0] = Real(closest_point[0]); 
+        hit.hit_point[1] = Real(closest_point[1]);
+        hit.hit_point[2] = Real(closest_point[2]);
+
+        return true; // return true to indicate that the query radius changed
+    }
+
+    return false;
+}
+
+bool EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices(RTCPointQueryFunctionArguments *args)
+{
+    // Get user data containing the query point and results vector
+    EmbreeClosestPointQueryUserData *userData = static_cast<EmbreeClosestPointQueryUserData *>(args->userPtr);
+    // Get the geometry data
+    const EmbreeMeshGeometry *geom = userData->geom;
+
+    // only consider point queries for the geometry we're interested in
+    // TODO: should we do point queries for 
+    if (args->geomID != geom->meshGeomID())
+        return true;
+
+    
+    const int *indices = geom->faceIndices() + 3 * args->primID;
+    const float *v1 = geom->initialVertices() + 3 * indices[0];
+    const float *v2 = geom->initialVertices() + 3 * indices[1];
+    const float *v3 = geom->initialVertices() + 3 * indices[2];
 
     
     const float *point = userData->point;

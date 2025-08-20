@@ -36,7 +36,7 @@ class CollisionScene
 
     public:
     /** Constructor - needs a reference back to the simulation to access the time step, current sim time, etc. */
-    explicit CollisionScene(const Sim::Simulation* sim, const Geometry::EmbreeScene* embree_scene);
+    explicit CollisionScene(const Sim::Simulation* sim, Geometry::EmbreeScene* embree_scene);
 
     /** Adds a new object to the CollisionScene.
      * Creates a SDF for the object and adds the object's pointer to the vector of objects in the CollisionScene.
@@ -102,6 +102,22 @@ class CollisionScene
             addObject(virtuoso_robot->arm2());
     }
 
+    /** TODO: Add specializations for rigid objects that add them to the Embree scene */
+
+    /** Specialization for XPBDMeshObject */
+    template<bool IsFirstOrder>
+    void addObject(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_obj, bool self_collisions=false)
+    {
+        xpbd_obj->createSDF();
+        _objects.template push_back<Sim::XPBDMeshObject_Base_<IsFirstOrder>*>(xpbd_obj);
+
+        // add to EmbreeScene since collisions are enabled
+        _embree_scene->addObject( (Sim::TetMeshObject*)xpbd_obj );  // explicitly cast to TetMeshObject* so the correct overload of addObject() is called
+
+        if (self_collisions)
+            _self_collision_objects.emplace_back(xpbd_obj);
+    }
+
     /** Detects collisions between objects in the CollisionScene.
      * When collisions are detected, collision constraints are created and added to the appropriate objects to resolve collisions.
      */
@@ -140,11 +156,15 @@ class CollisionScene
     /** Stores the objects that have been added to the collision scene. */
     ObjectVectorType _objects;
 
-    /** Pointer to the simulation's Embree scene.
-     * Note: The CollisionScene IS NOT RESPONSIBLE for updating the Embree scene. This will be done by the Simulation class.
-     * We assume that before performing any queries to the Embree scene that it is up to date.
+    /** Stores the objects that have self-collisions enabled.
+     * This will only ever be XPBDMeshObjects as these are the only deformables in the scene.
      */
-    const Geometry::EmbreeScene* _embree_scene;
+    std::vector<Sim::XPBDMeshObject_BasePtrWrapper> _self_collision_objects;
+
+    /** Pointer to the simulation's Embree scene.
+     * The CollisionScene will update the Embree scene as it sees fit.
+     */
+    Geometry::EmbreeScene* _embree_scene;
 
     #ifdef HAVE_CUDA
     std::map<Sim::Object*, std::vector<Sim::GPUCollision> > _gpu_collisions;

@@ -23,7 +23,7 @@
 // namespace Collision
 // {
 
-CollisionScene::CollisionScene(const Sim::Simulation* sim, const Geometry::EmbreeScene* embree_scene)
+CollisionScene::CollisionScene(const Sim::Simulation* sim, Geometry::EmbreeScene* embree_scene)
     : _sim(sim), _embree_scene(embree_scene)
 {
 
@@ -34,12 +34,23 @@ void CollisionScene::collideObjects()
     // collide object pairs
     _objects.for_each_element([this](auto obj1){
         _objects.for_each_element([this, obj1](auto obj2){
+            // skip when objects are the same
+            if ((void*)obj1 == (void*)obj2)
+                return;
+
             _collideObjectPair(obj1, obj2);
         });
     });
+
+    // run self-collision tests for any objects with self-collisions enabled
+    for (auto& xpbd_obj : _self_collision_objects)
+    {
+        _embree_scene->updateObject(xpbd_obj.getAsTetMeshObject());
+        xpbd_obj.selfCollisionCheck();
+    }
 }
 
-void CollisionScene::_collideObjectPair(Sim::Object* obj1, Sim::Object* obj2)
+void CollisionScene::_collideObjectPair(Sim::Object* /*obj1*/, Sim::Object* /*obj2*/)
 {
     // do nothing in the general case
 }
@@ -100,9 +111,9 @@ void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPB
 }
 
 template <bool IsFirstOrder>
-void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj2)
+void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* /*xpbd_mesh_obj1*/, Sim::XPBDMeshObject_Base_<IsFirstOrder>* /*xpbd_mesh_obj2*/)
 {
-    // deformable-deformable collision not supported for now
+    // deformable-deformable collision not supported
 }
 
 template <bool IsFirstOrder>

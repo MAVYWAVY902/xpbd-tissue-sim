@@ -69,8 +69,17 @@ class EmbreeScene
     /** Add a surface mesh object to the EmbreeScene */
     void addObject(const Sim::MeshObject* obj);
 
-    /** Updates the Embree scene. */
+    /** Updates all Embree scenes. */
     void update();
+
+    /** Updates the Embree scenes for a specific object. */
+    void updateObject(const Sim::MeshObject* obj);
+
+    /** Updates the Embree scenes for a specific object. */
+    void updateObject(const Sim::TetMeshObject* obj);
+
+    /** Updates only the ray-casting scene but not the individual object scenes. */
+    void updateRayScene();
 
     /** Samples a point cloud from the surfaces of objects in the Embree scene from a given viewpoint.
      * Rays are cast from the view origin, with horizontal angles in [-hfov_deg/2, hfov_deg/2] and vertical angles in [-vfov_deg/2, vfov_deg/2].
@@ -106,6 +115,9 @@ class EmbreeScene
     */
     EmbreeHit closestPointTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const;
 
+    /** Finds the closest point on the surface of the undeformed tetrahedral mesh to the specified point. */
+    EmbreeHit closestPointUndeformedTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const;
+
     /** Returns all the tetrahedra in a tetrahedral mesh that contain the specified point.
      * @param point : the query point
      * @param obj_ptr : a pointer to the TetMeshObject to query
@@ -113,8 +125,17 @@ class EmbreeScene
      */
     std::set<EmbreeHit> pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const;
 
+    /** Returns all the tetrahedra in a tetrahedral mesh that contain the specified vertex, ignoring all tetrahedra that share the vertex.
+     * Used for checking for self-collisions in deformable tetrahedral meshes.
+     * @param vertex_index : the index of the vertex in the tetrahedral mesh to test
+     * @param obj_ptr : a pointer to the TetMeshObject that we are testing
+     * @returns the set of tetrahedra in the mesh (excluding those that have the vertex in question as one of its vertices) that contain the specified vertex (can be empty)
+     */
+    std::set<EmbreeHit> tetMeshSelfCollisionQuery(int vertex_index, const Sim::TetMeshObject* obj_ptr) const;
+
     private:
     EmbreeHit _closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const;
+    EmbreeHit _closestPointQueryUndeformed(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const;
 
     /** Embree device and scene */
     RTCDevice _device;

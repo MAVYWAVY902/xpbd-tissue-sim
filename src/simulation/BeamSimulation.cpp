@@ -10,80 +10,55 @@ namespace Sim
 {
 
 BeamSimulation::BeamSimulation(const Config::BeamSimulationConfig* config)
-    : OutputSimulation(config)
+    : Simulation(config)
 {
-    _out_file << "Cantilever Beam Simulation\n";
 }
 
 void BeamSimulation::setup()
 {
-    // MeshUtils::createBeamObj("../resource/10x1x1_subdivided16_beam.obj", 10, 1, 1, 16);
-
     Simulation::setup();
 
-    _out_file << toString(0) << std::endl;
-
-    for (const auto& xpbd_mo : _objects.template get<std::unique_ptr<XPBDMeshObject_Base>>()) 
+    // get all the XPBDMeshObjects
+    _objects.for_each_element<std::unique_ptr<XPBDMeshObject_Base>, std::unique_ptr<FirstOrderXPBDMeshObject_Base>>([&](auto& obj)
     {
-        Geometry::AABB aabb = xpbd_mo->boundingBox();
-        std::vector<int> vertices_to_fix = xpbd_mo->mesh()->getVerticesWithY(aabb.min[1]);
+        _xpbd_objs.emplace_back(obj.get());
+    });
+
+    for (auto& xpbd_obj : _xpbd_objs) 
+    {
+        // fix the "left" side of the beam
+        // i.e. fix vertices that have the minimum Y-coordinate in the mesh
+        Geometry::AABB aabb = xpbd_obj.boundingBox();
+        std::vector<int> vertices_to_fix = xpbd_obj.mesh()->getVerticesWithY(aabb.min[1]);
         for (const auto& v : vertices_to_fix)
-            xpbd_mo->fixVertex(v);
-        
-        _out_file << xpbd_mo->toString(1) << std::endl;
+            xpbd_obj.fixVertex(v);
 
+        // find the "tip" vertex - we take the tip to be in the center of the bottom-right edge, since this is where most vertical deflection happens
         const Vec3r bbox_center = aabb.center();
-        unsigned tip_vertex = xpbd_mo->mesh()->getClosestVertex( {bbox_center[0], aabb.max[1], bbox_center[2]} );
+        unsigned tip_vertex = xpbd_obj.mesh()->getClosestVertex( {bbox_center[0], aabb.max[1], bbox_center[2]} );
         _beams_tip_vertex.push_back(tip_vertex);
-        _beams_tip_start.push_back(xpbd_mo->mesh()->vertex(tip_vertex));
+        // track where the tip started for this object
+        Vec3r tip_start = xpbd_obj.mesh()->vertex(tip_vertex);
+        _beams_tip_start.push_back(tip_start);
         
+        // add logging variables if logging enabled - z-deflection, constraint residual
+        if (_logger)
+        {
+            std::string z_deflection_var_name  = xpbd_obj.name() + "_Z-deflection[m]";
+            std::string constraint_res_var_name = xpbd_obj.name() + "_Constraint-Residual";
+            _logger->addOutput(z_deflection_var_name, [xpbd_obj, tip_vertex, tip_start](){
+                return tip_start[2] - xpbd_obj.mesh()->vertex(tip_vertex)[2];
+            });
+            _logger->addOutput(constraint_res_var_name, [xpbd_obj](){
+                return xpbd_obj.lastConstraintResidual().norm();
+            });
+        }
     }
-
-    // write appropriate CSV column headers
-    _out_file << "\nTime(s)";
-    for (const auto& xpbd_mo : _objects.template get<std::unique_ptr<XPBDMeshObject_Base>>())
-    {
-        std::regex r("\\s+");
-        const std::string& name = std::regex_replace(xpbd_mo->name(), r, "");
-        _out_file << " "+name+"DeflectionX(m)" << " "+name+"DeflectionZ(m)" << " "+name+"DynamicsResidual" << " "+name+"PrimaryResidual" << " "+name+"ConstraintResidual" << " "+name+"VolumeRatio";
-        
-    }
-    _out_file << std::endl;
     
     if (_graphics_scene)
         _graphics_scene->setCameraOrthographic();
-        
-    _last_print_sim_time = _time;
-}
 
-void BeamSimulation::printInfo() const
-{
-    // _out_file << _time;
-    // for (size_t i = 0; i < _objects.size(); i++) {
-
-    //     if (XPBDMeshObject_Base* xpbd = dynamic_cast<XPBDMeshObject_Base*>(_objects[i].get()))
-    //     {
-    //         const Vec3r& beam_deflection = _beams_tip_start[i] - xpbd->mesh()->vertex(_beams_tip_vertex[i]);
-
-    //         Real dynamics_residual = 0;
-    //         Real primary_residual = 0;
-    //         Real constraint_residual = 0;
-    //         Real volume_ratio = 1;
-        
-    //         // TODO: get residuals from solver somehow
-            
-    //         // VecXr pres_vec = xpbd->solver()->primaryResidual();
-    //         // primary_residual = std::sqrt(pres_vec.squaredNorm() / pres_vec.rows());
-    //         // VecXr cres_vec = xpbd->solver()->constraintResidual();
-    //         // constraint_residual = std::sqrt(cres_vec.squaredNorm() / cres_vec.rows());
-
-    //         _out_file << " " << beam_deflection[0] << " " << beam_deflection[2] << " " << dynamics_residual << " " << primary_residual << " " << constraint_residual << " " << volume_ratio;
-    //     }
-
-        
-        
-    // }
-    // _out_file << std::endl;
+    
 }
 
 } // namespace Sim

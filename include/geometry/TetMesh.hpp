@@ -23,6 +23,11 @@ class TetMesh : public Mesh
 
     TetMesh(TetMesh&& other);
 
+    /** Essentially "sets up" the mesh - treats the current state as the initial, undeformed state of the mesh.
+     * This should be called after performing the initial translations and rotations setting up the mesh.
+     */
+    virtual void setCurrentStateAsUndeformedState() override;
+
     /** Returns a const-reference to the elements of the mesh. */
     const ElementsMat& elements() const { return _elements; }
 
@@ -38,6 +43,9 @@ class TetMesh : public Mesh
     /** Returns the current volume of the specified element. */
     Real elementVolume(int index) const;
 
+    /** Returns the rest volume of the specified element. */
+    Real elementRestVolume(int index) const { return _element_rest_volumes[index]; }
+
     /** Returns deformation gradient for the specified element.
      * Assumes linear shape functions (deformation gradient is constant throughout the element)
      */
@@ -48,14 +56,24 @@ class TetMesh : public Mesh
      */
     std::pair<int, Real> averageTetEdgeLength() const;
 
- #ifdef HAVE_CUDA
+#ifdef HAVE_CUDA
     virtual void createGPUResource() override;
- #endif
+#endif
 
-    const std::vector<int>& attachedElementsToVertex(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
+    const std::vector<int>& vertexAttachedElements(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
 
     protected:
+    /** Finds adjacent vertices for each vertex in the mesh.
+     * Two vertices are "adjacent" if they are connected by a face or element.
+     * 
+     * Overrides the behavior in Geometry::Mesh to consider tetrahedral elements instead of only surface faces.
+     */
+    virtual void _computeAdjacentVertices() override;
+
+
     ElementsMat _elements;  // the matrix of tetrahedral elements
+
+    std::vector<Real> _element_rest_volumes;
 
     /** inverse undeformed basis for each element
      *   - used in calculating the deformation gradient (F = XQ) where X is current deformed basis, Q is inverse undeformed basis

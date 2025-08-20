@@ -5,6 +5,9 @@
 
 #include <functional>
 
+struct MathUtils
+{
+
 /** General RK4 integration
  * @param state0 - the initial state at t[0]
  * @param t - a vector of integration points (t[0] corresponds to the time at state0)
@@ -13,7 +16,7 @@
  * @returns the states at each of the integration points
  */
 template<typename StateType, typename ParamType>
-std::vector<StateType> RK4(const StateType& state0, const std::vector<Real>& t, const ParamType& params, std::function<StateType (Real, const StateType&, const ParamType&)> ode_func)
+static std::vector<StateType> RK4(const StateType& state0, const std::vector<Real>& t, const ParamType& params, std::function<StateType (Real, const StateType&, const ParamType&)> ode_func)
 {
     std::vector<StateType> states(t.size());
     states[0] = state0;
@@ -45,7 +48,7 @@ std::vector<StateType> RK4(const StateType& state0, const std::vector<Real>& t, 
  * @param state_output_start - (OUTPUT) an iterator pointing to the start of an output states vector (state0 will go here)
  */
 template<typename StateType, typename ParamType, typename TIterator, typename StateIterator>
-void RK4(const StateType& state0, TIterator t_start, TIterator t_end,
+static void RK4(const StateType& state0, TIterator t_start, TIterator t_end,
     const ParamType& params, std::function<StateType (Real, const StateType&, const ParamType&)> ode_func,
     StateIterator state_output_start)
 {
@@ -71,7 +74,7 @@ void RK4(const StateType& state0, TIterator t_start, TIterator t_end,
 
 }
 
-Mat3r Skew3(const Vec3r& vec)
+static Mat3r Skew3(const Vec3r& vec)
 {
     Mat3r mat;
     mat << 0,       -vec(2),    vec(1),
@@ -79,5 +82,7 @@ Mat3r Skew3(const Vec3r& vec)
            -vec(1), vec(0),     0;
     return mat;
 }
+
+};
 
 #endif // __MATH_UTILS_HPP

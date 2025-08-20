@@ -11,6 +11,7 @@
 #include "solver/xpbd_solver/XPBDParallelJacobiSolver.hpp"
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
+#include "solver/constraint/DeformableDeformableCollisionConstraint.hpp"
 #include "solver/constraint/HydrostaticConstraint.hpp"
 #include "solver/constraint/DeviatoricConstraint.hpp"
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
@@ -37,7 +38,7 @@ template<bool IsFirstOrder>
 void XPBDMeshObject_Base_<IsFirstOrder>::createSDF()
 {
     if (!_sdf.has_value())
-        _sdf = SDFType(this, _sim->embreeScene());
+        _sdf.emplace(this, _sim->embreeScene());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +59,9 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
     
     // constraint specifications
     _constraint_type = config->constraintType();
+
+    // local collision iterations
+    _num_local_collision_iters = config->numLocalCollisionIters();
 
     // get the damping multiplier for 1st-order objects
     if constexpr (IsFirstOrder)
@@ -84,12 +88,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
     loadAndConfigureMesh();
 
     _solver.setup();
-
-    // set size of collision constraint projector vectors
-    using StaticCollisionConstraintType = Solver::ConstraintProjector<SolverType::is_first_order, Solver::StaticDeformableCollisionConstraint>;
-    using RigidCollisionConstraintType = Solver::RigidBodyConstraintProjector<SolverType::is_first_order, Solver::RigidDeformableCollisionConstraint>;
-    // _solver.template setNumProjectorsOfType<StaticCollisionConstraintType>(_mesh->numFaces() + _mesh->numVertices());
-    // _solver.template setNumProjectorsOfType<RigidCollisionConstraintType>(_mesh->numFaces());
 
     // initialize the previous vertices matrix once we've loaded the mesh
     _previous_vertices = _mesh->vertices();
@@ -177,12 +175,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
     // set any collision constraint projectors in the solver invalid
     // NOTE: because the collision constraint
     using StaticCollisionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
+    using DeformableCollisionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::DeformableDeformableCollisionConstraint>;
     using RigidCollisionConstraintType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>;
     _solver.template clearProjectorsOfType<StaticCollisionConstraintType>();
+    _solver.template clearProjectorsOfType<DeformableCollisionConstraintType>();
     _solver.template clearProjectorsOfType<RigidCollisionConstraintType>();
 
     // clear the collision constraints lists
     _constraints.template clear<Solver::StaticDeformableCollisionConstraint>();
+    _constraints.template clear<Solver::DeformableDeformableCollisionConstraint>();
     _constraints.template clear<Solver::RigidDeformableCollisionConstraint>();
 
 
@@ -218,7 +219,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     // calculate masses for each vertex
     _vertex_masses.resize(_mesh->numVertices());
     _vertex_volumes.resize(_mesh->numVertices());
-    _vertex_attached_elements.resize(_mesh->numVertices());
     _is_fixed_vertex.resize(_mesh->numVertices(), false);
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
@@ -240,12 +240,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         _vertex_volumes[element[1]] += volume/4.0;
         _vertex_volumes[element[2]] += volume/4.0;
         _vertex_volumes[element[3]] += volume/4.0;
-
-        // increment number of elements attached to each vertex in this element
-        _vertex_attached_elements[element[0]]++;
-        _vertex_attached_elements[element[1]]++;
-        _vertex_attached_elements[element[2]]++;
-        _vertex_attached_elements[element[3]]++;
     }
 
     // for 1st-order objects, calculate per-vertex damping
@@ -311,7 +305,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
 
             using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
             using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;
-            _solver.addConstraintProjector(_sim->dt(), 
+            
+            _solver.addConstraintProjector(_sim->dt(),
                 DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
                 HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
             );
@@ -345,8 +340,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_m
         for (int i = 0; i < _mesh->numVertices(); i++)
         {
             const Real dz = -_sim->gAccel() * _vertex_masses[i] * dt / _vertex_B[i];
-            _mesh->displaceVertex(i, Vec3r(0, 0, dz));
+            _mesh->displaceVertex(i, Vec3r(0,0,dz));
         }
+        
     }
     else
     {
@@ -364,7 +360,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_m
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_projectConstraints()
 {
+    // global iteration - initial solve of all the constraints
     _solver.solve();
+
+
+    // local iterations - helpful for better convergence of applied collision constraints
+
+    typename SolverType::projector_reference_container_type proj_to_reproject = _gatherProjectorsForLocalCollisionIterations();
+    // reproject the added constraints with solver iterations and no re-initialization
+    _solver.solve(proj_to_reproject, _num_local_collision_iters, false);
 
     // TODO: remove
     // for (int i = 0; i < _mesh->numVertices(); i++)
@@ -404,6 +408,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
     //     }
     // }
 
+    // for (int i = 0; i < tetMesh()->numElements(); i++)
+    // {
+    //     Mat3r F = tetMesh()->elementDeformationGradient(i);
+    //     if (F.determinant() < 0)
+    //     {
+    //         std::cout << "det(F) < 0 for element " << i << std::endl;
+    //     }
+    // }
+
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
@@ -413,7 +426,7 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 Vec3r XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::elasticForceAtVertex(int index) const
 {
     // get elements attached to the vertex in the mesh
-    const std::vector<int>& _attached_elements = tetMesh()->attachedElementsToVertex(index);
+    const std::vector<int>& _attached_elements = tetMesh()->vertexAttachedElements(index);
 
     /** TODO: figure out which approach is correct. */
     Vec3r total_force = Vec3r::Zero();
@@ -566,6 +579,114 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
     }
     return stiffness_matrix;
     
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::selfCollisionCheck()
+{
+    const Geometry::EmbreeScene* embree_scene = _sim->embreeScene();
+    for (int i = 0; i < _mesh->numVertices(); i++)
+    {
+        if (!_mesh->vertexOnSurface(i))
+            continue;
+
+        std::set<Geometry::EmbreeHit> hits = embree_scene->tetMeshSelfCollisionQuery(i, this);
+        if (hits.size() > 0)
+        {
+            int face_index = _sdf->closestSurfaceFaceToPointInTet(_mesh->vertex(i), hits.begin()->prim_index);
+
+            if (face_index < 0)
+                continue;
+
+            const Eigen::Vector3i& face = _mesh->face(face_index);
+
+            Real* q_ptr = _mesh->vertexPointer(i);
+            Real* p1_ptr = _mesh->vertexPointer(face[0]);
+            Real* p2_ptr = _mesh->vertexPointer(face[1]);
+            Real* p3_ptr = _mesh->vertexPointer(face[2]);
+
+            Real qm = vertexConstraintInertia(i);
+            Real p1m = vertexConstraintInertia(face[0]);
+            Real p2m = vertexConstraintInertia(face[1]);
+            Real p3m = vertexConstraintInertia(face[2]);
+
+            
+            // std::cout << "  SELF COLLISION WITH VERTEX " << i << " WITH FACE " << face_index << "!" << std::endl;
+            // std::cout << "  Tet indices: " << tetMesh()->element(hits.begin()->prim_index).transpose() << std::endl;
+            // std::cout << "  Face indices: " << face.transpose() << std::endl;
+            // std::cout << "  Vertex: " << _mesh->vertex(i).transpose() << 
+            //     "  Face:\n\t" << _mesh->vertex(face[0]).transpose() << ",\n\t" << _mesh->vertex(face[1]).transpose()  << ",\n\t" << _mesh->vertex(face[2]).transpose() << std::endl;
+            std::vector<Solver::DeformableDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::DeformableDeformableCollisionConstraint>();
+            constraint_vec.emplace_back(i, q_ptr, qm, face[0], p1_ptr, p1m, face[1], p2_ptr, p2m, face[2], p3_ptr, p3m);
+
+            using ConstraintRefType = Solver::ConstraintReference<Solver::DeformableDeformableCollisionConstraint>;
+            _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
+        }
+    }
+    
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+typename SolverType::projector_reference_container_type
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_gatherProjectorsForLocalCollisionIterations()
+{
+    // create a container to store all the constraint projectors that we should re-project
+    typename SolverType::projector_reference_container_type proj_to_reproject;
+
+    // go through each collision constraint and find the ones that were actually projected (lambda != 0)
+    using StaticCollisionProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
+    using StaticCollisionProjectorTypeRef = Solver::ConstraintProjectorReference<StaticCollisionProjectorType>;
+    std::vector<StaticCollisionProjectorType>& collision_projectors = _solver.template getConstraintProjectorsOfType<StaticCollisionProjectorType>();
+
+    for (unsigned i = 0; i < collision_projectors.size(); i++)
+    {
+        // add all collision constraints to be re-projected - this is necessary to maintain a consistent contact set
+        proj_to_reproject.template emplace_back<StaticCollisionProjectorTypeRef>(collision_projectors, i);
+
+        // if the collision constraint was violated last frame and projected, then we want to perform local iterations in its local area
+        if (collision_projectors[i].lambda() != 0)
+        {
+            // get the vertices affected by this collision constraint
+            const std::vector<Solver::PositionReference>& positions = collision_projectors[i].positions();
+
+            if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+            {
+                using DevHydProjectorType = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
+                using DevHydProjectorTypeRef = Solver::ConstraintProjectorReference<DevHydProjectorType>;
+                std::vector<DevHydProjectorType>& elastic_projectors = _solver.template getConstraintProjectorsOfType<DevHydProjectorType>();
+
+                // for each of the positions in the collision face, get the elements that they are attached to and add the elastic per-element constraints
+                // to be reprojected
+                for (const auto& position : positions)
+                {
+                    for (const auto& element_index : tetMesh()->vertexAttachedElements(position.index))
+                    {
+                        proj_to_reproject.template emplace_back<DevHydProjectorTypeRef>(elastic_projectors, element_index);
+                    }
+                }
+            }
+            else if (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookean::projector_type_list>)
+            {
+                using DevProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint>;
+                using DevProjectorTypeRef = Solver::ConstraintProjectorReference<DevProjectorType>;
+                using HydProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::HydrostaticConstraint>;
+                using HydProjectorTypeRef = Solver::ConstraintProjectorReference<HydProjectorType>;
+
+                std::vector<DevProjectorType>& dev_projectors = _solver.template getConstraintProjectorsOfType<DevProjectorType>();
+                std::vector<HydProjectorType>& hyd_projectors = _solver.template getConstraintProjectorsOfType<HydProjectorType>();
+                for (const auto& position : positions)
+                {
+                    for (const auto& element_index : tetMesh()->vertexAttachedElements(position.index))
+                    {
+                        proj_to_reproject.template emplace_back<DevProjectorTypeRef>(dev_projectors, element_index);
+                        proj_to_reproject.template emplace_back<HydProjectorTypeRef>(hyd_projectors, element_index);
+                    }
+                }
+            }
+        }
+    }
+
+    return proj_to_reproject;
 }
 
 #ifdef HAVE_CUDA

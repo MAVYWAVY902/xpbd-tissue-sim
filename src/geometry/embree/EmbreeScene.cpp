@@ -51,21 +51,42 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
     geom.setMeshGeomID( rtcAttachGeometry(_ray_scene, rtc_geom) );
     _geomID_to_mesh_obj[geom.meshGeomID()] = obj_ptr;
 
+    // create a new scene for the mesh exclusively for undeformed mesh queries (this scene is static)
+    RTCScene undeformed_mesh_scene = rtcNewScene(_device);
+    geom.setUndeformedScene(undeformed_mesh_scene);
+    // add Embree user geometry to static scene for undeformed mesh
+    RTCGeometry rtc_undeformed_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
+    geom.setUndeformedMeshGeomID( rtcAttachGeometry(geom.undeformedScene(), rtc_undeformed_geom) );
+
     // set BVH build quality to REFIT - this will update the BVH rather than do a complete rebuild
     rtcSetGeometryBuildQuality(rtc_geom, RTC_BUILD_QUALITY_REFIT);
     rtcSetGeometryUserPrimitiveCount(rtc_geom, obj_ptr->mesh()->numFaces());
     rtcSetGeometryUserData(rtc_geom, &geom);
+
+    // set BVH build quality to MEDIUM for the static scene
+    rtcSetGeometryBuildQuality(rtc_undeformed_geom, RTC_BUILD_QUALITY_MEDIUM);
+    rtcSetGeometryUserPrimitiveCount(rtc_undeformed_geom, obj_ptr->mesh()->numFaces());
+    rtcSetGeometryUserData(rtc_undeformed_geom, &geom);
 
     // set custom callbacks
     rtcSetGeometryBoundsFunction(rtc_geom, EmbreeMeshGeometry::boundsFuncTriangle, &geom);
     rtcSetGeometryIntersectFunction(rtc_geom, EmbreeMeshGeometry::intersectFuncTriangle);
     rtcSetGeometryPointQueryFunction(rtc_geom, EmbreeMeshGeometry::pointQueryFuncTriangle);
 
+    // set custom callbacks
+    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangleInitialVertices, &geom);
+    rtcSetGeometryIntersectFunction(rtc_undeformed_geom, EmbreeMeshGeometry::intersectFuncTriangleInitialVertices);
+    rtcSetGeometryPointQueryFunction(rtc_undeformed_geom, EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices);
+
     // commit geometry to scene
     rtcCommitGeometry(rtc_geom);
     rtcCommitScene(_ray_scene);     // this will build BVH
 
+    rtcCommitGeometry(rtc_undeformed_geom);
+    rtcCommitScene(undeformed_mesh_scene);
+
     rtcReleaseGeometry(rtc_geom);
+    rtcReleaseGeometry(rtc_undeformed_geom);
 }
 
 void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
@@ -98,6 +119,14 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     RTCGeometry rtc_tet_mesh_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
     geom.setTetMeshGeomID( rtcAttachGeometry(tet_mesh_scene, rtc_tet_mesh_geom) );
 
+    // create a new scene for the mesh exclusively for undeformed mesh queries (this scene is static)
+    RTCScene undeformed_mesh_scene = rtcNewScene(_device);
+    geom.setUndeformedScene(undeformed_mesh_scene);
+    // add Embree user geometry to static scene for undeformed mesh
+    RTCGeometry rtc_undeformed_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
+    geom.setUndeformedMeshGeomID( rtcAttachGeometry(geom.undeformedScene(), rtc_undeformed_geom) );
+
+
     // set the BVH build quality to REFIT - this will update the BVH rather than do a complete rebuild
     rtcSetGeometryBuildQuality(rtc_mesh_geom, RTC_BUILD_QUALITY_REFIT);
     rtcSetGeometryUserPrimitiveCount(rtc_mesh_geom, obj_ptr->mesh()->numFaces());
@@ -106,6 +135,11 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     rtcSetGeometryBuildQuality(rtc_tet_mesh_geom, RTC_BUILD_QUALITY_REFIT);
     rtcSetGeometryUserPrimitiveCount(rtc_tet_mesh_geom, obj_ptr->tetMesh()->numElements());
     rtcSetGeometryUserData(rtc_tet_mesh_geom, &geom);
+
+    // set BVH build quality to MEDIUM for the static scene
+    rtcSetGeometryBuildQuality(rtc_undeformed_geom, RTC_BUILD_QUALITY_MEDIUM);
+    rtcSetGeometryUserPrimitiveCount(rtc_undeformed_geom, obj_ptr->mesh()->numFaces());
+    rtcSetGeometryUserData(rtc_undeformed_geom, &geom);
 
     // set custom callbacks
     rtcSetGeometryBoundsFunction(rtc_mesh_geom, EmbreeMeshGeometry::boundsFuncTriangle, &geom);
@@ -116,6 +150,11 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     rtcSetGeometryIntersectFunction(rtc_tet_mesh_geom, EmbreeTetMeshGeometry::intersectFuncTetrahedra);
     rtcSetGeometryPointQueryFunction(rtc_tet_mesh_geom, EmbreeTetMeshGeometry::pointQueryFuncTetrahedra);
 
+    // set custom callbacks
+    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangleInitialVertices, &geom);
+    rtcSetGeometryIntersectFunction(rtc_undeformed_geom, EmbreeMeshGeometry::intersectFuncTriangleInitialVertices);
+    rtcSetGeometryPointQueryFunction(rtc_undeformed_geom, EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices);
+
     // commit geometry to scene
     rtcCommitGeometry(rtc_mesh_geom);
     rtcCommitScene(_ray_scene);     // this will build initial BVH
@@ -123,8 +162,12 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     rtcCommitGeometry(rtc_tet_mesh_geom);
     rtcCommitScene(tet_mesh_scene);
 
+    rtcCommitGeometry(rtc_undeformed_geom);
+    rtcCommitScene(undeformed_mesh_scene);
+
     rtcReleaseGeometry(rtc_mesh_geom);
     rtcReleaseGeometry(rtc_tet_mesh_geom);
+    rtcReleaseGeometry(rtc_undeformed_geom);
 }
 
 
@@ -146,6 +189,41 @@ void EmbreeScene::update()
         rtcCommitGeometry(rtc_tet_mesh_geom);
 
         rtcCommitScene(geom.tetScene());
+    }
+
+    rtcCommitScene(_ray_scene);
+}
+
+void EmbreeScene::updateObject(const Sim::MeshObject* /*mesh_obj*/)
+{
+    // don't need to do anything here since there are no dynamic scenes that EmbreeMeshGeometry owns 
+}
+
+void EmbreeScene::updateObject(const Sim::TetMeshObject* tet_mesh_obj)
+{
+    EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom[tet_mesh_obj];
+    geom->copyVertices(); 
+
+    RTCGeometry rtc_tet_mesh_geom = rtcGetGeometry(geom->tetScene(), geom->tetMeshGeomID());
+    rtcCommitGeometry(rtc_tet_mesh_geom);
+    rtcCommitScene(geom->tetScene());
+}
+
+void EmbreeScene::updateRayScene()
+{
+    for (auto& geom : _embree_mesh_geoms)
+    {
+        geom.copyVertices();
+        RTCGeometry rtc_geom = rtcGetGeometry(_ray_scene, geom.meshGeomID());
+        rtcCommitGeometry(rtc_geom);
+    }
+
+    for (auto& geom : _embree_tet_mesh_geoms)
+    {
+        // only update the ray scene geometry (not the tetrahedral mesh geometry)
+        geom.copyVertices();
+        RTCGeometry rtc_mesh_geom = rtcGetGeometry(_ray_scene, geom.meshGeomID());
+        rtcCommitGeometry(rtc_mesh_geom);
     }
 
     rtcCommitScene(_ray_scene);
@@ -208,6 +286,12 @@ EmbreeHit EmbreeScene::closestPointTetMesh(const Vec3r& point, const Sim::TetMes
     return _closestPointQuery(point, obj_ptr, geom);
 }
 
+EmbreeHit EmbreeScene::closestPointUndeformedTetMesh(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const
+{
+    const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
+    return _closestPointQueryUndeformed(point, obj_ptr, geom);
+}
+
 EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const
 {
     EmbreeClosestPointQueryUserData point_query_data;
@@ -232,15 +316,66 @@ EmbreeHit EmbreeScene::_closestPointQuery(const Vec3r& point, const Sim::MeshObj
 
 }
 
+EmbreeHit EmbreeScene::_closestPointQueryUndeformed(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const
+{
+    EmbreeClosestPointQueryUserData point_query_data;
+    point_query_data.obj_ptr = obj_ptr;
+    point_query_data.geom = geom;
+
+    float p[3];
+    p[0] = point[0]; p[1] = point[1]; p[2] = point[2];
+    point_query_data.point = p;
+
+    RTCPointQuery query;
+    query.x = p[0];
+    query.y = p[1];
+    query.z = p[2];
+    query.radius = std::numeric_limits<float>::infinity(); // the query radius will get refined as we go
+
+    RTCPointQueryContext context;
+    rtcInitPointQueryContext(&context);
+    rtcPointQuery(geom->undeformedScene(), &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices, &point_query_data);
+
+    return point_query_data.result;
+
+}
+
 std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const
 {
     const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
     EmbreePointQueryUserData point_query_data;
     point_query_data.obj_ptr = obj_ptr;
     point_query_data.geom = geom;
+    point_query_data.vertex_ind = -1;
     
     float p[3];
     p[0] = point[0]; p[1] = point[1]; p[2] = point[2];
+    point_query_data.point = p;
+
+    RTCPointQuery query;
+    query.x = p[0];
+    query.y = p[1];
+    query.z = p[2];
+    query.radius = 0.0f;
+
+    RTCPointQueryContext context;
+    rtcInitPointQueryContext(&context);
+    rtcPointQuery(geom->tetScene(), &query, &context, nullptr, &point_query_data);
+
+    return point_query_data.result;
+}
+
+std::set<EmbreeHit> EmbreeScene::tetMeshSelfCollisionQuery(int vertex_index, const Sim::TetMeshObject* obj_ptr) const
+{
+    const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
+    EmbreePointQueryUserData point_query_data;
+    point_query_data.obj_ptr = obj_ptr;
+    point_query_data.geom = geom;
+    point_query_data.vertex_ind = vertex_index;
+    
+    const Vec3r& vertex = obj_ptr->mesh()->vertex(vertex_index);
+    float p[3];
+    p[0] = vertex[0]; p[1] = vertex[1]; p[2] = vertex[2];
     point_query_data.point = p;
 
     RTCPointQuery query;

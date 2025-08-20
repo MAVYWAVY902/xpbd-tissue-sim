@@ -63,8 +63,9 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         _material_config = std::make_unique<ElasticMaterialConfig>(node["material"]);
 
         // extract parameters
-
+        _extractParameter("self-collisions", node, _self_collisions);
         _extractParameter("num-solver-iters", node, _num_solver_iters);
+        _extractParameter("num-local-collision-iters", node, _num_local_collision_iters);
         _extractParameterWithOptions("solver-type", node, _solve_type, SOLVER_TYPE_OPTIONS());
         _extractParameterWithOptions("constraint-type", node, _constraint_type, CONSTRAINT_TYPE_OPTIONS());
         _extractParameterWithOptions("residual-policy", node, _residual_policy, RESIDUAL_POLICY_OPTIONS());
@@ -79,7 +80,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
                                     Real density, Real E, Real nu, Real mu_s, Real mu_k,                                                    // ElasticMaterial params
 
-                                    int num_solver_iters, XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
+                                    bool self_collisions, int num_solver_iters, int num_local_collision_iters,
+                                    XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
                                     XPBDSolverResidualPolicyEnum residual_policy,
                                 
                                     const ObjectRenderConfig& render_config)
@@ -88,7 +90,9 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     {
         _material_config = std::make_unique<ElasticMaterialConfig>(name + "_material", density, E, nu, mu_s, mu_k);
 
+        _self_collisions.value = self_collisions;
         _num_solver_iters.value = num_solver_iters;
+        _num_local_collision_iters.value = num_local_collision_iters;
         _solve_type.value = solver_type;
         _constraint_type.value = constraint_type;
         _residual_policy.value = residual_policy;
@@ -97,7 +101,9 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
     // Getters
+    bool selfCollisions() const { return _self_collisions.value; }
     int numSolverIters() const { return _num_solver_iters.value; }
+    int numLocalCollisionIters() const { return _num_local_collision_iters.value; }
     XPBDObjectSolverTypeEnum solverType() const { return _solve_type.value; }
     XPBDMeshObjectConstraintConfigurationEnum constraintType() const { return _constraint_type.value; }
     XPBDSolverResidualPolicyEnum residualPolicy() const { return _residual_policy.value; }
@@ -106,7 +112,9 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
     protected:
     // Parameters
+    ConfigParameter<bool> _self_collisions = ConfigParameter<bool>(false);
     ConfigParameter<int> _num_solver_iters = ConfigParameter<int>(1);
+    ConfigParameter<int> _num_local_collision_iters = ConfigParameter<int>(0);
     ConfigParameter<XPBDObjectSolverTypeEnum> _solve_type = ConfigParameter<XPBDObjectSolverTypeEnum>(XPBDObjectSolverTypeEnum::GAUSS_SEIDEL);
     ConfigParameter<XPBDMeshObjectConstraintConfigurationEnum> _constraint_type = ConfigParameter<XPBDMeshObjectConstraintConfigurationEnum>(XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED);
     ConfigParameter<XPBDSolverResidualPolicyEnum> _residual_policy = ConfigParameter<XPBDSolverResidualPolicyEnum>(XPBDSolverResidualPolicyEnum::NEVER);

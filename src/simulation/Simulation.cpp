@@ -64,6 +64,24 @@ Simulation::Simulation(const Config::SimulationConfig* config)
     // _collision_scene = std::make_unique<CollisionScene>(1.0/_config->fps().value(), 0.05, 10007);
     _collision_scene = std::make_unique<CollisionScene>(this, _embree_scene.get());
     _last_collision_detection_time = 0;
+
+    // initialize the logger
+    if (_config->logging())
+    {
+        // get datetime string
+        auto now = std::chrono::system_clock::now();
+        auto time_t = std::chrono::system_clock::to_time_t(now);
+        
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&time_t), "%Y-%m-%d_%H:%M:%S") << ".txt";
+        std::string filename = ss.str();
+
+        std::filesystem::path output_dir(config->loggingOutputDir());
+        std::filesystem::path filepath = output_dir / filename;
+
+        // create the logger
+        _logger = std::make_unique<SimulationLogger>(filepath.string());
+    }
 }
 
 std::string Simulation::toString(const int indent) const
@@ -103,16 +121,26 @@ void Simulation::setup()
         this->_addObjectFromConfig(&config);
     });
         
-
+    /** Configure the logger */
+    if (_logger)
+    {
+        // add time as a variable
+        _logger->addOutput("time [s]", &_time);
+    }
     
 }
 
 void Simulation::update()
 {
+    // we assume that other derived Simulation classes have already added their logged quantities
+    // so we can start logging now (which will print the header and prevent us from adding new logged quantities)
+    if (_logger)
+        _logger->startLogging();
+
     auto start = std::chrono::steady_clock::now();
 
     // the start time in wall clock time of the simulation
-    auto wall_time_start = std::chrono::steady_clock::now();
+    _wall_time_start = std::chrono::steady_clock::now();
     // the wall time of the last viewer redraw
     auto last_redraw = std::chrono::steady_clock::now();
 
@@ -120,7 +148,7 @@ void Simulation::update()
     while(_time < _end_time)
     {
         // the elapsed seconds in wall time since the simulation has started
-        Real wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wall_time_start).count() / 1000000000.0;
+        Real wall_time_elapsed_s = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - _wall_time_start).count() / 1000000000.0;
         
         // check if any callbacks need to be called
         for (auto& cb : _callbacks)
@@ -228,6 +256,12 @@ void Simulation::_timeStep()
         _last_collision_detection_time = _time;
     }
     
+    // log quantities
+    if (_logger)
+    {
+        _logger->logToFile();
+    }
+
     // increment the time by the time step
     _time += _time_step;
 

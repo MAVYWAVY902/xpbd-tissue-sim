@@ -50,7 +50,6 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::fixVertex;
     using Base::vertexFixed;
     using Base::vertexMass;
-    using Base::vertexAttachedElements;
     using Base::vertexVelocity;
     using Base::vertexPreviousPosition;
     using Base::vertexConstraintInertia;
@@ -64,7 +63,6 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::_material;
     using Base::_vertex_masses;
     using Base::_vertex_volumes;
-    using Base::_vertex_attached_elements;
     using Base::_is_fixed_vertex;
     using Base::_sdf;
     using Base::_damping_multiplier;
@@ -145,6 +143,14 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() override;
 
+    /** === Querying the solver === */
+
+    /** @returns the most recently calculated primary residual from the solver object */
+    virtual VecXr lastPrimaryResidual() const override { return _solver.primaryResidual(); };
+
+    /** @returns the most recently calculated constraint residual from the solver object */
+    virtual VecXr lastConstraintResidual() const override { return _solver.constraintResidual(); }
+
     /** === Miscellaneous useful methods === */
 
     /** Computes the elastic force on the vertex at the specified index. This is essentially just the current constraint force for all "elastic" constraints
@@ -158,6 +164,13 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      * @returns the global stiffness matrix
      */
     virtual MatXr stiffnessMatrix() const override;
+
+    /** Performs a check for self collision.
+     * If any surface vertices are inside tetrahedra (queries made using Embree), add a collision constraint to fix that.
+     * Assumes that the Embree scene is up to date.
+     */
+    virtual void selfCollisionCheck() override;
+
 
  #ifdef HAVE_CUDA
     virtual void createGPUResource() override;
@@ -186,6 +199,18 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      */
     void _createElasticConstraints();
 
+    /** Assembles a vector of constraint projector references corresponding to constraints that are nearby active collision constraints.
+     * These are then passed to the solver to re-project and update the mesh.
+     * We also include all collision constraints (including currently inactive ones) to maintain a consistent contact manifold.
+     * 
+     * "Nearby" constraints are those that share a vertex with an active collision constraint. E.g., the hydrostatic and deviatoric constraints
+     * for all elements that share a vertex with an active collision constraint.
+     * 
+     * We are not concerned with duplicate constraint projectors in this vector since we are doing multiple iterations anyways - probably just
+     * faster to add all constraint projectors than try and make a unique set.
+     */
+    typename SolverType::projector_reference_container_type _gatherProjectorsForLocalCollisionIterations();
+
     protected:
     /** The specific constraint configuration used to define internal constraints for the XPBD mesh. Set by the Config object
      * TODO: is this necessary? Should XPBDMeshObjectConstraintConfiguration be a struct that can create the elastic constraints for the mesh?
@@ -201,6 +226,15 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     /** A heterogeneous container of all the constraints.
      */
     VariadicVectorContainer<ConstraintTypes...> _constraints;
+
+    /** The number of local iterations for collision area.
+     * Constraint projectors in the vicinity of active collision constraints (see _gatherProjectorsForLocalCollisionIterations) are assembled
+     * and re-projected multiple times, which helps propagate the deformation imposed by collision constraints to the rest of the mesh.
+     * Called "local" iterations since only a subset of the constraint projectors are being re-projected.
+     * 
+     * This is set by the config object.
+     */
+    int _num_local_collision_iters;
 };
 
 } // namespace Sim

@@ -9,27 +9,25 @@ set(SIMULATION_SRC_DIR "./")
 # Residual Simulation
 ######################################
 
-set(RESIDUAL_SIMULATION_HEADERS
+set(SIMULATION_HEADERS
     "${SIMULATION_INCLUDE_DIR}/Simulation.hpp"
-    "${SIMULATION_INCLUDE_DIR}/OutputSimulation.hpp"
-    "${SIMULATION_INCLUDE_DIR}/ResidualSimulation.hpp"
+    "${SIMULATION_INCLUDE_DIR}/SimulationLogger.hpp"
 )
-set(RESIDUAL_SIMULATION_SOURCES
+set(SIMULATION_SOURCES
     "${SIMULATION_SRC_DIR}/Simulation.cpp"
-    "${SIMULATION_SRC_DIR}/OutputSimulation.cpp"
-    "${SIMULATION_SRC_DIR}/ResidualSimulation.cpp"
+    "${SIMULATION_SRC_DIR}/SimulationLogger.cpp"
 )
 
-target_sources(ResidualSimulation
+target_sources(Simulation
     PRIVATE
-        ${RESIDUAL_SIMULATION_HEADERS}
-        ${RESIDUAL_SIMULATION_SOURCES}
+        ${SIMULATION_HEADERS}
+        ${SIMULATION_SOURCES}
         
 )
-install(TARGETS ResidualSimulation EXPORT ResidualSimulation-targets
+install(TARGETS Simulation EXPORT Simulation-targets
     RUNTIME DESTINATION bin/${PROJECT_NAME}
     LIBRARY DESTINATION lib/${PROJECT_NAME})
-install(FILES ${RESIDUAL_SIMULATION_HEADERS}
+install(FILES ${SIMULATION_HEADERS}
     DESTINATION include/${PROJECT_NAME}/simulation)
 
 
@@ -96,17 +94,36 @@ install(FILES ${VIRTUOSO_SIMULATION_HEADERS}
     DESTINATION include/${PROJECT_NAME}/simulation)
 
 
+####################################
+# Initial deformation simulation
+#####################################
+set (INITIAL_DEFORMATION_SIMULATION_HEADERS
+    "${SIMULATION_INCLUDE_DIR}/InitialDeformationSimulation.hpp"
+)
+set (INITIAL_DEFORMATION_SIMULATION_SOURCES
+    "${SIMULATION_SRC_DIR}/InitialDeformationSimulation.cpp"
+)
+
+target_sources(InitialDeformationSimulation
+    PRIVATE
+        ${INITIAL_DEFORMATION_SIMULATION_HEADERS}
+        ${INITIAL_DEFORMATION_SIMULATION_SOURCES}
+)
+install(TARGETS InitialDeformationSimulation EXPORT InitialDeformationSimulation-targets
+    RUNTIME DESTINATION bin/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
+)
+install(FILES ${INITIAL_DEFORMATION_SIMULATION_HEADERS}
+    DESTINATION include/${PROJECT_NAME}/simulation)
+
+
 # target_sources(BeamStretchSimulation
 #     PRIVATE
 #         ${SIMULATION_INCLUDE_DIR}/BeamStretchSimulation.hpp
 #         ${SIMULATION_SRC_DIR}/BeamStretchSimulation.cpp
 # )
 
-# target_sources(InitialDeformationSimulation
-#     PRIVATE
-#         ${SIMULATION_INCLUDE_DIR}/InitialDeformationSimulation.hpp
-#         ${SIMULATION_SRC_DIR}/InitialDeformationSimulation.cpp
-# )
+
 
 # target_sources(TissueGraspingSimulation
 #     PRIVATE

@@ -85,6 +85,27 @@ public:
         }
     }
 
+    TetMeshObject* getAsTetMeshObject()
+    {
+        return std::visit([](auto& obj) { return (TetMeshObject*)obj; }, _variant);
+    }
+
+    const TetMeshObject* getAsTetMeshObject() const
+    {
+        return std::visit([](const auto& obj) { return (const TetMeshObject*)obj; }, _variant);
+    }
+
+    /** === Object functionality === */
+    std::string name() const
+    {
+        return std::visit([](const auto& obj) { return obj->name(); }, _variant);
+    }
+
+    Geometry::AABB boundingBox() const
+    {
+        return std::visit([](const auto& obj) { return obj->boundingBox(); }, _variant);
+    }
+
     /** === XPBDMeshObject_Base_ functionality === */
     /** TODO: should some of these methods use perfect forwarding? */
 
@@ -111,11 +132,6 @@ public:
     Real vertexMass(int index) const
     {
         return std::visit([&](const auto& obj) { return obj->vertexMass(index); }, _variant);
-    }
-
-    int vertexAttachedElements(int index) const
-    {
-        return std::visit([&](const auto& obj) { return obj->vertexAttachedElements(index); }, _variant);
     }
 
     Vec3r vertexVelocity(int index) const
@@ -187,6 +203,8 @@ public:
         return std::visit([](auto& obj) { obj->clearAttachmentConstraints(); }, _variant);
     }
 
+    /** === Miscellaneous === */
+
     Vec3r elasticForceAtVertex(int index) const
     {
         return std::visit([&](const auto& obj) { return obj->elasticForceAtVertex(index); }, _variant);
@@ -195,6 +213,21 @@ public:
     MatXr stiffnessMatrix() const
     {
         return std::visit([](const auto& obj) { return obj->stiffnessMatrix(); }, _variant);
+    }
+
+    void selfCollisionCheck()
+    {
+        return std::visit([](auto& obj) { return obj->selfCollisionCheck(); }, _variant);
+    }
+
+    VecXr lastPrimaryResidual() const
+    {
+        return std::visit([&](const auto& obj) { return obj->lastPrimaryResidual(); }, _variant);
+    }
+
+    VecXr lastConstraintResidual() const
+    {
+        return std::visit([&](const auto& obj) { return obj->lastConstraintResidual(); }, _variant);
     }
 
 

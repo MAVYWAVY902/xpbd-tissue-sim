@@ -59,6 +59,7 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
         }
         
     }
+
     // compute RHS of lambda update: -C - alpha_tilde * lambda
     Real RHS[2];
     for (int ci = 0; ci < 2; ci++)
@@ -72,8 +73,6 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
 
     dlam[0] = (RHS[0]*LHS[3] - RHS[1]*LHS[2]) / det;
     dlam[1] = (RHS[1]*LHS[0] - RHS[0]*LHS[1]) / det;
-
-    // std::cout << "dlam[0]: " << dlam[0] << ", dlam[1]: " << dlam[1] << std::endl;
 
     // update lambdas
     _lambda[0] += dlam[0];
@@ -93,11 +92,6 @@ void CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstrai
         coordinate_updates_ptr[3*i+1].update = update_y;
         coordinate_updates_ptr[3*i+2].ptr = _constraint1->positions()[i].position_ptr+2;
         coordinate_updates_ptr[3*i+2].update = update_z;
-
-        // if (_constraint1->positions()[i].index == 337)
-        // {
-        //     std::cout << "Index 337 combined position update: "  << update_x << ", " << update_y << ", " << update_z << std::endl;
-        // }
     }
 }
 

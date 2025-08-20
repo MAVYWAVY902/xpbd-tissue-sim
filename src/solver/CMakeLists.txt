@@ -14,6 +14,7 @@ set(SOLVER_HEADERS
     ${SOLVER_INCLUDE_DIR}/constraint/RigidBodyConstraint.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/RigidDeformableCollisionConstraint.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/StaticDeformableCollisionConstraint.hpp
+    ${SOLVER_INCLUDE_DIR}/constraint/DeformableDeformableCollisionConstraint.hpp
 
     ${SOLVER_INCLUDE_DIR}/xpbd_projector/CombinedConstraintProjector.hpp
     ${SOLVER_INCLUDE_DIR}/xpbd_projector/CombinedNeohookeanConstraintProjector.hpp
@@ -32,6 +33,7 @@ set(SOLVER_SOURCES
     ${SOLVER_SRC_DIR}/constraint/HydrostaticConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/StaticDeformableCollisionConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/RigidDeformableCollisionConstraint.cpp
+    ${SOLVER_SRC_DIR}/constraint/DeformableDeformableCollisionConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/AttachmentConstraint.cpp
 
     ${SOLVER_SRC_DIR}/xpbd_projector/CombinedNeohookeanConstraintProjector.cpp

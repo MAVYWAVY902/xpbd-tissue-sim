@@ -12,6 +12,74 @@ namespace Geometry
 TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const ElementsMat& elements)
     : Mesh(vertices, faces), _elements(elements)
 {
+    setCurrentStateAsUndeformedState();
+}
+
+TetMesh::TetMesh(const TetMesh& other)
+    : Mesh(other)
+{
+    _elements = other._elements;
+    _attached_elements_to_vertex = other._attached_elements_to_vertex;
+    _element_inv_undeformed_basis = other._element_inv_undeformed_basis;
+    _element_rest_volumes = other._element_rest_volumes;
+}
+
+TetMesh::TetMesh(TetMesh&& other)
+    : Mesh(other)
+{
+    _elements = std::move(other._elements);
+    _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);
+    _element_inv_undeformed_basis = std::move(other._element_inv_undeformed_basis);
+    _element_rest_volumes = std::move(other._element_rest_volumes);
+}
+
+void TetMesh::_computeAdjacentVertices()
+{
+    _vertex_adjacent_vertices.resize(numVertices());
+    
+    // clear all the adjacency lists
+    for (int i = 0; i < numVertices(); i++)
+    {
+        _vertex_adjacent_vertices[i].clear();
+    }
+
+    // go through each of the faces and add adjacent vertices for each vertex in the face
+    // even though std::vector is slow for this, we only do this once
+    for (int i = 0; i < numElements(); i++)
+    {
+        const Eigen::Vector4i& cur_element = element(i);
+
+        std::vector<int>& adj_verts0 = _vertex_adjacent_vertices[cur_element[0]];
+        std::vector<int>& adj_verts1 = _vertex_adjacent_vertices[cur_element[1]];
+        std::vector<int>& adj_verts2 = _vertex_adjacent_vertices[cur_element[2]];
+        std::vector<int>& adj_verts3 = _vertex_adjacent_vertices[cur_element[3]];
+
+        // for v0
+        if (std::find(adj_verts0.begin(), adj_verts0.end(), cur_element[1]) == adj_verts0.end())    adj_verts0.push_back(cur_element[1]);
+        if (std::find(adj_verts0.begin(), adj_verts0.end(), cur_element[2]) == adj_verts0.end())    adj_verts0.push_back(cur_element[2]);
+        if (std::find(adj_verts0.begin(), adj_verts0.end(), cur_element[3]) == adj_verts0.end())    adj_verts0.push_back(cur_element[3]);
+
+        // for v1
+        if (std::find(adj_verts1.begin(), adj_verts1.end(), cur_element[0]) == adj_verts1.end())   adj_verts1.push_back(cur_element[0]);
+        if (std::find(adj_verts1.begin(), adj_verts1.end(), cur_element[2]) == adj_verts1.end())   adj_verts1.push_back(cur_element[2]);
+        if (std::find(adj_verts1.begin(), adj_verts1.end(), cur_element[3]) == adj_verts1.end())   adj_verts1.push_back(cur_element[3]);
+
+        // for v2
+        if (std::find(adj_verts2.begin(), adj_verts2.end(), cur_element[0]) == adj_verts2.end())   adj_verts2.push_back(cur_element[0]);
+        if (std::find(adj_verts2.begin(), adj_verts2.end(), cur_element[1]) == adj_verts2.end())   adj_verts2.push_back(cur_element[1]);
+        if (std::find(adj_verts2.begin(), adj_verts2.end(), cur_element[3]) == adj_verts2.end())   adj_verts2.push_back(cur_element[3]);
+
+        // for v3
+        if (std::find(adj_verts3.begin(), adj_verts3.end(), cur_element[0]) == adj_verts3.end())   adj_verts3.push_back(cur_element[0]);
+        if (std::find(adj_verts3.begin(), adj_verts3.end(), cur_element[1]) == adj_verts3.end())   adj_verts3.push_back(cur_element[1]);
+        if (std::find(adj_verts3.begin(), adj_verts3.end(), cur_element[2]) == adj_verts3.end())   adj_verts3.push_back(cur_element[2]);
+    }
+}
+
+void TetMesh::setCurrentStateAsUndeformedState()
+{
+    Mesh::setCurrentStateAsUndeformedState();
+
     // compute mesh properties
     _attached_elements_to_vertex.resize(numVertices());
     for (int i = 0; i < numElements(); i++)
@@ -39,22 +107,12 @@ TetMesh::TetMesh(const VerticesMat& vertices, const FacesMat& faces, const Eleme
 
         _element_inv_undeformed_basis[i] = X.inverse();
     }
-}
 
-TetMesh::TetMesh(const TetMesh& other)
-    : Mesh(other)
-{
-    _elements = other._elements;
-    _attached_elements_to_vertex = other._attached_elements_to_vertex;
-    _element_inv_undeformed_basis = other._element_inv_undeformed_basis;
-}
-
-TetMesh::TetMesh(TetMesh&& other)
-    : Mesh(other)
-{
-    _elements = std::move(other._elements);
-    _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);
-    _element_inv_undeformed_basis = std::move(other._element_inv_undeformed_basis);
+    _element_rest_volumes.resize(numElements());
+    for (int i = 0; i < numElements(); i++)
+    {
+        _element_rest_volumes[i] = elementVolume(i);
+    }
 }
 
 Real TetMesh::elementVolume(int index) const

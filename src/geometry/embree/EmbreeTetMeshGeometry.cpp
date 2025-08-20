@@ -91,8 +91,17 @@ bool EmbreeTetMeshGeometry::pointQueryFuncTetrahedra(RTCPointQueryFunctionArgume
     const float *v3 = geom->vertices() + 3 * indices[2];
     const float *v4 = geom->vertices() + 3 * indices[3];
 
-    
     const float *point = userData->point;
+
+    if (userData->vertex_ind != -1 && (
+        userData->vertex_ind == indices[0] ||
+        userData->vertex_ind == indices[1] ||
+        userData->vertex_ind == indices[2] ||
+        userData->vertex_ind == indices[3]))
+    {
+        // the tetrahedron in question has this query point as one of its vertices, so we should not include it
+        return true;
+    }
 
     // Check if the point is inside this tetrahedron
     if (isPointInTetrahedron(point, v1, v2, v3, v4))

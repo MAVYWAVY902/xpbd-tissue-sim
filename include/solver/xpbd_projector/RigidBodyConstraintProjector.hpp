@@ -59,6 +59,12 @@ class RigidBodyConstraintProjector
     */
     const std::vector<PositionReference>& positions() const { return _constraint->positions(); }
 
+    const ConstraintReference<RBConstraint>& constraint() const { return _constraint; }
+
+    Real lambda() const { return _lambda; }
+
+    Real dt() const { return _dt; }
+
     /** The constraint forces on each of the affected positions caused by this constraint.
      * @returns the constraint forces on each of the affected positions of this constraint. The returned vector is ordered such that
      * the forces are applied to the corresponding position at the same index in the positions() vector.

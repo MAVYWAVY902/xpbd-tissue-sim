@@ -10,6 +10,7 @@
 #include "solver/constraint/DeviatoricConstraint.hpp"
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
+#include "solver/constraint/DeformableDeformableCollisionConstraint.hpp"
 #include "solver/constraint/AttachmentConstraint.hpp"
 
 #include "solver/xpbd_solver/XPBDGaussSeidelSolver.hpp"
@@ -45,13 +46,14 @@ struct XPBDMeshObjectConstraintConfigurations
     using HydProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::HydrostaticConstraint>;
     using DevHydProjector = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
     using StatCollProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
+    using DefCollProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::DeformableDeformableCollisionConstraint>;
     using RigiCollProjector = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>;
     using AttProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::AttachmentConstraint>;
 
     // public typedefs represent XPBDMeshObject constraint configurations
     public:
-    using StableNeohookean = XPBDMeshObjectConstraintConfiguration<DevProjector, HydProjector, StatCollProjector, RigiCollProjector, AttProjector>;
-    using StableNeohookeanCombined = XPBDMeshObjectConstraintConfiguration<DevHydProjector, StatCollProjector, RigiCollProjector, AttProjector>;
+    using StableNeohookean = XPBDMeshObjectConstraintConfiguration<DevProjector, HydProjector, StatCollProjector, DefCollProjector, RigiCollProjector, AttProjector>;
+    using StableNeohookeanCombined = XPBDMeshObjectConstraintConfiguration<DevHydProjector, StatCollProjector, DefCollProjector, RigiCollProjector, AttProjector>;
 
     using type_list = TypeList<StableNeohookean, StableNeohookeanCombined>;
     using variant_type = std::variant<StableNeohookean, StableNeohookeanCombined>;

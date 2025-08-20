@@ -2,8 +2,7 @@
 
 #include "utils/MeshUtils.hpp"
 
-#include "simobject/XPBDMeshObject.hpp"
-#include "simobject/FirstOrderXPBDMeshObject.hpp"
+#include "config/simulation/InitialDeformationSimulationConfig.hpp"
 
 #include <regex>
 
@@ -11,112 +10,106 @@
 namespace Sim
 {
 
-InitialDeformationSimulation::InitialDeformationSimulation(const std::string& config_filename)
-    : OutputSimulation()
+InitialDeformationSimulation::InitialDeformationSimulation(const Config::InitialDeformationSimulationConfig* config)
+    : Simulation(config)
 {
-    // create a more specialized config object specifically for BeamStretchSimulations
-    _config = std::make_unique<InitialDeformationSimulationConfig>(YAML::LoadFile(config_filename));
-
-    // initialize quantities using config object
-    _init();
-
-    // extract the stretch velocity and time from the config object
-    InitialDeformationSimulationConfig* initial_deformation_simulation_config = dynamic_cast<InitialDeformationSimulationConfig*>(_config.get());
-    _deformation_type = initial_deformation_simulation_config->deformationType().value();
-    _deformation_factor = initial_deformation_simulation_config->deformationFactor().value();
+    _deformation_type = config->deformationType();
+    _deformation_factor = config->deformationFactor();
 
     // since this is a strictly elastic simulation, make sure g is 0 so there are no external forces
     assert(_g_accel == 0);
-
-    // write some general info about the simulation to file
-    _out_file << "Initial Deformation Simulation" << std::endl;
 }
 
 std::string InitialDeformationSimulation::deformationType() const
 {
     if (_deformation_type == DeformationType::VOLUMETRIC_EXPANSION)
         return "Volumetric Expansion";
-    if (_deformation_type == DeformationType::VOLUMETRIC_COMPRESSION)
+    else if (_deformation_type == DeformationType::VOLUMETRIC_COMPRESSION)
         return "Volumetric Compression";
-    if (_deformation_type == DeformationType::COLLAPSE_TO_PLANE)
+    else if (_deformation_type == DeformationType::COLLAPSE_TO_PLANE)
         return "Collapse to Plane";
-}
-
-std::string InitialDeformationSimulation::toString() const
-{
-    return Simulation::toString() + "\n\tDeformation type: " + deformationType() + "\n\tDeformation factor: " + std::to_string(_deformation_factor);
+    else if (_deformation_type == DeformationType::SCRAMBLE)
+        return "Scramble";
+    return "";
 }
 
 void InitialDeformationSimulation::setup()
 {
+    std::cout << "Deformation type: " << deformationType() << std::endl;
 
     // call the parent setup
     Simulation::setup();
 
-    _out_file << toString() << std::endl;
-
-    for (auto& mesh_object : _mesh_objects) {
-
-        initial_vertices.push_back(mesh_object->vertices());
-
-        // fix the minY face of the beam, and attach drivers to stretch the maxY face of the beam
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
-        {
-            if (_deformation_type == DeformationType::VOLUMETRIC_EXPANSION)
-            {
-                Real scaling = std::cbrt(_deformation_factor);
-                elastic_mesh_object->stretch(scaling, scaling, scaling);
-            }
-            else if (_deformation_type == DeformationType::VOLUMETRIC_COMPRESSION)
-            {
-                Real scaling = 1/std::cbrt(_deformation_factor);
-                elastic_mesh_object->stretch(scaling, scaling, scaling);
-            }
-            else if (_deformation_type == DeformationType::COLLAPSE_TO_PLANE)
-            {
-                elastic_mesh_object->stretch(1, 1, 0);
-            }
-            
-
-            // write mesh object information to file
-            _out_file << elastic_mesh_object->toString() << "\n" << std::endl;
-        }
-    }
-
-    // write appropriate CSV column headers
-    _out_file << "\nTime(s)";
-    for (auto& mesh_object : _mesh_objects)
+    // get all the XPBDMeshObjects
+    _objects.for_each_element<std::unique_ptr<XPBDMeshObject_Base>, std::unique_ptr<FirstOrderXPBDMeshObject_Base>>([&](auto& obj)
     {
-        if (ElasticMeshObject* elastic_mesh_object = dynamic_cast<ElasticMeshObject*>(mesh_object.get()))
+        _xpbd_objs.push_back(obj.get());
+    });
+
+    // add logged variables
+    for (auto& xpbd_obj : _xpbd_objs)
+    {
+        const std::string var_name = xpbd_obj.name() + "_2*t";
+        _logger->addOutput(var_name, [this](){
+            return 2*_time;
+        });
+    }
+
+    // initialize the various states of initial deformation for each XPBDMeshObject
+    for (auto& xpbd_obj : _xpbd_objs)
+    {
+        if (_deformation_type == DeformationType::VOLUMETRIC_EXPANSION)
         {
-            std::regex r("\\s+");
-            const std::string& name = std::regex_replace(elastic_mesh_object->name(), r, "");
-            _out_file << " "+name+"VelocityRMS" << " "+name+"VolumeRatio";
+            Geometry::AABB bbox = xpbd_obj.mesh()->boundingBox();
+            xpbd_obj.mesh()->resize(bbox.size() * _deformation_factor);
+        }
+        else if (_deformation_type == DeformationType::VOLUMETRIC_COMPRESSION)
+        {
+            Geometry::AABB bbox = xpbd_obj.mesh()->boundingBox();
+            xpbd_obj.mesh()->resize(bbox.size() / _deformation_factor);
+        }
+        else if (_deformation_type == DeformationType::COLLAPSE_TO_PLANE)
+        {
+            for (int i = 0; i < xpbd_obj.mesh()->numVertices(); i++)
+            {
+                const Vec3r& vi = xpbd_obj.mesh()->vertex(i);
+                xpbd_obj.mesh()->setVertex(i, Vec3r(vi[0], vi[1], 0));  // set Z-coordinate of all vertices to 0
+            }
+        }
+        else if (_deformation_type == DeformationType::SCRAMBLE)
+        {
+            Geometry::AABB bbox = xpbd_obj.mesh()->boundingBox();
+            for (int i = 0; i < xpbd_obj.mesh()->numVertices(); i++)
+            {
+                Real x = (rand()/double(RAND_MAX))*bbox.size()[0] + bbox.min[0];
+                Real y = (rand()/double(RAND_MAX))*bbox.size()[1] + bbox.min[1];
+                Real z = (rand()/double(RAND_MAX))*bbox.size()[2] + bbox.min[2];
+                xpbd_obj.mesh()->setVertex(i,Vec3r(x,y,z));
+            }
         }
     }
-    _out_file << std::endl;
-
-    printInfo();
+    
+    
 }
 
-void InitialDeformationSimulation::printInfo() const
+void InitialDeformationSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
-    Real volume_ratio = 1;
-    _out_file << _time;
-    for (int i = 0; i < _mesh_objects.size(); i++) {
-        MeshObject* mesh_object = _mesh_objects[i].get();
-
-        MeshObject::VerticesMat velocities = mesh_object->velocities();
-        const Real frob_norm = velocities.norm();
-        const Real velocity_rms = std::sqrt(frob_norm/velocities.rows());
-
-        if (XPBDMeshObject* elastic_mesh_object = dynamic_cast<XPBDMeshObject*>(mesh_object))
-        {
-            // volume_ratio = elastic_mesh_object->volumeRatio();
-        }
-        _out_file << " " << velocity_rms << " " << volume_ratio;
+    // start the simulation after any key press
+    if (!_simulation_started)
+    {
+        _simulation_started = true;
+        _wall_time_start = std::chrono::steady_clock::now();
     }
-    _out_file << std::endl;
+
+    Simulation::notifyKeyPressed(key, action, modifiers);
+}
+
+void InitialDeformationSimulation::_timeStep()
+{
+    if (!_simulation_started)
+        return;
+    
+    Simulation::_timeStep();
 }
 
 } // namespace Sim
