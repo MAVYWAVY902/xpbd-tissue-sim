@@ -31,14 +31,18 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     auto message = geometry_msgs::msg::PoseArray();
                     message.header.stamp = this->now();
-                    message.header.frame_id = "/world";
+                    message.header.frame_id = "VB";
 
+                    const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                    const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
                     for (const auto& frame : ot_frames)
                     {
                         geometry_msgs::msg::Pose pose;
 
-                        const Vec3r& origin = frame.origin();
-                        const Vec4r& quat = GeometryUtils::matToQuat(frame.transform().rotMat());
+                        const Geometry::TransformationMatrix transform = vb_transform_inv * frame.transform();
+
+                        const Vec3r& origin = transform.translation();
+                        const Vec4r& quat = GeometryUtils::matToQuat(transform.rotMat());
                         pose.position.x = origin[0];
                         pose.position.y = origin[1];
                         pose.position.z = origin[2];
@@ -55,8 +59,10 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                     {
                         geometry_msgs::msg::Pose pose;
 
-                        const Vec3r& origin = frame.origin();
-                        const Vec4r& quat = GeometryUtils::matToQuat(frame.transform().rotMat());
+                        const Geometry::TransformationMatrix transform = vb_transform_inv * frame.transform();
+
+                        const Vec3r& origin = transform.translation();
+                        const Vec4r& quat = GeometryUtils::matToQuat(transform.rotMat());
                         pose.position.x = origin[0];
                         pose.position.y = origin[1];
                         pose.position.z = origin[2];
@@ -91,14 +97,18 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     auto message = geometry_msgs::msg::PoseArray();
                     message.header.stamp = this->now();
-                    message.header.frame_id = "/world";
+                    message.header.frame_id = "VB";
 
+                    const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                    const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
                     for (const auto& frame : ot_frames)
                     {
                         geometry_msgs::msg::Pose pose;
 
-                        const Vec3r& origin = frame.origin();
-                        const Vec4r& quat = GeometryUtils::matToQuat(frame.transform().rotMat());
+                        const Geometry::TransformationMatrix transform = vb_transform_inv * frame.transform();
+
+                        const Vec3r& origin = transform.translation();
+                        const Vec4r& quat = GeometryUtils::matToQuat(transform.rotMat());
                         pose.position.x = origin[0];
                         pose.position.y = origin[1];
                         pose.position.z = origin[2];
@@ -115,8 +125,10 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                     {
                         geometry_msgs::msg::Pose pose;
 
-                        const Vec3r& origin = frame.origin();
-                        const Vec4r& quat = GeometryUtils::matToQuat(frame.transform().rotMat());
+                        const Geometry::TransformationMatrix transform = vb_transform_inv * frame.transform();
+
+                        const Vec3r& origin = transform.translation();
+                        const Vec4r& quat = GeometryUtils::matToQuat(transform.rotMat());
                         pose.position.x = origin[0];
                         pose.position.y = origin[1];
                         pose.position.z = origin[2];
@@ -187,7 +199,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
             // set header
             _mesh_pcl_message.header.stamp = this->now();
-            _mesh_pcl_message.header.frame_id = "/world";
+            _mesh_pcl_message.header.frame_id = "sim";
 
             // add point fields
             _mesh_pcl_message.fields.resize(3);
@@ -257,7 +269,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                 // set header
                 pcl_msg.header.stamp = this->now();
-                pcl_msg.header.frame_id = "/world";
+                pcl_msg.header.frame_id = "VB";
 
                 // // add point fields
                 pcl_msg.fields.resize(3);
@@ -310,8 +322,16 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                         this->_sim->embreeScene()->partialViewPointCloudsWithClass(cam_position, cam_view_dir, cam_up_dir, hfov_deg, vfov_deg, sample_density);
                     
                     // go through returned point clouds and find the ones that match the trachea and tumor classes
-                    for (const auto& pc : point_clouds)
+                    for (auto& pc : point_clouds)
                     {
+                        // transform points to VB frame
+                        const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                        const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
+                        for (unsigned i = 0; i < pc.points.size(); i++)
+                        {
+                            pc.points[i] = vb_transform_inv.rotMat()*pc.points[i] + vb_transform_inv.translation();
+                        }
+
                         if (pc.classification == Sim::VirtuosoTissueGraspingSimulation::TissueClasses::TRACHEA)
                         {
                             this->_trachea_partial_view_pc_message.header.stamp = this->now();
