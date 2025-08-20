@@ -13,8 +13,8 @@ logging-output-folder: "../output/initial_deformation/"
 
 ## specific to InitialDeformationSimulation
 # deformation-type: "collapse-to-plane"
-deformation-type: "scramble"
-deformation-factor: 10
+deformation-type: "volumetric-expansion"
+deformation-factor: 0.5
 
 
 ## different simulation "modes"
