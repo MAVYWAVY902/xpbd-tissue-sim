@@ -1,16 +1,16 @@
 #ifndef __BEAM_SIMULATION_CONFIG
 #define __BEAM_SIMULATION_CONFIG
 
-#include "config/simulation/ResidualSimulationConfig.hpp"
+#include "config/simulation/SimulationConfig.hpp"
 
 namespace Config
 {
 
-class BeamSimulationConfig : public ResidualSimulationConfig
+class BeamSimulationConfig : public SimulationConfig
 {
     public:
     explicit BeamSimulationConfig(const YAML::Node& node)
-        : ResidualSimulationConfig(node)
+        : SimulationConfig(node)
     {}
 };
 

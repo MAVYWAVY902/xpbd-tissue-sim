@@ -111,7 +111,7 @@ target_link_libraries(MeshUtils gmsh assimp Eigen3::Eigen Geometry) # link MeshU
 target_link_libraries(GeometryUtils Eigen3::Eigen Geometry)
 
 ### Simulation libraries - each has its own executable
-add_library(ResidualSimulation)
+add_library(Simulation)
 add_library(BeamSimulation)
 add_library(GraspingSimulation)
 add_library(VirtuosoSimulation)
@@ -120,17 +120,16 @@ add_library(VirtuosoSimulation)
 add_library(InitialDeformationSimulation)
 add_subdirectory("src/simulation")
 
-target_link_libraries(ResidualSimulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp ${VTK_LIBRARIES})
-target_link_libraries(BeamSimulation ResidualSimulation)
-target_link_libraries(GraspingSimulation ResidualSimulation)
-target_link_libraries(VirtuosoSimulation ResidualSimulation Haptics)
-# target_link_libraries(BeamStretchSimulation ResidualSimulation)
-# target_link_libraries(TissueGraspingSimulation Haptics ResidualSimulation)
-target_link_libraries(InitialDeformationSimulation Config ResidualSimulation)
+target_link_libraries(Simulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp ${VTK_LIBRARIES})
+target_link_libraries(BeamSimulation Simulation)
+target_link_libraries(GraspingSimulation Simulation)
+target_link_libraries(VirtuosoSimulation Simulation Haptics)
+# target_link_libraries(BeamStretchSimulation Simulation)
+target_link_libraries(InitialDeformationSimulation Config Simulation)
 
 ### Create executables
 add_executable(Test src/exec/main.cpp)
-target_link_libraries(Test ResidualSimulation ${VTK_LIBRARIES})
+target_link_libraries(Test Simulation ${VTK_LIBRARIES})
 
 add_executable(BeamTest src/exec/beam_test_main.cpp)
 target_link_libraries(BeamTest BeamSimulation)
@@ -169,7 +168,7 @@ add_executable(VTKTest src/exec/test/vtk_test.cpp)
 target_link_libraries(VTKTest Graphics ${VTK_LIBRARIES})
 
 add_executable(StiffnessMatrixTest src/exec/test/stiffness_matrix_test.cpp)
-target_link_libraries(StiffnessMatrixTest Config SimObject Solver ResidualSimulation MeshUtils)
+target_link_libraries(StiffnessMatrixTest Config SimObject Solver Simulation MeshUtils)
 
 vtk_module_autoinit(
   TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest VirtuosoStaticsModelTest InitialDeformationTest
@@ -180,7 +179,7 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_link_libraries(GPU Geometry SimObject Solver)
     target_link_libraries(SimObject GPU)
     target_link_libraries(Collision GPU)
-    target_link_libraries(ResidualSimulation GPU)
+    target_link_libraries(Simulation GPU)
     # target_link_libraries(Solver GPU)
 
     target_compile_definitions(Collision PRIVATE HAVE_CUDA)
@@ -192,7 +191,7 @@ if (HAVE_CUDA AND NOT NO_GPU)
     target_compile_definitions(Haptics PRIVATE HAVE_CUDA)
     target_compile_definitions(SimObject PRIVATE HAVE_CUDA)
     target_compile_definitions(Solver PRIVATE HAVE_CUDA)
-    target_compile_definitions(ResidualSimulation PRIVATE HAVE_CUDA)
+    target_compile_definitions(Simulation PRIVATE HAVE_CUDA)
     target_compile_definitions(BeamSimulation PRIVATE HAVE_CUDA)
     target_compile_definitions(VirtuosoSimulation PRIVATE HAVE_CUDA)
 
@@ -220,7 +219,7 @@ if (HAVE_CUDA AND NOT NO_GPU)
     # target_compile_options(XPBDCudaTest PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--keep>)
 
     # add_executable(XPBDConstraintCudaTest src/exec/constraints_cuda_test.cu)
-    # target_link_libraries(XPBDConstraintCudaTest Eigen3::Eigen Geometry SimObject GPU ResidualSimulation)
+    # target_link_libraries(XPBDConstraintCudaTest Eigen3::Eigen Geometry SimObject GPU Simulation)
     # target_compile_definitions(XPBDConstraintCudaTest PRIVATE HAVE_CUDA)
 endif()
 

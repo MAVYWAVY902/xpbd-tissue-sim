@@ -43,7 +43,7 @@ endif()
 add_executable(${PROJECT_NAME}_node src/sim_bridge_node.cpp)
 ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs geometry_msgs shape_msgs sensor_msgs)
 target_link_libraries(${PROJECT_NAME}_node
-  ResidualSimulation
+  Simulation
   VirtuosoSimulation
   GraspingSimulation
   Collision

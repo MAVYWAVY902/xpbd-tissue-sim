@@ -101,6 +101,11 @@ public:
         return std::visit([](const auto& obj) { return obj->name(); }, _variant);
     }
 
+    Geometry::AABB boundingBox() const
+    {
+        return std::visit([](const auto& obj) { return obj->boundingBox(); }, _variant);
+    }
+
     /** === XPBDMeshObject_Base_ functionality === */
     /** TODO: should some of these methods use perfect forwarding? */
 
@@ -198,6 +203,8 @@ public:
         return std::visit([](auto& obj) { obj->clearAttachmentConstraints(); }, _variant);
     }
 
+    /** === Miscellaneous === */
+
     Vec3r elasticForceAtVertex(int index) const
     {
         return std::visit([&](const auto& obj) { return obj->elasticForceAtVertex(index); }, _variant);
@@ -211,6 +218,16 @@ public:
     void selfCollisionCheck()
     {
         return std::visit([](auto& obj) { return obj->selfCollisionCheck(); }, _variant);
+    }
+
+    VecXr lastPrimaryResidual() const
+    {
+        return std::visit([&](const auto& obj) { return obj->lastPrimaryResidual(); }, _variant);
+    }
+
+    VecXr lastConstraintResidual() const
+    {
+        return std::visit([&](const auto& obj) { return obj->lastConstraintResidual(); }, _variant);
     }
 
 
