@@ -83,6 +83,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
             _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm1_callback);
         }
 
+
         // set up callback to publish frames for arm 2 (if it exists)
         if (_sim->virtuosoRobot()->hasArm2())
         {
@@ -145,6 +146,39 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                     // RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
                     this->_arm2_frames_publisher->publish(message);
                 };
+
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm2_callback);
+        }
+
+
+        // set up callback to publish joint state for arm 1 (if it exists)
+        if (_sim->virtuosoRobot()->hasArm1())
+        {
+            std::cout << "Setting up callback for Virtuoso arm 1 joint state..." << std::endl;
+            _arm1_joint_state_publisher = this->create_publisher<sensor_msgs::msg::JointState>("/output/arm1_joint_state", 10);
+            auto arm1_callback = 
+                [this]() -> void {
+                    const Sim::VirtuosoArm* arm1 = this->_sim->virtuosoRobot()->arm1();
+                    sensor_msgs::msg::JointState msg = this->_createJointStateMsgForArm(arm1);
+                    
+                    this->_arm1_joint_state_publisher->publish(msg);
+            };
+
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm1_callback);
+        }
+
+        // set up callback to publish joint state for arm 2 (if it exists)
+        if (_sim->virtuosoRobot()->hasArm2())
+        {
+            std::cout << "Setting up callback for Virtuoso arm 2 joint state..." << std::endl;
+            _arm2_joint_state_publisher = this->create_publisher<sensor_msgs::msg::JointState>("/output/arm2_joint_state", 10);
+            auto arm2_callback = 
+                [this]() -> void {
+                    const Sim::VirtuosoArm* arm2 = this->_sim->virtuosoRobot()->arm2();
+                    sensor_msgs::msg::JointState msg = this->_createJointStateMsgForArm(arm2);
+                    
+                    this->_arm2_joint_state_publisher->publish(msg);
+            };
 
             _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm2_callback);
         }
@@ -544,11 +578,24 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
         return std::make_tuple(ot_rot, ot_trans, it_rot, it_trans, tool);
     }
     
+    sensor_msgs::msg::JointState _createJointStateMsgForArm(const Sim::VirtuosoArm* arm) const
+    {
+        sensor_msgs::msg::JointState msg;
+        msg.name = {"inner_rotation", "outer_rotation", "inner_translation", "outer_translation", "tool"};
+        msg.position = {arm->innerTubeRotation(), arm->outerTubeRotation(), arm->innerTubeTranslation(), arm->outerTubeTranslation(), (double)arm->toolState()};
+
+        msg.header.stamp = this->now();
+
+        return msg;
+    }
 
     private:
     /** Publishers */
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr _arm1_frames_publisher;     // publishes coordinate frames along backbone of arm1
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr _arm2_frames_publisher;     // publishes coordinate frames along backbone of arm2
+
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm1_joint_state_publisher; // publishes the current joint state of arm1
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm2_joint_state_publisher; // publishes the current joint state of arm2
 
     shape_msgs::msg::Mesh _mesh_message;    // pre-allocated mesh ROS message for speed (assuming faces and number of vertices stay the same)
     rclcpp::Publisher<shape_msgs::msg::Mesh>::SharedPtr _mesh_publisher;    // publishes the current tissue mesh (all vertices and surface faces)
