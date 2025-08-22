@@ -131,6 +131,7 @@ class HydrostaticConstraint : public ElementConstraint
             // when J >= 1, just log(J)
             // -gamma is a term needed for rest-stability
             *C = -_gamma + std::log(detF);
+            // *C = detF - 1 - _gamma;
         }
         else
         {
@@ -180,6 +181,7 @@ class HydrostaticConstraint : public ElementConstraint
         {
             // when J >= 1, this factor is just the derivative of log(J) = 1/J
             fac = 1/detF;
+            // fac = 1;
         }
         else
         {
@@ -194,6 +196,7 @@ class HydrostaticConstraint : public ElementConstraint
             //     _1_min_detF_n *= (1 - detF);
             // }
             fac = 1 - (detF-1) + (detF-1)*(detF-1);
+            // fac = 1;
         }
 
         // calculation of delC wrt 1st position

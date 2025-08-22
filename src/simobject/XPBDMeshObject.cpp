@@ -330,15 +330,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
     _movePositionsInertially();
     _projectConstraints();
 
-    // for (int i = 0; i < tetMesh()->numElements(); i++)
-    // {
-    //     const Mat3r F = tetMesh()->elementDeformationGradient(i);
-    //     if (F.determinant() <= 0)
-    //     {
-    //         std::cout << "element " << i << " det(F) <= 0!" << std::endl;
-    //     }
+    for (int i = 0; i < tetMesh()->numElements(); i++)
+    {
+        const Mat3r F = tetMesh()->elementDeformationGradient(i);
+        if (F.determinant() <= 0)
+        {
+            std::cout << "element " << i << " det(F) <= 0!" << std::endl;
+        }
         
-    // }
+    }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>

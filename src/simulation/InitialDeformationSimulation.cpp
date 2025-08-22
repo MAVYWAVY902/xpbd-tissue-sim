@@ -87,6 +87,8 @@ void InitialDeformationSimulation::setup()
                 xpbd_obj.mesh()->setVertex(i,Vec3r(x,y,z));
             }
         }
+
+        std::cout << "Initial deformation energy: " << xpbd_obj.totalStrainEnergy() << std::endl;
     }
     
     
