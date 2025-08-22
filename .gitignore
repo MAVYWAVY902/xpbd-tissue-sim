@@ -27,3 +27,6 @@ output/
 
 # ignore __pycache__
 __pycache__/
+
+#ignore rosbags folder
+rosbags/

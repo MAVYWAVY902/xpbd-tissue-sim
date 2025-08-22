@@ -205,6 +205,11 @@ public:
 
     /** === Miscellaneous === */
 
+    Real totalStrainEnergy() const
+    {
+        return std::visit([&](const auto& obj) { return obj->totalStrainEnergy(); }, _variant);
+    }
+
     Vec3r elasticForceAtVertex(int index) const
     {
         return std::visit([&](const auto& obj) { return obj->elasticForceAtVertex(index); }, _variant);

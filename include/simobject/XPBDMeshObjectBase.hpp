@@ -195,6 +195,10 @@ public:
 
     /** === Miscellaneous useful methods === */
 
+    /** Computes the total strain energy associated with elastic deformation.
+    */
+    virtual Real totalStrainEnergy() const = 0;
+
     /** Computes the elastic force on the vertex at the specified index. This is essentially just the current constraint force for all "elastic" constraints
      * that affect the specified vertex. An "elastic" constraint is one that is internal to the mesh and corresponds to the mechanics of the mesh material.
      * @param index : the index of the vertex

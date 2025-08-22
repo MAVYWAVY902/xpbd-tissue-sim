@@ -125,6 +125,7 @@ class HydrostaticConstraint : public ElementConstraint
         // compute C(x) = det(F) - (1 + gamma)
         Real detF = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2];
 
+        // *C = detF - 1 - _gamma;
         if (detF >= 1)
         {
             // when J >= 1, just log(J)
@@ -135,18 +136,18 @@ class HydrostaticConstraint : public ElementConstraint
         {
             // when J < 1, approximate log(J) with its Taylor series
             // log(J) = (J-1) - 1/2*(J-1)^2 + 1/3*(J-1)^3 -...
-            *C = -_gamma;
+            *C = -_gamma + (detF-1) - (detF-1)*(detF-1)/2.0 + (detF-1)*(detF-1)*(detF-1)/3.0;
             // variable to track (J-1)^n
-            Real detF_min_1_n = 1;
-            for (int i = 0; i < _NUM_TAYLOR_SERIES_TERMS; i++)
-            {
-                // when i = 0,2,4... we want the terms to be positive
-                // when i = 1,3,5... we want the terms to be negative
-                int sign = (i%2 == 0) ? 1 : -1;
-                detF_min_1_n *= (detF - 1);
-                // add the next term in the series to *C
-                *C += sign * (detF_min_1_n/(i+1));
-            }
+            // Real detF_min_1_n = 1;
+            // for (int i = 0; i < _NUM_TAYLOR_SERIES_TERMS; i++)
+            // {
+            //     // when i = 0,2,4... we want the terms to be positive
+            //     // when i = 1,3,5... we want the terms to be negative
+            //     int sign = (i%2 == 0) ? 1 : -1;
+            //     detF_min_1_n *= (detF - 1);
+            //     // add the next term in the series to *C
+            //     *C += sign * (detF_min_1_n/(i+1));
+            // }
         }
     }
 
@@ -174,7 +175,7 @@ class HydrostaticConstraint : public ElementConstraint
         Real fac;
         Real detF = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2];
         
-        
+        // fac = 1;
         if (detF >= 1.0)
         {
             // when J >= 1, this factor is just the derivative of log(J) = 1/J
@@ -185,13 +186,14 @@ class HydrostaticConstraint : public ElementConstraint
             // when J < 1, this factor is the derivative of the Taylor series
             // i.e. 1 - (J-1) + (J-1)^2 -...
             // in other words, the sum of (1-J)^n for n=0...N-1
-            fac = 0;
-            Real _1_min_detF_n = 1;
-            for (int i = 0; i < _NUM_TAYLOR_SERIES_TERMS; i++)
-            {
-                fac += _1_min_detF_n;
-                _1_min_detF_n *= (1 - detF);
-            }
+            // fac = 0;
+            // Real _1_min_detF_n = 1;
+            // for (int i = 0; i < _NUM_TAYLOR_SERIES_TERMS; i++)
+            // {
+            //     fac += _1_min_detF_n;
+            //     _1_min_detF_n *= (1 - detF);
+            // }
+            fac = 1 - (detF-1) + (detF-1)*(detF-1);
         }
 
         // calculation of delC wrt 1st position

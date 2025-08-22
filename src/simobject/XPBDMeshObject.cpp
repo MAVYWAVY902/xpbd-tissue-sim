@@ -329,6 +329,16 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
 
     _movePositionsInertially();
     _projectConstraints();
+
+    // for (int i = 0; i < tetMesh()->numElements(); i++)
+    // {
+    //     const Mat3r F = tetMesh()->elementDeformationGradient(i);
+    //     if (F.determinant() <= 0)
+    //     {
+    //         std::cout << "element " << i << " det(F) <= 0!" << std::endl;
+    //     }
+        
+    // }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -420,6 +430,20 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::totalStrainEnergy() const
+{
+    // iterate over all hydrostatic and deviatoric constraints
+    Real total_energy = 0;
+    _constraints.template for_each_element<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>([&total_energy](const auto& constraint){
+        Real eval;
+        constraint.evaluate(&eval);
+        total_energy += eval * eval / constraint.alpha();
+    });
+
+    return total_energy;
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>

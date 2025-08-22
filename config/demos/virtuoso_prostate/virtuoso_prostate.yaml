@@ -1,5 +1,5 @@
 name: "Virtuoso Trachea"
-visualization: "Easy3D"
+visualization: "VTK"
 
 # Tissue grasping simulation-specific parameters
 input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
@@ -41,16 +41,16 @@ objects:
     name: "Cube1"
     # type: "XPBDMeshObject"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/demos/prostate/bph_new_contrast_processed.stl"
+    filename: "../resource/demos/prostate/bph_new_contrast_processed_d.stl"
     material:
       name: "Chicken"
       density: 1000
       E: 0.35e5
       nu: 0.49
-    max-size: 1
+    max-size: 0.0857
     position: [0, 0, -0.005]
     velocity: [0, 0, 0]
-    rotation: [90, 0, 0]
+    rotation: [90, 180, 0]
     num-solver-iters: 1
     num-local-collision-iters: 5
     residual-policy: "Never"
@@ -58,7 +58,7 @@ objects:
     # solver-type: "Jacobi"
     # solver-type: "Parallel-Jacobi"
     constraint-type: "Stable-Neohookean-Combined"
-    damping-multiplier: 4000000000
+    damping-multiplier: 400000000
     # damping-multiplier: 40000000000
     collisions: true
     self-collisions: false
@@ -75,8 +75,8 @@ objects:
   -
     name: "Robot"
     type: "VirtuosoRobot"
-    position: [0, -0.04, -0.0015]
-    rotation: [-90, 180, 0]
+    position: [0.002, -0.02, 0.005]
+    rotation: [-70, 180, 0]
     collisions: true
     # rendering settings
     color: [0.7, 0.7, 0.7]
