@@ -381,14 +381,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_p
     _solver.solve(proj_to_reproject, _num_local_collision_iters, false);
 
     // TODO: remove
-    // for (int i = 0; i < _mesh->numVertices(); i++)
-    // {
-    //     const Vec3r& v = _mesh->vertex(i);
-    //     if (v[2] < 0)
-    //     {
-    //         _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
-    //     }
-    // }
+    for (int i = 0; i < _mesh->numVertices(); i++)
+    {
+        const Vec3r& v = _mesh->vertex(i);
+        if (v[2] < 0)
+        {
+            _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
+        }
+    }
 
     // TODO: replace with constraints?
     // enforce fixed vertices (move them back to previous position)
@@ -512,9 +512,8 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
     // assemble global delC matrix
     size_t num_constraints = _constraints.size();
     VecXr C_vec(num_constraints);
-    MatXr orig_delC(num_constraints, 3*_mesh->numVertices());
+    MatXr orig_delC = MatXr::Zero(num_constraints, 3*_mesh->numVertices());
     VecXr alpha_inv(num_constraints);
-
 
     // iterate through each constraint and put its gradient into the global delC matrix
     int constraint_index = 0;
@@ -548,9 +547,9 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
     // compute the Hessian term (through numerical differentiation)
     Real* data_ptr = _mesh->vertices().data();
     Real delta = 0.0001;
-    MatXr delC(num_constraints, 3*_mesh->numVertices());
-    MatXr grad_delC_i(num_constraints, 3*_mesh->numVertices());
-    MatXr hessian_term(3*_mesh->numVertices(), 3*_mesh->numVertices());
+    MatXr delC = MatXr::Zero(num_constraints, 3*_mesh->numVertices());
+    MatXr grad_delC_i = MatXr::Zero(num_constraints, 3*_mesh->numVertices());
+    MatXr hessian_term = MatXr::Zero(3*_mesh->numVertices(), 3*_mesh->numVertices());
     for (int dof = 0; dof < _mesh->vertices().size(); dof++)
     {
         delC = MatXr::Zero(num_constraints, 3*_mesh->numVertices());
