@@ -17,14 +17,14 @@ int main()
     Real x_size = 1.0;
     Real y_size = 1.0;
     Real z_size = 1.0;
-    int num_subdivisions = 2;
+    int num_subdivisions = 4;
 
     // const std::string filename = std::to_string(x_size) + "x" + std::to_string(y_size) + "x" + std::to_string(z_size) + std::to_string(2) + ".msh";
     // MeshUtils::createBeamMsh(filename, y_size, x_size, z_size, num_subdivisions);
 
     const std::string single_tet_filename = "../resource/general/single.msh";
     const std::string bunny_filename = "../resource/general/stanford_bunny_medpoly.msh";
-    const std::string cube_filename = "../resource/cube/cube2.msh";
+    const std::string cube_filename = "../resource/cube/cube4.msh";
     Config::FirstOrderXPBDMeshObjectConfig config(
         "test", Vec3r(0,0,0.50), Vec3r(0,0,0), Vec3r(0,0,0), false, false,
         cube_filename, 1, std::nullopt,
@@ -44,10 +44,15 @@ int main()
     xpbd_mesh_obj->setup();
 
     Geometry::AABB bbox = xpbd_mesh_obj->boundingBox();
-    int v1 = xpbd_mesh_obj->mesh()->getClosestVertex(bbox.min);
-    int v2 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.min[0], bbox.max[1], bbox.min[2]));
-    int v3 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.max[0], bbox.max[1], bbox.min[2]));
-    int v4 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.max[0], bbox.min[1], bbox.min[2]));
+    std::vector<int> bottom_vertices = xpbd_mesh_obj->mesh()->getVerticesWithZ(bbox.min[2]);
+    for (const auto& v : bottom_vertices)
+    {
+        xpbd_mesh_obj->fixVertex(v);
+    }
+    // int v1 = xpbd_mesh_obj->mesh()->getClosestVertex(bbox.min);
+    // int v2 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.min[0], bbox.max[1], bbox.min[2]));
+    // int v3 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.max[0], bbox.max[1], bbox.min[2]));
+    // int v4 = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(bbox.max[0], bbox.min[1], bbox.min[2]));
     // xpbd_mesh_obj->fixVertex(v1);
     // xpbd_mesh_obj->fixVertex(v2);
     // xpbd_mesh_obj->fixVertex(v3);

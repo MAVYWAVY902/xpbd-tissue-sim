@@ -600,6 +600,16 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
                 stiffness_matrix(3*i+j,3*i+j) += 1e9;
         }
     }
+
+    // add large values for nodes in contact with the ground (when the ground plane is active)
+    // for (int i = 0; i < _mesh->numVertices(); i++)
+    // {
+    //     if (std::abs(_mesh->vertex(i)[2]) < 1e-10)
+    //     {
+    //         stiffness_matrix(3*i+2, 3*i+2) += 1e9;
+    //     }
+    // }
+
     return stiffness_matrix;
     
 }

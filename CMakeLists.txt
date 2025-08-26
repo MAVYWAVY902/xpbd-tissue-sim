@@ -170,6 +170,9 @@ target_link_libraries(VTKTest Graphics ${VTK_LIBRARIES})
 add_executable(StiffnessMatrixTest src/exec/test/stiffness_matrix_test.cpp)
 target_link_libraries(StiffnessMatrixTest Config SimObject Solver Simulation MeshUtils)
 
+add_executable(AssignElements src/exec/util/assign_elements.cpp)
+target_link_libraries(AssignElements Config SimObject Geometry MeshUtils)
+
 vtk_module_autoinit(
   TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest VirtuosoStaticsModelTest InitialDeformationTest
   MODULES ${VTK_LIBRARIES}

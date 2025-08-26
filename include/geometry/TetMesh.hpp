@@ -23,6 +23,8 @@ class TetMesh : public Mesh
 
     TetMesh(TetMesh&& other);
 
+    virtual ~TetMesh() = default;
+
     /** Essentially "sets up" the mesh - treats the current state as the initial, undeformed state of the mesh.
      * This should be called after performing the initial translations and rotations setting up the mesh.
      */
