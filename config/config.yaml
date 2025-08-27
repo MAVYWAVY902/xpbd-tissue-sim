@@ -17,6 +17,16 @@ collision-rate: 1000 # rate at which to run collision detection [Hz]
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 100 # end time of the simulation [s]
 
+## define elastic materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 6e4    # Young's modulus [Pa]
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.0 # coefficient of static friction [-]
+    mu-k: 0.0 # coefficient of kinetic friction [-]
+
 ## objects in the simulation
 objects:
 
@@ -40,14 +50,7 @@ objects:
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
 
-    ## define elastic material
-    material:
-      name: "Soft Tissue"
-      density: 1000   # density [kg/m^3]
-      E: 6e4    # Young's modulus [Pa]
-      nu: 0.45  # Poisson's ratio [-]
-      mu-s: 0.0 # coefficient of static friction [-]
-      mu-k: 0.0 # coefficient of kinetic friction [-]
+    material: "Soft Tissue" # the elastic material (must match with the name of a material defined above)
 
     ## visualization options
     color: [1.0, 0.5, 0.0] # uniform color of the mesh
@@ -102,14 +105,7 @@ objects:
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
 
-    ## define elastic material
-    material:
-      name: "Soft Tissue"
-      density: 1000   # density [kg/m^3]
-      E: 6e4    # Young's modulus [Pa]
-      nu: 0.45  # Poisson's ratio [-]
-      mu-s: 0.0 # coefficient of static friction [-]
-      mu-k: 0.0 # coefficient of kinetic friction [-]
+    material: "Soft Tissue" # the elastic material (must match with the name of a material defined above)
 
     ## visualization options
     color: [1.0, 0.5, 0.0] # uniform color of the mesh

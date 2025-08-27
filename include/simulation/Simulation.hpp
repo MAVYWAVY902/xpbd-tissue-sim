@@ -82,6 +82,27 @@ class Simulation
 
         const ObjectVectorType& objects() const { return _objects; }
         const ObjectVectorType& graphicsObjects() const { return _graphics_only_objects; }
+
+        /** Adds a new material to the sim. Useful for setting up sims without a config file. */
+        void addMaterial(const ElasticMaterial& mat) { _materials.push_back(mat); }
+
+        /** Returns the material with the specified name, if it exists. If it doesn't exist,
+         * the program will throw an error and exit.
+         */
+        const ElasticMaterial& getMaterial(const std::string& name) const 
+        { 
+            for (const auto& mat : _materials)
+            {
+                if (mat.name() == name)
+                    return mat;
+            }
+
+            std::cerr << "Material with name " << name << " does not exist in the simulation!" << std::endl;
+            assert(0);
+
+            return _materials[0];
+        }
+
         /** Performs setup for the Simulation.
          * Creates initial MeshObjects, sets up Viewer, etc.
          */
@@ -217,6 +238,9 @@ class Simulation
          * update() will NOT get called on these objects.
          */
         ObjectVectorType _graphics_only_objects;
+
+        /** storage of the elastic materials used by deformable objects in the simulation */
+        std::vector<ElasticMaterial> _materials;
 
         /** Manages collision detection and creating constraints for collision response.
          * Only objects with collisions enabled will be added to the CollisionScene.

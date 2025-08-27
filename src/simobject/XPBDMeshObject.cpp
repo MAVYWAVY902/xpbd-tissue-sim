@@ -31,7 +31,7 @@ namespace Sim
 template<bool IsFirstOrder>
 XPBDMeshObject_Base_<IsFirstOrder>::XPBDMeshObject_Base_(const Simulation* sim, const ConfigType* config)
     : Object(sim, config), TetMeshObject(config, config),
-    _material(config->materialConfig())
+    _material(sim->getMaterial(config->material()))
 {}
 
 template<bool IsFirstOrder>
@@ -330,15 +330,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
     _movePositionsInertially();
     _projectConstraints();
 
-    for (int i = 0; i < tetMesh()->numElements(); i++)
-    {
-        const Mat3r F = tetMesh()->elementDeformationGradient(i);
-        if (F.determinant() <= 0)
-        {
-            std::cout << "element " << i << " det(F) <= 0!" << std::endl;
-        }
+    // for (int i = 0; i < tetMesh()->numElements(); i++)
+    // {
+    //     const Mat3r F = tetMesh()->elementDeformationGradient(i);
+    //     if (F.determinant() <= 0)
+    //     {
+    //         std::cout << "element " << i << " det(F) <= 0!" << std::endl;
+    //     }
         
-    }
+    // }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -381,14 +381,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_p
     _solver.solve(proj_to_reproject, _num_local_collision_iters, false);
 
     // TODO: remove
-    for (int i = 0; i < _mesh->numVertices(); i++)
-    {
-        const Vec3r& v = _mesh->vertex(i);
-        if (v[2] < 0)
-        {
-            _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
-        }
-    }
+    // for (int i = 0; i < _mesh->numVertices(); i++)
+    // {
+    //     const Vec3r& v = _mesh->vertex(i);
+    //     if (v[2] < 0)
+    //     {
+    //         _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
+    //     }
+    // }
 
     // TODO: replace with constraints?
     // enforce fixed vertices (move them back to previous position)
