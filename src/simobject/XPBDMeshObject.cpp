@@ -371,14 +371,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_p
     _solver.solve(proj_to_reproject, _num_local_collision_iters, false);
 
     // TODO: remove
-    for (int i = 0; i < _mesh->numVertices(); i++)
-    {
-        const Vec3r& v = _mesh->vertex(i);
-        if (v[2] < 0)
-        {
-            _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
-        }
-    }
+    // for (int i = 0; i < _mesh->numVertices(); i++)
+    // {
+    //     const Vec3r& v = _mesh->vertex(i);
+    //     if (v[2] < 0)
+    //     {
+    //         _mesh->setVertex(i, Vec3r(v[0], v[1], 0));
+    //     }
+    // }
 
     // TODO: replace with constraints?
     // enforce fixed vertices (move them back to previous position)
