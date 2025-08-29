@@ -530,6 +530,9 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                         }
                     }
 
+                    this->_trachea_partial_view_pc_message.header.stamp = this->now();
+                    this->_tumor_partial_view_pc_message.header.stamp = this->now();
+
                     // publish the messages
                     this->_trachea_partial_view_pc_publisher->publish(this->_trachea_partial_view_pc_message);
                     this->_tumor_partial_view_pc_publisher->publish(this->_tumor_partial_view_pc_message);
