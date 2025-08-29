@@ -28,7 +28,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
                                     const std::string& filename, const std::optional<Real>& max_size, const std::optional<Vec3r>& size,     // MeshObject params
                                     bool draw_points, bool draw_edges, bool draw_faces, const Vec4r& color,
 
-                                    const std::vector<std::string>& mat_names,
+                                    const std::vector<std::string>& mat_names, const std::optional<std::string>& element_classes_filename,
 
                                     bool self_collisions, int num_solver_iters, int num_local_collision_iters, 
                                     XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
@@ -40,7 +40,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
                                                                                                                                             // FirstOrderXPBDMeshObject params
         : XPBDMeshObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions, graphics_only,
                                 filename, max_size, size, draw_points, draw_edges, draw_faces, color,
-                                mat_names,
+                                mat_names, element_classes_filename,
                                 self_collisions, num_solver_iters, num_local_collision_iters, solver_type, constraint_type, residual_policy,
                                 render_config)
     {

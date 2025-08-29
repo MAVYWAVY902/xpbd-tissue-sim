@@ -239,6 +239,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      * This is set by the config object.
      */
     int _num_local_collision_iters;
+
+    /** The filename that has information about which class each element belongs to. Set by the config. */
+    std::optional<std::string> _element_classes_filename;
 };
 
 } // namespace Sim

@@ -18,6 +18,7 @@
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
 #include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
 #include "utils/MeshUtils.hpp"
+#include "utils/FileUtils.hpp"
 
 #include "geometry/DeformableMeshSDF.hpp"
 
@@ -67,6 +68,9 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
     // local collision iterations
     _num_local_collision_iters = config->numLocalCollisionIters();
 
+    // filename that has info on element classes (optional)
+    _element_classes_filename = config->elementClassesFilename();
+
     // get the damping multiplier for 1st-order objects
     if constexpr (IsFirstOrder)
     {
@@ -94,7 +98,18 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
     // add the class property to the element mesh, with default value 0
     tetMesh()->template addElementProperty<int>("class", 0);
 
-    /** TODO: set element class depending on the text file with element classes */
+    if (_element_classes_filename.has_value())
+    {
+        Geometry::MeshProperty<int>& class_prop = tetMesh()-> template getElementProperty<int>("class");
+
+        std::vector<int> elem_classes = FileUtils::readVectorFromFile<int>(_element_classes_filename.value());
+
+        assert(elem_classes.size() == (unsigned)tetMesh()->numElements() && "Element classes file has a different number of elements than the mesh!");
+        for (unsigned i = 0; i < elem_classes.size(); i++)
+        {
+            class_prop.set(i, elem_classes[i]);
+        }
+    }
 
     _solver.setup();
 

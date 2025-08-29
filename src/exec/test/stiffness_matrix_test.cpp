@@ -38,7 +38,7 @@ int main()
         "test", Vec3r(0,0,0.50), Vec3r(0,0,0), Vec3r(0,0,0), false, false,
         cube_filename, 1, std::nullopt,
         false, true, true, Vec4r(1,1,1,1),
-        materials,
+        materials, std::nullopt,
         false, 10, 5, XPBDObjectSolverTypeEnum::GAUSS_SEIDEL,
         XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED,
         XPBDSolverResidualPolicyEnum::NEVER,
