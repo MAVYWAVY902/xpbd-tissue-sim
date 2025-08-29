@@ -231,6 +231,80 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
             _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm2_callback);
         }
 
+        // set up callback to publish commanded tip position for arm1 (if it exists)
+        if (_sim->virtuosoRobot()->hasArm1())
+        {
+            std::cout << "Setting up callback for Virtuoso arm 1 commanded tip frame..." << std::endl;
+            _arm1_commanded_tip_frame_publisher = this->create_publisher<geometry_msgs::msg::PoseStamped>("/output/arm1_commanded_tip_frame", 10);
+
+            auto arm1_callback = 
+                [this]() -> void {
+                    const Sim::VirtuosoArm* arm1 = this->_sim->virtuosoRobot()->arm1();
+                    const Vec3r& arm1_commanded_position = arm1->commandedTipPosition();
+
+
+                    auto message = geometry_msgs::msg::PoseStamped();
+                    message.header.stamp = this->now();
+                    message.header.frame_id = "VB";
+
+                    const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                    const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
+
+                    const Vec3r& origin = vb_transform_inv.rotMat() * arm1_commanded_position + vb_transform_inv.translation();
+                    message.pose.position.x = origin[0];
+                    message.pose.position.y = origin[1];
+                    message.pose.position.z = origin[2];
+
+                    /** commanded tip position has no orientation */
+                    message.pose.orientation.x = 0;
+                    message.pose.orientation.y = 0;
+                    message.pose.orientation.z = 0;
+                    message.pose.orientation.w = 1;
+                    
+                    this->_arm1_commanded_tip_frame_publisher->publish(message);
+                };
+
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm1_callback);
+        }
+
+        // set up callback to publish tip frame for arm2 (if it exists)
+        if (_sim->virtuosoRobot()->hasArm2())
+        {
+            std::cout << "Setting up callback for Virtuoso arm 2 commanded tip frame..." << std::endl;
+            _arm2_commanded_tip_frame_publisher = this->create_publisher<geometry_msgs::msg::PoseStamped>("/output/arm2_commanded_tip_frame", 10);
+
+            auto arm2_callback = 
+                [this]() -> void {
+                    const Sim::VirtuosoArm* arm2 = this->_sim->virtuosoRobot()->arm2();
+                    const Vec3r& arm2_commanded_position = arm2->commandedTipPosition();
+
+
+                    auto message = geometry_msgs::msg::PoseStamped();
+                    message.header.stamp = this->now();
+                    message.header.frame_id = "VB";
+
+                    const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                    const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
+                    
+
+                    const Vec3r& origin = vb_transform_inv.rotMat() * arm2_commanded_position + vb_transform_inv.translation();
+                    message.pose.position.x = origin[0];
+                    message.pose.position.y = origin[1];
+                    message.pose.position.z = origin[2];
+
+                    /** commanded tip position has no orientation */
+                    message.pose.orientation.x = 0;
+                    message.pose.orientation.y = 0;
+                    message.pose.orientation.z = 0;
+                    message.pose.orientation.w = 1;
+                    
+                    this->_arm2_commanded_tip_frame_publisher->publish(message);
+                };
+
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm2_callback);
+        }
+
+
         // set up callback to publish mesh
         if (Sim::VirtuosoTissueGraspingSimulation* tissue_sim = dynamic_cast<Sim::VirtuosoTissueGraspingSimulation*>(_sim))
         {
@@ -634,6 +708,9 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _arm1_tip_frame_publisher;          // publishes the tip frame of arm1
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _arm2_tip_frame_publisher;          // publishes the tip frame of arm2
+
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _arm1_commanded_tip_frame_publisher;  // publishes the commanded tip position of arm1
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _arm2_commanded_tip_frame_publisher;  // published the commanded tip position of arm2
 
     shape_msgs::msg::Mesh _mesh_message;    // pre-allocated mesh ROS message for speed (assuming faces and number of vertices stay the same)
     rclcpp::Publisher<shape_msgs::msg::Mesh>::SharedPtr _mesh_publisher;    // publishes the current tissue mesh (all vertices and surface faces)
