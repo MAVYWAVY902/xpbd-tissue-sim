@@ -254,6 +254,13 @@ protected:
 
     /** The damping multiplier for the mesh (this is b from the 1st-order paper) */
     typename std::conditional<IsFirstOrder, Real, std::monostate>::type _damping_multiplier;
+
+    /** Whether or not to adjust the damping according to the Young's modulus and Poisson's ratio of the material.
+     * The "damping-multiplier" set by the config is taken to be b*(1+nu)/E, so b gets set correctly when E or nu change.
+     * This is useful for meshes that have multiple materials involved.
+     */
+    typename std::conditional<IsFirstOrder, bool, std::monostate>::type _adjust_b_to_material;
+
     /** The damping at each vertex */
     typename std::conditional<IsFirstOrder, std::vector<Real>, std::monostate>::type _vertex_B;
 };

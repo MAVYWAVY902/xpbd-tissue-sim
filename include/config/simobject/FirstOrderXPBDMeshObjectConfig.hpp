@@ -18,7 +18,8 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
     explicit FirstOrderXPBDMeshObjectConfig(const YAML::Node& node)
         : XPBDMeshObjectConfig(node)
     {
-        _extractParameter("damping-multiplier", node, _damping_multiplier);      
+        _extractParameter("damping-multiplier", node, _damping_multiplier);
+        _extractParameter("adjust-damping-to-material", node, _adjust_damping_to_material);      
     }
 
     explicit FirstOrderXPBDMeshObjectConfig(  
@@ -34,7 +35,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
                                     XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
                                     XPBDSolverResidualPolicyEnum residual_policy,
                                 
-                                    Real damping_multiplier,
+                                    Real damping_multiplier, bool adjust_damping_to_material,
                                 
                                     const ObjectRenderConfig& render_config)  
                                                                                                                                             // FirstOrderXPBDMeshObject params
@@ -45,14 +46,17 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
                                 render_config)
     {
         _damping_multiplier.value = damping_multiplier;
+        _adjust_damping_to_material.value = adjust_damping_to_material;
     }
 
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
     Real dampingMultiplier() const { return _damping_multiplier.value; }
+    bool adjustDampingToMaterial() const { return _adjust_damping_to_material.value; }
 
     protected:
     ConfigParameter<Real> _damping_multiplier = ConfigParameter<Real>(1);
+    ConfigParameter<bool> _adjust_damping_to_material = ConfigParameter<bool>(false);
 };
 
 } // namespace Config

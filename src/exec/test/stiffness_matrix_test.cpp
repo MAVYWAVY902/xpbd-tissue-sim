@@ -42,7 +42,7 @@ int main()
         false, 10, 5, XPBDObjectSolverTypeEnum::GAUSS_SEIDEL,
         XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED,
         XPBDSolverResidualPolicyEnum::NEVER,
-        10000,
+        10000, false,
         Config::ObjectRenderConfig()
     );
 

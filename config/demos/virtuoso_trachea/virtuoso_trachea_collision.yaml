@@ -60,7 +60,7 @@ objects:
     filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r.msh"
     # filename: "../resource/demos/trachea_virtuoso/tracheal_tumor_v2_refined.msh"
     element-classes-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_element_classes.txt"
-    materials: ["Human Trachea", "Raw Chicken Breast"]
+    materials: ["Raw Chicken Breast", "Human Trachea"]
     max-size: 0.09
     position: [0, 0, -0.005]
     velocity: [0, 0, 0]
@@ -72,8 +72,11 @@ objects:
     # solver-type: "Jacobi"
     # solver-type: "Parallel-Jacobi"
     constraint-type: "Stable-Neohookean-Combined"
-    damping-multiplier: 6000000000
+    damping-multiplier: 1e5
+    # damping-multiplier: 6000000000
     # damping-multiplier: 40000000000
+    adjust-damping-to-material: True
+
     collisions: true
     self-collisions: false
 

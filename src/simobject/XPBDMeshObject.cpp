@@ -75,6 +75,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
     if constexpr (IsFirstOrder)
     {
         _damping_multiplier = config->dampingMultiplier();
+        _adjust_b_to_material = config->adjustDampingToMaterial();
     }
 }
 
@@ -245,6 +246,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     _vertex_volumes.resize(_mesh->numVertices());
     _is_fixed_vertex.resize(_mesh->numVertices(), false);
 
+    std::vector<Real> vertex_E(_mesh->numVertices());
+    std::vector<Real> vertex_nu(_mesh->numVertices());
     const Geometry::MeshProperty<int>& class_prop = tetMesh()->template getElementProperty<int>("class"); 
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
@@ -269,6 +272,17 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         _vertex_volumes[element[1]] += volume/4.0;
         _vertex_volumes[element[2]] += volume/4.0;
         _vertex_volumes[element[3]] += volume/4.0;
+
+        // add material properties to each of its vertices
+        vertex_E[element[0]] += material.E() / tetMesh()->vertexAttachedElements(element[0]).size();
+        vertex_E[element[1]] += material.E() / tetMesh()->vertexAttachedElements(element[1]).size();
+        vertex_E[element[2]] += material.E() / tetMesh()->vertexAttachedElements(element[2]).size();
+        vertex_E[element[3]] += material.E() / tetMesh()->vertexAttachedElements(element[3]).size();
+
+        vertex_nu[element[0]] += material.nu() / tetMesh()->vertexAttachedElements(element[0]).size();
+        vertex_nu[element[1]] += material.nu() / tetMesh()->vertexAttachedElements(element[1]).size();
+        vertex_nu[element[2]] += material.nu() / tetMesh()->vertexAttachedElements(element[2]).size();
+        vertex_nu[element[3]] += material.nu() / tetMesh()->vertexAttachedElements(element[3]).size();
     }
 
     // for 1st-order objects, calculate per-vertex damping
@@ -277,7 +291,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         _vertex_B.resize(_mesh->numVertices());
         for (int i = 0; i < _mesh->numVertices(); i++)
         {
-            _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier;
+            if (_adjust_b_to_material)
+            {
+                _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier * vertex_E[i] / (1+vertex_nu[i]);
+            }
+            else
+            {
+                _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier;
+            }
         }
     }
     

@@ -66,6 +66,7 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::_is_fixed_vertex;
     using Base::_sdf;
     using Base::_damping_multiplier;
+    using Base::_adjust_b_to_material;
     using Base::_vertex_B;
 
     using Base::_mesh;
