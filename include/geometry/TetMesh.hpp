@@ -64,6 +64,71 @@ class TetMesh : public Mesh
 
     const std::vector<int>& vertexAttachedElements(int vertex_index) const { return _attached_elements_to_vertex[vertex_index]; }
 
+    /** Creates an element property with the specified name, and optional default value. */
+    template <typename T>
+    void addElementProperty(const std::string &name, std::optional<T> default_value = std::nullopt)
+    {
+        static_assert(type_list_contains_v<T, MeshPropertyTypeList> && "Mesh property type not supported!");
+
+        // make sure name doesn't already exist
+        for (const auto& fprop : _element_properties.get<MeshProperty<T>>())
+        {
+            assert(name != fprop.name() && "Vertex property with name already exists!");
+        }
+    
+        if (default_value.has_value())
+        {
+            _element_properties.template emplace_back<MeshProperty<T>>(name, numElements(), default_value.value());
+        }
+        else
+        {
+            _element_properties.template emplace_back<MeshProperty<T>>(name, numElements());
+        }
+    }
+
+    /** Fetches an element property with name. */
+    template <typename T>
+    const MeshProperty<T>& getElementProperty(const std::string& name) const
+    {
+        static_assert(type_list_contains_v<T, MeshPropertyTypeList> && "Mesh property type not supported!");
+
+        for (const auto& fprop : _element_properties.template get<MeshProperty<T>>())
+        {
+            if (name == fprop.name())
+                return fprop;
+        }
+    
+        assert(0 && "Element property not found!");
+    }
+
+    template <typename T>
+    MeshProperty<T>& getElementProperty(const std::string& name)
+    {
+        static_assert(type_list_contains_v<T, MeshPropertyTypeList> && "Mesh property type not supported!");
+        
+        for (auto& fprop : _element_properties.template get<MeshProperty<T>>())
+        {
+            if (name == fprop.name())
+                return fprop;
+        }
+    
+        assert(0 && "Element property not found!");
+    }
+
+    template <typename T>
+    bool hasElementProperty(const std::string& name) const
+    {
+        static_assert(type_list_contains_v<T, MeshPropertyTypeList> && "Mesh property type not supported!");
+
+        for (const auto& fprop : _element_properties.template get<MeshProperty<T>>())
+        {
+            if (name == fprop.name())
+                return true;
+        }
+
+        return false;
+    }
+
     protected:
     /** Finds adjacent vertices for each vertex in the mesh.
      * Two vertices are "adjacent" if they are connected by a face or element.
@@ -73,8 +138,13 @@ class TetMesh : public Mesh
     virtual void _computeAdjacentVertices() override;
 
 
-    ElementsMat _elements;  // the matrix of tetrahedral elements
+    /** Matrix of tetrahedral elements - each column is 4 integers corresponding to the vertex indices */
+    ElementsMat _elements;
 
+    /** Per-element properties */
+    PropertyContainer<MeshPropertyTypeList> _element_properties;
+
+    /** The rest volumes for each element */
     std::vector<Real> _element_rest_volumes;
 
     /** inverse undeformed basis for each element
@@ -83,7 +153,8 @@ class TetMesh : public Mesh
    */
     std::vector<Mat3r> _element_inv_undeformed_basis;  
 
-    std::vector<std::vector<int>> _attached_elements_to_vertex; // lists the elements (by index) attached to a vertex
+    /** lists the elements (by index) attached to a vertex */
+    std::vector<std::vector<int>> _attached_elements_to_vertex; 
 };
 
 } // namespace Geometry

@@ -49,7 +49,7 @@ objects:
     # type: "XPBDMeshObject"
     type: "FirstOrderXPBDMeshObject"
     filename: "../resource/demos/prostate/bph_new_contrast_d.msh"
-    material: "Raw Chicken Breast"
+    materials: ["Raw Chicken Breast"]
     max-size: 0.0857
     position: [0, 0, -0.005]
     velocity: [0, 0, 0]

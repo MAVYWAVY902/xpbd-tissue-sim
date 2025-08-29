@@ -30,9 +30,13 @@ namespace Sim
 
 template<bool IsFirstOrder>
 XPBDMeshObject_Base_<IsFirstOrder>::XPBDMeshObject_Base_(const Simulation* sim, const ConfigType* config)
-    : Object(sim, config), TetMeshObject(config, config),
-    _material(sim->getMaterial(config->material()))
-{}
+    : Object(sim, config), TetMeshObject(config, config)
+{
+    for (const auto& mat_name : config->materials())
+    {
+        _materials.push_back(sim->getMaterial(mat_name));
+    }
+}
 
 template<bool IsFirstOrder>
 void XPBDMeshObject_Base_<IsFirstOrder>::createSDF()
@@ -86,6 +90,11 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::setup()
 {
     loadAndConfigureMesh();
+
+    // add the class property to the element mesh, with default value 0
+    tetMesh()->template addElementProperty<int>("class", 0);
+
+    /** TODO: set element class depending on the text file with element classes */
 
     _solver.setup();
 
@@ -220,15 +229,20 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     _vertex_masses.resize(_mesh->numVertices());
     _vertex_volumes.resize(_mesh->numVertices());
     _is_fixed_vertex.resize(_mesh->numVertices(), false);
+
+    const Geometry::MeshProperty<int>& class_prop = tetMesh()->template getElementProperty<int>("class"); 
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
+        // get the material for this element
+        const ElasticMaterial& material = _materials[class_prop.get(i)];
+
         const Eigen::Vector4i& element = tetMesh()->element(i);
         // compute volume from X
         const Real volume = tetMesh()->elementVolume(i);
         // _vols(i) = vol;
 
         // compute mass of element
-        const Real element_mass = volume * _material.density();
+        const Real element_mass = volume * material.density();
         // add mass contribution of element to each of its vertices
         _vertex_masses[element[0]] += element_mass/4.0;
         _vertex_masses[element[1]] += element_mass/4.0;
@@ -262,8 +276,13 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     _constraints.template reserve<Solver::DeviatoricConstraint>(tetMesh()->numElements());
 
     // create constraint(s) for each element
+    const Geometry::MeshProperty<int>& class_prop = tetMesh()->template getElementProperty<int>("class"); 
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
+        // get the material for this element
+        const ElasticMaterial& material = _materials[class_prop.get(i)];
+
+        // get the vertices for the element
         const Eigen::Vector4i element = tetMesh()->element(i);
         const int v0 = element[0];
         const int v1 = element[1];
@@ -285,8 +304,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         {
             std::vector<Solver::HydrostaticConstraint>& hyd_constraint_vec = _constraints.template get<Solver::HydrostaticConstraint>();
             std::vector<Solver::DeviatoricConstraint>& dev_constraint_vec = _constraints.template get<Solver::DeviatoricConstraint>();
-            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
-            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, material);
+            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, material);
             
             using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
             using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;
@@ -300,8 +319,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         {
             std::vector<Solver::HydrostaticConstraint>& hyd_constraint_vec = _constraints.template get<Solver::HydrostaticConstraint>();
             std::vector<Solver::DeviatoricConstraint>& dev_constraint_vec = _constraints.template get<Solver::DeviatoricConstraint>();
-            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
-            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, material);
+            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, material);
 
             using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
             using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;

@@ -33,11 +33,12 @@ int main()
     const std::string single_tet_filename = "../resource/general/single.msh";
     const std::string bunny_filename = "../resource/general/stanford_bunny_medpoly.msh";
     const std::string cube_filename = "../resource/cube/cube4.msh";
+    std::vector<std::string> materials = {"material"};
     Config::FirstOrderXPBDMeshObjectConfig config(
         "test", Vec3r(0,0,0.50), Vec3r(0,0,0), Vec3r(0,0,0), false, false,
         cube_filename, 1, std::nullopt,
         false, true, true, Vec4r(1,1,1,1),
-        "material",
+        materials,
         false, 10, 5, XPBDObjectSolverTypeEnum::GAUSS_SEIDEL,
         XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED,
         XPBDSolverResidualPolicyEnum::NEVER,

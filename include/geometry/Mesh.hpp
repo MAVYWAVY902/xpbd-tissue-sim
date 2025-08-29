@@ -276,7 +276,7 @@ public:
                 return fprop;
         }
     
-        assert(0 && "Vertex property not found!");
+        assert(0 && "Face property not found!");
     }
 
     template <typename T>
@@ -290,7 +290,7 @@ public:
                 return fprop;
         }
     
-        assert(0 && "Vertex property not found!");
+        assert(0 && "Face property not found!");
     }
 
     template <typename T>

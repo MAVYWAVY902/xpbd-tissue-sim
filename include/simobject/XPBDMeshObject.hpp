@@ -60,7 +60,7 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::_previous_vertices;
     using Base::_vertex_velocities;
     using Base::_initial_velocity;
-    using Base::_material;
+    using Base::_materials;
     using Base::_vertex_masses;
     using Base::_vertex_volumes;
     using Base::_is_fixed_vertex;

@@ -81,7 +81,7 @@ public:
     /** Returns a const-ref to the elastic material for each tetrahedra in the mesh.
      * @returns the elastic material
      */
-    const ElasticMaterial& material() const { return _material; }
+    const std::vector<ElasticMaterial>& materials() const { return _materials; }
 
     /** Creates the SDF if it doesn't exist already. */
     virtual void createSDF() override;
@@ -231,8 +231,11 @@ protected:
     /** The initial bulk velocity of the mesh. Set by the config. TODO: is this needed? */
     Vec3r _initial_velocity;
 
-    /** The elastic material applied to the whole mesh. TODO: have separate materials for each tetrahedra */
-    ElasticMaterial _material;
+    /** The elastic materials for the mesh.
+     * The index in the vector corresponds to the class (an integer) associated with this material.
+     * The class is a per-element property stored by the TetMesh object.
+     */
+    std::vector<ElasticMaterial> _materials;
 
     /** Stores the vertex masses. */
     std::vector<Real> _vertex_masses;
