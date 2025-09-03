@@ -29,8 +29,16 @@ class VirtuosoArm : public Object
     constexpr static int NUM_OT_FRAMES = NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES; // total number of coordinate frames defined along the outer tube
     constexpr static int NUM_IT_FRAMES = 10;            // number of coordinate frames defined along the inner tube
 
-    constexpr static int MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
-    constexpr static int MAX_IT_TRANSLATION = 40e-3;    // maximum inner tube translation (joint limit on Virtuoso system)
+    constexpr static Real MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
+    constexpr static Real MAX_IT_TRANSLATION = 40e-3;    // maximum inner tube translation (joint limit on Virtuoso system)
+
+    constexpr static Real MAX_OT_TRANSLATION_SPEED = 0.04;   // maximum outer tube translation speed [m/s] (joint speed limit on Virtuoso system)
+    constexpr static Real MAX_IT_TRANSLATION_SPEED = 0.0529; // maximum inner tube translation speed [m/s] (joint speed limit on Virtuoso system)
+    constexpr static Real MAX_OT_ROTATION_SPEED = 20;        // maximum outer tube rotation speed [rad/s] (joint speed limit on Virtuoso system)
+    constexpr static Real MAX_IT_ROTATION_SPEED = 52.4;      // maximum inner tube rotation speed [rad/s] (joint speed limit on Virtuoso system)
+
+    constexpr static Real OT_ENDOSCOPE_CLEARANCE = 0.3e-3;  // clearance between the outer tube and the endoscope sheath [m]
+    constexpr static Real OT_RADIUS_OF_CURVATURE = 1.0/60.0;    // nominal radius of curvature of the outer tube [m]
 
     constexpr static double GRASPING_RADIUS = 0.002;    // grasping radius for the grasper tool
 
@@ -225,6 +233,11 @@ class VirtuosoArm : public Object
     void setJointState(double ot_rotation, double ot_translation, double it_rotation, double it_translation, int tool);
 
     private:
+    /** Computes the clearance angle between the outer tube and the endoscope sheath given the current outer tube translation.
+     * This angle rotates the outer tube base frame about its local x-axis.
+    */
+    Real _outerTubeClearanceAngle(Real ot_trans);
+
     /** Recomputes coordinate frames along the Virtuoso arm using purely geometry and not including any tip forces.
      * This is not used.
      */

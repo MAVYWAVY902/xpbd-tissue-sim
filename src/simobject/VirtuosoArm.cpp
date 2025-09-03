@@ -1,5 +1,6 @@
 #include "simobject/VirtuosoArm.hpp"
 #include "simobject/XPBDMeshObject.hpp"
+#include "simulation/Simulation.hpp"
 
 #include "config/simobject/VirtuosoArmConfig.hpp"
 
@@ -184,6 +185,15 @@ Geometry::AABB VirtuosoArm::boundingBox() const
     return Geometry::AABB(Vec3r::Zero(), Vec3r::Zero());
 }
 
+Real VirtuosoArm::_outerTubeClearanceAngle(Real ot_trans)
+{
+    Real tubed_length = std::max(_ot_distal_straight_length - ot_trans, Real(0.0));
+
+    Real sqrt_arg = tubed_length*tubed_length + 2*OT_ENDOSCOPE_CLEARANCE*OT_RADIUS_OF_CURVATURE - OT_ENDOSCOPE_CLEARANCE*OT_ENDOSCOPE_CLEARANCE;
+    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE);
+    return 2*std::atan(atan_arg);
+}
+
 void VirtuosoArm::_toolAction()
 {
     // if the manipulated object has not been given, do nothing
@@ -279,16 +289,7 @@ void VirtuosoArm::_recomputeCoordinateFrames()
     // consists of rotating about the current z-axis according to outer tube rotation
     // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Vec3r::Zero());
-
-    Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
-    Real clearance = 0.3e-3; // 0.3 mm
-    Real r_curv_ot = 1.0/60.0; // m
-    Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
-    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
-    Real clearance_angle = 2*std::atan(atan_arg);
-    std::cout << "Clearance angle: " << clearance_angle << std::endl;
-    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(clearance_angle), Vec3r::Zero());
-
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(_outerTubeClearanceAngle(_ot_translation)), Vec3r::Zero());
     Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z * T_rot_x;
 
     Real swept_angle = std::max(_ot_translation - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature; 
@@ -480,15 +481,7 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     // consists of rotating about the current z-axis according to outer tube rotation
     // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Vec3r::Zero());
-
-    Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
-    Real clearance = 0.3e-3; // 0.3 mm
-    Real r_curv_ot = 1.0/60.0; // m
-    Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
-    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
-    Real clearance_angle = 2*std::atan(atan_arg);
-    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(clearance_angle), Vec3r::Zero());
-
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(_outerTubeClearanceAngle(_ot_translation)), Vec3r::Zero());
     Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z * T_rot_x;
 
     // calculate internal forces and moments carried at the base of the tube collection
@@ -763,15 +756,7 @@ Geometry::TransformationMatrix VirtuosoArm::_computeTipTransform(Real ot_rot, Re
     // consists of rotating about the current z-axis according to outer tube rotation
     // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(ot_rot), Vec3r::Zero());
-
-    Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
-    Real clearance = 0.3e-3; // 0.3 mm
-    Real r_curv_ot = 1.0/60.0; // m
-    Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
-    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
-    Real clearance_angle = 2*std::atan(atan_arg);
-    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(clearance_angle), Vec3r::Zero());
-
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(_outerTubeClearanceAngle(ot_trans)), Vec3r::Zero());
     Geometry::CoordinateFrame ot_base_frame = arm_base_frame * T_rot_z * T_rot_x;
 
     Real swept_angle = std::max(ot_trans - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature; 
@@ -825,11 +810,6 @@ void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
         _recomputeCoordinateFramesStaticsModelWithNodalForces();
     }
 
-    // const Vec3r final_err = target_position - tipPosition();
-    // std::cout << "Tip pos: " << tipPosition()[0] << ", " << tipPosition()[1] << ", " << tipPosition()[2] << std::endl;
-    // std::cout << "Tip err: " << final_err[0] << ", " << final_err[1] << ", " << final_err[2] << std::endl;
-    // std::cout << "q: " << _ot_rotation << ", " << _ot_translation << ", " << _it_translation << std::endl;
-
     _stale_frames = true;
 }
 
@@ -846,52 +826,58 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
     // solve for the outer tube rotation analytically
     Geometry::TransformationMatrix global_to_arm_base = _arm_base_frame.transform().inverse();
     const Vec3r arm_base_pt = global_to_arm_base.rotMat() * target_position + global_to_arm_base.translation();
-    Real target_angle = std::atan2(arm_base_pt[0], -arm_base_pt[1]);
-    if (_ot_rotation > M_PI/2.0 && target_angle < -M_PI/2.0)
+    // the multiple of 2*pi to add to angles (avoids angle jumps from 180 to -180 and vice versa)
+    int n_rev = static_cast<int>((_ot_rotation+M_PI) / (2*M_PI));
+    Real target_angle = n_rev*2*M_PI + std::atan2(arm_base_pt[0], -arm_base_pt[1]);
+
+    // avoid angle jumps from 180 to -180 and from -180 to 180
+    if (_ot_rotation > n_rev*2*M_PI + M_PI/2.0 && target_angle < n_rev*2*M_PI - M_PI/2.0)
         target_angle += 2*M_PI;
-    else if (_ot_rotation < -M_PI/2.0 && target_angle > M_PI/2.0)
-        target_angle -= 2*M_PI;
-    Real d_ot_rot = std::clamp(target_angle - _ot_rotation, -1e-3, 1e-3);
+    else if (_ot_rotation < n_rev*2*M_PI - M_PI/2.0 && target_angle > n_rev*2*M_PI + M_PI/2.0)
+        target_angle += -2*M_PI;
+
+    // compute max allowable changes in joint variables, given by motor limitations
+    Real max_ot_rot_change = MAX_OT_ROTATION_SPEED * _sim->dt(); // rad/s
+    Real max_ot_trans_change = MAX_OT_TRANSLATION_SPEED * _sim->dt(); // m/s
+    Real max_it_trans_change = MAX_IT_TRANSLATION_SPEED * _sim->dt(); // m/s
+
+    // clamp the change in outer tube rotation and update
+    Real d_ot_rot = std::clamp(target_angle - _ot_rotation, -max_ot_rot_change, max_ot_rot_change);
     _ot_rotation += d_ot_rot;
 
-    for (int i = 0; i < 1; i++)
+
+    /** run 1 iteration of Jacobian-based differential inverse kinematics */
+    // the solution may not be exact THIS frame, but will converge over a few successive frames
+    // we can get away with this because we update at such a fast rate
+
+    // compute position error
+    const Geometry::TransformationMatrix T_tip_new = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    const Vec3r pos_err = target_position - T_tip_new.translation();
+
+    // get Jacobian and solve for joint updates (only outer tube translation and inner tube translation are used)
+    const Mat3r J_a = _3DOFAnalyticalHybridJacobian();
+    const Vec3r dq = J_a.colPivHouseholderQr().solve(pos_err);
+    // update translational joint variables, clamping them to their acceptable ranges
+    _ot_translation += std::clamp(dq[1], -max_ot_trans_change, max_ot_trans_change);
+    _it_translation += std::clamp(dq[2], -max_it_trans_change, max_it_trans_change);
+
+    // enforce constraints
+    _ot_translation = std::clamp(_ot_translation, Real(0.0), Real(MAX_OT_TRANSLATION));
+    _it_translation = std::clamp(_it_translation, Real(0.0), Real(MAX_IT_TRANSLATION));
+    if (_it_translation < _ot_translation)
     {
-        const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
-        const Vec3r pos_err = target_position - T_tip.translation();
-        if (pos_err.norm() < 1e-10)
-            break;
-
-        const Mat3r J_a = _3DOFAnalyticalHybridJacobian();
-        const Vec3r dq = J_a.colPivHouseholderQr().solve(pos_err);
-        _ot_translation += std::clamp(dq[1], -0.1e-3, 0.1e-3);
-        _it_translation += std::clamp(dq[2], -0.1e-3, 0.1e-3);
-
-        // enforce constraints
-        // _ot_translation = std::clamp(_ot_translation, _ot_distal_straight_length+Real(1e-4), Real(20e-3));  // TODO: create var for joint limits
-        // _it_translation = std::clamp(_it_translation, _ot_distal_straight_length+Real(1e-4), Real(40e-3));
-        _ot_translation = std::clamp(_ot_translation, Real(0.0), Real(20e-3));  // TODO: create var for joint limits
-        _it_translation = std::clamp(_it_translation, Real(0.0), Real(40e-3));
-        if (_it_translation < _ot_translation)
-        {
-            const Real d = _ot_translation - _it_translation;
-            _it_translation += d/2;
-            _ot_translation -= d/2;
-            // _it_translation += d;
-        }
-
-        // _recomputeCoordinateFrames();
-        // _recomputeCoordinateFramesStaticsModelWithNodalForces();
+        const Real d = _ot_translation - _it_translation;
+        _it_translation += d/2;
+        _ot_translation -= d/2;
     }
+    
 
+    // mark that the joint state has been updated so the coordinate frames are stale
     _stale_frames = true;
 }
 
 Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
 {
-    // make sure coordinate frames are up to date
-    // if (_stale_frames)      
-        // _recomputeCoordinateFrames();
-        // _recomputeCoordinateFramesStaticsModelWithNodalForces();
 
     // because there are max() and min() expressions used, we have a couple different cases for the derivatives
     // when outer tube translation >= length of the outer tube straight section, we have some curve in the outer tube
@@ -932,16 +918,13 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
         dtubed_length_d1 = -1;
     }
 
-    // derivative of clearange angle w.r.t. d1
+    // derivative of clearance angle w.r.t. d1
     Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
-    Real clearance = 0.3e-3; // 0.3 mm
-    Real r_curv_ot = 1.0/60.0; // m
-    Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
-    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
-    Real dca_d1 = 2 / (1+atan_arg*atan_arg) / (clearance - 2*r_curv_ot) * (1 - tubed_length/std::sqrt(sqrt_arg)) * dtubed_length_d1;
+    Real sqrt_arg = tubed_length*tubed_length + 2*OT_ENDOSCOPE_CLEARANCE*OT_RADIUS_OF_CURVATURE - OT_ENDOSCOPE_CLEARANCE*OT_ENDOSCOPE_CLEARANCE;
+    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE);
+    Real dca_d1 = 2 / (1+atan_arg*atan_arg) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE) * (1 - tubed_length/std::sqrt(sqrt_arg)) * dtubed_length_d1;
     
-    Real clearance_angle = 2*std::atan(atan_arg);
-
+    Real clearance_angle = _outerTubeClearanceAngle(_ot_translation);
     const Real alpha = std::max(_ot_translation - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature;    // angle swept by the outer tube curve
     const Real beta = _it_rotation - _ot_rotation;    // difference in angle between outer tube and inner tube
     const Real straight_length = std::min(_ot_distal_straight_length, _ot_translation) + std::max(Real(0.0), _it_translation - _ot_translation); // length of the straight section of the combined outer + inner tube
@@ -1014,31 +997,8 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
                 0, 0, 0, dmax_d2,
                 0, 0, 0, 0;
 
-    // now just implement dT/dq
-
-    // std::cout << "alpha: " << alpha << ", beta: " << beta << std::endl;
-
-    // Mat4r dT_d_ot_rot, dT_d_ot_trans, dT_d_it_trans;
-    // dT_d_ot_rot << sb*ct1 + cb*-st1 + cb*st1*ca - sb*ct1*ca, cb*ct1 + sb*st1 - sb*st1*ca - cb*ct1*ca, ct1*sa, ct1*sa*straight_length - ct1*(_ot_r_curvature*ca - _ot_r_curvature),
-    //                sb*st1 + cb*ct1 - cb*ct1*ca - sb*st1*ca, cb*st1 - sb*ct1 + sb*ct1*ca + -cb*st1*ca, st1*sa, st1*sa*straight_length - st1*(_ot_r_curvature*ca - _ot_r_curvature),
-    //                 -cb*sa, sb*sa, 0, 0,
-    //                 0, 0, 0, 0;
-
-    // // std::cout << "dT_d_ot_rot:\n" << dT_d_ot_rot << std::endl;
-
-
-    // dT_d_ot_trans << sb*st1*sa*dalpha_d1, cb*st1*sa*dalpha_d1, st1*ca*dalpha_d1, st1*ca*dalpha_d1*straight_length + st1*sa*(dmin_d1 + dmax_d1) + st1*_ot_r_curvature*sa*dalpha_d1,
-    //                  -sb*ct1*sa*dalpha_d1, -cb*ct1*sa*dalpha_d1, -ct1*ca*dalpha_d1, -ct1*ca*dalpha_d1*straight_length - ct1*sa*(dmin_d1 + dmax_d1) - ct1*_ot_r_curvature*sa*dalpha_d1,
-    //                  sb*ca*dalpha_d1, cb*ca*dalpha_d1, -sa*dalpha_d1, -sa*dalpha_d1*straight_length + ca*(dmin_d1 + dmax_d1) + _ot_r_curvature*ca*dalpha_d1,
-    //                  0, 0, 0, 0;
-
-    // // std::cout << "dT_d_ot_trans:\n" << dT_d_ot_trans << std::endl;
-
-    // dT_d_it_trans << 0, 0, 0, st1*sa*dmax_d2,
-    //                  0, 0, 0, -ct1*sa*dmax_d2,
-    //                  0, 0, 0, ca*dmax_d2,
-    //                  0, 0, 0, 0;
-
+    
+    // using product rule, evaluate dT/dq
     Mat4r dT_d_ot_rot = dT1_dt1*T2*T3*T4 + T1*T2*T3*dT4_dt1;
     Mat4r dT_d_ot_trans = T1*dT2_dd1*T3*T4 + T1*T2*dT3_dd1*T4 + T1*T2*T3*dT4_dd1;
     Mat4r dT_d_it_trans = T1*T2*T3*dT4_dd2; 
