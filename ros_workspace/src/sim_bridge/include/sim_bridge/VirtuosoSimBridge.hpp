@@ -31,7 +31,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     auto message = geometry_msgs::msg::PoseArray();
                     message.header.stamp = this->now();
-                    message.header.frame_id = "VB";
+                    message.header.frame_id = "ves/left/base";
 
                     const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
                     const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
@@ -98,7 +98,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     auto message = geometry_msgs::msg::PoseArray();
                     message.header.stamp = this->now();
-                    message.header.frame_id = "VB";
+                    message.header.frame_id = "ves/left/base";
 
                     const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
                     const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
@@ -164,7 +164,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     auto message = geometry_msgs::msg::PoseStamped();
                     message.header.stamp = this->now();
-                    message.header.frame_id = "VB";
+                    message.header.frame_id = "ves/left/base";
 
                     const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
                     const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
@@ -205,7 +205,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     auto message = geometry_msgs::msg::PoseStamped();
                     message.header.stamp = this->now();
-                    message.header.frame_id = "VB";
+                    message.header.frame_id = "ves/left/base";
 
                     const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
                     const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
@@ -246,7 +246,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     auto message = geometry_msgs::msg::PoseStamped();
                     message.header.stamp = this->now();
-                    message.header.frame_id = "VB";
+                    message.header.frame_id = "ves/left/base";
 
                     const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
                     const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
@@ -282,7 +282,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     auto message = geometry_msgs::msg::PoseStamped();
                     message.header.stamp = this->now();
-                    message.header.frame_id = "VB";
+                    message.header.frame_id = "ves/left/base";
 
                     const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
                     const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
@@ -426,7 +426,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                 // set header
                 pcl_msg.header.stamp = this->now();
-                pcl_msg.header.frame_id = "VB";
+                pcl_msg.header.frame_id = "ves/left/base";
 
                 // // add point fields
                 pcl_msg.fields.resize(3);
@@ -530,6 +530,9 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                             }
                         }
                     }
+
+                    this->_trachea_partial_view_pc_message.header.stamp = this->now();
+                    this->_tumor_partial_view_pc_message.header.stamp = this->now();
 
                     // publish the messages
                     this->_trachea_partial_view_pc_publisher->publish(this->_trachea_partial_view_pc_message);
