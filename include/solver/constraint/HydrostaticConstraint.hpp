@@ -8,6 +8,7 @@
 #include "gpu/constraint/GPUHydrostaticConstraint.cuh"
 #endif
 
+
 namespace Solver
 {
 
@@ -23,6 +24,8 @@ class HydrostaticConstraint : public ElementConstraint
 {
     friend class CombinedConstraintProjector<true, DeviatoricConstraint, HydrostaticConstraint>;
     friend class CombinedConstraintProjector<false, DeviatoricConstraint, HydrostaticConstraint>;
+
+    constexpr static int _NUM_TAYLOR_SERIES_TERMS = 7;  // number of Taylor series terms to be used for approximation of log(J)
 
     public:
     constexpr static int NUM_POSITIONS = 4; 
@@ -121,25 +124,36 @@ class HydrostaticConstraint : public ElementConstraint
     {
         // compute C(x) = det(F) - (1 + gamma)
         Real detF = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2];
-        Real detF_min_gamma = detF - (1+_gamma);
-        // *C = detF_min_gamma;
-        *C = detF_min_gamma 
-            - detF_min_gamma*detF_min_gamma/2.0
-            + detF_min_gamma*detF_min_gamma*detF_min_gamma/3.0
-            - detF_min_gamma*detF_min_gamma*detF_min_gamma*detF_min_gamma/4.0
-            + detF_min_gamma*detF_min_gamma*detF_min_gamma*detF_min_gamma*detF_min_gamma/5.0;
 
-        // if (detF < 0)
-        // {
-        //     std::cout << "det(F) - gamma = " << detF_min_gamma << std::endl;
-        //     std::cout << "C = " << *C << std::endl;
-        // }
+        // *C = detF - 1 - _gamma;
+        if (detF >= 1)
+        {
+            // when J >= 1, just log(J)
+            // -gamma is a term needed for rest-stability
+            *C = -_gamma + std::log(detF);
+            // *C = detF - 1 - _gamma;
+        }
+        else
+        {
+            // when J < 1, approximate log(J) with its Taylor series
+            // log(J) = (J-1) - 1/2*(J-1)^2 + 1/3*(J-1)^3 -...
+            *C = -_gamma + (detF-1) - (detF-1)*(detF-1)/2.0 + (detF-1)*(detF-1)*(detF-1)/3.0;
+            // variable to track (J-1)^n
+            // Real detF_min_1_n = 1;
+            // for (int i = 0; i < _NUM_TAYLOR_SERIES_TERMS; i++)
+            // {
+            //     // when i = 0,2,4... we want the terms to be positive
+            //     // when i = 1,3,5... we want the terms to be negative
+            //     int sign = (i%2 == 0) ? 1 : -1;
+            //     detF_min_1_n *= (detF - 1);
+            //     // add the next term in the series to *C
+            //     *C += sign * (detF_min_1_n/(i+1));
+            // }
+        }
     }
 
     /** Helper method to evaluate the constraint gradient given the deformation gradient, F, useing pre-allocated memory.
      * Avoids the need to recompute F if we already have it.
-     * 
-     * Requires at least 9 * sizeof(Real) bytes of additional memory for intermediate quantities.
      */
     void _gradient(Real* delC, Real* F) const
     {
@@ -158,14 +172,32 @@ class HydrostaticConstraint : public ElementConstraint
         // delC wrt 4th position is (-1st column - 2nd column - 3rd column)
         // see supplementary material of Macklin paper for more details
 
-        // the factor out front (1 - (J-1) + (J-1)^2)
+        // the factor out front of the old gradient F_cross * Q^T
+        Real fac;
         Real detF = F[0]*F[4]*F[8] - F[0]*F[7]*F[5] - F[3]*F[1]*F[8] + F[3]*F[7]*F[2] + F[6]*F[1]*F[5] - F[6]*F[4]*F[2];
-        Real detF_min_gamma = detF - (1+_gamma);
-        Real fac = 1 - (detF_min_gamma)
-                    + detF_min_gamma*detF_min_gamma
-                    - detF_min_gamma*detF_min_gamma*detF_min_gamma
-                    + detF_min_gamma*detF_min_gamma*detF_min_gamma*detF_min_gamma;
-        // Real fac = 1;
+        
+        // fac = 1;
+        if (detF >= 1.0)
+        {
+            // when J >= 1, this factor is just the derivative of log(J) = 1/J
+            fac = 1/detF;
+            // fac = 1;
+        }
+        else
+        {
+            // when J < 1, this factor is the derivative of the Taylor series
+            // i.e. 1 - (J-1) + (J-1)^2 -...
+            // in other words, the sum of (1-J)^n for n=0...N-1
+            // fac = 0;
+            // Real _1_min_detF_n = 1;
+            // for (int i = 0; i < _NUM_TAYLOR_SERIES_TERMS; i++)
+            // {
+            //     fac += _1_min_detF_n;
+            //     _1_min_detF_n *= (1 - detF);
+            // }
+            fac = 1 - (detF-1) + (detF-1)*(detF-1);
+            // fac = 1;
+        }
 
         // calculation of delC wrt 1st position
         delC[0] = fac*(F_cross[0]*_Q(0,0) + F_cross[3]*_Q(0,1) + F_cross[6]*_Q(0,2));

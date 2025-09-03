@@ -14,6 +14,7 @@ VTKVirtuosoRobotGraphicsObject::VTKVirtuosoRobotGraphicsObject(const std::string
     vtkNew<vtkCylinderSource> cyl_source;;
     cyl_source->SetHeight(robot->endoscopeLength());
     cyl_source->SetRadius(0.5*robot->endoscopeDiameter());
+    cyl_source->SetResolution(20);
     
     vtkNew<vtkPolyDataMapper> data_mapper;
     if (render_config.smoothNormals())
@@ -40,6 +41,10 @@ VTKVirtuosoRobotGraphicsObject::VTKVirtuosoRobotGraphicsObject(const std::string
 
     // setup rendering based on render config
     VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
+
+    _vtk_actor->GetProperty()->SetColor(0.0, 0.0, 0.0);
+    _vtk_actor->GetProperty()->SetMetallic(0);
+    _vtk_actor->GetProperty()->SetRoughness(0.3);
 
     // create the endoscope light attached to the end of the endoscope
     Vec3r light_pos = robot->camFrame().origin();

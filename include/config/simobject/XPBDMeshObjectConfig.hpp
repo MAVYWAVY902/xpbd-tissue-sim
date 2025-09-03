@@ -59,8 +59,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     explicit XPBDMeshObjectConfig(const YAML::Node& node)
         : ObjectConfig(node), MeshObjectConfig(node)
     {
-        // create the ElasticMaterialConfig from the material yaml node
-        _material_config = std::make_unique<ElasticMaterialConfig>(node["material"]);
+        _extractParameter("materials", node, _materials);
+        _extractParameter("element-classes-filename", node, _element_classes_filename);
 
         // extract parameters
         _extractParameter("self-collisions", node, _self_collisions);
@@ -78,7 +78,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
                                     const std::string& filename, const std::optional<Real>& max_size, const std::optional<Vec3r>& size,     // MeshObject params
                                     bool draw_points, bool draw_edges, bool draw_faces, const Vec4r& color,
 
-                                    Real density, Real E, Real nu, Real mu_s, Real mu_k,                                                    // ElasticMaterial params
+                                    const std::vector<std::string>& mat_names, const std::optional<std::string>& element_classes_filename,
 
                                     bool self_collisions, int num_solver_iters, int num_local_collision_iters,
                                     XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
@@ -88,7 +88,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         : ObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions, graphics_only, render_config),
           MeshObjectConfig(filename, max_size, size, draw_points, draw_edges, draw_faces, color)
     {
-        _material_config = std::make_unique<ElasticMaterialConfig>(name + "_material", density, E, nu, mu_s, mu_k);
+        _materials.value = mat_names;
+        _element_classes_filename.value = element_classes_filename;
 
         _self_collisions.value = self_collisions;
         _num_solver_iters.value = num_solver_iters;
@@ -108,7 +109,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     XPBDMeshObjectConstraintConfigurationEnum constraintType() const { return _constraint_type.value; }
     XPBDSolverResidualPolicyEnum residualPolicy() const { return _residual_policy.value; }
 
-    ElasticMaterialConfig* materialConfig() const { return _material_config.get(); }
+    std::vector<std::string> materials() const { return _materials.value; }
+    std::optional<std::string> elementClassesFilename() const { return _element_classes_filename.value; }
 
     protected:
     // Parameters
@@ -119,7 +121,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     ConfigParameter<XPBDMeshObjectConstraintConfigurationEnum> _constraint_type = ConfigParameter<XPBDMeshObjectConstraintConfigurationEnum>(XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED);
     ConfigParameter<XPBDSolverResidualPolicyEnum> _residual_policy = ConfigParameter<XPBDSolverResidualPolicyEnum>(XPBDSolverResidualPolicyEnum::NEVER);
 
-    std::unique_ptr<ElasticMaterialConfig> _material_config;
+    ConfigParameter<std::vector<std::string>> _materials = ConfigParameter<std::vector<std::string>>({});
+    ConfigParameter<std::optional<std::string>> _element_classes_filename;
 };
 
 } // namespace Config

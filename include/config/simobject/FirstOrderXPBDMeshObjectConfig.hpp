@@ -18,7 +18,8 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
     explicit FirstOrderXPBDMeshObjectConfig(const YAML::Node& node)
         : XPBDMeshObjectConfig(node)
     {
-        _extractParameter("damping-multiplier", node, _damping_multiplier);      
+        _extractParameter("damping-multiplier", node, _damping_multiplier);
+        _extractParameter("adjust-damping-to-material", node, _adjust_damping_to_material);      
     }
 
     explicit FirstOrderXPBDMeshObjectConfig(  
@@ -28,31 +29,34 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
                                     const std::string& filename, const std::optional<Real>& max_size, const std::optional<Vec3r>& size,     // MeshObject params
                                     bool draw_points, bool draw_edges, bool draw_faces, const Vec4r& color,
 
-                                    Real density, Real E, Real nu, Real mu_s, Real mu_k,                                                    // ElasticMaterial params
+                                    const std::vector<std::string>& mat_names, const std::optional<std::string>& element_classes_filename,
 
                                     bool self_collisions, int num_solver_iters, int num_local_collision_iters, 
                                     XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
                                     XPBDSolverResidualPolicyEnum residual_policy,
                                 
-                                    Real damping_multiplier,
+                                    Real damping_multiplier, bool adjust_damping_to_material,
                                 
                                     const ObjectRenderConfig& render_config)  
                                                                                                                                             // FirstOrderXPBDMeshObject params
         : XPBDMeshObjectConfig(name, initial_position, initial_rotation, initial_velocity, collisions, graphics_only,
                                 filename, max_size, size, draw_points, draw_edges, draw_faces, color,
-                                density, E, nu, mu_s, mu_k,
+                                mat_names, element_classes_filename,
                                 self_collisions, num_solver_iters, num_local_collision_iters, solver_type, constraint_type, residual_policy,
                                 render_config)
     {
         _damping_multiplier.value = damping_multiplier;
+        _adjust_damping_to_material.value = adjust_damping_to_material;
     }
 
     std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
 
     Real dampingMultiplier() const { return _damping_multiplier.value; }
+    bool adjustDampingToMaterial() const { return _adjust_damping_to_material.value; }
 
     protected:
     ConfigParameter<Real> _damping_multiplier = ConfigParameter<Real>(1);
+    ConfigParameter<bool> _adjust_damping_to_material = ConfigParameter<bool>(false);
 };
 
 } // namespace Config

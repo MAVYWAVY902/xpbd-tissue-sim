@@ -60,12 +60,13 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using Base::_previous_vertices;
     using Base::_vertex_velocities;
     using Base::_initial_velocity;
-    using Base::_material;
+    using Base::_materials;
     using Base::_vertex_masses;
     using Base::_vertex_volumes;
     using Base::_is_fixed_vertex;
     using Base::_sdf;
     using Base::_damping_multiplier;
+    using Base::_adjust_b_to_material;
     using Base::_vertex_B;
 
     using Base::_mesh;
@@ -153,6 +154,10 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
 
     /** === Miscellaneous useful methods === */
 
+    /** Computes the total strain energy associated with elastic deformation.
+    */
+    virtual Real totalStrainEnergy() const override;
+
     /** Computes the elastic force on the vertex at the specified index. This is essentially just the current constraint force for all "elastic" constraints
      * that affect the specified vertex. An "elastic" constraint is one that is internal to the mesh and corresponds to the mechanics of the mesh material.
      * @param index : the index of the vertex
@@ -235,6 +240,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      * This is set by the config object.
      */
     int _num_local_collision_iters;
+
+    /** The filename that has information about which class each element belongs to. Set by the config. */
+    std::optional<std::string> _element_classes_filename;
 };
 
 } // namespace Sim

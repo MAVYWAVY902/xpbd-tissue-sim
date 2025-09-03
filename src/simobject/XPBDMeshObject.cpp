@@ -18,6 +18,7 @@
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
 #include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
 #include "utils/MeshUtils.hpp"
+#include "utils/FileUtils.hpp"
 
 #include "geometry/DeformableMeshSDF.hpp"
 
@@ -30,9 +31,13 @@ namespace Sim
 
 template<bool IsFirstOrder>
 XPBDMeshObject_Base_<IsFirstOrder>::XPBDMeshObject_Base_(const Simulation* sim, const ConfigType* config)
-    : Object(sim, config), TetMeshObject(config, config),
-    _material(config->materialConfig())
-{}
+    : Object(sim, config), TetMeshObject(config, config)
+{
+    for (const auto& mat_name : config->materials())
+    {
+        _materials.push_back(sim->getMaterial(mat_name));
+    }
+}
 
 template<bool IsFirstOrder>
 void XPBDMeshObject_Base_<IsFirstOrder>::createSDF()
@@ -63,10 +68,14 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
     // local collision iterations
     _num_local_collision_iters = config->numLocalCollisionIters();
 
+    // filename that has info on element classes (optional)
+    _element_classes_filename = config->elementClassesFilename();
+
     // get the damping multiplier for 1st-order objects
     if constexpr (IsFirstOrder)
     {
         _damping_multiplier = config->dampingMultiplier();
+        _adjust_b_to_material = config->adjustDampingToMaterial();
     }
 }
 
@@ -86,6 +95,22 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::setup()
 {
     loadAndConfigureMesh();
+
+    // add the class property to the element mesh, with default value 0
+    tetMesh()->template addElementProperty<int>("class", 0);
+
+    if (_element_classes_filename.has_value())
+    {
+        Geometry::MeshProperty<int>& class_prop = tetMesh()-> template getElementProperty<int>("class");
+
+        std::vector<int> elem_classes = FileUtils::readVectorFromFile<int>(_element_classes_filename.value());
+
+        assert(elem_classes.size() == (unsigned)tetMesh()->numElements() && "Element classes file has a different number of elements than the mesh!");
+        for (unsigned i = 0; i < elem_classes.size(); i++)
+        {
+            class_prop.set(i, elem_classes[i]);
+        }
+    }
 
     _solver.setup();
 
@@ -220,15 +245,22 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     _vertex_masses.resize(_mesh->numVertices());
     _vertex_volumes.resize(_mesh->numVertices());
     _is_fixed_vertex.resize(_mesh->numVertices(), false);
+
+    std::vector<Real> vertex_E(_mesh->numVertices());
+    std::vector<Real> vertex_nu(_mesh->numVertices());
+    const Geometry::MeshProperty<int>& class_prop = tetMesh()->template getElementProperty<int>("class"); 
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
+        // get the material for this element
+        const ElasticMaterial& material = _materials[class_prop.get(i)];
+
         const Eigen::Vector4i& element = tetMesh()->element(i);
         // compute volume from X
         const Real volume = tetMesh()->elementVolume(i);
         // _vols(i) = vol;
 
         // compute mass of element
-        const Real element_mass = volume * _material.density();
+        const Real element_mass = volume * material.density();
         // add mass contribution of element to each of its vertices
         _vertex_masses[element[0]] += element_mass/4.0;
         _vertex_masses[element[1]] += element_mass/4.0;
@@ -240,6 +272,17 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         _vertex_volumes[element[1]] += volume/4.0;
         _vertex_volumes[element[2]] += volume/4.0;
         _vertex_volumes[element[3]] += volume/4.0;
+
+        // add material properties to each of its vertices
+        vertex_E[element[0]] += material.E() / tetMesh()->vertexAttachedElements(element[0]).size();
+        vertex_E[element[1]] += material.E() / tetMesh()->vertexAttachedElements(element[1]).size();
+        vertex_E[element[2]] += material.E() / tetMesh()->vertexAttachedElements(element[2]).size();
+        vertex_E[element[3]] += material.E() / tetMesh()->vertexAttachedElements(element[3]).size();
+
+        vertex_nu[element[0]] += material.nu() / tetMesh()->vertexAttachedElements(element[0]).size();
+        vertex_nu[element[1]] += material.nu() / tetMesh()->vertexAttachedElements(element[1]).size();
+        vertex_nu[element[2]] += material.nu() / tetMesh()->vertexAttachedElements(element[2]).size();
+        vertex_nu[element[3]] += material.nu() / tetMesh()->vertexAttachedElements(element[3]).size();
     }
 
     // for 1st-order objects, calculate per-vertex damping
@@ -248,7 +291,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         _vertex_B.resize(_mesh->numVertices());
         for (int i = 0; i < _mesh->numVertices(); i++)
         {
-            _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier;
+            if (_adjust_b_to_material)
+            {
+                _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier * vertex_E[i] / (1+vertex_nu[i]);
+            }
+            else
+            {
+                _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier;
+            }
         }
     }
     
@@ -262,8 +312,13 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     _constraints.template reserve<Solver::DeviatoricConstraint>(tetMesh()->numElements());
 
     // create constraint(s) for each element
+    const Geometry::MeshProperty<int>& class_prop = tetMesh()->template getElementProperty<int>("class"); 
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
+        // get the material for this element
+        const ElasticMaterial& material = _materials[class_prop.get(i)];
+
+        // get the vertices for the element
         const Eigen::Vector4i element = tetMesh()->element(i);
         const int v0 = element[0];
         const int v1 = element[1];
@@ -285,8 +340,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         {
             std::vector<Solver::HydrostaticConstraint>& hyd_constraint_vec = _constraints.template get<Solver::HydrostaticConstraint>();
             std::vector<Solver::DeviatoricConstraint>& dev_constraint_vec = _constraints.template get<Solver::DeviatoricConstraint>();
-            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
-            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, material);
+            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, material);
             
             using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
             using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;
@@ -300,8 +355,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         {
             std::vector<Solver::HydrostaticConstraint>& hyd_constraint_vec = _constraints.template get<Solver::HydrostaticConstraint>();
             std::vector<Solver::DeviatoricConstraint>& dev_constraint_vec = _constraints.template get<Solver::DeviatoricConstraint>();
-            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
-            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, _material);
+            hyd_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, material);
+            dev_constraint_vec.emplace_back(v0, v0_ptr, m0, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, material);
 
             using HydConstraintRefType = Solver::ConstraintReference<Solver::HydrostaticConstraint>;
             using DevConstraintRefType = Solver::ConstraintReference<Solver::DeviatoricConstraint>;
@@ -329,6 +384,16 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
 
     _movePositionsInertially();
     _projectConstraints();
+
+    // for (int i = 0; i < tetMesh()->numElements(); i++)
+    // {
+    //     const Mat3r F = tetMesh()->elementDeformationGradient(i);
+    //     if (F.determinant() <= 0)
+    //     {
+    //         std::cout << "element " << i << " det(F) <= 0!" << std::endl;
+    //     }
+        
+    // }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -420,6 +485,20 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::totalStrainEnergy() const
+{
+    // iterate over all hydrostatic and deviatoric constraints
+    Real total_energy = 0;
+    _constraints.template for_each_element<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>([&total_energy](const auto& constraint){
+        Real eval;
+        constraint.evaluate(&eval);
+        total_energy += eval * eval / constraint.alpha();
+    });
+
+    return total_energy;
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -576,6 +655,16 @@ MatXr XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::s
                 stiffness_matrix(3*i+j,3*i+j) += 1e9;
         }
     }
+
+    // add large values for nodes in contact with the ground (when the ground plane is active)
+    // for (int i = 0; i < _mesh->numVertices(); i++)
+    // {
+    //     if (std::abs(_mesh->vertex(i)[2]) < 1e-10)
+    //     {
+    //         stiffness_matrix(3*i+2, 3*i+2) += 1e9;
+    //     }
+    // }
+
     return stiffness_matrix;
     
 }

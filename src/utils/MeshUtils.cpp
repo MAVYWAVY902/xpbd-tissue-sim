@@ -923,13 +923,6 @@ void MeshUtils::convertSTLtoMSH(const std::string& filename)
     gmsh::open(filename);
     gmsh::option::setNumber("General.Verbosity", 5);
 
-    // Get bounding box for mesh sizing
-    double xmin, ymin, zmin, xmax, ymax, zmax;
-    gmsh::model::getBoundingBox(-1, -1, xmin, ymin, zmin, xmax, ymax, zmax);
-    double bbox_diagonal = sqrt(pow(xmax-xmin, 2) + pow(ymax-ymin, 2) + pow(zmax-zmin, 2));
-    gmsh::option::setNumber("Mesh.CharacteristicLengthMax", bbox_diagonal/100);
-    gmsh::option::setNumber("Mesh.CharacteristicLengthMin", bbox_diagonal/1000);
-
     // Get the surface (should be tag 1)
     std::vector<std::pair<int, int>> surfaces;
     gmsh::model::getEntities(surfaces, 2);

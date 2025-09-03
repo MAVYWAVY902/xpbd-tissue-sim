@@ -83,6 +83,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
             _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm1_callback);
         }
 
+
         // set up callback to publish frames for arm 2 (if it exists)
         if (_sim->virtuosoRobot()->hasArm2())
         {
@@ -703,6 +704,16 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
         return std::make_tuple(ot_rot, ot_trans, it_rot, it_trans, tool);
     }
     
+    sensor_msgs::msg::JointState _createJointStateMsgForArm(const Sim::VirtuosoArm* arm) const
+    {
+        sensor_msgs::msg::JointState msg;
+        msg.name = {"inner_rotation", "outer_rotation", "inner_translation", "outer_translation", "tool"};
+        msg.position = {arm->innerTubeRotation(), arm->outerTubeRotation(), arm->innerTubeTranslation(), arm->outerTubeTranslation(), (double)arm->toolState()};
+
+        msg.header.stamp = this->now();
+
+        return msg;
+    }
 
     private:
     /** Publishers */

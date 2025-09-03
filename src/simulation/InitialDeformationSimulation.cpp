@@ -49,9 +49,9 @@ void InitialDeformationSimulation::setup()
     // add logged variables
     for (auto& xpbd_obj : _xpbd_objs)
     {
-        const std::string var_name = xpbd_obj.name() + "_2*t";
-        _logger->addOutput(var_name, [this](){
-            return 2*_time;
+        const std::string var_name = xpbd_obj.name() + "_strain_energy";
+        _logger->addOutput(var_name, [xpbd_obj](){
+            return xpbd_obj.totalStrainEnergy();
         });
     }
 
@@ -87,6 +87,8 @@ void InitialDeformationSimulation::setup()
                 xpbd_obj.mesh()->setVertex(i,Vec3r(x,y,z));
             }
         }
+
+        std::cout << "Initial deformation energy: " << xpbd_obj.totalStrainEnergy() << std::endl;
     }
     
     

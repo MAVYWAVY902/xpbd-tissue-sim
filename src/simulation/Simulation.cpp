@@ -82,6 +82,12 @@ Simulation::Simulation(const Config::SimulationConfig* config)
         // create the logger
         _logger = std::make_unique<SimulationLogger>(filepath.string());
     }
+
+    /** Create the materials */
+    for (const auto& mat_config : config->materialConfigs())
+    {
+        _materials.emplace_back(&mat_config);
+    }
 }
 
 std::string Simulation::toString(const int indent) const

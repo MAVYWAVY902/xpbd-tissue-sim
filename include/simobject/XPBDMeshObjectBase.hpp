@@ -81,7 +81,7 @@ public:
     /** Returns a const-ref to the elastic material for each tetrahedra in the mesh.
      * @returns the elastic material
      */
-    const ElasticMaterial& material() const { return _material; }
+    const std::vector<ElasticMaterial>& materials() const { return _materials; }
 
     /** Creates the SDF if it doesn't exist already. */
     virtual void createSDF() override;
@@ -195,6 +195,10 @@ public:
 
     /** === Miscellaneous useful methods === */
 
+    /** Computes the total strain energy associated with elastic deformation.
+    */
+    virtual Real totalStrainEnergy() const = 0;
+
     /** Computes the elastic force on the vertex at the specified index. This is essentially just the current constraint force for all "elastic" constraints
      * that affect the specified vertex. An "elastic" constraint is one that is internal to the mesh and corresponds to the mechanics of the mesh material.
      * @param index : the index of the vertex
@@ -227,8 +231,11 @@ protected:
     /** The initial bulk velocity of the mesh. Set by the config. TODO: is this needed? */
     Vec3r _initial_velocity;
 
-    /** The elastic material applied to the whole mesh. TODO: have separate materials for each tetrahedra */
-    ElasticMaterial _material;
+    /** The elastic materials for the mesh.
+     * The index in the vector corresponds to the class (an integer) associated with this material.
+     * The class is a per-element property stored by the TetMesh object.
+     */
+    std::vector<ElasticMaterial> _materials;
 
     /** Stores the vertex masses. */
     std::vector<Real> _vertex_masses;
@@ -247,6 +254,13 @@ protected:
 
     /** The damping multiplier for the mesh (this is b from the 1st-order paper) */
     typename std::conditional<IsFirstOrder, Real, std::monostate>::type _damping_multiplier;
+
+    /** Whether or not to adjust the damping according to the Young's modulus and Poisson's ratio of the material.
+     * The "damping-multiplier" set by the config is taken to be b*(1+nu)/E, so b gets set correctly when E or nu change.
+     * This is useful for meshes that have multiple materials involved.
+     */
+    typename std::conditional<IsFirstOrder, bool, std::monostate>::type _adjust_b_to_material;
+
     /** The damping at each vertex */
     typename std::conditional<IsFirstOrder, std::vector<Real>, std::monostate>::type _vertex_B;
 };
