@@ -135,6 +135,8 @@ void VirtuosoArm::setup()
 
 void VirtuosoArm::update()
 {
+    const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    _hybridDifferentialInverseKinematics(_commanded_tip_position - T_tip.translation());
     if (_stale_frames)
     {
         // _recomputeCoordinateFrames();
@@ -833,6 +835,9 @@ void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
 
 void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
 {
+    if (dx.norm() < 1e-6)
+        return;
+
     // _recomputeCoordinateFrames();
     // _recomputeCoordinateFramesStaticsModelWithNodalForces();
     const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
@@ -841,9 +846,13 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
     // solve for the outer tube rotation analytically
     Geometry::TransformationMatrix global_to_arm_base = _arm_base_frame.transform().inverse();
     const Vec3r arm_base_pt = global_to_arm_base.rotMat() * target_position + global_to_arm_base.translation();
-    const Real target_angle = std::atan2(arm_base_pt[0], -arm_base_pt[1]);
-
-    _ot_rotation = target_angle;
+    Real target_angle = std::atan2(arm_base_pt[0], -arm_base_pt[1]);
+    if (_ot_rotation > M_PI/2.0 && target_angle < -M_PI/2.0)
+        target_angle += 2*M_PI;
+    else if (_ot_rotation < -M_PI/2.0 && target_angle > M_PI/2.0)
+        target_angle -= 2*M_PI;
+    Real d_ot_rot = std::clamp(target_angle - _ot_rotation, -1e-3, 1e-3);
+    _ot_rotation += d_ot_rot;
 
     for (int i = 0; i < 1; i++)
     {
@@ -854,8 +863,8 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
 
         const Mat3r J_a = _3DOFAnalyticalHybridJacobian();
         const Vec3r dq = J_a.colPivHouseholderQr().solve(pos_err);
-        _ot_translation += dq[1];
-        _it_translation += dq[2];
+        _ot_translation += std::clamp(dq[1], -0.1e-3, 0.1e-3);
+        _it_translation += std::clamp(dq[2], -0.1e-3, 0.1e-3);
 
         // enforce constraints
         // _ot_translation = std::clamp(_ot_translation, _ot_distal_straight_length+Real(1e-4), Real(20e-3));  // TODO: create var for joint limits
@@ -874,7 +883,7 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
         // _recomputeCoordinateFramesStaticsModelWithNodalForces();
     }
 
-    
+    _stale_frames = true;
 }
 
 Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
@@ -930,7 +939,6 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
     Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
     Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
     Real dca_d1 = 2 / (1+atan_arg*atan_arg) / (clearance - 2*r_curv_ot) * (1 - tubed_length/std::sqrt(sqrt_arg)) * dtubed_length_d1;
-    std::cout << "dca_d1: " << dca_d1 << std::endl;
     
     Real clearance_angle = 2*std::atan(atan_arg);
 
