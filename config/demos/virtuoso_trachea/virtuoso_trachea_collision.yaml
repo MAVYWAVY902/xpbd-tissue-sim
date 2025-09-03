@@ -5,7 +5,7 @@ visualization: "VTK"
 input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 fixed-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_fixed_faces.txt"
 tumor-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_tumor_faces.txt"
-show-tip-cursor: false
+show-tip-cursor: true
 enable-mouse-interaction: true
 # fixed-faces-filename: "../resource/demos/trachea_virtuoso/trachea_fixed_faces.txt"
 # tumor-faces-filename: "../resource/demos/trachea_virtuoso/tumor_faces.txt"

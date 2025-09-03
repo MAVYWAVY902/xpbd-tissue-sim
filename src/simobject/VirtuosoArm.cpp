@@ -274,9 +274,20 @@ void VirtuosoArm::_recomputeCoordinateFrames()
     _arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
 
     // compute outer tube base frame
-    // consists of rotating about the current z-axis accordint to outer tube rotation
+    // consists of rotating about the current z-axis according to outer tube rotation
+    // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Vec3r::Zero());
-    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z;
+
+    Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
+    Real clearance = 0.3e-3; // 0.3 mm
+    Real r_curv_ot = 1.0/60.0; // m
+    Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
+    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
+    Real clearance_angle = 2*std::atan(atan_arg);
+    std::cout << "Clearance angle: " << clearance_angle << std::endl;
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(clearance_angle), Vec3r::Zero());
+
+    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z * T_rot_x;
 
     Real swept_angle = std::max(_ot_translation - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature; 
     // frames for the curved section of the outer tube
@@ -464,9 +475,19 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     _arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
 
     // compute outer tube base frame
-    // consists of rotating about the current z-axis accordint to outer tube rotation
+    // consists of rotating about the current z-axis according to outer tube rotation
+    // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Vec3r::Zero());
-    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z;
+
+    Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
+    Real clearance = 0.3e-3; // 0.3 mm
+    Real r_curv_ot = 1.0/60.0; // m
+    Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
+    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
+    Real clearance_angle = 2*std::atan(atan_arg);
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(clearance_angle), Vec3r::Zero());
+
+    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z * T_rot_x;
 
     // calculate internal forces and moments carried at the base of the tube collection
     const Vec3r& tip_position = innerTubeEndFrame().origin();
@@ -736,10 +757,20 @@ Geometry::TransformationMatrix VirtuosoArm::_computeTipTransform(Real ot_rot, Re
 {
     Geometry::CoordinateFrame arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
 
-    // compute outer tube base frmae
-    // consists of rotating about the current z-axis accordint to outer tube rotation
+    // compute outer tube base frame
+    // consists of rotating about the current z-axis according to outer tube rotation
+    // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(ot_rot), Vec3r::Zero());
-    Geometry::CoordinateFrame ot_base_frame = arm_base_frame * T_rot_z;
+
+    Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
+    Real clearance = 0.3e-3; // 0.3 mm
+    Real r_curv_ot = 1.0/60.0; // m
+    Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
+    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
+    Real clearance_angle = 2*std::atan(atan_arg);
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(clearance_angle), Vec3r::Zero());
+
+    Geometry::CoordinateFrame ot_base_frame = arm_base_frame * T_rot_z * T_rot_x;
 
     Real swept_angle = std::max(ot_trans - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature; 
     // frames for the curved section of the outer tube
@@ -827,8 +858,10 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
         _it_translation += dq[2];
 
         // enforce constraints
-        _ot_translation = std::clamp(_ot_translation, _ot_distal_straight_length+Real(1e-4), Real(20e-3));  // TODO: create var for joint limits
-        _it_translation = std::clamp(_it_translation, _ot_distal_straight_length+Real(1e-4), Real(40e-3));
+        // _ot_translation = std::clamp(_ot_translation, _ot_distal_straight_length+Real(1e-4), Real(20e-3));  // TODO: create var for joint limits
+        // _it_translation = std::clamp(_it_translation, _ot_distal_straight_length+Real(1e-4), Real(40e-3));
+        _ot_translation = std::clamp(_ot_translation, Real(0.0), Real(20e-3));  // TODO: create var for joint limits
+        _it_translation = std::clamp(_it_translation, Real(0.0), Real(40e-3));
         if (_it_translation < _ot_translation)
         {
             const Real d = _ot_translation - _it_translation;
@@ -879,7 +912,28 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
         dmax_d2 = 1;
     }
 
-    // now just implement dT/dq
+    // derviative of max(length of OT straight section - OT translation, 0)
+    Real dtubed_length_d1;
+    if (_ot_translation > _ot_distal_straight_length)
+    {
+        dtubed_length_d1 = 0;
+    }
+    else
+    {
+        dtubed_length_d1 = -1;
+    }
+
+    // derivative of clearange angle w.r.t. d1
+    Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
+    Real clearance = 0.3e-3; // 0.3 mm
+    Real r_curv_ot = 1.0/60.0; // m
+    Real sqrt_arg = tubed_length*tubed_length + 2*clearance*r_curv_ot - clearance*clearance;
+    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (clearance - 2*r_curv_ot);
+    Real dca_d1 = 2 / (1+atan_arg*atan_arg) / (clearance - 2*r_curv_ot) * (1 - tubed_length/std::sqrt(sqrt_arg)) * dtubed_length_d1;
+    std::cout << "dca_d1: " << dca_d1 << std::endl;
+    
+    Real clearance_angle = 2*std::atan(atan_arg);
+
     const Real alpha = std::max(_ot_translation - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature;    // angle swept by the outer tube curve
     const Real beta = _it_rotation - _ot_rotation;    // difference in angle between outer tube and inner tube
     const Real straight_length = std::min(_ot_distal_straight_length, _ot_translation) + std::max(Real(0.0), _it_translation - _ot_translation); // length of the straight section of the combined outer + inner tube
@@ -891,29 +945,95 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
     const Real sa = std::sin(alpha);
     const Real cb = std::cos(beta);
     const Real sb = std::sin(beta);
+    const Real cg = std::cos(clearance_angle);
+    const Real sg = std::sin(clearance_angle);
+
+    // the chain of transforms that make up forward kinematics
+    Mat4r T1, T2, T3, T4;
+    T1 <<   ct1, -st1, 0, 0,
+            st1, ct1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1;
+    
+    T2 <<   1, 0, 0, 0,
+            0, cg, -sg, 0,
+            0, sg, cg, 0,
+            0, 0, 0, 1;
+    
+    T3 <<   1, 0, 0, 0,
+            0, ca, -sa, _ot_r_curvature*ca - _ot_r_curvature,
+            0, sa, ca, _ot_r_curvature*sa,
+            0, 0, 0, 1;
+    
+    T4 <<   cb, -sb, 0, 0,
+            sb, cb, 0, 0,
+            0, 0, 1, straight_length,
+            0, 0, 0, 1;
+            
+    // derivatives w.r.t outer tube rotation (theta1)
+    Mat4r dT1_dt1, dT4_dt1;
+    dT1_dt1 <<  -st1, -ct1, 0, 0,
+                ct1, -st1, 0, 0,
+                0, 0, 0, 0,
+                0, 0, 0, 0;
+    
+    dT4_dt1 <<  sb, cb, 0, 0,
+                -cb, sb, 0, 0,
+                0, 0, 0, 0,
+                0, 0, 0, 0;
+
+    // derivatives w.r.t. outer tube translation (d1)
+    Mat4r dT2_dd1, dT3_dd1, dT4_dd1;
+    dT2_dd1 <<  0, 0, 0, 0,
+                0, -sg*dca_d1, -cg*dca_d1, 0,
+                0, cg*dca_d1, -sg*dca_d1, 0, 
+                0, 0, 0, 0;
+    
+    dT3_dd1 <<  0, 0, 0, 0,
+                0, -sa*dalpha_d1, -ca*dalpha_d1, -_ot_r_curvature*sa*dalpha_d1,
+                0, ca*dalpha_d1, -sa*dalpha_d1, _ot_r_curvature*ca*dalpha_d1,
+                0, 0, 0, 0;
+    
+    dT4_dd1 <<  0, 0, 0, 0,
+                0, 0, 0, 0,
+                0, 0, 0, dmin_d1 + dmax_d1,
+                0, 0, 0, 0;
+
+    // derivatives w.r.t. inner tube translation (d2)
+    Mat4r dT4_dd2;
+    dT4_dd2 <<  0, 0, 0, 0,
+                0, 0, 0, 0,
+                0, 0, 0, dmax_d2,
+                0, 0, 0, 0;
+
+    // now just implement dT/dq
 
     // std::cout << "alpha: " << alpha << ", beta: " << beta << std::endl;
 
-    Mat4r dT_d_ot_rot, dT_d_ot_trans, dT_d_it_trans;
-    dT_d_ot_rot << sb*ct1 + cb*-st1 + cb*st1*ca - sb*ct1*ca, cb*ct1 + sb*st1 - sb*st1*ca - cb*ct1*ca, ct1*sa, ct1*sa*straight_length - ct1*(_ot_r_curvature*ca - _ot_r_curvature),
-                   sb*st1 + cb*ct1 - cb*ct1*ca - sb*st1*ca, cb*st1 - sb*ct1 + sb*ct1*ca + -cb*st1*ca, st1*sa, st1*sa*straight_length - st1*(_ot_r_curvature*ca - _ot_r_curvature),
-                    -cb*sa, sb*sa, 0, 0,
-                    0, 0, 0, 0;
+    // Mat4r dT_d_ot_rot, dT_d_ot_trans, dT_d_it_trans;
+    // dT_d_ot_rot << sb*ct1 + cb*-st1 + cb*st1*ca - sb*ct1*ca, cb*ct1 + sb*st1 - sb*st1*ca - cb*ct1*ca, ct1*sa, ct1*sa*straight_length - ct1*(_ot_r_curvature*ca - _ot_r_curvature),
+    //                sb*st1 + cb*ct1 - cb*ct1*ca - sb*st1*ca, cb*st1 - sb*ct1 + sb*ct1*ca + -cb*st1*ca, st1*sa, st1*sa*straight_length - st1*(_ot_r_curvature*ca - _ot_r_curvature),
+    //                 -cb*sa, sb*sa, 0, 0,
+    //                 0, 0, 0, 0;
 
-    // std::cout << "dT_d_ot_rot:\n" << dT_d_ot_rot << std::endl;
+    // // std::cout << "dT_d_ot_rot:\n" << dT_d_ot_rot << std::endl;
 
 
-    dT_d_ot_trans << sb*st1*sa*dalpha_d1, cb*st1*sa*dalpha_d1, st1*ca*dalpha_d1, st1*ca*dalpha_d1*straight_length + st1*sa*(dmin_d1 + dmax_d1) + st1*_ot_r_curvature*sa*dalpha_d1,
-                     -sb*ct1*sa*dalpha_d1, -cb*ct1*sa*dalpha_d1, -ct1*ca*dalpha_d1, -ct1*ca*dalpha_d1*straight_length - ct1*sa*(dmin_d1 + dmax_d1) - ct1*_ot_r_curvature*sa*dalpha_d1,
-                     sb*ca*dalpha_d1, cb*ca*dalpha_d1, -sa*dalpha_d1, -sa*dalpha_d1*straight_length + ca*(dmin_d1 + dmax_d1) + _ot_r_curvature*ca*dalpha_d1,
-                     0, 0, 0, 0;
+    // dT_d_ot_trans << sb*st1*sa*dalpha_d1, cb*st1*sa*dalpha_d1, st1*ca*dalpha_d1, st1*ca*dalpha_d1*straight_length + st1*sa*(dmin_d1 + dmax_d1) + st1*_ot_r_curvature*sa*dalpha_d1,
+    //                  -sb*ct1*sa*dalpha_d1, -cb*ct1*sa*dalpha_d1, -ct1*ca*dalpha_d1, -ct1*ca*dalpha_d1*straight_length - ct1*sa*(dmin_d1 + dmax_d1) - ct1*_ot_r_curvature*sa*dalpha_d1,
+    //                  sb*ca*dalpha_d1, cb*ca*dalpha_d1, -sa*dalpha_d1, -sa*dalpha_d1*straight_length + ca*(dmin_d1 + dmax_d1) + _ot_r_curvature*ca*dalpha_d1,
+    //                  0, 0, 0, 0;
 
-    // std::cout << "dT_d_ot_trans:\n" << dT_d_ot_trans << std::endl;
+    // // std::cout << "dT_d_ot_trans:\n" << dT_d_ot_trans << std::endl;
 
-    dT_d_it_trans << 0, 0, 0, st1*sa*dmax_d2,
-                     0, 0, 0, -ct1*sa*dmax_d2,
-                     0, 0, 0, ca*dmax_d2,
-                     0, 0, 0, 0;
+    // dT_d_it_trans << 0, 0, 0, st1*sa*dmax_d2,
+    //                  0, 0, 0, -ct1*sa*dmax_d2,
+    //                  0, 0, 0, ca*dmax_d2,
+    //                  0, 0, 0, 0;
+
+    Mat4r dT_d_ot_rot = dT1_dt1*T2*T3*T4 + T1*T2*T3*dT4_dt1;
+    Mat4r dT_d_ot_trans = T1*dT2_dd1*T3*T4 + T1*T2*dT3_dd1*T4 + T1*T2*T3*dT4_dd1;
+    Mat4r dT_d_it_trans = T1*T2*T3*dT4_dd2; 
 
     // and assemble them into the spatial Jacobian
     const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
