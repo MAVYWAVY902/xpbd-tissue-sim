@@ -39,6 +39,8 @@ find_package(VTK 9.5 REQUIRED COMPONENTS
     RenderingFreeType
     RenderingGL2PSOpenGL2
     RenderingOpenGL2
+    RenderingAnnotation
+    InteractionWidgets
 )
 
 if (NOT VTK_FOUND)
