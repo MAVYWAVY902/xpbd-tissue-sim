@@ -340,13 +340,14 @@ EmbreeHit EmbreeScene::_closestPointQueryUndeformed(const Vec3r& point, const Si
 
 }
 
-std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const
+std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, Real radius, const Sim::TetMeshObject* obj_ptr) const
 {
     const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);
     EmbreePointQueryUserData point_query_data;
     point_query_data.obj_ptr = obj_ptr;
     point_query_data.geom = geom;
     point_query_data.vertex_ind = -1;
+    point_query_data.radius = radius;
     
     float p[3];
     p[0] = point[0]; p[1] = point[1]; p[2] = point[2];
@@ -356,7 +357,7 @@ std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, cons
     query.x = p[0];
     query.y = p[1];
     query.z = p[2];
-    query.radius = 0.0f;
+    query.radius = radius;
 
     RTCPointQueryContext context;
     rtcInitPointQueryContext(&context);

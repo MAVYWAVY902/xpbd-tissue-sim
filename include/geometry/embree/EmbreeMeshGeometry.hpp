@@ -49,9 +49,11 @@ class EmbreeMeshGeometry
     static void intersectFuncTriangleInitialVertices(const RTCIntersectFunctionNArguments *args);
     static bool pointQueryFuncTriangleInitialVertices(RTCPointQueryFunctionArguments *args);
 
-    private:
+    protected:
 
     static void _closestPointTriangle(const float p_in[3], const float v0[3], const float v1[3], const float v2[3], float p_out[3]);
+
+    private:
 
     /** Performs a ray-triangle intersection test.
      * Returns whether or not there is a hit. If there is a hit, the distance and hit_point outputs are filled out.

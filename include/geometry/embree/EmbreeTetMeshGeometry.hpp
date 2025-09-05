@@ -27,6 +27,7 @@ class EmbreeTetMeshGeometry : public EmbreeMeshGeometry
     const int* elementIndices() const { return _tet_mesh->elements().data(); }
 
     static bool isPointInTetrahedron(const float p[3], const float *v0, const float *v1, const float *v2, const float *v3);
+    static float squaredDistanceToTetrahedron(const float p[3], const float* v0, const float* v1, const float* v2, const float* v3);
     static void boundsFuncTetrahedra(const struct RTCBoundsFunctionArguments *args);
     static void intersectFuncTetrahedra(const RTCIntersectFunctionNArguments *args);
     static bool pointQueryFuncTetrahedra(RTCPointQueryFunctionArguments *args);

@@ -32,7 +32,7 @@ DeformableMeshSDF::DeformableMeshSDF(const Sim::TetMeshObject* mesh_obj, const E
 Real DeformableMeshSDF::evaluate(const Vec3r& x) const
 {
     // find enclosing tetrahedron for query point
-    std::set<EmbreeHit> query_result = _embree_scene->pointInTetrahedraQuery(x, _mesh_obj);
+    std::set<EmbreeHit> query_result = _embree_scene->pointInTetrahedraQuery(x, 0, _mesh_obj);
 
     // find closest point on surface for query point
     const int sign = (query_result.empty()) ? 1 : -1;
