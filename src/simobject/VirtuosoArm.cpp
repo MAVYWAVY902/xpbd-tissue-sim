@@ -371,8 +371,8 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
 
     // EVERYTHING FROM NOW ON WILL USE MM
     // compute cross section properties
-    Real E = 60e9/1000/1000;    // Young's Modulus (N/mm^2)
-    Real G = E / (2*(1+0.3));   // Shear modulus (N/mm^2)
+    Real E_mm = E/1000/1000;    // Young's Modulus (N/mm^2)
+    Real G_mm = G/1000/1000;   // Shear modulus (N/mm^2)
 
     Real ot_outer_dia_mm = _ot_outer_dia * 1000;
     Real ot_inner_dia_mm = _ot_inner_dia * 1000;
@@ -383,9 +383,12 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     Real J_ot = 2*I_ot;
     Real J_it = 2*I_it;
 
-    // integrate the curved section of the outer tube
-    Real curved_length = (_ot_translation - _ot_distal_straight_length)*1000; // in mm
+    // the inverse stiffness matrix for the outer tube
+    const Vec3r ot_K_inv(1/(E_mm*I_ot + E_mm*I_it), 1/(E_mm*I_ot + E_mm*I_it), 1/(G_mm*J_ot));
+    // the inverse stiffness matrix for the inner tube
+    const Vec3r it_K_inv(1/(E_mm*I_it), 1/(E_mm*I_it), 1/(G_mm*J_it));
 
+    /** Starting state for the forward integration along the robot arm, at the outer tube base. */
     TubeIntegrationState ot_base_state;
     ot_base_state.position = ot_base_frame.origin()*1000;   // put position in mm
     ot_base_state.orientation = ot_base_frame.transform().rotMat();
@@ -393,28 +396,44 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     ot_base_state.internal_moment = base_moment*1000; // put it in N-mm
     ot_base_state.torsional_displacement = _ot_rotation;
 
+
+
+    /** === Integrate the curved section of the outer tube === */
+
+    // the final integration state at the end of the curved section (used to initialize the next part of the tube)
     TubeIntegrationState ot_curve_end_state;
+
+    // compute the exposed length of the precurved part of the outer tube
+    Real curved_length = (_ot_translation - _ot_distal_straight_length)*1000; // in mm
+
+    // if there is some precurved part of the outer tube exposed (i.e. OT translation > the distal straight length)
+    // integrate along the exposed precurved section of the outer tube
     if (curved_length > 0)
     {
-        // std::cout << "Outer tube curved section length > 0 (=" << curved_length << " mm)" << std::endl;
-        const Vec3r K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
+        // the precurvature vector (u*), in mm
+        // for the precurved section of the outer tube, there is a positive precurvature about the x-axis (in the YZ plane)
         const Vec3r precurvature(1/_ot_r_curvature/1000, 0, 0);
 
-        std::vector<Real> ot_curve_s(NUM_OT_CURVE_FRAMES);  // distance along tube for outer curve frames (in mm)
+        // compute the distance along the entire tube collection for placing the outer curve frames (in mm)
+        std::vector<Real> ot_curve_s(NUM_OT_CURVE_FRAMES);  
         for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
             ot_curve_s[i] = i* (curved_length / (NUM_OT_CURVE_FRAMES-1));
 
+        // integrate with RK4 along the curved section of the outer tube
         std::vector<TubeIntegrationState::VecType> ot_curve_states = 
-            _integrateTubeWithForceBoundariesRK4(ot_base_state, ot_curve_s, _ot_nodal_forces.cbegin(), K_inv, precurvature);
+            _integrateTubeWithForceBoundariesRK4(ot_base_state, ot_curve_s, _ot_nodal_forces.cbegin(), ot_K_inv, precurvature);
         
+        // set the transform along the curved part of the tube from the integration results
         for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
         {
             TubeIntegrationState state = TubeIntegrationState::fromVec(ot_curve_states[i]);
             _ot_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
         }
-
+        
+        // final integration state
         ot_curve_end_state = TubeIntegrationState::fromVec(ot_curve_states.back());
     }
+    // otherwise, the frames for the precurved part of the outer tube are identical to the frame at the outer tube base
     else
     {
         for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
@@ -424,28 +443,37 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
         ot_curve_end_state = ot_base_state;
     }
 
-    // integrate straight section of outer tube
+
+    /** === Integrate the straight section of the outer tube === */
+
     Real straight_length = std::min(_ot_translation, _ot_distal_straight_length)*1000; // length of outer tube straight section (in mm)
+    // the final integration state at the end of the outer tube (used to initialize the next part of the robot arm)
     TubeIntegrationState ot_end_state;
+
+    // if there is some straight part of the outer tube exposed (i.e. if OT translation > 0)
+    // integrate along the straight part of the outer tube
     if (straight_length > 0)
-    {
-        // std::cout << "Outer tube straight section length > 0 mm (=" << straight_length << " mm)" << std::endl;
-        const Vec3r ot_K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
+    {   
+        // compute the distance along the entire tube collection for placing the outer tube straight frames (in mm)
         std::vector<Real> ot_straight_s(NUM_OT_STRAIGHT_FRAMES+1);
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES+1; i++)
             ot_straight_s[i] = curved_length + i*straight_length / NUM_OT_STRAIGHT_FRAMES;
+
+        // integrate with RK4 along the straight section of the outer tube
         std::vector<TubeIntegrationState::VecType> ot_straight_states = 
             _integrateTubeWithForceBoundariesRK4(ot_curve_end_state, ot_straight_s, _ot_nodal_forces.cbegin() + NUM_OT_STRAIGHT_FRAMES, ot_K_inv, Vec3r(0,0,0));
         
-
+        // set the transforms along the straight part of the otuer tube from the integration results
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
         {
             TubeIntegrationState state = TubeIntegrationState::fromVec(ot_straight_states[i+1]);
             _ot_frames[NUM_OT_CURVE_FRAMES + i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
         }
 
+        // final integration state
         ot_end_state = TubeIntegrationState::fromVec(ot_straight_states.back());
     }
+    // otherwise, the frames for the straight part of the outer tube are identical to the frame at the outer tube base
     else
     {
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
@@ -456,25 +484,33 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
         ot_end_state = ot_curve_end_state;
     }
 
-    // integrate inner tube
-    const Real it_length = std::max(Real(0.0), _it_translation - _ot_translation) * 1000;      // exposed length of the inner tube in mm
+    
+    /** === Integrate the inner tube === */
+
+    // exposed length of the inner tube in mm
+    const Real it_length = std::max(Real(0.0), _it_translation - _ot_translation) * 1000;      
+    
+    // the starting integration state of the inner tube
+    // the outer and inner tube are not torsionally coupled, so we need to "unrotate" the outer tube end frame about the z-axis 
     TubeIntegrationState it_start_state = ot_end_state;
     it_start_state.orientation *= GeometryUtils::Rz(_it_rotation - it_start_state.torsional_displacement);
     it_start_state.torsional_displacement = _it_rotation;
 
+    // if there is some part of the inner tube exposed (i.e. if IT translation > OT translation)
+    // integrate along the inner tube
     if (it_length > 0)
     {
-        // std::cout << "Inner tube length > 0... (=" << it_length << " mm)" << std::endl;
-        
-        const Vec3r it_K_inv(1/(E*I_it), 1/(E*I_it), 1/(G*J_it));
+        // compute the distance along the entire tube collection for placing the inner tube frames (in mm)
         std::vector<Real> it_s(NUM_IT_FRAMES);
         for (int i = 0; i < NUM_IT_FRAMES; i++)     
         {
             it_s[i] = _ot_translation*1000 + i*it_length / (NUM_IT_FRAMES - 1);
         }
         
+        // integrate with RK4 along the inner tube
         std::vector<TubeIntegrationState::VecType> it_states = _integrateTubeWithForceBoundariesRK4(it_start_state, it_s, _it_nodal_forces.cbegin(), it_K_inv, Vec3r(0,0,0));
 
+        // set the transforms along the inner tube from the integration results
         for (int i = 0; i < NUM_IT_FRAMES; i++)
         {
             TubeIntegrationState state = TubeIntegrationState::fromVec(it_states[i]);
@@ -482,6 +518,7 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
         }
 
     }
+    // otherwise, the frames for the inner tube are all the same, and equal to the inner tube base frame
     else
     {
         Geometry::TransformationMatrix it_start_transform(it_start_state.orientation, it_start_state.position/1000); // convert position back to m

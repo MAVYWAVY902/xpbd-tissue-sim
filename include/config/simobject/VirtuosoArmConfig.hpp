@@ -23,6 +23,7 @@ class VirtuosoArmConfig : public ObjectConfig
     static std::map<std::string, Sim::VirtuosoArm::ToolType> TOOL_TYPE_OPTIONS()
     {
         static std::map<std::string, Sim::VirtuosoArm::ToolType> tool_type_options{
+            {"none", Sim::VirtuosoArm::ToolType::NONE},
             {"spatula", Sim::VirtuosoArm::ToolType::SPATULA},
             {"grasper", Sim::VirtuosoArm::ToolType::GRASPER},
             {"cautery", Sim::VirtuosoArm::ToolType::CAUTERY}
@@ -114,7 +115,7 @@ class VirtuosoArmConfig : public ObjectConfig
     ConfigParameter<Real> _ot_initial_translation = ConfigParameter<Real>(15e-3);
     ConfigParameter<Real> _ot_initial_rotation = ConfigParameter<Real>(0);
 
-    ConfigParameter<Sim::VirtuosoArm::ToolType> _tool_type = ConfigParameter<Sim::VirtuosoArm::ToolType>(Sim::VirtuosoArm::ToolType::SPATULA);
+    ConfigParameter<Sim::VirtuosoArm::ToolType> _tool_type = ConfigParameter<Sim::VirtuosoArm::ToolType>(Sim::VirtuosoArm::ToolType::NONE);
 
     ConfigParameter<Vec3r> _base_initial_position = ConfigParameter<Vec3r>(Vec3r(0,0,0));
     ConfigParameter<Vec3r> _base_initial_rotation = ConfigParameter<Vec3r>(Vec3r(0,0,0));

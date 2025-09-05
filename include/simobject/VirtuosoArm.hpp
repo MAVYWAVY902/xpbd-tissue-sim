@@ -24,21 +24,28 @@ class VirtuosoArm : public Object
 {
 
     private:
+    /** Number of frames along the tube (i.e. number of integration points for each section) */
     constexpr static int NUM_OT_CURVE_FRAMES = 10;      // number of coordinate frames defined along the curved section of the outer tube
     constexpr static int NUM_OT_STRAIGHT_FRAMES = 5;    // number of coordinate frames defined along the straight distal section of the outer tube
     constexpr static int NUM_OT_FRAMES = NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES; // total number of coordinate frames defined along the outer tube
     constexpr static int NUM_IT_FRAMES = 10;            // number of coordinate frames defined along the inner tube
+    constexpr static int NUM_TT_FRAMES = 10;            // number of coordinate frames defined along the tool tube
 
+    /** Joint limits */
     constexpr static Real MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
     constexpr static Real MAX_IT_TRANSLATION = 40e-3;    // maximum inner tube translation (joint limit on Virtuoso system)
 
+    /** Joint speed limits */
     constexpr static Real MAX_OT_TRANSLATION_SPEED = 0.04;   // maximum outer tube translation speed [m/s] (joint speed limit on Virtuoso system)
     constexpr static Real MAX_IT_TRANSLATION_SPEED = 0.0529; // maximum inner tube translation speed [m/s] (joint speed limit on Virtuoso system)
     constexpr static Real MAX_OT_ROTATION_SPEED = 20;        // maximum outer tube rotation speed [rad/s] (joint speed limit on Virtuoso system)
     constexpr static Real MAX_IT_ROTATION_SPEED = 52.4;      // maximum inner tube rotation speed [rad/s] (joint speed limit on Virtuoso system)
 
+    /** Physical parameters */
     constexpr static Real OT_ENDOSCOPE_CLEARANCE = 0.3e-3;  // clearance between the outer tube and the endoscope sheath [m]
     constexpr static Real OT_RADIUS_OF_CURVATURE = 1.0/60.0;    // nominal radius of curvature of the outer tube [m]
+    constexpr static Real E = 60e9;     // nominal Young's modulus of Nitinol
+    constexpr static Real G = E / (2*(1+0.3));  // nominal shear modulus of Nitinol
 
     constexpr static double GRASPING_RADIUS = 0.002;    // grasping radius for the grasper tool
 
@@ -48,10 +55,12 @@ class VirtuosoArm : public Object
     
     using OuterTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES>;
     using InnerTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_IT_FRAMES>;
+    using ToolTubeFramesArray = std::array<Geometry::CoordinateFrame, NUM_TT_FRAMES>;
 
     /** The type of tool attached to the tip of the arm */
     enum ToolType
     {
+        NONE,
         SPATULA,
         GRASPER,
         CAUTERY
@@ -331,6 +340,9 @@ class VirtuosoArm : public Object
     int _tool_state; // state of the tool (i.e. 1=ON, 0=OFF)
     int _last_tool_state; // the previous state of the tool (needed so that we know when tool state has changed)
     ToolType _tool_type; // type of tool used on this arm
+    
+
+
     XPBDMeshObject_BasePtrWrapper _tool_manipulated_object; // the deformable object that this tool is manipulating
     Vec3r _tool_position; // position of the tool in global coordinates (note that this may be different than the inner tube tip position)
     Vec3r _commanded_tip_position; // tip position of the arm in the absence of tip forces (i.e. where we tell the arm tip to be at)
