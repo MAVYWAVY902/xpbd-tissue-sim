@@ -71,26 +71,6 @@ class VirtuosoTissueGraspingSimulation : public VirtuosoSimulation
 
     bool _grasping;                 // whether or not we are actively grasping the tissue
     std::vector<int> _grasped_vertices; // indexes of the grasped vertices in the tissue mesh
-
-    /** MOUSE INPUT */
-    Vec2r _last_mouse_pos;    // tracks the last mouse position (used in when mouse input is used to control the arms)
-
-    /** HAPTIC INPUT */
-    Vec3r _dummy;
-    Vec3r _last_haptic_pos;   // tracks the last haptic posiion
-    std::unique_ptr<HapticDeviceManager> _haptic_device_manager;
-    // std::unique_ptr<HapticDeviceManager> _haptic_device1;    // manages haptic device and provides an interface to their state
-    // std::unique_ptr<HapticDeviceManager> _haptic_device2;    // second haptic device (only used in the "Double Haptic" input mode)
-
-    Vec3r _last_force;  // the last force sent to the haptic device (used for smoothing)
-
-    /** KEYBOARD INPUT */
-    constexpr static Real IT_ROT_RATE = 3; // rad/s
-    constexpr static Real IT_TRANS_RATE = 0.005; // m/s
-    constexpr static Real OT_ROT_RATE = 3; // rad/s
-    constexpr static Real OT_TRANS_RATE = 0.005; // m/s
-
-    std::map<int, bool> _keys_held;     // tracks which keys are held (from a pre-defined set of keys)
 };
 
 } // namespace Sim

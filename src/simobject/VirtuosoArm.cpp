@@ -136,8 +136,8 @@ void VirtuosoArm::setup()
 
 void VirtuosoArm::update()
 {
-    // const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
-    // _hybridDifferentialInverseKinematics(_commanded_tip_position - T_tip.translation());
+    const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    _hybridDifferentialInverseKinematics(_commanded_tip_position - T_tip.translation());
     if (_stale_frames)
     {
         // _recomputeCoordinateFrames();

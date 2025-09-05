@@ -111,14 +111,14 @@ int main(int argc, char* argv[])
             {
                 const Vec3r& v = class_mesh.vertex(element[vi]);
                 // perform the query
-                std::set<Geometry::EmbreeHit> res = embree_scene.pointInTetrahedraQuery(v, &combined_mesh_obj);
+                std::set<Geometry::EmbreeHit> res = embree_scene.pointInTetrahedraQuery(v, 0.1, &combined_mesh_obj);
                 if (!res.empty())
                 {
                     // if there's a hit, label the element that was hit with the current class
                     int elem_index = res.begin()->prim_index;
                     if (elem_classes[elem_index] == 0)
                         elem_classes[elem_index] = class_int;
-                    break;
+                    // break;
                 }
             }
         }

@@ -22,8 +22,6 @@ VirtuosoTissueGraspingSimulation::VirtuosoTissueGraspingSimulation(const Config:
     _goals_folder = config->goalsFolder();
     _goal_active = false;
     _current_score = 0;
-
-    _dummy = Vec3r::Zero();
 }
 
 void VirtuosoTissueGraspingSimulation::setup()
