@@ -20,8 +20,8 @@ enable-mouse-interaction: true
 sim-mode: "AFAP"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
 # sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
-time-step: 1e-3   # simulation time step [s]
-collision-rate: 100 # rate at which to run collision detection [Hz] 
+time-step: 1e-2   # simulation time step [s]
+collision-rate: 10 # rate at which to run collision detection [Hz] 
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 1000000 # end time of the simulation [s]
 
@@ -42,9 +42,9 @@ materials:
     mu-s: 0.0 # coefficient of static friction [-]
     mu-k: 0.0 # coefficient of kinetic friction [-]
   -
-    name: "Human Trachea"
+    name: "Stiffer Tissue"
     density: 1030
-    E: 5e6
+    E: 1e6
     # E: 0.5e6
     nu: 0.49
   -
@@ -69,7 +69,7 @@ objects:
     filename: "../resource/demos/palpation/2x2x1_block16.msh"
     element-classes-filename: "../resource/demos/palpation/2x2x1_block16_element_classes.txt"
 
-    materials: ["Soft Tissue", "Human Trachea"] # the elastic material(s) (must match with the name of a material defined above)
+    materials: ["Soft Tissue", "Stiffer Tissue"] # the elastic material(s) (must match with the name of a material defined above)
 
     ## initial configuration
     max-size: 0.05   # size of largest model dimension (preserves aspect ratio)
@@ -82,7 +82,8 @@ objects:
     collisions: true
 
     ## XPBD-specific options
-    num-solver-iters: 1   # number of solver loop iterations per time step 
+    num-solver-iters: 1   # number of solver loop iterations per time step
+    num-local-collision-iters: 5 
     
     solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (i.e. update mesh after every constraint projection)
     # solver-type: "Jacobi"       # use Jacobi solver (i.e. update mesh only after going through every constraint projection)
@@ -95,7 +96,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 10000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 100000   # 'b' from the 1st-Order XPBD paper
     adjust-damping-to-material: true
 
     # rendering settings
@@ -112,7 +113,7 @@ objects:
     name: "Robot"
     type: "VirtuosoRobot"
     # position: [0, -0.035, -0.0015] #"close position"
-    position: [0, -0.035, 0.017]
+    position: [0, -0.04, 0.02]
     rotation: [-90, 180, 0]
     collisions: true
     # rendering settings

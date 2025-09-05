@@ -182,6 +182,7 @@ void VirtuosoArm::velocityUpdate()
 
         total_force += new_force;
     }
+    _net_force = total_force;
 
     std::cout << "Total force on CTR: " << total_force.transpose() << std::endl;
     _stale_frames = true;
@@ -199,7 +200,7 @@ Real VirtuosoArm::_outerTubeClearanceAngle(Real ot_trans)
 
     Real sqrt_arg = tubed_length*tubed_length + 2*OT_ENDOSCOPE_CLEARANCE*OT_RADIUS_OF_CURVATURE - OT_ENDOSCOPE_CLEARANCE*OT_ENDOSCOPE_CLEARANCE;
     Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE);
-    return 0;//2*std::atan(atan_arg);
+    return 2*std::atan(atan_arg);
 }
 
 void VirtuosoArm::_toolAction()
@@ -789,7 +790,7 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
     Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
     Real sqrt_arg = tubed_length*tubed_length + 2*OT_ENDOSCOPE_CLEARANCE*OT_RADIUS_OF_CURVATURE - OT_ENDOSCOPE_CLEARANCE*OT_ENDOSCOPE_CLEARANCE;
     Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE);
-    Real dca_d1 = 0;//2 / (1+atan_arg*atan_arg) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE) * (1 - tubed_length/std::sqrt(sqrt_arg)) * dtubed_length_d1;
+    Real dca_d1 = 2 / (1+atan_arg*atan_arg) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE) * (1 - tubed_length/std::sqrt(sqrt_arg)) * dtubed_length_d1;
     
     Real clearance_angle = _outerTubeClearanceAngle(_ot_translation);
     const Real alpha = std::max(_ot_translation - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature;    // angle swept by the outer tube curve

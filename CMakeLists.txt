@@ -117,6 +117,7 @@ add_library(Simulation)
 add_library(BeamSimulation)
 add_library(GraspingSimulation)
 add_library(VirtuosoSimulation)
+add_library(PalpationSimulation)
 # add_library(BeamStretchSimulation)
 # add_library(TissueGraspingSimulation)
 add_library(InitialDeformationSimulation)
@@ -126,6 +127,7 @@ target_link_libraries(Simulation Collision Graphics SimObject Geometry SimObject
 target_link_libraries(BeamSimulation Simulation)
 target_link_libraries(GraspingSimulation Simulation)
 target_link_libraries(VirtuosoSimulation Simulation Haptics)
+target_link_libraries(PalpationSimulation VirtuosoSimulation)
 # target_link_libraries(BeamStretchSimulation Simulation)
 target_link_libraries(InitialDeformationSimulation Config Simulation)
 
@@ -144,6 +146,9 @@ target_link_libraries(VirtuosoTest VirtuosoSimulation)
 
 add_executable(VirtuosoTracheaDemo src/exec/demos/virtuoso_trachea_demo.cpp)
 target_link_libraries(VirtuosoTracheaDemo VirtuosoSimulation)
+
+add_executable(PalpationDemo src/exec/demos/palpation_demo.cpp)
+target_link_libraries(PalpationDemo PalpationSimulation)
 
 # add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
 # target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
