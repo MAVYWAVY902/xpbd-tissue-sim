@@ -21,10 +21,10 @@ int main()
 {
     // create VirtuosoArm
     Config::VirtuosoArmConfig config("arm1", 
-        Vec3r(10,10,10), Vec3r(0,30,0), Vec3r(0,0,0), false, false,
+        Vec3r(10,10,10), Vec3r(0,0,0), Vec3r(0,0,0), false, false,
         1.56e-3, 1.14e-3, 1.5383e-2, 5e-3, 1.04e-3, 0.82e-3,
-        0, 4e-3, 0, 20e-3,
-        Sim::VirtuosoArm::ToolType::SPATULA, 10e-3, Config::ObjectRenderConfig());
+        0, 4e-3, 0, 10e-3,
+        Sim::VirtuosoArm::ToolType::PALPATION, 15e-3, Config::ObjectRenderConfig());
 
     std::unique_ptr<Sim::VirtuosoArm> arm = config.createObject(nullptr);
     arm->setup();
@@ -37,7 +37,8 @@ int main()
     std::cout << "Outer tube tip position: " << ot_frames.back().origin()[0] << ", " << ot_frames.back().origin()[1] << ", " << ot_frames.back().origin()[2] << std::endl;
 
     // arm->setOuterTubeNodalForce(4, Vec3r(0,-10,0));
-    arm->setInnerTubeNodalForce(9, Vec3r(0,10,0));
+    // arm->setInnerTubeNodalForce(9, Vec3r(0,10,0));
+    arm->setToolTubeNodalForce(4, Vec3r(0,0.3,0));
     // arm->setTipForce(Vec3r(0,50,0));
     arm->update();
 

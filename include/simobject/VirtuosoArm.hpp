@@ -22,15 +22,15 @@ class XPBDMeshObject_BasePtrWrapper;
 
 struct VirtuosoArmTool
 {
-    Real inner_dia;
     Real outer_dia;
+    Real inner_dia;
     Real E;
     Real G;
     Real I;
     Real J;
 
-    VirtuosoArmTool(Real inner_dia_, Real outer_dia_, Real E_)
-        : inner_dia(inner_dia_), outer_dia(outer_dia_), E(E_)
+    VirtuosoArmTool(Real outer_dia_, Real inner_dia_, Real E_)
+        : outer_dia(outer_dia_), inner_dia(inner_dia_), E(E_)
     {
         G = E / (2*(1+0.3));
         I = M_PI/4 * (outer_dia*outer_dia*outer_dia*outer_dia/16 - inner_dia*inner_dia*inner_dia*inner_dia/16);
@@ -55,7 +55,7 @@ class VirtuosoArm : public Object
     constexpr static int NUM_OT_STRAIGHT_FRAMES = 5;    // number of coordinate frames defined along the straight distal section of the outer tube
     constexpr static int NUM_OT_FRAMES = NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES; // total number of coordinate frames defined along the outer tube
     constexpr static int NUM_IT_FRAMES = 10;            // number of coordinate frames defined along the (exposed part of the) inner tube
-    constexpr static int NUM_TT_FRAMES = 5;            // number of coordinate frames defined along the (exposed part of the) tool tube
+    constexpr static int NUM_TT_FRAMES = 10;            // number of coordinate frames defined along the (exposed part of the) tool tube
 
     /** Joint limits */
     constexpr static Real MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
@@ -270,8 +270,10 @@ class VirtuosoArm : public Object
 
     const Vec3r& outerTubeNodalForce(int node_index) const { return _ot_nodal_forces[node_index]; }
     const Vec3r& innerTubeNodalForce(int node_index) const { return _it_nodal_forces[node_index]; }
+    const Vec3r& toolTubeNodalForce(int node_index) const { return _tt_nodal_forces[node_index]; }
     void setOuterTubeNodalForce(int node_index, const Vec3r& force);
     void setInnerTubeNodalForce(int node_index, const Vec3r& force);
+    void setToolTubeNodalForce(int node_index, const Vec3r& force);
 
     const XPBDMeshObject_BasePtrWrapper& toolManipulatedObject() const { return _tool_manipulated_object; }
     void setToolManipulatedObject(const XPBDMeshObject_BasePtrWrapper& obj) { _tool_manipulated_object = obj; }
