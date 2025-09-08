@@ -46,7 +46,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                     this->_arm2_joint_state_publisher->publish(message);
                 };
-                
+
             _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), callback);
         }
 
@@ -302,7 +302,7 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
             _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm1_callback);
         }
 
-        // set up callback to publish tip frame for arm2 (if it exists)
+        // set up callback to publish commanded tip position for arm2 (if it exists)
         if (_sim->virtuosoRobot()->hasArm2())
         {
             std::cout << "Setting up callback for Virtuoso arm 2 commanded tip frame..." << std::endl;
@@ -334,6 +334,88 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                     message.pose.orientation.w = 1;
                     
                     this->_arm2_commanded_tip_frame_publisher->publish(message);
+                };
+
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm2_callback);
+        }
+
+        // set up callback to publish tool tip frame for arm1 (if it exists and has a tool tube equipped)
+        if (_sim->virtuosoRobot()->hasArm1() && _sim->virtuosoRobot()->arm1()->hasTool())
+        {
+            std::cout << "Setting up callback for Virtuoso arm 1 tool tip frame..." << std::endl;
+            _arm1_tool_tip_frame_publisher = this->create_publisher<geometry_msgs::msg::PoseStamped>("/output/arm1_tool_tip_frame", 10);
+
+            auto arm1_callback = 
+                [this]() -> void {
+                    const Sim::VirtuosoArm* arm1 = this->_sim->virtuosoRobot()->arm1();
+                    const Sim::VirtuosoArm::ToolTubeFramesArray& tt_frames = arm1->toolTubeFrames();
+
+
+                    auto message = geometry_msgs::msg::PoseStamped();
+                    message.header.stamp = this->now();
+                    message.header.frame_id = "ves/left/base";
+
+                    const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                    const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
+                    const Geometry::CoordinateFrame& tip_frame = tt_frames.back();
+
+                    geometry_msgs::msg::Pose pose;
+
+                    const Geometry::TransformationMatrix transform = vb_transform_inv * tip_frame.transform();
+
+                    const Vec3r& origin = transform.translation();
+                    const Vec4r& quat = GeometryUtils::matToQuat(transform.rotMat());
+                    message.pose.position.x = origin[0];
+                    message.pose.position.y = origin[1];
+                    message.pose.position.z = origin[2];
+
+                    message.pose.orientation.x = quat[0];
+                    message.pose.orientation.y = quat[1];
+                    message.pose.orientation.z = quat[2];
+                    message.pose.orientation.w = quat[3];
+                    
+                    this->_arm1_tool_tip_frame_publisher->publish(message);
+                };
+
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm1_callback);
+        }
+
+        // set up callback to publish tool tip frame for arm2 (if it exists and has a tool tube equipped)
+        if (_sim->virtuosoRobot()->hasArm2() && _sim->virtuosoRobot()->arm2()->hasTool())
+        {
+            std::cout << "Setting up callback for Virtuoso arm 2 tool tip frame..." << std::endl;
+            _arm2_tool_tip_frame_publisher = this->create_publisher<geometry_msgs::msg::PoseStamped>("/output/arm2_tool_tip_frame", 10);
+
+            auto arm2_callback = 
+                [this]() -> void {
+                    const Sim::VirtuosoArm* arm2 = this->_sim->virtuosoRobot()->arm2();
+                    const Sim::VirtuosoArm::ToolTubeFramesArray& tt_frames = arm2->toolTubeFrames();
+
+
+                    auto message = geometry_msgs::msg::PoseStamped();
+                    message.header.stamp = this->now();
+                    message.header.frame_id = "ves/left/base";
+
+                    const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                    const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
+                    const Geometry::CoordinateFrame& tip_frame = tt_frames.back();
+
+                    geometry_msgs::msg::Pose pose;
+
+                    const Geometry::TransformationMatrix transform = vb_transform_inv * tip_frame.transform();
+
+                    const Vec3r& origin = transform.translation();
+                    const Vec4r& quat = GeometryUtils::matToQuat(transform.rotMat());
+                    message.pose.position.x = origin[0];
+                    message.pose.position.y = origin[1];
+                    message.pose.position.z = origin[2];
+
+                    message.pose.orientation.x = quat[0];
+                    message.pose.orientation.y = quat[1];
+                    message.pose.orientation.z = quat[2];
+                    message.pose.orientation.w = quat[3];
+                    
+                    this->_arm2_tool_tip_frame_publisher->publish(message);
                 };
 
             _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), arm2_callback);
@@ -762,6 +844,9 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _arm1_commanded_tip_frame_publisher;  // publishes the commanded tip position of arm1
     rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _arm2_commanded_tip_frame_publisher;  // published the commanded tip position of arm2
+
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _arm1_tool_tip_frame_publisher;          // publishes the tool tip frame of arm1
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _arm2_tool_tip_frame_publisher;          // publishes the tool tip frame of arm2
 
     shape_msgs::msg::Mesh _mesh_message;    // pre-allocated mesh ROS message for speed (assuming faces and number of vertices stay the same)
     rclcpp::Publisher<shape_msgs::msg::Mesh>::SharedPtr _mesh_publisher;    // publishes the current tissue mesh (all vertices and surface faces)
