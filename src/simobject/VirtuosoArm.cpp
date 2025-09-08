@@ -14,6 +14,15 @@
 namespace Sim 
 {
 
+std::map<VirtuosoArm::ToolType, VirtuosoArmTool> VirtuosoArm::TOOL_TYPE_TO_STRUCT = {
+        {ToolType::NONE, VirtuosoArmTool_None},
+        {ToolType::PALPATION, VirtuosoArmTool_Palpation},
+        {ToolType::SPATULA, VirtuosoArmTool_Spatula},
+        {ToolType::GRASPER, VirtuosoArmTool_Grasper},
+        {ToolType::CAUTERY, VirtuosoArmTool_Cautery}
+    };
+
+
 VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
     : Object(sim, config), _ot_frames(), _it_frames()
 {
@@ -32,6 +41,8 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
     _tool_state = 0;  // default tool state is off
     _tool_type = config->toolType();
     _tool_manipulated_object = (XPBDMeshObject_Base_<false>*)nullptr;
+    _tool_tube = TOOL_TYPE_TO_STRUCT.at(_tool_type);
+    _tool_tube_length = config->toolTubeLength();
 
     _arm_base_position = config->baseInitialPosition();
     Vec3r initial_rot_xyz = config->baseInitialRotation() * M_PI / 180.0;
@@ -44,6 +55,8 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
         _ot_nodal_forces[i] = Vec3r::Zero();
     for (int i = 0; i < NUM_IT_FRAMES; i++)
         _it_nodal_forces[i] = Vec3r::Zero();
+    for (int i = 0; i < NUM_TT_FRAMES; i++)
+        _tt_nodal_forces[i] = Vec3r::Zero();
 
     _stale_frames = true;
 
@@ -184,7 +197,7 @@ void VirtuosoArm::velocityUpdate()
     }
     _net_force = total_force;
 
-    std::cout << "Total force on CTR: " << total_force.transpose() << std::endl;
+    // std::cout << "Total force on CTR: " << total_force.transpose() << std::endl;
     _stale_frames = true;
 }
 
@@ -383,10 +396,13 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     Real J_ot = 2*I_ot;
     Real J_it = 2*I_it;
 
+    Real EI_tool_tube = _tool_tube.E * _tool_tube.I * 1000 * 1000;
+    Real GJ_tool_tube = _tool_tube.G * _tool_tube.J * 1000 * 1000;
+
     // the inverse stiffness matrix for the outer tube
-    const Vec3r ot_K_inv(1/(E_mm*I_ot + E_mm*I_it), 1/(E_mm*I_ot + E_mm*I_it), 1/(G_mm*J_ot));
+    const Vec3r ot_K_inv(1/(E_mm*I_ot + E_mm*I_it + EI_tool_tube), 1/(E_mm*I_ot + E_mm*I_it + EI_tool_tube), 1/(G_mm*J_ot));
     // the inverse stiffness matrix for the inner tube
-    const Vec3r it_K_inv(1/(E_mm*I_it), 1/(E_mm*I_it), 1/(G_mm*J_it));
+    const Vec3r it_K_inv(1/(E_mm*I_it + EI_tool_tube), 1/(E_mm*I_it + EI_tool_tube), 1/(G_mm*J_it + GJ_tool_tube));
 
     /** Starting state for the forward integration along the robot arm, at the outer tube base. */
     TubeIntegrationState ot_base_state;
@@ -496,6 +512,9 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     it_start_state.orientation *= GeometryUtils::Rz(_it_rotation - it_start_state.torsional_displacement);
     it_start_state.torsional_displacement = _it_rotation;
 
+    // the integration state at the end of the inner tube (used to initialize the next part of the robot arm)
+    TubeIntegrationState it_end_state;
+
     // if there is some part of the inner tube exposed (i.e. if IT translation > OT translation)
     // integrate along the inner tube
     if (it_length > 0)
@@ -517,6 +536,9 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
             _it_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
         }
 
+        // final integration state
+        it_end_state = TubeIntegrationState::fromVec(it_states.back());
+
     }
     // otherwise, the frames for the inner tube are all the same, and equal to the inner tube base frame
     else
@@ -526,8 +548,42 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
         {
             _it_frames[i].setTransform(it_start_transform.asMatrix());
         }
+
+        it_end_state = it_start_state;
     }
-    
+
+
+    /** === Integrate the tool tube === */
+    if (hasTool())
+    {
+        const Vec3r tt_K_inv(1/(EI_tool_tube), 1/(EI_tool_tube), 1/(GJ_tool_tube));
+
+        // compute the distance along the entire tube collection for placing the inner tube frames (in mm)
+        std::vector<Real> tt_s(NUM_TT_FRAMES);
+        for (int i = 0; i < NUM_TT_FRAMES; i++)     
+        {
+            tt_s[i] = _it_translation*1000 + i*_tool_tube_length*1000 / (NUM_TT_FRAMES - 1);
+        }
+        
+        // integrate with RK4 along the tool tube
+        std::vector<TubeIntegrationState::VecType> tt_states = _integrateTubeWithForceBoundariesRK4(it_end_state, tt_s, _tt_nodal_forces.cbegin(), tt_K_inv, Vec3r(0,0,0));
+
+        // set the transforms along the tool tube from the integration results
+        for (int i = 0; i < NUM_TT_FRAMES; i++)
+        {
+            TubeIntegrationState state = TubeIntegrationState::fromVec(tt_states[i]);
+            std::cout << "tool tube frame " << i << "position: " << state.position.transpose()/1000 << std::endl;
+            _tt_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
+        }
+    }
+    else
+    {
+        Geometry::TransformationMatrix tt_start_transform(it_end_state.orientation, it_end_state.position/1000); // convert position back to m
+        for (int i = 0; i < NUM_TT_FRAMES; i++)
+        {
+            _tt_frames[i].setTransform(tt_start_transform.asMatrix());
+        }
+    }
     _stale_frames = false;
 
     // for now, the tool position is just the inner tube tip position with no offset

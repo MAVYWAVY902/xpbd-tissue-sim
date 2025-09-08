@@ -20,6 +20,32 @@ namespace Sim
 
 class XPBDMeshObject_BasePtrWrapper;
 
+struct VirtuosoArmTool
+{
+    Real inner_dia;
+    Real outer_dia;
+    Real E;
+    Real G;
+    Real I;
+    Real J;
+
+    VirtuosoArmTool(Real inner_dia_, Real outer_dia_, Real E_)
+        : inner_dia(inner_dia_), outer_dia(outer_dia_), E(E_)
+    {
+        G = E / (2*(1+0.3));
+        I = M_PI/4 * (outer_dia*outer_dia*outer_dia*outer_dia/16 - inner_dia*inner_dia*inner_dia*inner_dia/16);
+        J = 2*I;
+    }
+
+    /** TODO: Add tool action function somehow */
+};
+
+static VirtuosoArmTool VirtuosoArmTool_None(0, 0, 0);
+static VirtuosoArmTool VirtuosoArmTool_Palpation(0.7e-3, 0.5e-3, 60e9);
+static VirtuosoArmTool VirtuosoArmTool_Spatula(0.7e-3, 0.5e-3, 60e9);     /** TODO: find actual properties of spatula tool tube */
+static VirtuosoArmTool VirtuosoArmTool_Grasper(0.7e-3, 0.5e-3, 60e9);     /** These are just made up for now */
+static VirtuosoArmTool VirtuosoArmTool_Cautery(0.7e-3, 0.5e-3, 60e9);     /** TODO: find actual properties of cautery tool tube */
+
 class VirtuosoArm : public Object
 {
 
@@ -28,8 +54,8 @@ class VirtuosoArm : public Object
     constexpr static int NUM_OT_CURVE_FRAMES = 10;      // number of coordinate frames defined along the curved section of the outer tube
     constexpr static int NUM_OT_STRAIGHT_FRAMES = 5;    // number of coordinate frames defined along the straight distal section of the outer tube
     constexpr static int NUM_OT_FRAMES = NUM_OT_CURVE_FRAMES + NUM_OT_STRAIGHT_FRAMES; // total number of coordinate frames defined along the outer tube
-    constexpr static int NUM_IT_FRAMES = 10;            // number of coordinate frames defined along the inner tube
-    constexpr static int NUM_TT_FRAMES = 10;            // number of coordinate frames defined along the tool tube
+    constexpr static int NUM_IT_FRAMES = 10;            // number of coordinate frames defined along the (exposed part of the) inner tube
+    constexpr static int NUM_TT_FRAMES = 5;            // number of coordinate frames defined along the (exposed part of the) tool tube
 
     /** Joint limits */
     constexpr static Real MAX_OT_TRANSLATION = 20e-3;    // maximum outer tube translation (joint limit on Virtuoso system)
@@ -61,10 +87,16 @@ class VirtuosoArm : public Object
     enum ToolType
     {
         NONE,
+        PALPATION,
         SPATULA,
         GRASPER,
         CAUTERY
     };
+
+    /** Maps types in the ToolType enum to their corresponding structs with properties.
+     * TODO: this probably shouldn't be necessary, but we'll keep it for now
+     */
+    static std::map<ToolType, VirtuosoArmTool> TOOL_TYPE_TO_STRUCT;
 
     /** State of a tube at a given point along the tube.
      * Used in the statics model for the Virtuoso arm, where we integrate from the base to the tip, keeping track of
@@ -199,6 +231,8 @@ class VirtuosoArm : public Object
     Real outerTubeRotation() const { return _ot_rotation; }
     Real outerTubeDistalStraightLength() const { return _ot_distal_straight_length; }
     int toolState() const { return _tool_state; }
+    bool hasTool() const { return (_tool_type != ToolType::NONE); }
+    const VirtuosoArmTool& toolTube() const { return _tool_tube; }
 
     void setInnerTubeTranslation(double t) { _it_translation = (t >= 0) ? t : 0; _stale_frames = true; }
     void setInnerTubeRotation(double r) { _it_rotation = r; _stale_frames = true; }
@@ -217,6 +251,7 @@ class VirtuosoArm : public Object
 
     const OuterTubeFramesArray& outerTubeFrames() const { return _ot_frames; }
     const InnerTubeFramesArray& innerTubeFrames() const { return _it_frames; }
+    const ToolTubeFramesArray& toolTubeFrames() const { return _tt_frames; }
 
     Vec3r actualTipPosition() const;
     Vec3r commandedTipPosition() const{ return _commanded_tip_position; }
@@ -340,6 +375,8 @@ class VirtuosoArm : public Object
     int _tool_state; // state of the tool (i.e. 1=ON, 0=OFF)
     int _last_tool_state; // the previous state of the tool (needed so that we know when tool state has changed)
     ToolType _tool_type; // type of tool used on this arm
+    Real _tool_tube_length; // exposed length of the tool tube, in m
+    VirtuosoArmTool _tool_tube = VirtuosoArmTool_None; // stores the tool tube properties
     
 
 
@@ -361,11 +398,13 @@ class VirtuosoArm : public Object
 
     Geometry::CoordinateFrame _arm_base_frame;        // coordinate frame at the tool channel (where it leaves the endoscope)
     
-    OuterTubeFramesArray _ot_frames;  // coordinate frames along the backbone of the outer tube
-    InnerTubeFramesArray _it_frames;  // coordinate frames along the backbone of the inner tube
+    OuterTubeFramesArray _ot_frames;  // coordinate frames along the backbone of the exposed part of the outer tube
+    InnerTubeFramesArray _it_frames;  // coordinate frames along the backbone of the exposed part of the inner tube
+    ToolTubeFramesArray _tt_frames;   // coordinate frames along the backbone of the exposed part of the tool tube
 
     std::array<Vec3r, NUM_OT_FRAMES> _ot_nodal_forces;
     std::array<Vec3r, NUM_IT_FRAMES> _it_nodal_forces;
+    std::array<Vec3r, NUM_TT_FRAMES> _tt_nodal_forces;
 
     bool _stale_frames;     // true if the joint variables have been updated and the coordinate frames need to be recomputed
 

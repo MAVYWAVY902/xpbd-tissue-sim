@@ -4,14 +4,14 @@
 name: "Palpation"  # name of the simulation
 description: "Sensing stiffness by touching tissue." # description of the simulation
 
-visualization: "Easy3D" # what graphics to use ('Easy3D' for Easy3D graphics or 'None' for no graphics)
+visualization: "VTK" # what graphics to use ('Easy3D' for Easy3D graphics or 'None' for no graphics)
 
 g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 
 input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 # fixed-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_fixed_faces.txt"
 # tumor-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_tumor_faces.txt"
-show-tip-cursor: true
+show-tip-cursor: false
 enable-mouse-interaction: true
 
 
@@ -126,7 +126,8 @@ objects:
     -
       name: "Arm1"
       type: "VirtuosoArm"
-      tool-type: "grasper"
+      tool-type: "palpation"
+      tool-tube-length: 10e-3
       outer-tube-diameter: 1.56e-3
       outer-tube-radius-of-curvature: 1.5383e-2
       outer-tube-distal-straight-length: 5e-3
@@ -134,6 +135,6 @@ objects:
       outer-tube-rotation: 1030
       inner-tube-rotation: 30
       inner-tube-diameter: 1.04e-3
-      inner-tube-translation: 30e-3
+      inner-tube-translation: 10e-3
 
 
