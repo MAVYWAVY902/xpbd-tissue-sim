@@ -4,11 +4,11 @@
 name: "Palpation"  # name of the simulation
 description: "Sensing stiffness by touching tissue." # description of the simulation
 
-visualization: "Easy3D" # what graphics to use ('Easy3D' for Easy3D graphics or 'None' for no graphics)
+visualization: "VTK" # what graphics to use ('Easy3D' for Easy3D graphics or 'None' for no graphics)
 
 g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 
-input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
+input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 # fixed-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_fixed_faces.txt"
 # tumor-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_tumor_faces.txt"
 show-tip-cursor: false
@@ -44,7 +44,7 @@ materials:
   -
     name: "Stiffer Tissue"
     density: 1030
-    E: 6e5
+    E: 1e6
     # E: 0.5e6
     nu: 0.49
   -

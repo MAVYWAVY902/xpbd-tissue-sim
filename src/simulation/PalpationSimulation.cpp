@@ -49,6 +49,27 @@ void PalpationSimulation::_updateGraphics()
 void PalpationSimulation::_timeStep()
 {
     VirtuosoSimulation::_timeStep();
+
+    if (_input_device == SimulationInput::Device::HAPTIC)
+    {
+        
+        
+        HHD handle = _haptic_device_manager->deviceHandles()[0];
+    
+        if (_haptic_device_manager->button2Pressed(handle))
+        {
+            const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * _virtuoso_robot->arm1()->netCollisionForce();
+            const Vec3r cur_force = _haptic_device_manager->force(handle);
+            
+            const Vec3r new_force = 0.5*haptic_force + 0.5*cur_force;
+            std::cout << "Collision force: " << _virtuoso_robot->arm1()->netCollisionForce().transpose() << " N" << std::endl;
+            _haptic_device_manager->setForce(handle, new_force);
+        }
+        else
+        {
+            _haptic_device_manager->setForce(handle, Vec3r::Zero());
+        }
+    }
 }
 
 } // namespace Sim

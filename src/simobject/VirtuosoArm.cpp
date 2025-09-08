@@ -175,6 +175,7 @@ void VirtuosoArm::velocityUpdate()
 
     // apply forces from collision constraints
     std::vector<Vec3r> new_forces(NUM_OT_FRAMES + NUM_IT_FRAMES + NUM_TT_FRAMES, Vec3r::Zero());
+    _net_collision_force = Vec3r::Zero();
     for (const auto& collision : _collision_constraints)
     {
         // the collision constraints give forces on the tissue, so we must negate them to get the forces on the Virtuoso
@@ -182,25 +183,23 @@ void VirtuosoArm::velocityUpdate()
         Vec3r net_force = -std::reduce(forces.cbegin(), forces.cend());  
         new_forces[collision.node_index] += net_force*(1-collision.interp);
         new_forces[collision.node_index+1] += net_force*collision.interp;
+
+        _net_collision_force += net_force;
     }
 
-    Vec3r total_force = Vec3r::Zero();
+    
     const Real frac = 0.01;
     for (int i = 0; i < NUM_OT_FRAMES; i++)
     {
         const Vec3r& cur_force = outerTubeNodalForce(i);
         Vec3r new_force = (1-frac)*cur_force + frac*new_forces[i];
         setOuterTubeNodalForce(i, new_force);
-
-        total_force += new_force;
     }
     for (int i = 0; i < NUM_IT_FRAMES; i++)
     {
         const Vec3r& cur_force = innerTubeNodalForce(i);
         Vec3r new_force = (1-frac)*cur_force + frac*new_forces[NUM_OT_FRAMES + i];
         setInnerTubeNodalForce(i, new_force);
-
-        total_force += new_force;
     }
     if (hasTool())
     {
@@ -209,14 +208,8 @@ void VirtuosoArm::velocityUpdate()
             const Vec3r& cur_force = toolTubeNodalForce(i);
             Vec3r new_force = (1-frac)*cur_force + frac*new_forces[NUM_OT_FRAMES + NUM_IT_FRAMES + i];
             setToolTubeNodalForce(i, new_force);
-
-            total_force += new_force;
         }
     }
-
-    _net_force = total_force;
-
-    std::cout << "Total force on CTR: " << total_force.transpose() << std::endl;
     _stale_frames = true;
 }
 
