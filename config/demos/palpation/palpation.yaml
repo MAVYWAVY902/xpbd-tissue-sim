@@ -4,7 +4,7 @@
 name: "Palpation"  # name of the simulation
 description: "Sensing stiffness by touching tissue." # description of the simulation
 
-visualization: "VTK" # what graphics to use ('Easy3D' for Easy3D graphics or 'None' for no graphics)
+visualization: "Easy3D" # what graphics to use ('Easy3D' for Easy3D graphics or 'None' for no graphics)
 
 g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 
