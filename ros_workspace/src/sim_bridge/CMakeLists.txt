@@ -47,6 +47,7 @@ target_link_libraries(${PROJECT_NAME}_node
   Simulation
   VirtuosoSimulation
   GraspingSimulation
+  PalpationSimulation
   Collision
   Config
   Geometry

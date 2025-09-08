@@ -5,7 +5,9 @@
 
 #include "config/simulation/GraspingSimulationConfig.hpp"
 #include "config/simulation/VirtuosoTissueGraspingSimulationConfig.hpp"
+#include "config/simulation/PalpationSimulationConfig.hpp"
 #include "simulation/VirtuosoTissueGraspingSimulation.hpp"
+#include "simulation/PalpationSimulation.hpp"
 #include "simulation/GraspingSimulation.hpp"
 
 #include <mutex>
@@ -91,6 +93,13 @@ int main(int argc, char ** argv)
         Sim::VirtuosoSimulation sim(&config);
 
         startNode<Sim::VirtuosoSimulation>(&sim);
+    }
+    else if (simulation_type == "PalpationSimulation")
+    {
+        Config::PalpationSimulationConfig config(YAML::LoadFile(config_filename));
+        Sim::PalpationSimulation sim(&config);
+
+        startNode<Sim::PalpationSimulation>(&sim);
     }
     else if (simulation_type == "GraspingSimulation")
     {
