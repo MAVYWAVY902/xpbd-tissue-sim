@@ -22,15 +22,19 @@ class VirtuosoSimulationConfig : public SimulationConfig
     {
         _extractParameterWithOptions("input-device", node, _input_device, INPUT_DEVICE_OPTIONS());
         _extractParameter("show-tip-cursor", node, _show_tip_cursor);
+        _extractParameter("haptic-force-scaling", node, _haptic_force_scaling);
     }
 
     SimulationInput::Device inputDevice() const { return _input_device.value; }
     bool showTipCursor() const { return _show_tip_cursor.value; }
+    Real hapticForceScaling() const { return _haptic_force_scaling.value; }
 
     protected:
     ConfigParameter<SimulationInput::Device> _input_device = ConfigParameter<SimulationInput::Device>(SimulationInput::Device::MOUSE);
 
     ConfigParameter<bool> _show_tip_cursor = ConfigParameter<bool>(true);
+
+    ConfigParameter<Real> _haptic_force_scaling = ConfigParameter<Real>(1.0);
 };
 
 } // namespace Config

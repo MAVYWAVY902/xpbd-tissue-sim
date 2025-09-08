@@ -60,6 +60,8 @@ class HapticDeviceManager
     void setForce(HHD handle, const Vec3r& force);
     const Vec3r& force(HHD handle) const { return _device_forces.at(handle); }
 
+    void setForceScaling(Real scaling) { _force_scaling_factor = scaling; }
+
     private:
     static HDCallbackCode HDCALLBACK _updateCallback(void *data);
 
@@ -75,7 +77,12 @@ class HapticDeviceManager
 
     bool _stale;
 
+    /** Tracks the forces applied on the haptic device. */
     std::map<HHD, Vec3r> _device_forces;
+
+    /** Internally scales applied haptic forces before sending them to the device.
+     */
+    Real _force_scaling_factor = 1.0;
 
     std::mutex _state_mtx;
 };

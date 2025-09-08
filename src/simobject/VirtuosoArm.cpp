@@ -188,7 +188,7 @@ void VirtuosoArm::velocityUpdate()
     }
 
     
-    const Real frac = 0.01;
+    const Real frac = 0.02;
     for (int i = 0; i < NUM_OT_FRAMES; i++)
     {
         const Vec3r& cur_force = outerTubeNodalForce(i);

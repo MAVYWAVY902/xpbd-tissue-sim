@@ -13,6 +13,7 @@ input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic
 # tumor-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_tumor_faces.txt"
 show-tip-cursor: false
 enable-mouse-interaction: true
+haptic-force-scaling: 10.0
 
 
 ## different simulation "modes"
@@ -66,8 +67,8 @@ objects:
     # type: "XPBDMeshObject"          # use the standard, 2nd-order XPBD method
 
     ## filename to load from (.msh is GMSH's volumetric mesh format, but if .obj or .stl is provided, will automatically turn surface mesh to volume mesh)
-    filename: "../resource/demos/palpation/2x2x1_block16.msh"
-    element-classes-filename: "../resource/demos/palpation/2x2x1_block16_element_classes.txt"
+    filename: "../resource/demos/palpation/2x1x1_block16.msh"
+    element-classes-filename: "../resource/demos/palpation/2x1x1_block16_element_classes.txt"
 
     materials: ["Soft Tissue", "Stiffer Tissue"] # the elastic material(s) (must match with the name of a material defined above)
 

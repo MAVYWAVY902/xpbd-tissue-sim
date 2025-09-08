@@ -110,9 +110,9 @@ HDCallbackCode HDCALLBACK HapticDeviceManager::_updateCallback(void *data)
         /** Update the force */
         hduVector3Dd force_hd;
         const Vec3r& force = device_manager->force(handle);
-        force_hd[0] = force[0];
-        force_hd[1] = force[1];
-        force_hd[2] = force[2];
+        force_hd[0] = device_manager->_force_scaling_factor*force[0];
+        force_hd[1] = device_manager->_force_scaling_factor*force[1];
+        force_hd[2] = device_manager->_force_scaling_factor*force[2];
 
         hdSetDoublev(HD_CURRENT_FORCE, force_hd);
 

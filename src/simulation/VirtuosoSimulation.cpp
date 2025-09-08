@@ -19,6 +19,7 @@ VirtuosoSimulation::VirtuosoSimulation(const Config::VirtuosoSimulationConfig* c
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
         _haptic_device_manager = std::make_unique<HapticDeviceManager>();
+        _haptic_device_manager->setForceScaling(config->hapticForceScaling());
         
         _last_haptic_pos = _haptic_device_manager->position(_haptic_device_manager->deviceHandles()[0]);
     }
@@ -320,7 +321,7 @@ void VirtuosoSimulation::_timeStep()
 
             // transform dx from haptic input frame to global coordinates
             Vec3r dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
-            _moveCursor(dx_sim*0.0001);
+            _moveCursor(dx_sim*0.00005);
         }
 
         _last_haptic_pos = cur_pos;
