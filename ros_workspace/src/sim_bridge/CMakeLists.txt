@@ -5,11 +5,10 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# include_directories("/usr/local/include/XPBDSim")
 # include_directories("/workspace/include")
-include_directories("$ENV{XPBD_SIM_BASE_DIR}/include")
+include_directories("${XPBD_SIM_BASE_DIR}/include")
 
-list(APPEND CMAKE_PREFIX_PATH "$ENV{XPBD_SIM_EASY3D_CMAKE_PREFIX_PATH}") # needed in order to find Easy3D
+list(APPEND CMAKE_PREFIX_PATH "${XPBD_SIM_EASY3D_CMAKE_PREFIX_PATH}") # needed in order to find Easy3D
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -35,6 +34,8 @@ find_package(VTK 9.5 COMPONENTS
     RenderingFreeType
     RenderingGL2PSOpenGL2
     RenderingOpenGL2
+    RenderingAnnotation
+    InteractionWidgets
 )
 if (NOT VTK_FOUND)
   message(FATAL_ERROR "Unable to find the VTK build folder.")

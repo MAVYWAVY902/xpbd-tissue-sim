@@ -16,6 +16,40 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
         this->declare_parameter("publish_rate_hz", 30.0);
 
+        // set up callback to publish joint state for arm 1 (if it exists)
+        if (_sim->virtuosoRobot()->hasArm1())
+        {
+            std::cout << "Setting up callback for publishing arm 1 joint state..." << std::endl;
+            _arm1_joint_state_publisher = this->create_publisher<sensor_msgs::msg::JointState>("/output/arm1_joint_state", 10);
+
+            auto callback = 
+                [this]() -> void {
+                    const Sim::VirtuosoArm* arm1 = this->_sim->virtuosoRobot()->arm1();
+                    auto message = this->_createJointStateMsgForArm(arm1);
+
+                    this->_arm1_joint_state_publisher->publish(message);
+                };
+            
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), callback);
+        }
+
+        // set up callback to publish joint state for arm 2 (if it exists)
+        if (_sim->virtuosoRobot()->hasArm2())
+        {
+            std::cout << "Setting up callback for publishing arm 2 joint state..." << std::endl;
+            _arm2_joint_state_publisher = this->create_publisher<sensor_msgs::msg::JointState>("/output/arm2_joint_state", 10);
+
+            auto callback = 
+                [this]() -> void {
+                    const Sim::VirtuosoArm* arm2 = this->_sim->virtuosoRobot()->arm2();
+                    auto message = this->_createJointStateMsgForArm(arm2);
+
+                    this->_arm2_joint_state_publisher->publish(message);
+                };
+                
+            _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), callback);
+        }
+
         // set up callback to publish frames for arm1 (if it exists)
         if (_sim->virtuosoRobot()->hasArm1())
         {
@@ -717,6 +751,9 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
     private:
     /** Publishers */
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm1_joint_state_publisher;   // publishes the current joint state of arm1
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm2_joint_state_publisher;   // published the current joint state of arm2
+
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr _arm1_frames_publisher;     // publishes coordinate frames along backbone of arm1
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr _arm2_frames_publisher;     // publishes coordinate frames along backbone of arm2
 
