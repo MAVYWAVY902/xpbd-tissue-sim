@@ -109,19 +109,19 @@ void VirtuosoTissueGraspingSimulation::setup()
         // std::cout << "Difference: " << v0_f0_goal_obj - v0_f0_tissue_obj << std::endl;
     }
 
-    if (_tumor_faces_filename.has_value())
-    {
-        std::set<int> vertices;
-        MeshUtils::verticesAndFacesFromFixedFacesFile(_tumor_faces_filename.value(), vertices, _tumor_faces);
+    // if (_tumor_faces_filename.has_value())
+    // {
+    //     std::set<int> vertices;
+    //     MeshUtils::verticesAndFacesFromFixedFacesFile(_tumor_faces_filename.value(), vertices, _tumor_faces);
 
-        // set tumor property
-        _tissue_obj.mesh()->addFaceProperty<int>("class", TissueClasses::TRACHEA);
-        Geometry::MeshProperty<int>& tissue_class_property = _tissue_obj.mesh()->getFaceProperty<int>("class");
-        for (const auto& face_index : _tumor_faces)
-        {
-            tissue_class_property.set(face_index, TissueClasses::TUMOR);
-        }
-    }
+    //     // set tumor property
+    //     _tissue_obj.mesh()->addFaceProperty<int>("class", TissueClasses::TRACHEA);
+    //     Geometry::MeshProperty<int>& tissue_class_property = _tissue_obj.mesh()->getFaceProperty<int>("class");
+    //     for (const auto& face_index : _tumor_faces)
+    //     {
+    //         tissue_class_property.set(face_index, TissueClasses::TUMOR);
+    //     }
+    // }
 
     if (_goal_objs.size() > 0)
     {

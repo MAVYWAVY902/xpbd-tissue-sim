@@ -98,17 +98,28 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
 
     // add the class property to the element mesh, with default value 0
     tetMesh()->template addElementProperty<int>("class", 0);
+    tetMesh()->template addFaceProperty<int>("class", 0);
 
     if (_element_classes_filename.has_value())
     {
-        Geometry::MeshProperty<int>& class_prop = tetMesh()-> template getElementProperty<int>("class");
+        Geometry::MeshProperty<int>& elem_class_prop = tetMesh()-> template getElementProperty<int>("class");
+        Geometry::MeshProperty<int>& face_class_prop = tetMesh()-> template getFaceProperty<int>("class");
 
         std::vector<int> elem_classes = FileUtils::readVectorFromFile<int>(_element_classes_filename.value());
 
         assert(elem_classes.size() == (unsigned)tetMesh()->numElements() && "Element classes file has a different number of elements than the mesh!");
+        
+        // set the class for each element in the mesh
         for (unsigned i = 0; i < elem_classes.size(); i++)
         {
-            class_prop.set(i, elem_classes[i]);
+            elem_class_prop.set(i, elem_classes[i]);
+        }
+
+        // set the class for each surface face in the mesh, from the element class for the element containing the surface face
+        for (int i = 0; i < tetMesh()->numFaces(); i++)
+        {
+            int elem_index = tetMesh()->elementWithFace(i);
+            face_class_prop.set(i, elem_classes[elem_index]);
         }
     }
 

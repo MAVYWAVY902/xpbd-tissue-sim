@@ -22,6 +22,7 @@ TetMesh::TetMesh(const TetMesh& other)
     _attached_elements_to_vertex = other._attached_elements_to_vertex;
     _element_inv_undeformed_basis = other._element_inv_undeformed_basis;
     _element_rest_volumes = other._element_rest_volumes;
+    _surface_elements = other._surface_elements;
 }
 
 TetMesh::TetMesh(TetMesh&& other)
@@ -31,6 +32,7 @@ TetMesh::TetMesh(TetMesh&& other)
     _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);
     _element_inv_undeformed_basis = std::move(other._element_inv_undeformed_basis);
     _element_rest_volumes = std::move(other._element_rest_volumes);
+    _surface_elements = std::move(other._surface_elements);
 }
 
 void TetMesh::_computeAdjacentVertices()
@@ -91,6 +93,7 @@ void TetMesh::setCurrentStateAsUndeformedState()
         _attached_elements_to_vertex[elem[3]].push_back(i);
     }
 
+    // inverse undeformed basis for each element
     _element_inv_undeformed_basis.resize(numElements());
     for (int i = 0; i < numElements(); i++)
     {
@@ -108,10 +111,30 @@ void TetMesh::setCurrentStateAsUndeformedState()
         _element_inv_undeformed_basis[i] = X.inverse();
     }
 
+    // element rest volumes
     _element_rest_volumes.resize(numElements());
     for (int i = 0; i < numElements(); i++)
     {
         _element_rest_volumes[i] = elementVolume(i);
+    }
+
+    // find surface elements
+    // for now, just do a dumb O(n^2) search
+    for (int i = 0; i < numFaces(); i++)
+    {
+        const Vec3i& f = face(i);
+        // find the element that has this face
+        for (int j = 0; j < numElements(); j++)
+        {
+            const Eigen::Vector4i& elem = element(j);
+            if (    (f[0] == elem[0] || f[0] == elem[1] || f[0] == elem[2] || f[0] == elem[3]) &&
+                    (f[1] == elem[0] || f[1] == elem[1] || f[1] == elem[2] || f[1] == elem[3]) &&
+                    (f[2] == elem[0] || f[2] == elem[1] || f[2] == elem[2] || f[2] == elem[3]) )
+            {
+                _surface_elements.push_back(j);
+                break;
+            }
+        }
     }
 }
 

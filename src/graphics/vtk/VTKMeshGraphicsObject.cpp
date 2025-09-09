@@ -83,6 +83,32 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     _vtk_actor->SetMapper(mapper);
 
     VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
+
+    if (mesh->hasFaceProperty<int>("class"))
+    {
+        // set colors for each section of the mesh
+        vtkNew<vtkFloatArray> colors;
+        colors->SetNumberOfComponents(3);
+        colors->SetName("Colors");
+
+        const Geometry::MeshProperty<int>& face_prop = mesh->getFaceProperty<int>("class");
+        for (int i = 0; i < mesh->numFaces(); i++)
+        {
+            int face_class = face_prop.get(i);
+            float color[3];
+            color[0] = static_cast<float>(face_class);
+            color[1] = 1.0f;
+            color[2] = 0.0f;
+            
+            colors->InsertNextTypedTuple(color);
+        }
+
+        
+
+        _vtk_poly_data->GetCellData()->SetScalars(colors);
+    }
+
+    
     
     
 }
