@@ -87,7 +87,7 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     if (mesh->hasFaceProperty<int>("class"))
     {
         // set colors for each section of the mesh
-        vtkNew<vtkFloatArray> colors;
+        vtkNew<vtkUnsignedCharArray> colors;
         colors->SetNumberOfComponents(3);
         colors->SetName("Colors");
 
@@ -95,11 +95,11 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
         for (int i = 0; i < mesh->numFaces(); i++)
         {
             int face_class = face_prop.get(i);
-            float color[3];
-            color[0] = static_cast<float>(face_class);
-            color[1] = 1.0f;
-            color[2] = 0.0f;
-            
+            unsigned char color[3];
+            color[0] = 255u * face_class;
+            color[1] = 0u;
+            color[2] = 0u;
+
             colors->InsertNextTypedTuple(color);
         }
 

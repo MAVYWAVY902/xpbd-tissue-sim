@@ -120,6 +120,7 @@ void TetMesh::setCurrentStateAsUndeformedState()
 
     // find surface elements
     // for now, just do a dumb O(n^2) search
+    _surface_elements.clear();
     for (int i = 0; i < numFaces(); i++)
     {
         const Vec3i& f = face(i);
@@ -136,6 +137,9 @@ void TetMesh::setCurrentStateAsUndeformedState()
             }
         }
     }
+    std::cout << "Num vertices: " << numVertices() << " Num surface elements: " << _surface_elements.size() << " Num faces: " << numFaces() << std::endl;
+    // std::cout << "Elements:\n" << _elements << std::endl;
+    assert(_surface_elements.size() == numFaces());
 }
 
 Real TetMesh::elementVolume(int index) const
