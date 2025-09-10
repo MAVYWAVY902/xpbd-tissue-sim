@@ -40,8 +40,11 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config)
             
         });
         // set a uniform color for the mesh
-        easy3d::vec4 color(config.color()[0], config.color()[1], config.color()[2], config.opacity());
-        tri_drawable->set_uniform_coloring(color);
+        if (config.color().has_value())
+        {
+            easy3d::vec4 color(config.color().value()[0], config.color().value()[1], config.color().value()[2], config.opacity());
+            tri_drawable->set_uniform_coloring(color);
+        }
     }
 
     if (config.drawPoints())

@@ -102,7 +102,7 @@ objects:
     adjust-damping-to-material: true
 
     # rendering settings
-    color: [1.0, 0.3, 0.2]
+    colors: [[1.0, 0.3, 0.2], [1.0, 0.15, 0.05]]
     render-type: "PBR"
     metallic: 0.0
     roughness: 0.3
@@ -122,7 +122,7 @@ objects:
     color: [0.7, 0.7, 0.7]
     render-type: "PBR"
     metallic: 1.0
-    roughness: 0.0
+    roughness: 0.2
 
     arms:
     -

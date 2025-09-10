@@ -84,28 +84,32 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
 
     VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
 
-    if (mesh->hasFaceProperty<int>("class"))
+    if (render_config.colors().has_value() && mesh->hasFaceProperty<int>("class"))
     {
         // set colors for each section of the mesh
         vtkNew<vtkUnsignedCharArray> colors;
         colors->SetNumberOfComponents(3);
         colors->SetName("Colors");
 
+        std::vector<Vec3r> colors_f = render_config.colors().value();
         const Geometry::MeshProperty<int>& face_prop = mesh->getFaceProperty<int>("class");
-        for (int i = 0; i < mesh->numFaces(); i++)
+        const Geometry::MeshProperty<int>& vert_class_prop = mesh->getVertexProperty<int>("class");
+        for (int i = 0; i < mesh->numVertices(); i++)
         {
-            int face_class = face_prop.get(i);
+            // int face_class = face_prop.get(i);
+            int vert_class = vert_class_prop.get(i);
+            Vec3r color_f = colors_f[vert_class];
             unsigned char color[3];
-            color[0] = 255u * face_class;
-            color[1] = 0u;
-            color[2] = 0u;
+            color[0] = static_cast<unsigned char>(color_f[0] * 255);
+            color[1] = static_cast<unsigned char>(color_f[1] * 255);
+            color[2] = static_cast<unsigned char>(color_f[2] * 255);
 
             colors->InsertNextTypedTuple(color);
         }
 
         
 
-        _vtk_poly_data->GetCellData()->SetScalars(colors);
+        _vtk_poly_data->GetPointData()->SetScalars(colors);
     }
 
     

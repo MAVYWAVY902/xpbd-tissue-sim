@@ -133,17 +133,10 @@ void TetMesh::setCurrentStateAsUndeformedState()
                     (f[2] == elem[0] || f[2] == elem[1] || f[2] == elem[2] || f[2] == elem[3]) )
             {
                 _surface_elements.push_back(j);
-
-                if (j == 40958)
-                {
-                    std::cout << "ELEMENT 40958 IS A SURFACE ELEMENT!" << std::endl;
-                }
                 break;
             }
         }
     }
-    std::cout << "Num vertices: " << numVertices() << " Num surface elements: " << _surface_elements.size() << " Num faces: " << numFaces() << std::endl;
-    // std::cout << "Elements:\n" << _elements << std::endl;
     assert(_surface_elements.size() == numFaces());
 }
 

@@ -290,7 +290,7 @@ class Config
         
     }
 
-    /** Extracts a 3-vector from YAML node as an Vec3r
+    /** Extracts an optional 3-vector from YAML node as an Vec3r
      * If the parameter doesn't exist, the ConfigParameter value is a null optional.
      * @param param_name : the name of the 3-Vector parameter to get from the YAML file
      * @param yaml_node : the YAML node to extract information from
@@ -318,6 +318,58 @@ class Config
                 {
                     std::cerr << KRED << "\tExpected exactly 3 values for the parameter " << BOLD << param_name << RST << std::endl;
                 }
+                
+            }
+            else
+            {
+                // parameter in YAML node exists, but is null
+                std::cerr << "\tParameter with name " << param_name << " is null (did you forget to set it?)" << RST << std::endl;
+            }
+        }
+        catch(const std::exception& e)
+        {
+            // parameter in YAML does not exist
+            std::cerr << KYEL << "\tParameter " << BOLD << param_name << RST << KYEL << " not found for this object, or is not of the expected type." << RST << std::endl;
+        }
+
+        // if we get to here, the parameter was not specified so just use the default value (which should already be set as the value of the ConfigParameter)
+        std::cout << "\t Optional parameter " << BOLD << param_name << RST << " not specified. " << std::endl;
+        
+    }
+
+    /** Extracts an optional vector of 3-vectors from YAML node as a vector of Vec3r's
+     * If the parameter doesn't exist, the ConfigParameter value is a null optional.
+     * @param param_name : the name of the 3-Vector parameter to get from the YAML file
+     * @param yaml_node : the YAML node to extract information from
+     * @param param : (output) the ConfigParameter, which gets set by the function
+     */
+    static void _extractParameter(const std::string& param_name, const YAML::Node& yaml_node, ConfigParameter<std::optional<std::vector<Vec3r>>>& param)
+    {
+        // set the name field of the ConfigParameter
+        param.name = param_name;
+        param.value = std::vector<Vec3r>();
+        try
+        {
+            if (yaml_node[param_name].Type() != YAML::NodeType::Null)
+            {
+                // if we get here, the parameter exists, and it is not null
+                // so, set the value of the ConfigParameter and we're done!
+                for (unsigned i = 0; i < yaml_node[param_name].size(); i++)
+                {
+                    if (yaml_node[param_name][i].size() == 3)
+                    {
+                        Vec3r vec(  yaml_node[param_name][i][0].as<Real>(), 
+                                    yaml_node[param_name][i][1].as<Real>(),
+                                    yaml_node[param_name][i][2].as<Real>() );
+                        param.value.value().push_back(vec);
+                    }
+                    else
+                    {
+                        std::cerr << KRED << "\tEntry " << i << " in " << BOLD << param_name << " does not have exactly 3 values!" << RST << std::endl;
+                    }
+                }
+
+                return;
                 
             }
             else

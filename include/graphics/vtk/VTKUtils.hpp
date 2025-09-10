@@ -138,8 +138,12 @@ struct VTKUtils
 
         // set the color of the object
         // if a base color texture is not specified (or the object has no UV coordinates), then it will fall back to the base color
-        const Vec3r& solid_color = render_config.color();
-        actor->GetProperty()->SetColor(solid_color[0], solid_color[1], solid_color[2]);
+        if (render_config.color().has_value())
+        {
+            Vec3r solid_color = render_config.color().value();
+            actor->GetProperty()->SetColor(solid_color[0], solid_color[1], solid_color[2]);
+        }
+        
 
         // set the roughness and metallicity
         actor->GetProperty()->SetMetallic(render_config.metallic());

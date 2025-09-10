@@ -99,11 +99,13 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
     // add the class property to the element mesh, with default value 0
     tetMesh()->template addElementProperty<int>("class", 0);
     tetMesh()->template addFaceProperty<int>("class", 0);
+    tetMesh()->template addVertexProperty<int>("class", 0);
 
     if (_element_classes_filename.has_value())
     {
         Geometry::MeshProperty<int>& elem_class_prop = tetMesh()-> template getElementProperty<int>("class");
         Geometry::MeshProperty<int>& face_class_prop = tetMesh()-> template getFaceProperty<int>("class");
+        Geometry::MeshProperty<int>& vert_class_prop = tetMesh()-> template getVertexProperty<int>("class");
 
         std::vector<int> elem_classes = FileUtils::readVectorFromFile<int>(_element_classes_filename.value());
 
@@ -120,6 +122,18 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
         {
             int elem_index = tetMesh()->elementWithFace(i);
             face_class_prop.set(i, elem_classes[elem_index]);
+        }
+
+        // set the class for each vertex in the mesh, based on the element class for the element containing the vertex
+        for (int i = 0; i < tetMesh()->numVertices(); i++)
+        {
+            std::vector<int> attached_elements = tetMesh()->vertexAttachedElements(i);
+            int max_class = 0;
+            for (const auto& elem_index : attached_elements)
+            {
+                max_class = std::max(max_class, elem_classes[elem_index]);
+            }
+            vert_class_prop.set(i, max_class);
         }
     }
 
