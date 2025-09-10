@@ -119,11 +119,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
         for (int i = 0; i < tetMesh()->numFaces(); i++)
         {
             int elem_index = tetMesh()->elementWithFace(i);
-            if (elem_classes[elem_index] != 0)
-            {
-                std::cout << "Class=1! Element index: " << elem_index << " Face index: " << i << std::endl;
-            }
-
             face_class_prop.set(i, elem_classes[elem_index]);
         }
     }

@@ -118,13 +118,10 @@ int main(int argc, char* argv[])
             Real d4 = (class_mesh.vertex(element[3]) - c).norm();
             Real r = std::max({d1, d2, d3, d4});
 
-            std::cout << "Center: " << c.transpose() << "  radius: " << r << std::endl;
-
             // perform the query
-            std::set<Geometry::EmbreeHit> res = embree_scene.pointInTetrahedraQuery(Vec3r(1.99, 0.99, 1.0), 0.0, &combined_mesh_obj);
+            std::set<Geometry::EmbreeHit> res = embree_scene.pointInTetrahedraQuery(c, r, &combined_mesh_obj);
             for (const auto& hit : res)
             {
-                std::cout << "Hit: " << hit.prim_index << std::endl;
                 // if there's a hit, label the element that was hit with the current class
                 int elem_index = hit.prim_index;
                 if (elem_classes[elem_index] == 0)
@@ -133,8 +130,6 @@ int main(int argc, char* argv[])
                     elem_classes[elem_index] = class_int;
                 }
             }
-
-            break;
             
         }
 

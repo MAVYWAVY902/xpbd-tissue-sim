@@ -39,17 +39,11 @@ bool EmbreeTetMeshGeometry::isPointInTetrahedron(const float p[3], const float *
         return (dotP * dotD >= 0);
     };
 
-    bool ret = sameSide(p, v0, v1, v2, v3) &&
+    // Point is inside if it's on the same side of all faces
+    return sameSide(p, v0, v1, v2, v3) &&
            sameSide(p, v0, v1, v3, v2) &&
            sameSide(p, v0, v2, v3, v1) &&
            sameSide(p, v1, v2, v3, v0);
-
-    std::cout << "p: [" << p[0] << ", " << p[1] << ", " << p[2] << "]\nv0: [" << v0[0] << ", " << v0[1] << ", " << v0[2] << "]\n" <<
-        "v1: [" << v1[0] << ", " << v1[1] << ", " << v1[2] << "]\nv2: [" << v2[0] << ", " << v2[1] << ", " << v2[2] << "]\n" <<
-        "v3: [" << v3[0] << ", " << v3[1] << ", " << v3[2] << "\nInside: " << ret << "\n" << std::endl;
-
-    // Point is inside if it's on the same side of all faces
-    return ret;
 }
 
 float EmbreeTetMeshGeometry::squaredDistanceToTetrahedron(const float p[3], const float* v0, const float* v1, const float* v2, const float* v3)
@@ -128,7 +122,7 @@ bool EmbreeTetMeshGeometry::pointQueryFuncTetrahedra(RTCPointQueryFunctionArgume
 
     const float *point = userData->point;
 
-    std::cout << "Point query: " << point[0] << ", " << point[1] << ", " << point[2] << std::endl;
+    // std::cout << "Point query: " << point[0] << ", " << point[1] << ", " << point[2] << std::endl;
 
     if (userData->vertex_ind != -1 && (
         userData->vertex_ind == indices[0] ||
@@ -140,7 +134,7 @@ bool EmbreeTetMeshGeometry::pointQueryFuncTetrahedra(RTCPointQueryFunctionArgume
         return false;
     }
 
-    std::cout << "Testing element " << args->primID << "..." << std::endl;
+    // std::cout << "Testing element " << args->primID << "..." << std::endl;
 
     // Check if the point is inside this tetrahedron
     if (userData->radius == 0.0f && isPointInTetrahedron(point, v1, v2, v3, v4))
@@ -162,8 +156,6 @@ bool EmbreeTetMeshGeometry::pointQueryFuncTetrahedra(RTCPointQueryFunctionArgume
         hit.prim_index = args->primID;
         // Add this tetrahedron's ID to the results
         userData->result.insert(hit);
-
-        std::cout << "Hit! Prim index: " << hit.prim_index << " Distance: " << std::sqrt(squaredDistanceToTetrahedron(point, v1, v2, v3, v4)) << " Radius: " << userData->radius << std::endl;
 
         // continue searching
         return false;
