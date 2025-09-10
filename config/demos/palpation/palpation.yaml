@@ -102,7 +102,10 @@ objects:
     adjust-damping-to-material: true
 
     # rendering settings
-    colors: [[1.0, 0.3, 0.2], [1.0, 0.15, 0.05]]
+    colors: [
+      [1.0, 0.3, 0.2],    # color of the bulk tissue
+      [1.0, 0.15, 0.05]   # color of the hard tissue
+    ]
     render-type: "PBR"
     metallic: 0.0
     roughness: 0.3

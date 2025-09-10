@@ -68,12 +68,13 @@ void PalpationSimulation::_timeStep()
             const Vec3r cur_force = _haptic_device_manager->force(handle);
             
             const Vec3r new_force = 0.5*haptic_force + 0.5*cur_force;
-            // std::cout << "Collision force: " << _virtuoso_robot->arm1()->netCollisionForce().transpose() << " N" << std::endl;
+            std::cout << "Collision force: " << _virtuoso_robot->arm1()->netCollisionForce().transpose() << " N" << std::endl;
+            std::cout << "New haptic force: " << new_force.transpose() << std::endl;
             _haptic_device_manager->setForce(handle, new_force);
         }
         else
         {
-            _haptic_device_manager->setForce(handle, Vec3r::Zero());
+            // _haptic_device_manager->setForce(handle, Vec3r::Zero());
             // std::cout << "Clutch released!" << std::endl;
         }
     }

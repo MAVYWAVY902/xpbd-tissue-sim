@@ -1,5 +1,7 @@
 #include "simobject/XPBDMeshObject.hpp"
 
+#include "common/colors.hpp"
+
 #include "config/simobject/XPBDMeshObjectConfig.hpp"
 #include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
 
@@ -36,6 +38,12 @@ XPBDMeshObject_Base_<IsFirstOrder>::XPBDMeshObject_Base_(const Simulation* sim, 
     for (const auto& mat_name : config->materials())
     {
         _materials.push_back(sim->getMaterial(mat_name));
+    }
+
+    if (_materials.size() == 0)
+    {
+        std::cerr << KRED << BOLD << "FATAL: " << RST << KRED << "No materials were specified!" << RST << std::endl;
+        assert(0);
     }
 }
 
@@ -124,10 +132,13 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
             face_class_prop.set(i, elem_classes[elem_index]);
         }
 
-        // set the class for each vertex in the mesh, based on the element class for the element containing the vertex
+        // set the class for each vertex in the mesh, based on the element class for the element(s) containing the vertex
+        // since multiple elements share the same vertices, the maximum of the element classes is used for each vertex
         for (int i = 0; i < tetMesh()->numVertices(); i++)
         {
+            // get elements attached to the vertex
             std::vector<int> attached_elements = tetMesh()->vertexAttachedElements(i);
+            // find the max element class of these attached elements
             int max_class = 0;
             for (const auto& elem_index : attached_elements)
             {
@@ -277,7 +288,16 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
         // get the material for this element
-        const ElasticMaterial& material = _materials[class_prop.get(i)];
+        int material_ind = class_prop.get(i);
+        if (static_cast<unsigned>(material_ind) >= _materials.size())
+        {
+            std::cout << KYEL << BOLD << "WARNING: " << RST << KYEL << "Only " << _materials.size() << " materials were specified, but element " <<
+                i << " has class " << material_ind << ". (Specify more materials in the config file)" << RST << std::endl;
+            
+            // set the material index to the largest valid index
+            material_ind = _materials.size() - 1;
+        }
+        const ElasticMaterial& material = _materials[material_ind];
 
         const Eigen::Vector4i& element = tetMesh()->element(i);
         // compute volume from X
@@ -341,7 +361,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
         // get the material for this element
-        const ElasticMaterial& material = _materials[class_prop.get(i)];
+        int material_ind = class_prop.get(i);
+        if ((unsigned)material_ind >= _materials.size())  material_ind = _materials.size()-1;
+        const ElasticMaterial& material = _materials[material_ind];
 
         // get the vertices for the element
         const Eigen::Vector4i element = tetMesh()->element(i);

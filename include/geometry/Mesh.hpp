@@ -229,7 +229,7 @@ public:
     }
 
     template <typename T>
-    bool hasVertexProperty(const std::string& name)
+    bool hasVertexProperty(const std::string& name) const
     {
         static_assert(type_list_contains_v<T, MeshPropertyTypeList> && "Mesh property type not supported!");
 

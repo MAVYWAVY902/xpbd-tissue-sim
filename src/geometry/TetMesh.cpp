@@ -1,5 +1,7 @@
 #include "geometry/TetMesh.hpp"
 
+#include "common/colors.hpp"
+
 #include <set>
 
 #ifdef HAVE_CUDA
@@ -137,7 +139,15 @@ void TetMesh::setCurrentStateAsUndeformedState()
             }
         }
     }
-    assert(_surface_elements.size() == numFaces());
+
+    // make sure that we found an element that corresponds to each surface face
+    if (_surface_elements.size() != static_cast<unsigned>(numFaces()))
+    {
+        std::cerr << KRED << BOLD << "FATAL" << RST << KRED << ": Some surface faces do not have elements associated with them!" << RST << std::endl;
+        std::cerr << "Double check your .msh file for floating faces." << std::endl;
+        assert(0);
+    }
+    
 }
 
 Real TetMesh::elementVolume(int index) const
