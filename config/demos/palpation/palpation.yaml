@@ -8,12 +8,12 @@ visualization: "VTK" # what graphics to use ('Easy3D' for Easy3D graphics or 'No
 
 g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 
-input-device: "Mouse" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
+input-device: "Haptic" # the input device for interactivity - "Mouse" or "Haptic" (Phantom Omni)
 # fixed-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_fixed_faces.txt"
 # tumor-faces-filename: "../resource/demos/trachea_virtuoso/cao_04_29_25_model1_decimated3_r_tumor_faces.txt"
 show-tip-cursor: false
 enable-mouse-interaction: true
-haptic-force-scaling: 10.0
+haptic-force-scaling: 5.0
 
 
 ## different simulation "modes"

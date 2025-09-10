@@ -58,7 +58,13 @@ void PalpationSimulation::_timeStep()
     
         if (_haptic_device_manager->button2Pressed(handle))
         {
-            const Vec3r haptic_force = GeometryUtils::Rx(-M_PI/2.0) * _virtuoso_robot->arm1()->netCollisionForce();
+            // transform dx from haptic input frame to camera frame
+            Mat3r rot_mat;
+            rot_mat.col(0) = -_graphics_scene->cameraRightDirection();
+            rot_mat.col(1) = _graphics_scene->cameraUpDirection();
+            rot_mat.col(2) = _graphics_scene->cameraViewDirection();
+            Vec3r cam_force = rot_mat.transpose() * _virtuoso_robot->arm1()->netCollisionForce();
+            Vec3r haptic_force = GeometryUtils::Ry(-M_PI) * cam_force;
             const Vec3r cur_force = _haptic_device_manager->force(handle);
             
             const Vec3r new_force = 0.5*haptic_force + 0.5*cur_force;
@@ -68,6 +74,7 @@ void PalpationSimulation::_timeStep()
         else
         {
             _haptic_device_manager->setForce(handle, Vec3r::Zero());
+            std::cout << "Clutch released!" << std::endl;
         }
     }
 }

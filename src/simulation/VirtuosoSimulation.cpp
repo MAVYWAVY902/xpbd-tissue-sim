@@ -319,8 +319,14 @@ void VirtuosoSimulation::_timeStep()
         {
             Vec3r dx = cur_pos - _last_haptic_pos;
 
-            // transform dx from haptic input frame to global coordinates
-            Vec3r dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
+            // transform dx from haptic input frame to camera frame
+            Vec3r dx_camera = GeometryUtils::Ry(M_PI) * dx;
+            Mat3r rot_mat;
+            rot_mat.col(0) = -_graphics_scene->cameraRightDirection();
+            rot_mat.col(1) = _graphics_scene->cameraUpDirection();
+            rot_mat.col(2) = _graphics_scene->cameraViewDirection();
+            // transform from camera frame to global frame
+            Vec3r dx_sim = rot_mat * dx_camera;
             _moveCursor(dx_sim*0.00005);
         }
 
