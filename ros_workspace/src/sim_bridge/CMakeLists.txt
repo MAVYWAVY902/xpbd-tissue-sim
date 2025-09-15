@@ -17,6 +17,8 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(shape_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2)
 find_package(Eigen3 3.3 REQUIRED)   # find Eigen
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
@@ -42,7 +44,7 @@ if (NOT VTK_FOUND)
 endif()
 
 add_executable(${PROJECT_NAME}_node src/sim_bridge_node.cpp)
-ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs geometry_msgs shape_msgs sensor_msgs)
+ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs geometry_msgs shape_msgs sensor_msgs tf2_ros tf2)
 target_link_libraries(${PROJECT_NAME}_node
   Simulation
   VirtuosoSimulation

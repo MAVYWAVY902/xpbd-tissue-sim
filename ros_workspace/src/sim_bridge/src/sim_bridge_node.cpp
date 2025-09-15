@@ -99,7 +99,7 @@ int main(int argc, char ** argv)
         Config::PalpationSimulationConfig config(YAML::LoadFile(config_filename));
         Sim::PalpationSimulation sim(&config);
 
-        startNode<Sim::PalpationSimulation>(&sim);
+        startNode<Sim::VirtuosoSimulation>(&sim);
     }
     else if (simulation_type == "GraspingSimulation")
     {

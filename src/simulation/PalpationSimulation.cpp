@@ -50,6 +50,7 @@ void PalpationSimulation::_timeStep()
 {
     VirtuosoSimulation::_timeStep();
 
+    std::cout << "Collision force: " << _virtuoso_robot->arm1()->netCollisionForce().transpose() << " N" << std::endl;
     if (_input_device == SimulationInput::Device::HAPTIC)
     {
         
@@ -69,8 +70,8 @@ void PalpationSimulation::_timeStep()
             const Vec3r cur_force = _haptic_device_manager->force(handle);
             
             Real frac = 0.3;
-            const Vec3r new_force = 0.3*haptic_force + (1-frac)*cur_force;
-            std::cout << "Collision force: " << _virtuoso_robot->arm1()->netCollisionForce().transpose() << " N" << std::endl;
+            const Vec3r new_force = frac*haptic_force + (1-frac)*cur_force;
+            
             _haptic_device_manager->setForce(handle, new_force);
         }
         else

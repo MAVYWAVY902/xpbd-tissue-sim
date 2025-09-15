@@ -21,9 +21,9 @@ int main()
 {
     // create VirtuosoArm
     Config::VirtuosoArmConfig config("arm1", 
-        Vec3r(10,10,10), Vec3r(0,0,0), Vec3r(0,0,0), false, false,
+        Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), false, false,
         1.56e-3, 1.14e-3, 1.5383e-2, 5e-3, 1.04e-3, 0.82e-3,
-        0, 4e-3, 0, 10e-3,
+        0, 7e-3, 0, 10e-3,
         Sim::VirtuosoArm::ToolType::PALPATION, 15e-3, Config::ObjectRenderConfig());
 
     std::unique_ptr<Sim::VirtuosoArm> arm = config.createObject(nullptr);
@@ -31,21 +31,23 @@ int main()
 
     const Sim::VirtuosoArm::OuterTubeFramesArray& ot_frames = arm->outerTubeFrames();
     const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = arm->innerTubeFrames();
+    const Sim::VirtuosoArm::ToolTubeFramesArray& tt_frames = arm->toolTubeFrames();
 
     std::cout << "=== NO FORCE ===" << std::endl;
+    std::cout << "Tool tube tip position: " << tt_frames.back().origin().transpose() << std::endl;
     std::cout << "Inner tube tip position: " << arm->actualTipPosition()[0] << ", " << arm->actualTipPosition()[1] << ", " << arm->actualTipPosition()[2] << std::endl;
     std::cout << "Outer tube tip position: " << ot_frames.back().origin()[0] << ", " << ot_frames.back().origin()[1] << ", " << ot_frames.back().origin()[2] << std::endl;
 
     // arm->setOuterTubeNodalForce(4, Vec3r(0,-10,0));
     // arm->setInnerTubeNodalForce(9, Vec3r(0,10,0));
-    arm->setToolTubeNodalForce(4, Vec3r(0,0.3,0));
+    arm->setToolTubeNodalForce(9, Vec3r(0,0.5,0));
     // arm->setTipForce(Vec3r(0,50,0));
     arm->update();
 
     
     // const Sim::VirtuosoArm::OuterTubeFramesArray& ot_frames2 = arm->outerTubeFrames();
     std::cout << "\n=== TIP FORCE = (" << arm->tipForce()[0] << ", " << arm->tipForce()[1] << ", " << arm->tipForce()[2] << ") ===" << std::endl;
-
+    std::cout << "Tool tube tip position: " << tt_frames.back().origin().transpose() << std::endl;
     std::cout << "Inner tube tip position: " << arm->actualTipPosition()[0] << ", " << arm->actualTipPosition()[1] << ", " << arm->actualTipPosition()[2] << std::endl;
     std::cout << "Outer tube tip position: " << ot_frames.back().origin()[0] << ", " << ot_frames.back().origin()[1] << ", " << ot_frames.back().origin()[2] << std::endl;
 

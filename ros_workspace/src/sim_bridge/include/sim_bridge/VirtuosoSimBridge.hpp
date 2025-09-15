@@ -1,7 +1,9 @@
 #include "sim_bridge/SimBridge.hpp"
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "std_msgs/msg/int8.hpp"
+#include <tf2_ros/transform_broadcaster.h>
 
 #include "simulation/VirtuosoSimulation.hpp"
 #include "simulation/VirtuosoTissueGraspingSimulation.hpp"
@@ -15,6 +17,46 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
     {
 
         this->declare_parameter("publish_rate_hz", 30.0);
+
+        _tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+        // set up callback to publish transforms
+        std::cout << "Setting up callback for publishing transforms with tf..." << std::endl;
+
+        auto tf_callback = 
+            [this]() -> void {
+                geometry_msgs::msg::TransformStamped t;
+                t.header.stamp = this->now();
+                t.header.frame_id = "/sim/world";
+                t.child_frame_id = "/ves/left/base";
+
+                const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                t.transform.translation.x = vb_frame.origin()[0];
+                t.transform.translation.y = vb_frame.origin()[1];
+                t.transform.translation.z = vb_frame.origin()[2];
+
+                Vec4r quat = GeometryUtils::matToQuat(vb_frame.transform().rotMat());
+                t.transform.rotation.x = quat[0];
+                t.transform.rotation.y = quat[1];
+                t.transform.rotation.z = quat[2];
+                t.transform.rotation.w = quat[3];
+
+                this->_tf_broadcaster->sendTransform(t);
+            };
+        
+        _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), tf_callback);
+
+        // set up callbacks to publish mesh as Mesh msg and PCL point cloud msg
+        const typename Sim::VirtuosoSimulation::ObjectVectorType& sim_objects = _sim->objects();
+        const auto& fo_xpbd_mesh_objs = sim_objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+
+        _mesh_pcl_messages.resize(fo_xpbd_mesh_objs.size());
+        _mesh_pcl_publishers.resize(fo_xpbd_mesh_objs.size());
+
+        for (unsigned i = 0; i < fo_xpbd_mesh_objs.size(); i++)
+        {
+            const Geometry::Mesh* deformable_mesh = fo_xpbd_mesh_objs[i]->mesh();
+            setupDeformableMeshPclPublisher(i, deformable_mesh);
+        }
 
         // set up callback to publish joint state for arm 1 (if it exists)
         if (_sim->virtuosoRobot()->hasArm1())
@@ -108,6 +150,30 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
 
                         message.poses.push_back(pose);
                     }
+
+                    if (arm1->hasTool())
+                    {
+                        const Sim::VirtuosoArm::ToolTubeFramesArray& tt_frames = arm1->toolTubeFrames();
+                        for (const auto& frame : tt_frames)
+                        {
+                            geometry_msgs::msg::Pose pose;
+
+                            const Geometry::TransformationMatrix transform = vb_transform_inv * frame.transform();
+
+                            const Vec3r& origin = transform.translation();
+                            const Vec4r& quat = GeometryUtils::matToQuat(transform.rotMat());
+                            pose.position.x = origin[0];
+                            pose.position.y = origin[1];
+                            pose.position.z = origin[2];
+
+                            pose.orientation.x = quat[0];
+                            pose.orientation.y = quat[1];
+                            pose.orientation.z = quat[2];
+                            pose.orientation.w = quat[3];
+
+                            message.poses.push_back(pose);
+                        }
+                    }
                     
 
                     // RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
@@ -174,6 +240,30 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
                         pose.orientation.w = quat[3];
 
                         message.poses.push_back(pose);
+                    }
+
+                    if (arm2->hasTool())
+                    {
+                        const Sim::VirtuosoArm::ToolTubeFramesArray& tt_frames = arm2->toolTubeFrames();
+                        for (const auto& frame : tt_frames)
+                        {
+                            geometry_msgs::msg::Pose pose;
+
+                            const Geometry::TransformationMatrix transform = vb_transform_inv * frame.transform();
+
+                            const Vec3r& origin = transform.translation();
+                            const Vec4r& quat = GeometryUtils::matToQuat(transform.rotMat());
+                            pose.position.x = origin[0];
+                            pose.position.y = origin[1];
+                            pose.position.z = origin[2];
+
+                            pose.orientation.x = quat[0];
+                            pose.orientation.y = quat[1];
+                            pose.orientation.z = quat[2];
+                            pose.orientation.w = quat[3];
+
+                            message.poses.push_back(pose);
+                        }
                     }
                     
 
@@ -831,6 +921,66 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
         return msg;
     }
 
+    void setupDeformableMeshPclPublisher(int index, const Geometry::Mesh* deformable_mesh)
+    {
+        std::string topic_name = "/output/mesh_vertices_" + std::to_string(index);
+        _mesh_pcl_publishers[index] = this->create_publisher<sensor_msgs::msg::PointCloud2>(topic_name, 3);
+
+        // set header
+        sensor_msgs::msg::PointCloud2& mesh_pcl_message = _mesh_pcl_messages[index];
+        mesh_pcl_message.header.stamp = this->now();
+        mesh_pcl_message.header.frame_id = "/sim/world";
+
+        // add point fields
+        mesh_pcl_message.fields.resize(3);
+        mesh_pcl_message.fields[0].name = "x";
+        mesh_pcl_message.fields[0].offset = 0;
+        mesh_pcl_message.fields[0].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+        mesh_pcl_message.fields[0].count = 1;
+
+        mesh_pcl_message.fields[1].name = "y";
+        mesh_pcl_message.fields[1].offset = sizeof(Real);
+        mesh_pcl_message.fields[1].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+        mesh_pcl_message.fields[1].count = 1;
+
+        mesh_pcl_message.fields[2].name = "z";
+        mesh_pcl_message.fields[2].offset = 2*sizeof(Real);
+        mesh_pcl_message.fields[2].datatype = (typeid(Real) == typeid(double)) ? sensor_msgs::msg::PointField::FLOAT64 : sensor_msgs::msg::PointField::FLOAT32;
+        mesh_pcl_message.fields[2].count = 1;
+
+        mesh_pcl_message.height = 1;
+        mesh_pcl_message.width = deformable_mesh->numVertices();
+        mesh_pcl_message.is_dense = true;
+        mesh_pcl_message.is_bigendian = false;
+
+        mesh_pcl_message.point_step = 3*sizeof(Real);
+        mesh_pcl_message.row_step = mesh_pcl_message.point_step * mesh_pcl_message.width;
+
+        mesh_pcl_message.data.resize(mesh_pcl_message.row_step);
+
+        auto mesh_pcl_callback = 
+            [this, index, deformable_mesh]() -> void {
+                
+
+                // update vertices
+                memcpy(this->_mesh_pcl_messages[index].data.data(), deformable_mesh->vertices().data(), _mesh_pcl_messages[index].data.size());
+
+                // transform points to VB frame
+                // const Geometry::CoordinateFrame& vb_frame = this->_sim->virtuosoRobot()->VBFrame();
+                // const Geometry::TransformationMatrix vb_transform_inv = vb_frame.transform().inverse();
+
+                // for (unsigned i = 0; i < deformable_mesh->numVertices(); i++)
+                // {
+                //     Vec3r transformed_vert = vb_transform_inv.rotMat()*deformable_mesh->vertex(i) + vb_transform_inv.translation();
+                //     memcpy((Real*)this->_mesh_pcl_messages[index].data.data() + 3*i, transformed_vert.data(), sizeof(Real)*3);
+                // }
+
+                this->_mesh_pcl_publishers[index]->publish(this->_mesh_pcl_messages[index]);
+            };
+        
+        _sim->addCallback(1.0/this->get_parameter("publish_rate_hz").as_double(), mesh_pcl_callback);
+    }
+
     private:
     /** Publishers */
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm1_joint_state_publisher;   // publishes the current joint state of arm1
@@ -854,10 +1004,15 @@ class SimBridge<Sim::VirtuosoSimulation> : public rclcpp::Node
     sensor_msgs::msg::PointCloud2 _mesh_pcl_message;    // pre-allocated mesh point cloud ROS message for speed (assuming number of vertices stays the same)
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _mesh_pcl_publisher;    // publishes the current mesh vertices as a ROS point cloud (for easy ROS visualization)
 
+    std::vector<sensor_msgs::msg::PointCloud2> _mesh_pcl_messages;    // pre-allocated mesh point cloud ROS message for speed (assuming number of vertices stays the same)
+    std::vector<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr> _mesh_pcl_publishers;    // publishes the current mesh vertices as a ROS point cloud (for easy ROS visualization)
+
     sensor_msgs::msg::PointCloud2 _trachea_partial_view_pc_message;
     sensor_msgs::msg::PointCloud2 _tumor_partial_view_pc_message;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _trachea_partial_view_pc_publisher;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _tumor_partial_view_pc_publisher;
+
+    std::unique_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
 
     /** Subscriptions */
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _arm1_joint_state_subscriber;     // subscribes to joint state commands for arm1

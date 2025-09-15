@@ -188,17 +188,27 @@ void VirtuosoArm::velocityUpdate()
     }
 
     
-    const Real frac = 0.02;
+    const Real load_frac = 0.02;
+    const Real unload_frac = 0.1;
     for (int i = 0; i < NUM_OT_FRAMES; i++)
     {
         const Vec3r& cur_force = outerTubeNodalForce(i);
-        Vec3r new_force = (1-frac)*cur_force + frac*new_forces[i];
+        Vec3r new_force = Vec3r::Zero();
+        if (new_forces[i].squaredNorm() >= cur_force.squaredNorm())
+            new_force = (1-load_frac)*cur_force + load_frac*new_forces[i];
+        else
+            new_force = (1-unload_frac)*cur_force + unload_frac*new_forces[i];
+
         setOuterTubeNodalForce(i, new_force);
     }
     for (int i = 0; i < NUM_IT_FRAMES; i++)
     {
         const Vec3r& cur_force = innerTubeNodalForce(i);
-        Vec3r new_force = (1-frac)*cur_force + frac*new_forces[NUM_OT_FRAMES + i];
+        Vec3r new_force = Vec3r::Zero();
+        if (new_forces[NUM_OT_FRAMES + i].squaredNorm() >= cur_force.squaredNorm())
+            new_force = (1-load_frac)*cur_force + load_frac*new_forces[NUM_OT_FRAMES + i];
+        else
+            new_force = (1-unload_frac)*cur_force + unload_frac*new_forces[NUM_OT_FRAMES + i];
         setInnerTubeNodalForce(i, new_force);
     }
     if (hasTool())
@@ -206,7 +216,11 @@ void VirtuosoArm::velocityUpdate()
         for (int i = 0; i < NUM_TT_FRAMES; i++)
         {
             const Vec3r& cur_force = toolTubeNodalForce(i);
-            Vec3r new_force = (1-frac)*cur_force + frac*new_forces[NUM_OT_FRAMES + NUM_IT_FRAMES + i];
+            Vec3r new_force = Vec3r::Zero();
+            if (new_forces[NUM_OT_FRAMES + NUM_IT_FRAMES + i].squaredNorm() > cur_force.squaredNorm())
+                new_force = (1-load_frac)*cur_force + load_frac*new_forces[NUM_OT_FRAMES + NUM_IT_FRAMES + i];
+            else
+                new_force = (1-unload_frac)*cur_force + unload_frac*new_forces[NUM_OT_FRAMES + NUM_IT_FRAMES + i];
             setToolTubeNodalForce(i, new_force);
         }
     }
@@ -389,19 +403,19 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     const Vec3r& tip_position = innerTubeEndFrame().origin();
     // add contributions from force and moment at tube tip
     Vec3r base_moment = _tip_moment + (tip_position - _arm_base_frame.origin()).cross(_tip_force);
-    Vec3r base_force = -_tip_force;
+    Vec3r base_force = _tip_force;
     // add contributions from forces applied along the tube
     for (int i = 0; i < NUM_OT_FRAMES; i++)
     {
         Vec3r moment_arm = _ot_frames[i].origin() - _arm_base_frame.origin();
         base_moment += moment_arm.cross(_ot_nodal_forces[i]);
-        base_force += -_ot_nodal_forces[i];
+        base_force += _ot_nodal_forces[i];
     }
     for (int i = 0; i < NUM_IT_FRAMES; i++)
     {
         Vec3r moment_arm = _it_frames[i].origin() - _arm_base_frame.origin();
         base_moment += moment_arm.cross(_it_nodal_forces[i]);
-        base_force += -_it_nodal_forces[i];
+        base_force += _it_nodal_forces[i];
     }
     if (hasTool())
     {
@@ -409,7 +423,7 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
         {
             Vec3r moment_arm = _tt_frames[i].origin() - _arm_base_frame.origin();
             base_moment += moment_arm.cross(_tt_nodal_forces[i]);
-            base_force += -_tt_nodal_forces[i];
+            base_force += _tt_nodal_forces[i];
         }
     }
 
@@ -459,7 +473,8 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     {
         // the precurvature vector (u*), in mm
         // for the precurved section of the outer tube, there is a positive precurvature about the x-axis (in the YZ plane)
-        const Vec3r precurvature(1/_ot_r_curvature/1000, 0, 0);
+        // const Vec3r precurvature(1/_ot_r_curvature/1000, 0, 0);
+        const Vec3r precurvature(65.0/1000.0, 0, 0);
 
         // compute the distance along the entire tube collection for placing the outer curve frames (in mm)
         std::vector<Real> ot_curve_s(NUM_OT_CURVE_FRAMES);  
