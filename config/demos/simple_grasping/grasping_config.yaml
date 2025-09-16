@@ -19,6 +19,16 @@ collision-rate: 1000 # rate at which to run collision detection [Hz]
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 10000 # end time of the simulation [s]
 
+## define elastic material
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 6e4    # Young's modulus [Pa]
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.0 # coefficient of static friction [-]
+    mu-k: 0.0 # coefficient of kinetic friction [-]
+
 ## GraspingSimulation-specific parameters
 grasp-radius: 0.3 # initial grasp radius [m]
 fix-min-z: true   # whether or not to fix all vertices that have the mesh's minimum z-coordinate (i.e. fixes the bottom face of the mesh)
@@ -46,14 +56,7 @@ objects:
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
 
-    ## define elastic material
-    material:
-      name: "Soft Tissue"
-      density: 1000   # density [kg/m^3]
-      E: 6e4    # Young's modulus [Pa]
-      nu: 0.45  # Poisson's ratio [-]
-      mu-s: 0.0 # coefficient of static friction [-]
-      mu-k: 0.0 # coefficient of kinetic friction [-]
+    materials: ["Soft Tissue"]
 
     ## visualization options
     color: [1.0, 0.5, 0.0, 1.0] # uniform color of the mesh

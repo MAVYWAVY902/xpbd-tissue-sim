@@ -50,7 +50,7 @@ objects:
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
 
-    material: "Soft Tissue" # the elastic material (must match with the name of a material defined above)
+    materials: ["Soft Tissue"] # the elastic material (must match with the name of a material defined above)
 
     ## visualization options
     color: [1.0, 0.5, 0.0, 1.0] # uniform color of the mesh
