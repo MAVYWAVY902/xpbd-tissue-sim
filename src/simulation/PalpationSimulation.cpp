@@ -25,8 +25,8 @@ void PalpationSimulation::setup()
         assert((xpbd_objs.size() + fo_xpbd_objs.size() > 0) && "There must be at least 1 XPBDMeshObject or FirstOrderXPBDMeshObject in the simulation (there is no tissue object!).");
     
     // we'll assume for now that the tissue object being palpated has a flat bottom that we can fix
-    Real min_z = _tissue_obj.mesh()->boundingBox().min[2];
-    std::vector<int> bottom_vertices = _tissue_obj.mesh()->getVerticesWithZ(min_z);
+    Real min_y = _tissue_obj.mesh()->boundingBox().min[1];
+    std::vector<int> bottom_vertices = _tissue_obj.mesh()->getVerticesWithY(min_y);
     for (const auto& v : bottom_vertices)
     {
         _tissue_obj.fixVertex(v);

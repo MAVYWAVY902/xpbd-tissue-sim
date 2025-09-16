@@ -79,6 +79,10 @@ class VTKViewer : public Viewer
                   const float& new_y,
                   const float& new_font_size) override;
 
+    Vec3r cameraViewDirection() const { return _cam_view_dir; }
+    Vec3r cameraUpDirection() const { return _cam_up_dir; }
+    Vec3r cameraPosition() const { return _cam_pos; }
+
     protected:
     /** Shared viewer behavior on keyboard events. */
     virtual void _processKeyboardEvent(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers) override;
@@ -104,6 +108,15 @@ class VTKViewer : public Viewer
     std::map<std::string, vtkSmartPointer<vtkTextActor>> _text_actor_map;
 
     std::atomic<bool> _should_render = false;
+
+    /** Store current camera frame.
+     * For some reason, repeated calling _vtk_viewer->renderer()->GetActiveCamera()->GetDirectionOfProjection() and things similar
+     * can cause segfaults (probably due to thread safety things).
+     * Instead, we store the camera frame here and update it when the camera view updates.
+     */
+    Vec3r _cam_view_dir;
+    Vec3r _cam_up_dir;
+    Vec3r _cam_pos;
 };
 
 } // namespace Graphics

@@ -74,6 +74,7 @@ class VTKGraphicsScene : public GraphicsScene
     private:
     /** Non-owning downcasted pointer for convenience in calling VTKViewer specific methods */
     VTKViewer* _vtk_viewer;
+
 };
 
 } // namespace Graphics

@@ -180,6 +180,9 @@ void VTKViewer::_setupRenderWindow(const Config::SimulationRenderConfig& render_
     // Sync cameras so axes rotate with main view
     vtkNew<CameraSyncCallback> callback;
     callback->axesCamera = axes_renderer->GetActiveCamera();
+    callback->cam_up_dir = &_cam_up_dir;
+    callback->cam_view_dir = &_cam_view_dir;
+    callback->cam_pos = &_cam_pos;
     _renderer->GetActiveCamera()->AddObserver(vtkCommand::ModifiedEvent, callback);
     
     /////////////////////////////////////////////////////////
