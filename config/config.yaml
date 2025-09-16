@@ -12,7 +12,7 @@ g-accel: 9.81 # downward acceleration due to gravity (in the z-direction) [m/s2]
 sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
 # sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
-time-step: 1.16e-4   # simulation time step [s]
+time-step: 1e-3   # simulation time step [s]
 collision-rate: 1000 # rate at which to run collision detection [Hz] 
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 100 # end time of the simulation [s]
@@ -20,9 +20,16 @@ end-time: 100 # end time of the simulation [s]
 ## define elastic materials
 materials:
   -
-    name: "Soft Tissue"
+    name: "Soft Tissue 1"
     density: 1000   # density [kg/m^3]
-    E: 6e4    # Young's modulus [Pa]
+    E: 2e4    # Young's modulus [Pa]
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.0 # coefficient of static friction [-]
+    mu-k: 0.0 # coefficient of kinetic friction [-]
+  -
+    name: "Soft Tissue 2"
+    density: 1000   # density [kg/m^3]
+    E: 4e4    # Young's modulus [Pa]
     nu: 0.45  # Poisson's ratio [-]
     mu-s: 0.0 # coefficient of static friction [-]
     mu-k: 0.0 # coefficient of kinetic friction [-]
@@ -43,14 +50,15 @@ objects:
     # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/general/single.msh"
     # filename: "../resource/cube/cube2.msh"
-    filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube4.msh"
+    # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/cube/cube16.msh"
     # filename: "../resource/cube/cube32.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
 
-    material: "Soft Tissue" # the elastic material (must match with the name of a material defined above)
+    materials: ["Soft Tissue 1"] # the elastic material (must match with the name of a material defined above)
 
     ## visualization options
     color: [1.0, 0.5, 0.0] # uniform color of the mesh
@@ -59,9 +67,9 @@ objects:
     draw-faces: true    # draw mesh faces
 
     ## initial configuration
-    max-size: 0.5   # size of largest model dimension (preserves aspect ratio)
+    max-size: 1   # size of largest model dimension (preserves aspect ratio)
     # size: [1, 1, 1]   # specify size of each dimension
-    position: [0, 0, 2]   # initial position of mesh center of mass [m]
+    position: [0, 0, 0.5]   # initial position of mesh center of mass [m]
     velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
     rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
 
@@ -78,12 +86,11 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints with 2x2 block constraint solve for each tet element
     # constraint-type: "Stable-Neohookean"          # use Stable Neohookean constraints with separate constraint solve for each tet element
 
-    residual-policy: "Every-Substep"    # compute the residuals after every time step
-    # residual-policy: "Never"              # don't compute the residuals
+    # residual-policy: "Every-Substep"    # compute the residuals after every time step
+    residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 20000   # 'b' from the 1st-Order XPBD paper
-    accelerate-convergence: true
+    damping-multiplier: 50000   # 'b' from the 1st-Order XPBD paper
 
   ## example deformable object
   -
@@ -98,14 +105,15 @@ objects:
     # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/general/single.msh"
     # filename: "../resource/cube/cube2.msh"
-    filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube4.msh"
+    # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/cube/cube16.msh"
     # filename: "../resource/cube/cube32.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
 
-    material: "Soft Tissue" # the elastic material (must match with the name of a material defined above)
+    materials: ["Soft Tissue 2"] # the elastic material (must match with the name of a material defined above)
 
     ## visualization options
     color: [1.0, 0.5, 0.0] # uniform color of the mesh
@@ -114,9 +122,9 @@ objects:
     draw-faces: true    # draw mesh faces
 
     ## initial configuration
-    max-size: 0.5   # size of largest model dimension (preserves aspect ratio)
+    max-size: 1   # size of largest model dimension (preserves aspect ratio)
     # size: [1, 1, 1]   # specify size of each dimension
-    position: [0, 1, 2]   # initial position of mesh center of mass [m]
+    position: [0, 1, 0.5]   # initial position of mesh center of mass [m]
     velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
     rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
 
@@ -137,7 +145,7 @@ objects:
     # residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 60000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 100000   # 'b' from the 1st-Order XPBD paper
     accelerate-convergence: false
   
 

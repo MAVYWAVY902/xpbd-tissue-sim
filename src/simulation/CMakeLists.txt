@@ -94,6 +94,34 @@ install(FILES ${VIRTUOSO_SIMULATION_HEADERS}
     DESTINATION include/${PROJECT_NAME}/simulation)
 
 
+
+######################################
+# Palpation Simulation
+######################################
+
+set(PALPATION_SIMULATION_HEADERS
+    "${SIMULATION_INCLUDE_DIR}/PalpationSimulation.hpp"
+)
+
+set(PALPATION_SIMULATION_SOURCES
+    "${SIMULATION_SRC_DIR}/PalpationSimulation.cpp"
+)
+
+target_sources(PalpationSimulation
+    PRIVATE
+        ${PALPATION_SIMULATION_HEADERS}
+        ${PALPATION_SIMULATION_SOURCES}
+)
+
+install(TARGETS PalpationSimulation EXPORT PalpationSimulation-targets
+    RUNTIME DESTINATION bin/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
+)
+install(FILES ${PALPATION_SIMULATION_HEADERS}
+    DESTINATION include/${PROJECT_NAME}/simulation)
+
+
+
 ####################################
 # Initial deformation simulation
 #####################################

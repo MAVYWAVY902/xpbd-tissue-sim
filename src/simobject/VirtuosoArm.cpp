@@ -1,5 +1,6 @@
 #include "simobject/VirtuosoArm.hpp"
 #include "simobject/XPBDMeshObject.hpp"
+#include "simulation/Simulation.hpp"
 
 #include "config/simobject/VirtuosoArmConfig.hpp"
 
@@ -12,6 +13,15 @@
 
 namespace Sim 
 {
+
+std::map<VirtuosoArm::ToolType, VirtuosoArmTool> VirtuosoArm::TOOL_TYPE_TO_STRUCT = {
+        {ToolType::NONE, VirtuosoArmTool_None},
+        {ToolType::PALPATION, VirtuosoArmTool_Palpation},
+        {ToolType::SPATULA, VirtuosoArmTool_Spatula},
+        {ToolType::GRASPER, VirtuosoArmTool_Grasper},
+        {ToolType::CAUTERY, VirtuosoArmTool_Cautery}
+    };
+
 
 VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
     : Object(sim, config), _ot_frames(), _it_frames()
@@ -31,6 +41,8 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
     _tool_state = 0;  // default tool state is off
     _tool_type = config->toolType();
     _tool_manipulated_object = (XPBDMeshObject_Base_<false>*)nullptr;
+    _tool_tube = TOOL_TYPE_TO_STRUCT.at(_tool_type);
+    _tool_tube_length = config->toolTubeLength();
 
     _arm_base_position = config->baseInitialPosition();
     Vec3r initial_rot_xyz = config->baseInitialRotation() * M_PI / 180.0;
@@ -43,6 +55,8 @@ VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
         _ot_nodal_forces[i] = Vec3r::Zero();
     for (int i = 0; i < NUM_IT_FRAMES; i++)
         _it_nodal_forces[i] = Vec3r::Zero();
+    for (int i = 0; i < NUM_TT_FRAMES; i++)
+        _tt_nodal_forces[i] = Vec3r::Zero();
 
     _stale_frames = true;
 
@@ -104,6 +118,13 @@ void VirtuosoArm::setInnerTubeNodalForce(int node_index, const Vec3r& force)
     _stale_frames = true;
 }
 
+void VirtuosoArm::setToolTubeNodalForce(int node_index, const Vec3r& force)
+{
+    assert(node_index < NUM_TT_FRAMES);
+    _tt_nodal_forces[node_index] = force;
+    _stale_frames = true;
+}
+
 void VirtuosoArm::setJointState(double ot_rotation, double ot_translation, double it_rotation, double it_translation, int tool)
 {
     _ot_rotation = ot_rotation;
@@ -135,6 +156,8 @@ void VirtuosoArm::setup()
 
 void VirtuosoArm::update()
 {
+    const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    _hybridDifferentialInverseKinematics(_commanded_tip_position - T_tip.translation());
     if (_stale_frames)
     {
         // _recomputeCoordinateFrames();
@@ -151,27 +174,55 @@ void VirtuosoArm::velocityUpdate()
     _toolAction();
 
     // apply forces from collision constraints
-    std::vector<Vec3r> new_forces(NUM_OT_FRAMES + NUM_IT_FRAMES, Vec3r::Zero());
+    std::vector<Vec3r> new_forces(NUM_OT_FRAMES + NUM_IT_FRAMES + NUM_TT_FRAMES, Vec3r::Zero());
+    _net_collision_force = Vec3r::Zero();
     for (const auto& collision : _collision_constraints)
     {
+        // the collision constraints give forces on the tissue, so we must negate them to get the forces on the Virtuoso
         std::vector<Vec3r> forces = collision.proj_ref.constraintForces();
-        Vec3r net_force = std::reduce(forces.cbegin(), forces.cend());
+        Vec3r net_force = -std::reduce(forces.cbegin(), forces.cend());  
         new_forces[collision.node_index] += net_force*(1-collision.interp);
         new_forces[collision.node_index+1] += net_force*collision.interp;
+
+        _net_collision_force += net_force;
     }
 
-    const Real frac = 0.01;
+    
+    const Real load_frac = 0.02;
+    const Real unload_frac = 0.1;
     for (int i = 0; i < NUM_OT_FRAMES; i++)
     {
         const Vec3r& cur_force = outerTubeNodalForce(i);
-        Vec3r new_force = (1-frac)*cur_force + frac*new_forces[i];
+        Vec3r new_force = Vec3r::Zero();
+        if (new_forces[i].squaredNorm() >= cur_force.squaredNorm())
+            new_force = (1-load_frac)*cur_force + load_frac*new_forces[i];
+        else
+            new_force = (1-unload_frac)*cur_force + unload_frac*new_forces[i];
+
         setOuterTubeNodalForce(i, new_force);
     }
     for (int i = 0; i < NUM_IT_FRAMES; i++)
     {
         const Vec3r& cur_force = innerTubeNodalForce(i);
-        Vec3r new_force = (1-frac)*cur_force + frac*new_forces[NUM_OT_FRAMES + i];
+        Vec3r new_force = Vec3r::Zero();
+        if (new_forces[NUM_OT_FRAMES + i].squaredNorm() >= cur_force.squaredNorm())
+            new_force = (1-load_frac)*cur_force + load_frac*new_forces[NUM_OT_FRAMES + i];
+        else
+            new_force = (1-unload_frac)*cur_force + unload_frac*new_forces[NUM_OT_FRAMES + i];
         setInnerTubeNodalForce(i, new_force);
+    }
+    if (hasTool())
+    {
+        for (int i = 0; i < NUM_TT_FRAMES; i++)
+        {
+            const Vec3r& cur_force = toolTubeNodalForce(i);
+            Vec3r new_force = Vec3r::Zero();
+            if (new_forces[NUM_OT_FRAMES + NUM_IT_FRAMES + i].squaredNorm() > cur_force.squaredNorm())
+                new_force = (1-load_frac)*cur_force + load_frac*new_forces[NUM_OT_FRAMES + NUM_IT_FRAMES + i];
+            else
+                new_force = (1-unload_frac)*cur_force + unload_frac*new_forces[NUM_OT_FRAMES + NUM_IT_FRAMES + i];
+            setToolTubeNodalForce(i, new_force);
+        }
     }
     _stale_frames = true;
 }
@@ -180,6 +231,15 @@ void VirtuosoArm::velocityUpdate()
 Geometry::AABB VirtuosoArm::boundingBox() const
 {
     return Geometry::AABB(Vec3r::Zero(), Vec3r::Zero());
+}
+
+Real VirtuosoArm::_outerTubeClearanceAngle(Real ot_trans)
+{
+    Real tubed_length = std::max(_ot_distal_straight_length - ot_trans, Real(0.0));
+
+    Real sqrt_arg = tubed_length*tubed_length + 2*OT_ENDOSCOPE_CLEARANCE*OT_RADIUS_OF_CURVATURE - OT_ENDOSCOPE_CLEARANCE*OT_ENDOSCOPE_CLEARANCE;
+    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE);
+    return 2*std::atan(atan_arg);
 }
 
 void VirtuosoArm::_toolAction()
@@ -274,9 +334,11 @@ void VirtuosoArm::_recomputeCoordinateFrames()
     _arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
 
     // compute outer tube base frame
-    // consists of rotating about the current z-axis accordint to outer tube rotation
+    // consists of rotating about the current z-axis according to outer tube rotation
+    // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Vec3r::Zero());
-    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z;
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(_outerTubeClearanceAngle(_ot_translation)), Vec3r::Zero());
+    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z * T_rot_x;
 
     Real swept_angle = std::max(_ot_translation - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature; 
     // frames for the curved section of the outer tube
@@ -308,154 +370,21 @@ void VirtuosoArm::_recomputeCoordinateFrames()
         _it_frames[i] = _it_frames[i-1] * T;
     }
 
+    // frames for the tool tube
+    // continue along direction of inner tube
+    _tt_frames[0] = _it_frames.back();
+    for (int i = 1; i < NUM_TT_FRAMES; i++)
+    {
+        // relative transformation matrix along z-axis
+        Geometry::TransformationMatrix T(Mat3r::Identity(), Vec3r(0, 0, _tool_tube_length / (NUM_TT_FRAMES - 1)));
+        _tt_frames[i] = _tt_frames[i-1] * T;
+    }
+
     _stale_frames = false;
 
     // for now, the tool position is just the inner tube tip position with no offset
     _tool_position = _it_frames.back().origin();
 
-}
-
-void VirtuosoArm::_recomputeCoordinateFramesStaticsModel()
-{
-    // compute arm base frame based on current position and orientation
-    _arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
-
-    // compute outer tube base frame
-    // consists of rotating about the current z-axis accordint to outer tube rotation
-    Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Vec3r::Zero());
-    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z;
-    
-    // calculate internal forces and moments carried at the base of the tube collection
-    const Vec3r& tip_position = innerTubeEndFrame().origin();
-    // add contributions from force and moment at tube tip
-    Vec3r base_moment = _tip_moment + tip_position.cross(_tip_force);
-    Vec3r base_force = _tip_force;
-
-
-    // EVERYTHING FROM NOW ON WILL USE MM
-    // compute cross section properties
-    Real E = 60e9/1000/1000;    // Young's Modulus (N/mm^2)
-    Real G = E / (2*(1+0.3));   // Shear modulus (N/mm^2)
-
-    Real ot_outer_dia_mm = _ot_outer_dia * 1000;
-    Real ot_inner_dia_mm = _ot_inner_dia * 1000;
-    Real it_outer_dia_mm = _it_outer_dia * 1000;
-    Real it_inner_dia_mm = _it_inner_dia * 1000;
-    Real I_ot = M_PI/4 * (ot_outer_dia_mm*ot_outer_dia_mm*ot_outer_dia_mm*ot_outer_dia_mm/16 - ot_inner_dia_mm*ot_inner_dia_mm*ot_inner_dia_mm*ot_inner_dia_mm/16);
-    Real I_it = M_PI/4 * (it_outer_dia_mm*it_outer_dia_mm*it_outer_dia_mm*it_outer_dia_mm/16 - it_inner_dia_mm*it_inner_dia_mm*it_inner_dia_mm*it_inner_dia_mm/16);
-    Real J_ot = 2*I_ot;
-    Real J_it = 2*I_it;
-
-    // integrate the curved section of the outer tube
-    Real curved_length = (_ot_translation - _ot_distal_straight_length)*1000; // in mm
-
-    TubeIntegrationState ot_base_state;
-    ot_base_state.position = ot_base_frame.origin()*1000;   // put position in mm
-    ot_base_state.orientation = ot_base_frame.transform().rotMat();
-    ot_base_state.internal_force = base_force;
-    ot_base_state.internal_moment = base_moment*1000; // put it in N-mm
-    ot_base_state.torsional_displacement = _ot_rotation;
-
-    TubeIntegrationState ot_curve_end_state;
-    if (curved_length > 0)
-    {
-        // std::cout << "Outer tube curved section length > 0 (=" << curved_length << " mm)" << std::endl;
-        const Vec3r K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
-        const Vec3r precurvature(1/_ot_r_curvature/1000, 0, 0);
-
-        std::vector<Real> ot_curve_s(NUM_OT_CURVE_FRAMES);  // distance along tube for outer curve frames (in mm)
-        for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
-            ot_curve_s[i] = i* (curved_length / (NUM_OT_CURVE_FRAMES-1));
-
-        std::vector<TubeIntegrationState::VecType> ot_curve_states = _integrateTubeRK4(ot_base_state, ot_curve_s, K_inv, precurvature);
-        
-        for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
-        {
-            TubeIntegrationState state = TubeIntegrationState::fromVec(ot_curve_states[i]);
-            _ot_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
-        }
-
-        ot_curve_end_state = TubeIntegrationState::fromVec(ot_curve_states.back());
-    }
-    else
-    {
-        for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
-        {
-            _ot_frames[i].setTransform(ot_base_frame.transform().asMatrix());
-        }
-        ot_curve_end_state = ot_base_state;
-    }
-
-    // integrate straight section of outer tube
-    Real straight_length = std::min(_ot_translation, _ot_distal_straight_length)*1000; // length of outer tube straight section (in mm)
-    TubeIntegrationState ot_end_state;
-    if (straight_length > 0)
-    {
-        // std::cout << "Outer tube straight section length > 0 mm (=" << straight_length << " mm)" << std::endl;
-        const Vec3r ot_K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
-        std::vector<Real> ot_straight_s(NUM_OT_STRAIGHT_FRAMES+1);
-        for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES+1; i++)
-            ot_straight_s[i] = curved_length + i*straight_length / NUM_OT_STRAIGHT_FRAMES;
-        std::vector<TubeIntegrationState::VecType> ot_straight_states = _integrateTubeRK4(ot_curve_end_state, ot_straight_s, ot_K_inv, Vec3r(0,0,0));
-        
-
-        for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
-        {
-            TubeIntegrationState state = TubeIntegrationState::fromVec(ot_straight_states[i+1]);
-            _ot_frames[NUM_OT_CURVE_FRAMES + i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
-        }
-
-        ot_end_state = TubeIntegrationState::fromVec(ot_straight_states.back());
-    }
-    else
-    {
-        for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
-        {
-            _ot_frames[NUM_OT_CURVE_FRAMES + i].setTransform(_ot_frames[NUM_OT_CURVE_FRAMES-1].transform().asMatrix());
-        }
-        
-        ot_end_state = ot_curve_end_state;
-    }
-
-    // integrate inner tube
-    const Real it_length = std::max(Real(0.0), _it_translation - _ot_translation) * 1000;      // exposed length of the inner tube in mm
-    TubeIntegrationState it_start_state = ot_end_state;
-    it_start_state.orientation *= GeometryUtils::Rz(_it_rotation - it_start_state.torsional_displacement);
-    it_start_state.torsional_displacement = _it_rotation;
-
-    if (it_length > 0)
-    {
-        // std::cout << "Inner tube length > 0... (=" << it_length << " mm)" << std::endl;
-        
-        const Vec3r it_K_inv(1/(E*I_it), 1/(E*I_it), 1/(G*J_it));
-        std::vector<Real> it_s(NUM_IT_FRAMES);
-        for (int i = 0; i < NUM_IT_FRAMES; i++)     
-        {
-            it_s[i] = _ot_translation*1000 + i*it_length / (NUM_IT_FRAMES - 1);
-        }
-        
-        std::vector<TubeIntegrationState::VecType> it_states = _integrateTubeRK4(it_start_state, it_s, it_K_inv, Vec3r(0,0,0));
-
-        for (int i = 0; i < NUM_IT_FRAMES; i++)
-        {
-            TubeIntegrationState state = TubeIntegrationState::fromVec(it_states[i]);
-            _it_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
-        }
-
-    }
-    else
-    {
-        Geometry::TransformationMatrix it_start_transform(it_start_state.orientation, it_start_state.position/1000); // convert position back to m
-        for (int i = 0; i < NUM_IT_FRAMES; i++)
-        {
-            _it_frames[i].setTransform(it_start_transform.asMatrix());
-        }
-    }
-    
-    _stale_frames = false;
-
-    // for now, the tool position is just the inner tube tip position with no offset
-    _tool_position = _it_frames.back().origin();
 }
 
 void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
@@ -464,31 +393,44 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     _arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
 
     // compute outer tube base frame
-    // consists of rotating about the current z-axis accordint to outer tube rotation
+    // consists of rotating about the current z-axis according to outer tube rotation
+    // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(_ot_rotation), Vec3r::Zero());
-    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z;
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(_outerTubeClearanceAngle(_ot_translation)), Vec3r::Zero());
+    Geometry::CoordinateFrame ot_base_frame = _arm_base_frame * T_rot_z * T_rot_x;
 
     // calculate internal forces and moments carried at the base of the tube collection
     const Vec3r& tip_position = innerTubeEndFrame().origin();
     // add contributions from force and moment at tube tip
-    Vec3r base_moment = _tip_moment + tip_position.cross(_tip_force);
+    Vec3r base_moment = _tip_moment + (tip_position - _arm_base_frame.origin()).cross(_tip_force);
     Vec3r base_force = _tip_force;
     // add contributions from forces applied along the tube
     for (int i = 0; i < NUM_OT_FRAMES; i++)
     {
-        base_moment += _ot_frames[i].origin().cross(_ot_nodal_forces[i]);
+        Vec3r moment_arm = _ot_frames[i].origin() - _arm_base_frame.origin();
+        base_moment += moment_arm.cross(_ot_nodal_forces[i]);
         base_force += _ot_nodal_forces[i];
     }
     for (int i = 0; i < NUM_IT_FRAMES; i++)
     {
-        base_moment += _it_frames[i].origin().cross(_it_nodal_forces[i]);
+        Vec3r moment_arm = _it_frames[i].origin() - _arm_base_frame.origin();
+        base_moment += moment_arm.cross(_it_nodal_forces[i]);
         base_force += _it_nodal_forces[i];
+    }
+    if (hasTool())
+    {
+        for (int i = 0; i < NUM_TT_FRAMES; i++)
+        {
+            Vec3r moment_arm = _tt_frames[i].origin() - _arm_base_frame.origin();
+            base_moment += moment_arm.cross(_tt_nodal_forces[i]);
+            base_force += _tt_nodal_forces[i];
+        }
     }
 
     // EVERYTHING FROM NOW ON WILL USE MM
     // compute cross section properties
-    Real E = 60e9/1000/1000;    // Young's Modulus (N/mm^2)
-    Real G = E / (2*(1+0.3));   // Shear modulus (N/mm^2)
+    Real E_mm = E/1000/1000;    // Young's Modulus (N/mm^2)
+    Real G_mm = G/1000/1000;   // Shear modulus (N/mm^2)
 
     Real ot_outer_dia_mm = _ot_outer_dia * 1000;
     Real ot_inner_dia_mm = _ot_inner_dia * 1000;
@@ -499,9 +441,15 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     Real J_ot = 2*I_ot;
     Real J_it = 2*I_it;
 
-    // integrate the curved section of the outer tube
-    Real curved_length = (_ot_translation - _ot_distal_straight_length)*1000; // in mm
+    Real EI_tool_tube = _tool_tube.E * _tool_tube.I * 1000 * 1000;
+    Real GJ_tool_tube = _tool_tube.G * _tool_tube.J * 1000 * 1000;
 
+    // the inverse stiffness matrix for the outer tube
+    const Vec3r ot_K_inv(1/(E_mm*I_ot + E_mm*I_it + EI_tool_tube), 1/(E_mm*I_ot + E_mm*I_it + EI_tool_tube), 1/(G_mm*J_ot));
+    // the inverse stiffness matrix for the inner tube
+    const Vec3r it_K_inv(1/(E_mm*I_it + EI_tool_tube), 1/(E_mm*I_it + EI_tool_tube), 1/(G_mm*J_it + GJ_tool_tube));
+
+    /** Starting state for the forward integration along the robot arm, at the outer tube base. */
     TubeIntegrationState ot_base_state;
     ot_base_state.position = ot_base_frame.origin()*1000;   // put position in mm
     ot_base_state.orientation = ot_base_frame.transform().rotMat();
@@ -509,28 +457,45 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
     ot_base_state.internal_moment = base_moment*1000; // put it in N-mm
     ot_base_state.torsional_displacement = _ot_rotation;
 
+
+
+    /** === Integrate the curved section of the outer tube === */
+
+    // the final integration state at the end of the curved section (used to initialize the next part of the tube)
     TubeIntegrationState ot_curve_end_state;
+
+    // compute the exposed length of the precurved part of the outer tube
+    Real curved_length = (_ot_translation - _ot_distal_straight_length)*1000; // in mm
+
+    // if there is some precurved part of the outer tube exposed (i.e. OT translation > the distal straight length)
+    // integrate along the exposed precurved section of the outer tube
     if (curved_length > 0)
     {
-        // std::cout << "Outer tube curved section length > 0 (=" << curved_length << " mm)" << std::endl;
-        const Vec3r K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
-        const Vec3r precurvature(1/_ot_r_curvature/1000, 0, 0);
+        // the precurvature vector (u*), in mm
+        // for the precurved section of the outer tube, there is a positive precurvature about the x-axis (in the YZ plane)
+        // const Vec3r precurvature(1/_ot_r_curvature/1000, 0, 0);
+        const Vec3r precurvature(65.0/1000.0, 0, 0);
 
-        std::vector<Real> ot_curve_s(NUM_OT_CURVE_FRAMES);  // distance along tube for outer curve frames (in mm)
+        // compute the distance along the entire tube collection for placing the outer curve frames (in mm)
+        std::vector<Real> ot_curve_s(NUM_OT_CURVE_FRAMES);  
         for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
             ot_curve_s[i] = i* (curved_length / (NUM_OT_CURVE_FRAMES-1));
 
+        // integrate with RK4 along the curved section of the outer tube
         std::vector<TubeIntegrationState::VecType> ot_curve_states = 
-            _integrateTubeWithForceBoundariesRK4(ot_base_state, ot_curve_s, _ot_nodal_forces.cbegin(), K_inv, precurvature);
+            _integrateTubeWithForceBoundariesRK4(ot_base_state, ot_curve_s, _ot_nodal_forces.cbegin(), ot_K_inv, precurvature);
         
+        // set the transform along the curved part of the tube from the integration results
         for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
         {
             TubeIntegrationState state = TubeIntegrationState::fromVec(ot_curve_states[i]);
             _ot_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
         }
-
+        
+        // final integration state
         ot_curve_end_state = TubeIntegrationState::fromVec(ot_curve_states.back());
     }
+    // otherwise, the frames for the precurved part of the outer tube are identical to the frame at the outer tube base
     else
     {
         for (int i = 0; i < NUM_OT_CURVE_FRAMES; i++)
@@ -540,28 +505,37 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
         ot_curve_end_state = ot_base_state;
     }
 
-    // integrate straight section of outer tube
+
+    /** === Integrate the straight section of the outer tube === */
+
     Real straight_length = std::min(_ot_translation, _ot_distal_straight_length)*1000; // length of outer tube straight section (in mm)
+    // the final integration state at the end of the outer tube (used to initialize the next part of the robot arm)
     TubeIntegrationState ot_end_state;
+
+    // if there is some straight part of the outer tube exposed (i.e. if OT translation > 0)
+    // integrate along the straight part of the outer tube
     if (straight_length > 0)
-    {
-        // std::cout << "Outer tube straight section length > 0 mm (=" << straight_length << " mm)" << std::endl;
-        const Vec3r ot_K_inv(1/(E*I_ot + E*I_it), 1/(E*I_ot + E*I_it), 1/(G*J_ot));
+    {   
+        // compute the distance along the entire tube collection for placing the outer tube straight frames (in mm)
         std::vector<Real> ot_straight_s(NUM_OT_STRAIGHT_FRAMES+1);
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES+1; i++)
             ot_straight_s[i] = curved_length + i*straight_length / NUM_OT_STRAIGHT_FRAMES;
+
+        // integrate with RK4 along the straight section of the outer tube
         std::vector<TubeIntegrationState::VecType> ot_straight_states = 
             _integrateTubeWithForceBoundariesRK4(ot_curve_end_state, ot_straight_s, _ot_nodal_forces.cbegin() + NUM_OT_STRAIGHT_FRAMES, ot_K_inv, Vec3r(0,0,0));
         
-
+        // set the transforms along the straight part of the otuer tube from the integration results
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
         {
             TubeIntegrationState state = TubeIntegrationState::fromVec(ot_straight_states[i+1]);
             _ot_frames[NUM_OT_CURVE_FRAMES + i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
         }
 
+        // final integration state
         ot_end_state = TubeIntegrationState::fromVec(ot_straight_states.back());
     }
+    // otherwise, the frames for the straight part of the outer tube are identical to the frame at the outer tube base
     else
     {
         for (int i = 0; i < NUM_OT_STRAIGHT_FRAMES; i++)
@@ -572,32 +546,47 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
         ot_end_state = ot_curve_end_state;
     }
 
-    // integrate inner tube
-    const Real it_length = std::max(Real(0.0), _it_translation - _ot_translation) * 1000;      // exposed length of the inner tube in mm
+    
+    /** === Integrate the inner tube === */
+
+    // exposed length of the inner tube in mm
+    const Real it_length = std::max(Real(0.0), _it_translation - _ot_translation) * 1000;      
+    
+    // the starting integration state of the inner tube
+    // the outer and inner tube are not torsionally coupled, so we need to "unrotate" the outer tube end frame about the z-axis 
     TubeIntegrationState it_start_state = ot_end_state;
     it_start_state.orientation *= GeometryUtils::Rz(_it_rotation - it_start_state.torsional_displacement);
     it_start_state.torsional_displacement = _it_rotation;
 
+    // the integration state at the end of the inner tube (used to initialize the next part of the robot arm)
+    TubeIntegrationState it_end_state;
+
+    // if there is some part of the inner tube exposed (i.e. if IT translation > OT translation)
+    // integrate along the inner tube
     if (it_length > 0)
     {
-        // std::cout << "Inner tube length > 0... (=" << it_length << " mm)" << std::endl;
-        
-        const Vec3r it_K_inv(1/(E*I_it), 1/(E*I_it), 1/(G*J_it));
+        // compute the distance along the entire tube collection for placing the inner tube frames (in mm)
         std::vector<Real> it_s(NUM_IT_FRAMES);
         for (int i = 0; i < NUM_IT_FRAMES; i++)     
         {
             it_s[i] = _ot_translation*1000 + i*it_length / (NUM_IT_FRAMES - 1);
         }
         
+        // integrate with RK4 along the inner tube
         std::vector<TubeIntegrationState::VecType> it_states = _integrateTubeWithForceBoundariesRK4(it_start_state, it_s, _it_nodal_forces.cbegin(), it_K_inv, Vec3r(0,0,0));
 
+        // set the transforms along the inner tube from the integration results
         for (int i = 0; i < NUM_IT_FRAMES; i++)
         {
             TubeIntegrationState state = TubeIntegrationState::fromVec(it_states[i]);
             _it_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
         }
 
+        // final integration state
+        it_end_state = TubeIntegrationState::fromVec(it_states.back());
+
     }
+    // otherwise, the frames for the inner tube are all the same, and equal to the inner tube base frame
     else
     {
         Geometry::TransformationMatrix it_start_transform(it_start_state.orientation, it_start_state.position/1000); // convert position back to m
@@ -605,8 +594,41 @@ void VirtuosoArm::_recomputeCoordinateFramesStaticsModelWithNodalForces()
         {
             _it_frames[i].setTransform(it_start_transform.asMatrix());
         }
+
+        it_end_state = it_start_state;
     }
-    
+
+
+    /** === Integrate the tool tube === */
+    if (hasTool())
+    {
+        const Vec3r tt_K_inv(1/(EI_tool_tube), 1/(EI_tool_tube), 1/(GJ_tool_tube));
+
+        // compute the distance along the entire tube collection for placing the inner tube frames (in mm)
+        std::vector<Real> tt_s(NUM_TT_FRAMES);
+        for (int i = 0; i < NUM_TT_FRAMES; i++)     
+        {
+            tt_s[i] = _it_translation*1000 + i*_tool_tube_length*1000 / (NUM_TT_FRAMES - 1);
+        }
+        
+        // integrate with RK4 along the tool tube
+        std::vector<TubeIntegrationState::VecType> tt_states = _integrateTubeWithForceBoundariesRK4(it_end_state, tt_s, _tt_nodal_forces.cbegin(), tt_K_inv, Vec3r(0,0,0));
+
+        // set the transforms along the tool tube from the integration results
+        for (int i = 0; i < NUM_TT_FRAMES; i++)
+        {
+            TubeIntegrationState state = TubeIntegrationState::fromVec(tt_states[i]);
+            _tt_frames[i].setTransform(Geometry::TransformationMatrix(state.orientation, state.position/1000).asMatrix()); // convert position back to m
+        }
+    }
+    else
+    {
+        Geometry::TransformationMatrix tt_start_transform(it_end_state.orientation, it_end_state.position/1000); // convert position back to m
+        for (int i = 0; i < NUM_TT_FRAMES; i++)
+        {
+            _tt_frames[i].setTransform(tt_start_transform.asMatrix());
+        }
+    }
     _stale_frames = false;
 
     // for now, the tool position is just the inner tube tip position with no offset
@@ -736,10 +758,12 @@ Geometry::TransformationMatrix VirtuosoArm::_computeTipTransform(Real ot_rot, Re
 {
     Geometry::CoordinateFrame arm_base_frame = Geometry::CoordinateFrame(Geometry::TransformationMatrix(_arm_base_rotation, _arm_base_position));
 
-    // compute outer tube base frmae
-    // consists of rotating about the current z-axis accordint to outer tube rotation
+    // compute outer tube base frame
+    // consists of rotating about the current z-axis according to outer tube rotation
+    // and rotating about the new x-axis according to the clearance angle
     Geometry::TransformationMatrix T_rot_z(GeometryUtils::Rz(ot_rot), Vec3r::Zero());
-    Geometry::CoordinateFrame ot_base_frame = arm_base_frame * T_rot_z;
+    Geometry::TransformationMatrix T_rot_x(GeometryUtils::Rx(_outerTubeClearanceAngle(ot_trans)), Vec3r::Zero());
+    Geometry::CoordinateFrame ot_base_frame = arm_base_frame * T_rot_z * T_rot_x;
 
     Real swept_angle = std::max(ot_trans - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature; 
     // frames for the curved section of the outer tube
@@ -792,16 +816,14 @@ void VirtuosoArm::_jacobianDifferentialInverseKinematics(const Vec3r& dx)
         _recomputeCoordinateFramesStaticsModelWithNodalForces();
     }
 
-    // const Vec3r final_err = target_position - tipPosition();
-    // std::cout << "Tip pos: " << tipPosition()[0] << ", " << tipPosition()[1] << ", " << tipPosition()[2] << std::endl;
-    // std::cout << "Tip err: " << final_err[0] << ", " << final_err[1] << ", " << final_err[2] << std::endl;
-    // std::cout << "q: " << _ot_rotation << ", " << _ot_translation << ", " << _it_translation << std::endl;
-
     _stale_frames = true;
 }
 
 void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
 {
+    if (dx.norm() < 1e-6)
+        return;
+
     // _recomputeCoordinateFrames();
     // _recomputeCoordinateFramesStaticsModelWithNodalForces();
     const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
@@ -810,46 +832,58 @@ void VirtuosoArm::_hybridDifferentialInverseKinematics(const Vec3r& dx)
     // solve for the outer tube rotation analytically
     Geometry::TransformationMatrix global_to_arm_base = _arm_base_frame.transform().inverse();
     const Vec3r arm_base_pt = global_to_arm_base.rotMat() * target_position + global_to_arm_base.translation();
-    const Real target_angle = std::atan2(arm_base_pt[0], -arm_base_pt[1]);
+    // the multiple of 2*pi to add to angles (avoids angle jumps from 180 to -180 and vice versa)
+    int n_rev = static_cast<int>((_ot_rotation+M_PI) / (2*M_PI));
+    Real target_angle = n_rev*2*M_PI + std::atan2(arm_base_pt[0], -arm_base_pt[1]);
 
-    _ot_rotation = target_angle;
+    // avoid angle jumps from 180 to -180 and from -180 to 180
+    if (_ot_rotation > n_rev*2*M_PI + M_PI/2.0 && target_angle < n_rev*2*M_PI - M_PI/2.0)
+        target_angle += 2*M_PI;
+    else if (_ot_rotation < n_rev*2*M_PI - M_PI/2.0 && target_angle > n_rev*2*M_PI + M_PI/2.0)
+        target_angle += -2*M_PI;
 
-    for (int i = 0; i < 1; i++)
+    // compute max allowable changes in joint variables, given by motor limitations
+    Real max_ot_rot_change = MAX_OT_ROTATION_SPEED * _sim->dt(); // rad/s
+    Real max_ot_trans_change = MAX_OT_TRANSLATION_SPEED * _sim->dt(); // m/s
+    Real max_it_trans_change = MAX_IT_TRANSLATION_SPEED * _sim->dt(); // m/s
+
+    // clamp the change in outer tube rotation and update
+    Real d_ot_rot = std::clamp(target_angle - _ot_rotation, -max_ot_rot_change, max_ot_rot_change);
+    _ot_rotation += d_ot_rot;
+
+
+    /** run 1 iteration of Jacobian-based differential inverse kinematics */
+    // the solution may not be exact THIS frame, but will converge over a few successive frames
+    // we can get away with this because we update at such a fast rate
+
+    // compute position error
+    const Geometry::TransformationMatrix T_tip_new = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
+    const Vec3r pos_err = target_position - T_tip_new.translation();
+
+    // get Jacobian and solve for joint updates (only outer tube translation and inner tube translation are used)
+    const Mat3r J_a = _3DOFAnalyticalHybridJacobian();
+    const Vec3r dq = J_a.colPivHouseholderQr().solve(pos_err);
+    // update translational joint variables, clamping them to their acceptable ranges
+    _ot_translation += std::clamp(dq[1], -max_ot_trans_change, max_ot_trans_change);
+    _it_translation += std::clamp(dq[2], -max_it_trans_change, max_it_trans_change);
+
+    // enforce constraints
+    _ot_translation = std::clamp(_ot_translation, Real(0.0), Real(MAX_OT_TRANSLATION));
+    _it_translation = std::clamp(_it_translation, Real(0.0), Real(MAX_IT_TRANSLATION));
+    if (_it_translation < _ot_translation)
     {
-        const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);
-        const Vec3r pos_err = target_position - T_tip.translation();
-        if (pos_err.norm() < 1e-10)
-            break;
-
-        const Mat3r J_a = _3DOFAnalyticalHybridJacobian();
-        const Vec3r dq = J_a.colPivHouseholderQr().solve(pos_err);
-        _ot_translation += dq[1];
-        _it_translation += dq[2];
-
-        // enforce constraints
-        _ot_translation = std::clamp(_ot_translation, _ot_distal_straight_length+Real(1e-4), Real(20e-3));  // TODO: create var for joint limits
-        _it_translation = std::clamp(_it_translation, _ot_distal_straight_length+Real(1e-4), Real(40e-3));
-        if (_it_translation < _ot_translation)
-        {
-            const Real d = _ot_translation - _it_translation;
-            _it_translation += d/2;
-            _ot_translation -= d/2;
-            // _it_translation += d;
-        }
-
-        // _recomputeCoordinateFrames();
-        // _recomputeCoordinateFramesStaticsModelWithNodalForces();
+        const Real d = _ot_translation - _it_translation;
+        _it_translation += d/2;
+        _ot_translation -= d/2;
     }
-
     
+
+    // mark that the joint state has been updated so the coordinate frames are stale
+    _stale_frames = true;
 }
 
 Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
 {
-    // make sure coordinate frames are up to date
-    // if (_stale_frames)      
-        // _recomputeCoordinateFrames();
-        // _recomputeCoordinateFramesStaticsModelWithNodalForces();
 
     // because there are max() and min() expressions used, we have a couple different cases for the derivatives
     // when outer tube translation >= length of the outer tube straight section, we have some curve in the outer tube
@@ -879,7 +913,24 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
         dmax_d2 = 1;
     }
 
-    // now just implement dT/dq
+    // derviative of max(length of OT straight section - OT translation, 0)
+    Real dtubed_length_d1;
+    if (_ot_translation > _ot_distal_straight_length)
+    {
+        dtubed_length_d1 = 0;
+    }
+    else
+    {
+        dtubed_length_d1 = -1;
+    }
+
+    // derivative of clearance angle w.r.t. d1
+    Real tubed_length = std::max(_ot_distal_straight_length - _ot_translation, Real(0.0));
+    Real sqrt_arg = tubed_length*tubed_length + 2*OT_ENDOSCOPE_CLEARANCE*OT_RADIUS_OF_CURVATURE - OT_ENDOSCOPE_CLEARANCE*OT_ENDOSCOPE_CLEARANCE;
+    Real atan_arg = (tubed_length - std::sqrt(sqrt_arg)) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE);
+    Real dca_d1 = 2 / (1+atan_arg*atan_arg) / (OT_ENDOSCOPE_CLEARANCE - 2*OT_RADIUS_OF_CURVATURE) * (1 - tubed_length/std::sqrt(sqrt_arg)) * dtubed_length_d1;
+    
+    Real clearance_angle = _outerTubeClearanceAngle(_ot_translation);
     const Real alpha = std::max(_ot_translation - _ot_distal_straight_length, Real(0.0)) / _ot_r_curvature;    // angle swept by the outer tube curve
     const Real beta = _it_rotation - _ot_rotation;    // difference in angle between outer tube and inner tube
     const Real straight_length = std::min(_ot_distal_straight_length, _ot_translation) + std::max(Real(0.0), _it_translation - _ot_translation); // length of the straight section of the combined outer + inner tube
@@ -891,29 +942,72 @@ Eigen::Matrix<Real,6,3> VirtuosoArm::_3DOFSpatialJacobian()
     const Real sa = std::sin(alpha);
     const Real cb = std::cos(beta);
     const Real sb = std::sin(beta);
+    const Real cg = std::cos(clearance_angle);
+    const Real sg = std::sin(clearance_angle);
 
-    // std::cout << "alpha: " << alpha << ", beta: " << beta << std::endl;
+    // the chain of transforms that make up forward kinematics
+    Mat4r T1, T2, T3, T4;
+    T1 <<   ct1, -st1, 0, 0,
+            st1, ct1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1;
+    
+    T2 <<   1, 0, 0, 0,
+            0, cg, -sg, 0,
+            0, sg, cg, 0,
+            0, 0, 0, 1;
+    
+    T3 <<   1, 0, 0, 0,
+            0, ca, -sa, _ot_r_curvature*ca - _ot_r_curvature,
+            0, sa, ca, _ot_r_curvature*sa,
+            0, 0, 0, 1;
+    
+    T4 <<   cb, -sb, 0, 0,
+            sb, cb, 0, 0,
+            0, 0, 1, straight_length,
+            0, 0, 0, 1;
+            
+    // derivatives w.r.t outer tube rotation (theta1)
+    Mat4r dT1_dt1, dT4_dt1;
+    dT1_dt1 <<  -st1, -ct1, 0, 0,
+                ct1, -st1, 0, 0,
+                0, 0, 0, 0,
+                0, 0, 0, 0;
+    
+    dT4_dt1 <<  sb, cb, 0, 0,
+                -cb, sb, 0, 0,
+                0, 0, 0, 0,
+                0, 0, 0, 0;
 
-    Mat4r dT_d_ot_rot, dT_d_ot_trans, dT_d_it_trans;
-    dT_d_ot_rot << sb*ct1 + cb*-st1 + cb*st1*ca - sb*ct1*ca, cb*ct1 + sb*st1 - sb*st1*ca - cb*ct1*ca, ct1*sa, ct1*sa*straight_length - ct1*(_ot_r_curvature*ca - _ot_r_curvature),
-                   sb*st1 + cb*ct1 - cb*ct1*ca - sb*st1*ca, cb*st1 - sb*ct1 + sb*ct1*ca + -cb*st1*ca, st1*sa, st1*sa*straight_length - st1*(_ot_r_curvature*ca - _ot_r_curvature),
-                    -cb*sa, sb*sa, 0, 0,
-                    0, 0, 0, 0;
+    // derivatives w.r.t. outer tube translation (d1)
+    Mat4r dT2_dd1, dT3_dd1, dT4_dd1;
+    dT2_dd1 <<  0, 0, 0, 0,
+                0, -sg*dca_d1, -cg*dca_d1, 0,
+                0, cg*dca_d1, -sg*dca_d1, 0, 
+                0, 0, 0, 0;
+    
+    dT3_dd1 <<  0, 0, 0, 0,
+                0, -sa*dalpha_d1, -ca*dalpha_d1, -_ot_r_curvature*sa*dalpha_d1,
+                0, ca*dalpha_d1, -sa*dalpha_d1, _ot_r_curvature*ca*dalpha_d1,
+                0, 0, 0, 0;
+    
+    dT4_dd1 <<  0, 0, 0, 0,
+                0, 0, 0, 0,
+                0, 0, 0, dmin_d1 + dmax_d1,
+                0, 0, 0, 0;
 
-    // std::cout << "dT_d_ot_rot:\n" << dT_d_ot_rot << std::endl;
+    // derivatives w.r.t. inner tube translation (d2)
+    Mat4r dT4_dd2;
+    dT4_dd2 <<  0, 0, 0, 0,
+                0, 0, 0, 0,
+                0, 0, 0, dmax_d2,
+                0, 0, 0, 0;
 
-
-    dT_d_ot_trans << sb*st1*sa*dalpha_d1, cb*st1*sa*dalpha_d1, st1*ca*dalpha_d1, st1*ca*dalpha_d1*straight_length + st1*sa*(dmin_d1 + dmax_d1) + st1*_ot_r_curvature*sa*dalpha_d1,
-                     -sb*ct1*sa*dalpha_d1, -cb*ct1*sa*dalpha_d1, -ct1*ca*dalpha_d1, -ct1*ca*dalpha_d1*straight_length - ct1*sa*(dmin_d1 + dmax_d1) - ct1*_ot_r_curvature*sa*dalpha_d1,
-                     sb*ca*dalpha_d1, cb*ca*dalpha_d1, -sa*dalpha_d1, -sa*dalpha_d1*straight_length + ca*(dmin_d1 + dmax_d1) + _ot_r_curvature*ca*dalpha_d1,
-                     0, 0, 0, 0;
-
-    // std::cout << "dT_d_ot_trans:\n" << dT_d_ot_trans << std::endl;
-
-    dT_d_it_trans << 0, 0, 0, st1*sa*dmax_d2,
-                     0, 0, 0, -ct1*sa*dmax_d2,
-                     0, 0, 0, ca*dmax_d2,
-                     0, 0, 0, 0;
+    
+    // using product rule, evaluate dT/dq
+    Mat4r dT_d_ot_rot = dT1_dt1*T2*T3*T4 + T1*T2*T3*dT4_dt1;
+    Mat4r dT_d_ot_trans = T1*dT2_dd1*T3*T4 + T1*T2*dT3_dd1*T4 + T1*T2*T3*dT4_dd1;
+    Mat4r dT_d_it_trans = T1*T2*T3*dT4_dd2; 
 
     // and assemble them into the spatial Jacobian
     const Geometry::TransformationMatrix T_tip = _computeTipTransform(_ot_rotation, _ot_translation, _it_rotation, _it_translation);

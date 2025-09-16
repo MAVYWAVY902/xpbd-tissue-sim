@@ -46,6 +46,35 @@ bool EmbreeTetMeshGeometry::isPointInTetrahedron(const float p[3], const float *
            sameSide(p, v1, v2, v3, v0);
 }
 
+float EmbreeTetMeshGeometry::squaredDistanceToTetrahedron(const float p[3], const float* v0, const float* v1, const float* v2, const float* v3)
+{
+    if (isPointInTetrahedron(p, v0, v1, v2, v3))
+        return 0.0f;
+    
+    float p_out1[3], p_out2[3], p_out3[3], p_out4[3];
+    EmbreeMeshGeometry::_closestPointTriangle(p, v0, v1, v2, p_out1);
+    EmbreeMeshGeometry::_closestPointTriangle(p, v0, v3, v1, p_out2);
+    EmbreeMeshGeometry::_closestPointTriangle(p, v0, v2, v3, p_out3);
+    EmbreeMeshGeometry::_closestPointTriangle(p, v1, v3, v2, p_out4);
+
+    auto sq_dist = [](const float p1[3], const float p2[3]) -> float
+    {
+        float p_diff[3];
+        p_diff[0] = p1[0] - p2[0];
+        p_diff[1] = p1[1] - p2[1];
+        p_diff[2] = p1[2] - p2[2];
+        return p_diff[0]*p_diff[0] + p_diff[1]*p_diff[1] + p_diff[2]*p_diff[2];
+    };
+
+    float d1 = sq_dist(p, p_out1);
+    float d2 = sq_dist(p, p_out2);
+    float d3 = sq_dist(p, p_out3);
+    float d4 = sq_dist(p, p_out4);
+
+    return std::min({d1, d2, d3, d4});
+
+}
+
 void EmbreeTetMeshGeometry::boundsFuncTetrahedra(const struct RTCBoundsFunctionArguments *args)
 {
     const EmbreeTetMeshGeometry *geom = static_cast<const EmbreeTetMeshGeometry *>(args->geometryUserPtr);
@@ -82,7 +111,7 @@ bool EmbreeTetMeshGeometry::pointQueryFuncTetrahedra(RTCPointQueryFunctionArgume
     // only consider point queries for the geometry we're interested in
     // TODO: should we do point queries for 
     if (args->geomID != geom->tetMeshGeomID())
-        return true;
+        return false;
 
     
     const int *indices = geom->elementIndices() + 4 * args->primID;
@@ -93,6 +122,8 @@ bool EmbreeTetMeshGeometry::pointQueryFuncTetrahedra(RTCPointQueryFunctionArgume
 
     const float *point = userData->point;
 
+    // std::cout << "Point query: " << point[0] << ", " << point[1] << ", " << point[2] << std::endl;
+
     if (userData->vertex_ind != -1 && (
         userData->vertex_ind == indices[0] ||
         userData->vertex_ind == indices[1] ||
@@ -100,11 +131,25 @@ bool EmbreeTetMeshGeometry::pointQueryFuncTetrahedra(RTCPointQueryFunctionArgume
         userData->vertex_ind == indices[3]))
     {
         // the tetrahedron in question has this query point as one of its vertices, so we should not include it
-        return true;
+        return false;
     }
 
+    // std::cout << "Testing element " << args->primID << "..." << std::endl;
+
     // Check if the point is inside this tetrahedron
-    if (isPointInTetrahedron(point, v1, v2, v3, v4))
+    if (userData->radius == 0.0f && isPointInTetrahedron(point, v1, v2, v3, v4))
+    {
+        EmbreeHit hit;
+        hit.obj = userData->obj_ptr;
+        hit.prim_index = args->primID;
+        // Add this tetrahedron's ID to the results
+        userData->result.insert(hit);
+        // std::cout << "Hit! Prim index: " << hit.prim_index << " Distance: " << std::sqrt(squaredDistanceToTetrahedron(point, v1, v2, v3, v4)) << " Radius: " << userData->radius << std::endl;
+
+        // done searching
+        return false;
+    }
+    else if (userData->radius != 0.0f && squaredDistanceToTetrahedron(point, v1, v2, v3, v4) <= userData->radius*userData->radius)
     {
         EmbreeHit hit;
         hit.obj = userData->obj_ptr;
@@ -112,12 +157,15 @@ bool EmbreeTetMeshGeometry::pointQueryFuncTetrahedra(RTCPointQueryFunctionArgume
         // Add this tetrahedron's ID to the results
         userData->result.insert(hit);
 
-        // Continue searching for other potential tetrahedra
-        // (in case of overlapping tetrahedra or numerical issues)
-        return true;
+        // continue searching
+        return false;
+    }
+    else
+    {
+        // std::cout << "Miss. Distance: " << std::sqrt(squaredDistanceToTetrahedron(point, v1, v2, v3, v4)) << "; Radius: " << userData->radius << std::endl;
     }
 
-    return true; // Continue traversal to find all potential tetrahedra
+    return false; // Continue traversal to find all potential tetrahedra
 }
 
 } // namespace Geometry

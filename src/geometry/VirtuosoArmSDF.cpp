@@ -48,12 +48,40 @@ VirtuosoArmSDF::DistanceAndGradientWithNodeInfo VirtuosoArmSDF::evaluateWithGrad
 {
     const Sim::VirtuosoArm::OuterTubeFramesArray& ot_frames = _virtuoso_arm->outerTubeFrames();
     const Sim::VirtuosoArm::InnerTubeFramesArray& it_frames = _virtuoso_arm->innerTubeFrames();
+    const Sim::VirtuosoArm::ToolTubeFramesArray& tt_frames = _virtuoso_arm->toolTubeFrames();
 
     DistanceAndGradientWithNodeInfo result;
     result.distance = std::numeric_limits<Real>::max();
     result.gradient = Vec3r::Zero();
     result.node_index = 0;
     result.interp_factor = Real(0.0);
+
+    // iterate through tool tube segments (if the tool tube exists)
+    if (_virtuoso_arm->hasTool())
+    {
+        Real tool_tube_radius = _virtuoso_arm->toolTube().outer_dia/2.0;
+        for (unsigned i = 0; i < tt_frames.size()-1; i++)
+        {
+            const Vec3r& pos_i = tt_frames[i].origin();
+            const Vec3r& pos_iplus1 = tt_frames[i+1].origin();
+
+            
+            auto capsule_result = _capsuleSDFDistanceGradientAndInterpFactor(x, pos_i, pos_iplus1, tool_tube_radius);
+            
+            
+            if (capsule_result.distance < result.distance)
+            {
+                result.distance = capsule_result.distance;
+                result.gradient = capsule_result.gradient;
+                result.node_index = ot_frames.size() + it_frames.size() + i;
+                result.interp_factor = capsule_result.interp_factor;
+            }
+
+            if (result.distance < 0)
+                return result;
+        }
+    }
+    
 
     // iterate through inner tube segments
     for (unsigned i = 0; i < it_frames.size()-1; i++)
@@ -68,7 +96,7 @@ VirtuosoArmSDF::DistanceAndGradientWithNodeInfo VirtuosoArmSDF::evaluateWithGrad
         {
             result.distance = capsule_result.distance;
             result.gradient = capsule_result.gradient;
-            result.node_index = i;
+            result.node_index = ot_frames.size() + i;
             result.interp_factor = capsule_result.interp_factor;
         }
 

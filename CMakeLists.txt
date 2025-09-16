@@ -20,7 +20,7 @@ set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 set(CMAKE_BUILD_TYPE Debug)
 
-list(APPEND CMAKE_PREFIX_PATH $ENV{XPBD_SIM_EASY3D_CMAKE_PREFIX_PATH}) # needed in order to find Easy3D
+list(APPEND CMAKE_PREFIX_PATH "$ENV{XPBD_SIM_EASY3D_CMAKE_PREFIX_PATH}") # needed in order to find Easy3D
 
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
@@ -39,6 +39,8 @@ find_package(VTK 9.5 REQUIRED COMPONENTS
     RenderingFreeType
     RenderingGL2PSOpenGL2
     RenderingOpenGL2
+    RenderingAnnotation
+    InteractionWidgets
 )
 
 if (NOT VTK_FOUND)
@@ -115,6 +117,7 @@ add_library(Simulation)
 add_library(BeamSimulation)
 add_library(GraspingSimulation)
 add_library(VirtuosoSimulation)
+add_library(PalpationSimulation)
 # add_library(BeamStretchSimulation)
 # add_library(TissueGraspingSimulation)
 add_library(InitialDeformationSimulation)
@@ -124,6 +127,7 @@ target_link_libraries(Simulation Collision Graphics SimObject Geometry SimObject
 target_link_libraries(BeamSimulation Simulation)
 target_link_libraries(GraspingSimulation Simulation)
 target_link_libraries(VirtuosoSimulation Simulation Haptics)
+target_link_libraries(PalpationSimulation VirtuosoSimulation)
 # target_link_libraries(BeamStretchSimulation Simulation)
 target_link_libraries(InitialDeformationSimulation Config Simulation)
 
@@ -142,6 +146,9 @@ target_link_libraries(VirtuosoTest VirtuosoSimulation)
 
 add_executable(VirtuosoTracheaDemo src/exec/demos/virtuoso_trachea_demo.cpp)
 target_link_libraries(VirtuosoTracheaDemo VirtuosoSimulation)
+
+add_executable(PalpationDemo src/exec/demos/palpation_demo.cpp)
+target_link_libraries(PalpationDemo PalpationSimulation)
 
 # add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
 # target_link_libraries(TissueGraspingTest TissueGraspingSimulation)

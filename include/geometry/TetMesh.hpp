@@ -53,6 +53,9 @@ class TetMesh : public Mesh
      */
     Mat3r elementDeformationGradient(int index) const;
 
+    /** Returns the element index corresponding to a surface face. */
+    int elementWithFace(int face_index) const { return _surface_elements[face_index]; }
+
     /** Returns the number of edges along with the average edge length in the tetrahedra of the mesh.
      * Note that this is different from averageFaceEdgeLength, which only returns the average edge length in the faces (i.e. the surface) of the mesh.
      */
@@ -155,6 +158,11 @@ class TetMesh : public Mesh
 
     /** lists the elements (by index) attached to a vertex */
     std::vector<std::vector<int>> _attached_elements_to_vertex; 
+
+    /** A list of elements that are on the surface, i.e. one of their faces is on the surface.
+     * Entry i is the index of the element that corresponds to surface face i
+     */
+    std::vector<int> _surface_elements;
 };
 
 } // namespace Geometry

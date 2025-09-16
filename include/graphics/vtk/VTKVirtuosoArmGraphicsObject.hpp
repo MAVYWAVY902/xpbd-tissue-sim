@@ -27,6 +27,7 @@ class VTKVirtuosoArmGraphicsObject : public VirtuosoArmGraphicsObject
 
     constexpr static int _OT_TUBULAR_RES = 20;
     constexpr static int _IT_TUBULAR_RES = 20;
+    constexpr static int _TT_TUBULAR_RES = 20;
 
     vtkSmartPointer<vtkPolyData> _vtk_poly_data;
     vtkSmartPointer<vtkActor> _vtk_actor;           // VTK actor for the sphere

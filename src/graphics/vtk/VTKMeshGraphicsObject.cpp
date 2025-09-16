@@ -1,6 +1,8 @@
 #include "graphics/vtk/VTKMeshGraphicsObject.hpp"
 #include "graphics/vtk/VTKUtils.hpp"
 
+#include "common/colors.hpp"
+
 #include <vtkPolyDataMapper.h>
 #include <vtkPolyDataNormals.h>
 #include <vtkPointData.h>
@@ -83,6 +85,44 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     _vtk_actor->SetMapper(mapper);
 
     VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
+
+    // if the config file specifies multiple colors, and the mesh has the "class" vertex attribute
+    // then we can assign different colors to vertices based on their class
+    if (render_config.colors().has_value() && mesh->hasVertexProperty<int>("class"))
+    {
+        // set colors for each section of the mesh
+        vtkNew<vtkUnsignedCharArray> colors;
+        colors->SetNumberOfComponents(3);
+        colors->SetName("Colors");
+
+        std::vector<Vec3r> colors_f = render_config.colors().value();
+        const Geometry::MeshProperty<int>& vert_class_prop = mesh->getVertexProperty<int>("class");
+        for (int i = 0; i < mesh->numVertices(); i++)
+        {
+            int vert_class = vert_class_prop.get(i);
+
+            // make sure the config file specifies enough colors
+            if (static_cast<unsigned>(vert_class) >= colors_f.size())
+            {
+                std::cout << KYEL << BOLD << "WARNING" << RST << KYEL << ": Only " << colors_f.size() << " colors were specified, but vertex " << i <<
+                 " has class " << vert_class << ". (Specify more colors in the config file)" << RST << std::endl;
+            }
+
+            Vec3r color_f = colors_f[vert_class];
+            unsigned char color[3];
+            color[0] = static_cast<unsigned char>(color_f[0] * 255);
+            color[1] = static_cast<unsigned char>(color_f[1] * 255);
+            color[2] = static_cast<unsigned char>(color_f[2] * 255);
+
+            colors->InsertNextTypedTuple(color);
+        }
+
+        
+
+        _vtk_poly_data->GetPointData()->SetScalars(colors);
+    }
+
+    
     
     
 }

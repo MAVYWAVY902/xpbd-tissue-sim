@@ -461,18 +461,18 @@ void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real wid
             int ff3 = index(0, wi+1, hi+1);
             int ff4 = index(0, wi, hi+1);
 
-            int a = wi%2 - hi%2;//rand()%2;
-            if (a)
+            int a = (wi%2 == hi%2);//rand()%2;
+            if (!a)
             {
-                Eigen::Vector3i front_face1({ff1, ff2, ff3});
-                Eigen::Vector3i front_face2({ff1, ff3, ff4});
+                Eigen::Vector3i front_face1({ff1, ff2, ff4});
+                Eigen::Vector3i front_face2({ff2, ff3, ff4});
                 faces.row(face_ind) = front_face1;
                 faces.row(face_ind+1) = front_face2;
             }
             else
             {
-                Eigen::Vector3i front_face1({ff1, ff2, ff4});
-                Eigen::Vector3i front_face2({ff2, ff3, ff4});
+                Eigen::Vector3i front_face1({ff1, ff2, ff3});
+                Eigen::Vector3i front_face2({ff1, ff3, ff4});
                 faces.row(face_ind) = front_face1;
                 faces.row(face_ind+1) = front_face2;
             }
@@ -484,17 +484,18 @@ void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real wid
             int bf4 = index(l, wi, hi+1);
 
             // a = rand()%2;
-            if (a)
+            a = (wi%2 == hi%2) - l%2;
+            if (!a)
             {
-                Eigen::Vector3i back_face1({bf1, bf3, bf2});
-                Eigen::Vector3i back_face2({bf1, bf4, bf3});
+                Eigen::Vector3i back_face1({bf1, bf4, bf2});
+                Eigen::Vector3i back_face2({bf2, bf4, bf3});
                 faces.row(face_ind+2) = back_face1;
                 faces.row(face_ind+3) = back_face2;
             }
             else
             {
-                Eigen::Vector3i back_face1({bf1, bf4, bf2});
-                Eigen::Vector3i back_face2({bf2, bf4, bf3});
+                Eigen::Vector3i back_face1({bf1, bf3, bf2});
+                Eigen::Vector3i back_face2({bf1, bf4, bf3});
                 faces.row(face_ind+2) = back_face1;
                 faces.row(face_ind+3) = back_face2;
             }
@@ -514,7 +515,7 @@ void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real wid
             int rf3 = index(li+1, w, hi+1);
             int rf4 = index(li, w, hi+1);
             
-            int a = hi%2 - li%2;//rand()%2;
+            int a = (hi%2 == li%2) - w%2;//rand()%2;
             if (a)
             {
                 Eigen::Vector3i right_face1({rf1, rf2, rf3});
@@ -536,17 +537,18 @@ void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real wid
             int lf3 = index(li+1, 0, hi+1);
             int lf4 = index(li, 0, hi+1);
             // a = rand()%2;
-            if (a)
+            a = (hi%2 == li%2);
+            if (!a)
             {
-                Eigen::Vector3i left_face1({lf1, lf3, lf2});
-                Eigen::Vector3i left_face2({lf1, lf4, lf3});
+                Eigen::Vector3i left_face1({lf1, lf4, lf2});
+                Eigen::Vector3i left_face2({lf2, lf4, lf3});
                 faces.row(face_ind+2) = left_face1;
                 faces.row(face_ind+3) = left_face2;
             }
             else
             {
-                Eigen::Vector3i left_face1({lf1, lf4, lf2});
-                Eigen::Vector3i left_face2({lf2, lf4, lf3});
+                Eigen::Vector3i left_face1({lf1, lf3, lf2});
+                Eigen::Vector3i left_face2({lf1, lf4, lf3});
                 faces.row(face_ind+2) = left_face1;
                 faces.row(face_ind+3) = left_face2;
             }
@@ -565,7 +567,7 @@ void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real wid
             int tf2 = index(li, wi+1, h);
             int tf3 = index(li+1, wi+1, h);
             int tf4 = index(li+1, wi, h);
-            int a = li%2-wi%2; //rand()%2;
+            int a = (li%2 == wi%2) - h%2; //rand()%2;
             if (a)
             {
                 Eigen::Vector3i top_face1({tf1, tf2, tf3});
@@ -587,6 +589,7 @@ void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real wid
             int bf3 = index(li+1, wi+1, 0);
             int bf4 = index(li+1, wi, 0);
             // a = rand()%2;
+            a = (li%2 == wi%2);
             if (a)
             {
                 Eigen::Vector3i bottom_face1({bf1, bf3, bf2});
@@ -617,6 +620,9 @@ void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real wid
         {
             for (int hi = 0; hi < h; hi++)
             {
+                int a = (hi%2 == wi%2) - li%2;
+                std::cout << "(hi, wi, li): " << hi << ", " << wi << ", " << li << "   a: " << a << std::endl;
+
                 int i1 = index(li, wi, hi);
                 int i2 = index(li, wi+1, hi);
                 int i3 = index(li+1, wi+1, hi);
@@ -627,16 +633,32 @@ void MeshUtils::createBeamMsh(const std::string& filename, Real length, Real wid
                 int i8 = index(li+1, wi, hi+1);
 
                 // TODO: do the index orderings in the tet matter?
-                Eigen::Vector4i tet1(i1, i2, i3, i6);
-                Eigen::Vector4i tet2(i1, i3, i4, i8);
-                Eigen::Vector4i tet3(i1, i6, i5, i8);
-                Eigen::Vector4i tet4(i3, i6, i7, i8);
-                Eigen::Vector4i tet5(i1, i3, i6, i8);
-                elements.row(element_ind++) = tet1;
-                elements.row(element_ind++) = tet2;
-                elements.row(element_ind++) = tet3;
-                elements.row(element_ind++) = tet4;
-                elements.row(element_ind++) = tet5;
+                if (a)
+                {
+                    Eigen::Vector4i tet1(i1, i2, i3, i6);
+                    Eigen::Vector4i tet2(i1, i3, i4, i8);
+                    Eigen::Vector4i tet3(i1, i6, i5, i8);
+                    Eigen::Vector4i tet4(i3, i6, i7, i8);
+                    Eigen::Vector4i tet5(i1, i3, i6, i8);
+                    elements.row(element_ind++) = tet1;
+                    elements.row(element_ind++) = tet2;
+                    elements.row(element_ind++) = tet3;
+                    elements.row(element_ind++) = tet4;
+                    elements.row(element_ind++) = tet5;
+                }
+                else
+                {
+                    Eigen::Vector4i tet1(i1, i4, i2, i5);
+                    Eigen::Vector4i tet2(i2, i4, i3, i7);
+                    Eigen::Vector4i tet3(i2, i6, i5, i7);
+                    Eigen::Vector4i tet4(i4, i5, i8, i7);
+                    Eigen::Vector4i tet5(i2, i4, i5, i7);
+                    elements.row(element_ind++) = tet1;
+                    elements.row(element_ind++) = tet2;
+                    elements.row(element_ind++) = tet3;
+                    elements.row(element_ind++) = tet4;
+                    elements.row(element_ind++) = tet5;
+                }
             }
         }
     }

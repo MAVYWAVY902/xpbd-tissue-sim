@@ -38,9 +38,9 @@ class Easy3DVirtuosoArmGraphicsObject : public VirtuosoArmGraphicsObject, public
     void _updateMesh();
 
     private:
-    // TODO: make these settable parameters
     constexpr static int _OT_TUBULAR_RES = 20;
     constexpr static int _IT_TUBULAR_RES = 20;
+    constexpr static int _TT_TUBULAR_RES = 20;
     
     easy3d::SurfaceMesh _e3d_mesh;
 

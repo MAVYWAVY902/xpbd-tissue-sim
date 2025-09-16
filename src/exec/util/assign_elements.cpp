@@ -92,6 +92,7 @@ int main(int argc, char* argv[])
     // add the combined mesh to the Embree scene
     // this will create a scene for the tetrahedra that we can do point queries on
     embree_scene.addObject(&combined_mesh_obj);
+    embree_scene.update();
 
     std::vector<int> elem_classes(combined_mesh.numElements(), 0);
     for (const auto& [mesh_filename, class_int] : separate_meshes)
@@ -102,26 +103,37 @@ int main(int argc, char* argv[])
 
         std::cout << "bounding box: " << class_mesh.boundingBox().min.transpose() << " to " << class_mesh.boundingBox().max.transpose() << std::endl;
 
+        int num_hits = 0;
+
         // go through each element and query each of its points
         for (int e = 0; e < class_mesh.numElements(); e++)
         {
             const Eigen::Vector4i& element = class_mesh.element(e);
 
-            for (int vi = 0; vi < 4; vi++)
+            // calculate "radius" of element
+            Vec3r c = (class_mesh.vertex(element[0]) + class_mesh.vertex(element[1]) + class_mesh.vertex(element[2]) + class_mesh.vertex(element[3]))/4.0;
+            Real d1 = (class_mesh.vertex(element[0]) - c).norm();
+            Real d2 = (class_mesh.vertex(element[1]) - c).norm();
+            Real d3 = (class_mesh.vertex(element[2]) - c).norm();
+            Real d4 = (class_mesh.vertex(element[3]) - c).norm();
+            Real r = std::max({d1, d2, d3, d4});
+
+            // perform the query
+            std::set<Geometry::EmbreeHit> res = embree_scene.pointInTetrahedraQuery(c, r, &combined_mesh_obj);
+            for (const auto& hit : res)
             {
-                const Vec3r& v = class_mesh.vertex(element[vi]);
-                // perform the query
-                std::set<Geometry::EmbreeHit> res = embree_scene.pointInTetrahedraQuery(v, &combined_mesh_obj);
-                if (!res.empty())
+                // if there's a hit, label the element that was hit with the current class
+                int elem_index = hit.prim_index;
+                if (elem_classes[elem_index] == 0)
                 {
-                    // if there's a hit, label the element that was hit with the current class
-                    int elem_index = res.begin()->prim_index;
-                    if (elem_classes[elem_index] == 0)
-                        elem_classes[elem_index] = class_int;
-                    break;
+                    num_hits++;
+                    elem_classes[elem_index] = class_int;
                 }
             }
+            
         }
+
+        std::cout << mesh_filename << " overlapped with " << num_hits << " tetrahedra!" << std::endl;
     }
 
     // int num0=0, num1=0, num2=0;

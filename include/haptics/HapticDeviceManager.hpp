@@ -14,7 +14,7 @@
 
 #include "common/types.hpp"
 
-struct HapticDeviceData
+struct HapticDeviceOutputData
 {
     HDboolean button1_state;
     HDboolean button2_state;
@@ -22,12 +22,17 @@ struct HapticDeviceData
     HDdouble device_transform[16];
     HDErrorInfo error;
 
-    HapticDeviceData()
+    HapticDeviceOutputData()
         : button1_state(false), button2_state(false), device_position(), error()
     {}
 };
 
-struct CopiedHapticDeviceData
+struct HapticDeviceInputData
+{
+    Vec3r device_force;
+};
+
+struct CopiedHapticDeviceOutputData
 {
     Vec3r position;
     Mat3r orientation;
@@ -35,7 +40,7 @@ struct CopiedHapticDeviceData
     bool button2_pressed;
     bool stale;
 
-    CopiedHapticDeviceData()
+    CopiedHapticDeviceOutputData()
         : position(Vec3r::Zero()), orientation(Mat3r::Identity()), button1_pressed(false), button2_pressed(false), stale(false)
     {}
 };
@@ -60,23 +65,33 @@ class HapticDeviceManager
     void setForce(HHD handle, const Vec3r& force);
     const Vec3r& force(HHD handle) const { return _device_forces.at(handle); }
 
+    void setForceScaling(Real scaling) { _force_scaling_factor = scaling; }
+
     private:
     static HDCallbackCode HDCALLBACK _updateCallback(void *data);
 
-    void copyState(HHD handle);
+    // void copyInputState(HHD handle);
+    void copyOutputState(HHD handle);
     void setStale(const bool stale) { _stale = stale; }
-    inline void setDeviceData(HHD handle, const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform);
+    inline HapticDeviceInputData getDeviceInputData(HHD handle);
+    inline void setDeviceOutputData(HHD handle, const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform);
 
     void _initDeviceWithName(std::optional<std::string> device_name);
 
     std::vector<HHD> _device_handles;
-    std::map<HHD, HapticDeviceData> _device_data;
-    std::map<HHD, CopiedHapticDeviceData> _copied_device_data;
+    std::map<HHD, HapticDeviceOutputData> _device_data;
+    std::map<HHD, CopiedHapticDeviceOutputData> _copied_device_data;
 
     bool _stale;
 
+    /** Tracks the forces applied on the haptic device. */
     std::map<HHD, Vec3r> _device_forces;
 
+    /** Internally scales applied haptic forces before sending them to the device.
+     */
+    Real _force_scaling_factor = 1.0;
+
+    std::mutex _input_mtx;
     std::mutex _state_mtx;
 };
 

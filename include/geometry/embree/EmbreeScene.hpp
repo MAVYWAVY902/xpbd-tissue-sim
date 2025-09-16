@@ -120,10 +120,11 @@ class EmbreeScene
 
     /** Returns all the tetrahedra in a tetrahedral mesh that contain the specified point.
      * @param point : the query point
+     * @param radius : the query radius - set to 0 for a strict point-in-tetrahedra query
      * @param obj_ptr : a pointer to the TetMeshObject to query
      * @returns the set of tetrahedra in the mesh that contain the specified point (can be empty)
      */
-    std::set<EmbreeHit> pointInTetrahedraQuery(const Vec3r& point, const Sim::TetMeshObject* obj_ptr) const;
+    std::set<EmbreeHit> pointInTetrahedraQuery(const Vec3r& point, Real radius, const Sim::TetMeshObject* obj_ptr) const;
 
     /** Returns all the tetrahedra in a tetrahedral mesh that contain the specified vertex, ignoring all tetrahedra that share the vertex.
      * Used for checking for self-collisions in deformable tetrahedral meshes.

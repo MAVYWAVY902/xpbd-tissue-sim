@@ -19,6 +19,7 @@ VirtuosoSimulation::VirtuosoSimulation(const Config::VirtuosoSimulationConfig* c
     {
         std::cout << BOLD << "Initializing haptic device..." << RST << std::endl;
         _haptic_device_manager = std::make_unique<HapticDeviceManager>();
+        _haptic_device_manager->setForceScaling(config->hapticForceScaling());
         
         _last_haptic_pos = _haptic_device_manager->position(_haptic_device_manager->deviceHandles()[0]);
     }
@@ -238,9 +239,9 @@ void VirtuosoSimulation::setArm2ToolState(int tool_state)
 void VirtuosoSimulation::_moveCursor(const Vec3r& dp)
 {
     Vec3r dp_clamped = dp;
-    if (dp.norm() > 5.0e-5)
+    if (dp.norm() > 2.5e-5)
     {
-        dp_clamped = dp * (5.0e-5 / dp.norm());
+        dp_clamped = dp * (2.5e-5 / dp.norm());
     }
     // move the tip cursor and the active arm tip position
     const Vec3r current_tip_position = _active_arm->commandedTipPosition();
@@ -318,9 +319,15 @@ void VirtuosoSimulation::_timeStep()
         {
             Vec3r dx = cur_pos - _last_haptic_pos;
 
-            // transform dx from haptic input frame to global coordinates
-            Vec3r dx_sim = GeometryUtils::Rx(M_PI/2.0) * dx;
-            _moveCursor(dx_sim*0.0001);
+            // transform dx from haptic input frame to camera frame
+            Vec3r dx_camera = GeometryUtils::Ry(M_PI) * dx;
+            Mat3r rot_mat;
+            rot_mat.col(1) = _graphics_scene->cameraUpDirection();
+            rot_mat.col(2) = _graphics_scene->cameraViewDirection();
+            rot_mat.col(0) = rot_mat.col(1).cross(rot_mat.col(2));
+            // transform from camera frame to global frame
+            Vec3r dx_sim = rot_mat * dx_camera;
+            _moveCursor(dx_sim*0.00005);
         }
 
         _last_haptic_pos = cur_pos;

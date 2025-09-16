@@ -56,8 +56,8 @@ void HapticDeviceManager::_initDeviceWithName(std::optional<std::string> device_
     hdEnable(HD_FORCE_OUTPUT);
 
     _device_handles.push_back(hHD);
-    _device_data[hHD] = HapticDeviceData{};
-    _copied_device_data[hHD] = CopiedHapticDeviceData{};
+    _device_data[hHD] = HapticDeviceOutputData{};
+    _copied_device_data[hHD] = CopiedHapticDeviceOutputData{};
     _device_forces[hHD] = Vec3r::Zero();
 
 }
@@ -90,6 +90,8 @@ HDCallbackCode HDCALLBACK HapticDeviceManager::_updateCallback(void *data)
         HDboolean button1_pressed_hd;
         HDboolean button2_pressed_hd;
 
+        HapticDeviceInputData input_data = device_manager->getDeviceInputData(handle);
+
         /* Begin haptics frame.  ( In general, all state-related haptics calls
         should be made within a frame. ) */
         hdBeginFrame(handle);
@@ -109,10 +111,10 @@ HDCallbackCode HDCALLBACK HapticDeviceManager::_updateCallback(void *data)
 
         /** Update the force */
         hduVector3Dd force_hd;
-        const Vec3r& force = device_manager->force(handle);
-        force_hd[0] = force[0];
-        force_hd[1] = force[1];
-        force_hd[2] = force[2];
+        const Vec3r& force = input_data.device_force;
+        force_hd[0] = device_manager->_force_scaling_factor*force[0];
+        force_hd[1] = device_manager->_force_scaling_factor*force[1];
+        force_hd[2] = device_manager->_force_scaling_factor*force[2];
 
         hdSetDoublev(HD_CURRENT_FORCE, force_hd);
 
@@ -125,19 +127,19 @@ HDCallbackCode HDCALLBACK HapticDeviceManager::_updateCallback(void *data)
             hduPrintError(stderr, &error, "_updateCallback");
         }
 
-        device_manager->setDeviceData(handle, button1_pressed_hd, button2_pressed_hd, position_hd, transform_hd);
+        device_manager->setDeviceOutputData(handle, button1_pressed_hd, button2_pressed_hd, position_hd, transform_hd);
     }
     
 
     return HD_CALLBACK_CONTINUE;
 }
 
-void HapticDeviceManager::copyState(HHD handle)
+void HapticDeviceManager::copyOutputState(HHD handle)
 {
     std::lock_guard<std::mutex> guard(_state_mtx);
 
-    CopiedHapticDeviceData& copied_data = _copied_device_data.at(handle);
-    const HapticDeviceData& device_data = _device_data.at(handle);
+    CopiedHapticDeviceOutputData& copied_data = _copied_device_data.at(handle);
+    const HapticDeviceOutputData& device_data = _device_data.at(handle);
     copied_data.position[0] = device_data.device_position[0];
     copied_data.position[1] = device_data.device_position[1];
     copied_data.position[2] = device_data.device_position[2];
@@ -160,13 +162,22 @@ void HapticDeviceManager::copyState(HHD handle)
 
 void HapticDeviceManager::setForce(HHD handle, const Vec3r& force)
 {
+    std::lock_guard<std::mutex> guard(_input_mtx);
     _device_forces.at(handle) = force;
 }
 
-void HapticDeviceManager::setDeviceData(HHD handle, const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform)
+HapticDeviceInputData HapticDeviceManager::getDeviceInputData(HHD handle)
+{
+    std::lock_guard<std::mutex> guard(_input_mtx);
+    HapticDeviceInputData input_data;
+    input_data.device_force = _device_forces.at(handle);
+    return input_data;
+}
+
+void HapticDeviceManager::setDeviceOutputData(HHD handle, const HDboolean& b1_state, const HDboolean& b2_state, const hduVector3Dd& position, const HDdouble* transform)
 {
     std::lock_guard<std::mutex> guard(_state_mtx);
-    HapticDeviceData& device_data = _device_data.at(handle);
+    HapticDeviceOutputData& device_data = _device_data.at(handle);
     device_data.button1_state = b1_state;
     device_data.button2_state = b2_state;
     device_data.device_position = position;
@@ -180,7 +191,7 @@ Vec3r HapticDeviceManager::position(HHD handle)
     if (_copied_device_data.at(handle).stale)
     {
         // hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
-        copyState(handle);
+        copyOutputState(handle);
     }
 
     return _copied_device_data.at(handle).position;
@@ -191,7 +202,7 @@ Mat3r HapticDeviceManager::orientation(HHD handle)
     if (_copied_device_data.at(handle).stale)
     {
         // hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
-        copyState(handle);
+        copyOutputState(handle);
     }
 
     return _copied_device_data.at(handle).orientation;
@@ -202,7 +213,7 @@ bool HapticDeviceManager::button1Pressed(HHD handle)
     if (_copied_device_data.at(handle).stale)
     {
         // hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
-        copyState(handle);
+        copyOutputState(handle);
     }
 
     return _copied_device_data.at(handle).button1_pressed;
@@ -213,7 +224,7 @@ bool HapticDeviceManager::button2Pressed(HHD handle)
     if (_copied_device_data.at(handle).stale)
     {
         // hdScheduleSynchronous(_copyCallback, this, HD_MIN_SCHEDULER_PRIORITY);
-        copyState(handle);
+        copyOutputState(handle);
     }
 
     return _copied_device_data.at(handle).button2_pressed;

@@ -47,7 +47,7 @@ int main()
 
     // point-in-tetrahedron query
     const Vec3r query_point(0.0,0.0,0.0);
-    std::set<Geometry::EmbreeHit> result = embree_scene.pointInTetrahedraQuery(query_point, &mesh_obj);
+    std::set<Geometry::EmbreeHit> result = embree_scene.pointInTetrahedraQuery(query_point, 0.0, &mesh_obj);
 
     std::cout << "\n=== Results for point-in-tet query for query point (" << query_point[0] << ", " << query_point[1] << ", " << query_point[2] << ") ===" << std::endl;
     for (const auto& hit : result)
