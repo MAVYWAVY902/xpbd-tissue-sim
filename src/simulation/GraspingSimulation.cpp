@@ -1,7 +1,9 @@
 #include "simulation/GraspingSimulation.hpp"
+#include <cstdio>
 
 namespace Sim
 {
+
 
 GraspingSimulation::GraspingSimulation(const Config::GraspingSimulationConfig* config)
     : Simulation(config), _grasping(false), _cursor(nullptr)
@@ -27,17 +29,25 @@ void GraspingSimulation::setup()
 
     if (_fix_min_z)
     {
+        // Fix bottom vertices for both types of XPBD mesh objects
         std::vector<std::unique_ptr<Sim::XPBDMeshObject_Base>>& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
-        for (auto& obj : xpbd_mesh_objs)
-        {
-            // get min z coordinate of the object's mesh
-            Vec3r min_bbox_point = obj->mesh()->boundingBox().min;
-            std::vector<int> vertices_to_fix = obj->mesh()->getVerticesWithZ(min_bbox_point[2]);
-            for (const auto& v : vertices_to_fix)
+        std::vector<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>& fo_xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+        
+        auto fix_bottom_vertices = [&](auto& mesh_objs) {
+            for (auto& obj : mesh_objs)
             {
-                obj->fixVertex(v);
+                // get min z coordinate of the object's mesh
+                Vec3r min_bbox_point = obj->mesh()->boundingBox().min;
+                std::vector<int> vertices_to_fix = obj->mesh()->getVerticesWithZ(min_bbox_point[2]);
+                for (const auto& v : vertices_to_fix)
+                {
+                    obj->fixVertex(v);
+                }
             }
-        }
+        };
+        
+        fix_bottom_vertices(xpbd_mesh_objs);
+        fix_bottom_vertices(fo_xpbd_mesh_objs);
     }
     
 
@@ -50,6 +60,7 @@ void GraspingSimulation::setup()
 
 void GraspingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
 {
+    printf("DEBUG: Mouse button event: button=%d, action=%d\n", static_cast<int>(button), static_cast<int>(action));
 
     // button = 0 ==> left mouse button
     // button = 1 ==> right mouse button
@@ -67,11 +78,20 @@ void GraspingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton b
 
 void GraspingSimulation::notifyMouseMoved(double x, double y)
 {
-    if (_keys_held[SimulationInput::Key::SPACE] > 0) // space bar = clutch
+    printf("DEBUG: Mouse moved: x=%.2f, y=%.2f, space_held=%d\n", x, y, _keys_held.count(SimulationInput::Key::SPACE) ? _keys_held.at(SimulationInput::Key::SPACE) : 0);
+    if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0) // space bar = clutch
     {
-        const Real scaling = _grasp_radius/50.0;
+        // Use gentler scaling when grasping is active to prevent explosions
+        const Real base_scaling = _grasp_radius/50.0;
+        const Real scaling = _grasping ? base_scaling * 0.2 : base_scaling; // 5x slower when grasping
+        
         Real dx = x - _last_mouse_pos[0];
         Real dy = y - _last_mouse_pos[1];
+        
+        // Limit maximum mouse movement per frame to prevent explosive motion
+        const Real max_mouse_delta = 20.0; // pixels
+        dx = std::max(-max_mouse_delta, std::min(max_mouse_delta, dx));
+        dy = std::max(-max_mouse_delta, std::min(max_mouse_delta, dy));
 
         // camera plane defined by camera up direction and camera right direction
         // changes in mouse y position = changes along camera up direction
@@ -89,6 +109,9 @@ void GraspingSimulation::notifyMouseMoved(double x, double y)
 
 void GraspingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
+    if (key == SimulationInput::Key::SPACE) {
+        printf("DEBUG: Spacebar event: action=%d\n", static_cast<int>(action));
+    }
 
     // find key in map
     auto it = _keys_held.find(key);
@@ -104,12 +127,17 @@ void GraspingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationIn
 void GraspingSimulation::notifyMouseScrolled(double dx, double dy)
 {
     // when using mouse input, mouse scrolling moves the robot tip in and out of the page
-    if (_keys_held[SimulationInput::Key::SPACE] > 0) // space bar = clutch
+    if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0) // space bar = clutch
     {
-        const Real scaling = _grasp_radius/2.0;
+        // Use gentler scaling when grasping is active
+        const Real base_scaling = _grasp_radius/2.0;
+        const Real scaling = _grasping ? base_scaling * 0.3 : base_scaling; // 3x slower when grasping
+        
+        // Limit scroll delta to prevent explosive motion
+        const Real limited_dy = std::max(-2.0, std::min(2.0, dy));
+        
         const Vec3r view_dir = _graphics_scene->cameraViewDirection();
-
-        const Vec3r offset = view_dir*dy;
+        const Vec3r offset = view_dir*limited_dy;
         _moveCursor(offset*scaling);
     }
     
@@ -128,12 +156,12 @@ void GraspingSimulation::_moveCursor(const Vec3r& dp)
 void GraspingSimulation::_timeStep()
 {
     Real grasp_radius_change = 0;
-    if (_keys_held[SimulationInput::Key::W] > 0) // W = increase grasping radius
+    if (_keys_held.count(SimulationInput::Key::W) && _keys_held.at(SimulationInput::Key::W) > 0) // W = increase grasping radius
     {
         grasp_radius_change += _grasp_radius/300.0;
 
     }
-    if (_keys_held[SimulationInput::Key::S] > 0) // S = decrease grasping radius
+    if (_keys_held.count(SimulationInput::Key::S) && _keys_held.at(SimulationInput::Key::S) > 0) // S = decrease grasping radius
     {
         grasp_radius_change += -_grasp_radius/300.0;
     }
@@ -146,55 +174,112 @@ void GraspingSimulation::_timeStep()
 
 void GraspingSimulation::_toggleGrasping()
 {
+    // Get both types of XPBD mesh objects
     std::vector<std::unique_ptr<Sim::XPBDMeshObject_Base>>& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
+    std::vector<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>& fo_xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+    
+    printf("DEBUG: Found %zu XPBDMeshObject_Base objects and %zu FirstOrderXPBDMeshObject_Base objects\n", 
+           xpbd_mesh_objs.size(), fo_xpbd_mesh_objs.size());
+    
     // if not currently grasping, start grasping vertices inside grasping radius
     if (!_grasping)
     {
-        std::map<std::pair<Sim::XPBDMeshObject_Base*, int>, Vec3r> vertices_to_grasp;
+        printf("DEBUG: Toggling grasp ON.\n");
 
         const Vec3r grasp_center = _cursor->position();
-        // quick and dirty way to find all vertices in a sphere
-        for (int theta = 0; theta < 360; theta+=30)
+        printf("DEBUG: Grasp center is at (%.2f, %.2f, %.2f)\n", grasp_center.x(), grasp_center.y(), grasp_center.z());
+
+        // --- NEW RELIABLE METHOD ---
+        printf("DEBUG: Number of deformable objects: %zu\n", xpbd_mesh_objs.size() + fo_xpbd_mesh_objs.size());
+        printf("DEBUG: Grasp radius: %.4f\n", _grasp_radius);
+        
+        int total_vertices_found = 0;
+        
+        // Process XPBDMeshObject_Base objects
+        for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
         {
-            for (int phi = 0; phi < 360; phi+=30)
+            printf("DEBUG: Processing XPBDMeshObject with %d vertices\n", xpbd_mesh_obj->mesh()->numVertices());
+            int fixed_count = 0;
+            int within_radius_count = 0;
+            
+            // Iterate over every vertex in the mesh
+            for (int v = 0; v < xpbd_mesh_obj->mesh()->numVertices(); ++v)
             {
-                for (double p = 0; p < _grasp_radius; p+=_grasp_radius/5.0)
+                // Check if the vertex is already fixed
+                if (xpbd_mesh_obj->vertexFixed(v))
                 {
-                    const double x = grasp_center[0] + p*std::sin(phi*M_PI/180)*std::cos(theta*M_PI/180);
-                    const double y = grasp_center[1] + p*std::sin(phi*M_PI/180)*std::sin(theta*M_PI/180);
-                    const double z = grasp_center[2] + p*std::cos(phi*M_PI/180);
+                    fixed_count++;
+                    continue;
+                }
 
-                    for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
-                    {
-                        int v = xpbd_mesh_obj->mesh()->getClosestVertex(Vec3r(x, y, z));
-
-                        // make sure v is inside grasping sphere
-                        if ((grasp_center - xpbd_mesh_obj->mesh()->vertex(v)).norm() <= _grasp_radius)
-                            if (!xpbd_mesh_obj->vertexFixed(v))
-                            {
-                                std::pair<Sim::XPBDMeshObject_Base*, int> obj_vert_pair = std::make_pair(xpbd_mesh_obj.get(), v);
-                                const Vec3r attachment_offset = xpbd_mesh_obj->mesh()->vertex(v) - grasp_center;
-                                vertices_to_grasp[obj_vert_pair] = attachment_offset;
-                            }
-                    }
-                    
+                const Vec3r vertex_pos = xpbd_mesh_obj->mesh()->vertex(v);
+                Real distance = (vertex_pos - grasp_center).norm();
+                
+                // Check if the vertex is inside the grasping sphere
+                if (distance <= _grasp_radius)
+                {
+                    within_radius_count++;
+                    total_vertices_found++;
+                    // Use ZERO relative offset for gentler grasping - vertices will move toward cursor center
+                    xpbd_mesh_obj->addAttachmentConstraint(v, &_cursor->position(), Vec3r(0,0,0));
+                    _grasped_vertices.push_back(std::make_pair(xpbd_mesh_obj.get(), v));
+                    printf("DEBUG: Vertex %d at (%.2f, %.2f, %.2f) distance %.4f - SELECTED\n", 
+                           v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(), distance);
                 }
             }
+            printf("DEBUG: XPBDMeshObject summary - Fixed vertices: %d, Vertices within radius: %d\n", fixed_count, within_radius_count);
         }
-
-        for (const auto& [obj_vert_pair, offset] : vertices_to_grasp)
+        
+        // Process FirstOrderXPBDMeshObject_Base objects
+        for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs)
         {
-            obj_vert_pair.first->addAttachmentConstraint(obj_vert_pair.second, &_cursor->position(), offset);
-            _grasped_vertices.push_back(obj_vert_pair);
+            printf("DEBUG: Processing FirstOrderXPBDMeshObject with %d vertices\n", fo_xpbd_mesh_obj->mesh()->numVertices());
+            int fixed_count = 0;
+            int within_radius_count = 0;
+            
+            // Iterate over every vertex in the mesh
+            for (int v = 0; v < fo_xpbd_mesh_obj->mesh()->numVertices(); ++v)
+            {
+                // Check if the vertex is already fixed
+                if (fo_xpbd_mesh_obj->vertexFixed(v))
+                {
+                    fixed_count++;
+                    continue;
+                }
+
+                const Vec3r vertex_pos = fo_xpbd_mesh_obj->mesh()->vertex(v);
+                Real distance = (vertex_pos - grasp_center).norm();
+                
+                // Check if the vertex is inside the grasping sphere
+                if (distance <= _grasp_radius)
+                {
+                    within_radius_count++;
+                    total_vertices_found++;
+                    // Use ZERO relative offset for gentler grasping - vertices will move toward cursor center
+                    fo_xpbd_mesh_obj->addAttachmentConstraint(v, &_cursor->position(), Vec3r(0,0,0));
+                    // Note: Not storing FirstOrder objects in _grasped_vertices due to template type mismatch
+                    printf("DEBUG: Vertex %d at (%.2f, %.2f, %.2f) distance %.4f - SELECTED\n", 
+                           v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(), distance);
+                }
+            }
+            printf("DEBUG: FirstOrderXPBDMeshObject summary - Fixed vertices: %d, Vertices within radius: %d\n", fixed_count, within_radius_count);
         }
+        // --- END NEW METHOD ---
+
+        printf("DEBUG: Found %d vertices to grasp.\n", total_vertices_found);
     }
 
     // if tool state has changed from 1 to 0, stop grasping
     else if (_grasping)
     {
+        printf("DEBUG: Toggling grasp OFF.\n");
         for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
         {
             xpbd_mesh_obj->clearAttachmentConstraints();
+        }
+        for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs)
+        {
+            fo_xpbd_mesh_obj->clearAttachmentConstraints();
         }
         _grasped_vertices.clear();
     }

@@ -24,7 +24,7 @@ list(APPEND CMAKE_PREFIX_PATH "$ENV{XPBD_SIM_EASY3D_CMAKE_PREFIX_PATH}") # neede
 
 find_package(Easy3D COMPONENTS viewer fileio renderer core util REQUIRED)  # request Easy3D (recommended to request only needed components)
 find_package(assimp REQUIRED)   # find assimp (for mesh loading/conversion)
-find_package(Eigen3 3.3 REQUIRED)   # find Eigen
+find_package(Eigen3 REQUIRED)   # find Eigen
 find_package(embree 4 REQUIRED)
 
 # find VTK
@@ -116,6 +116,7 @@ target_link_libraries(GeometryUtils Eigen3::Eigen Geometry)
 add_library(Simulation)
 add_library(BeamSimulation)
 add_library(GraspingSimulation)
+add_library(PushingSimulation)
 add_library(VirtuosoSimulation)
 add_library(PalpationSimulation)
 # add_library(BeamStretchSimulation)
@@ -126,6 +127,7 @@ add_subdirectory("src/simulation")
 target_link_libraries(Simulation Collision Graphics SimObject Geometry SimObject Solver yaml-cpp ${VTK_LIBRARIES})
 target_link_libraries(BeamSimulation Simulation)
 target_link_libraries(GraspingSimulation Simulation)
+target_link_libraries(PushingSimulation Simulation)
 target_link_libraries(VirtuosoSimulation Simulation Haptics)
 target_link_libraries(PalpationSimulation VirtuosoSimulation)
 # target_link_libraries(BeamStretchSimulation Simulation)
@@ -140,6 +142,9 @@ target_link_libraries(BeamTest BeamSimulation)
 
 add_executable(GraspingTest src/exec/grasping_main.cpp)
 target_link_libraries(GraspingTest GraspingSimulation)
+
+add_executable(PushingTest src/exec/pushing_main.cpp)
+target_link_libraries(PushingTest PushingSimulation)
 
 add_executable(VirtuosoTest src/exec/virtuoso_main.cpp)
 target_link_libraries(VirtuosoTest VirtuosoSimulation)

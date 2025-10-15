@@ -1,4 +1,3 @@
-## made on 4/22/25 - things may have changed since then
 ## NOTE: not all parameters below are required - the Simulation class and all Object classes have many default parameters
 
 name: "Example"  # name of the simulation
@@ -49,6 +48,7 @@ objects:
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
+    # filename: "../resource/tissue/neuroma_segmentation_decimated.obj"
 
     materials: ["Soft Tissue"] # the elastic material (must match with the name of a material defined above)
 
@@ -87,46 +87,46 @@ objects:
 
   ## examples of other possible objects to add to the simulation
 
-  ## rigid box
-  # - 
-  #   name: "ramp"
-  #   type: "RigidBox"
-  #   size: [5, 1, 0.2]
-  #   density: 100000
-  #   position: [0, 0, 0]
-  #   rotation: [0, 0, 0]
-  #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
-  #   fixed: true
-  #   collisions: true
-
-
-  ## rigid sphere
-  -
-    name: "sphere"
-    type: "RigidSphere"
-    radius: 0.5
-    density: 10000
+  # rigid box
+  - 
+    name: "ramp"
+    type: "RigidBox"
+    size: [5, 1, 0.2]
+    density: 100000
     position: [0, 0, 0]
+    rotation: [0, 0, 0]
     velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
     fixed: true
     collisions: true
 
 
-  ## rigid cylinder
+  # # rigid sphere
+  # -
+  #   name: "sphere"
+  #   type: "RigidSphere"
+  #   radius: 0.5
+  #   density: 10000
+  #   position: [0, 0, 0]
+  #   velocity: [0, 0, 0]
+  #   fixed: true
+  #   collisions: true
+
+
+  # # rigid cylinder
   # - name: "cylinder"
   #   type: "RigidCylinder"
-  #   radius: 0.05
+  #   radius: 0.5
   #   height: 0.1
   #   density: 10000000
   #   position: [0, 0.2, 0.0]
-  #   rotation: [100, 0, 0]
+  #   rotation: [180, 180, 180]
   #   velocity: [0, 0.1, 0]
   #   angular-velocity: [0, 0, 0]
   #   fixed: true
   #   collisions: true
 
-  ## rigid mesh
+  # # rigid mesh
   # - 
   #   name: "mesh_obj"
   #   type: "RigidMeshObject"
@@ -142,4 +142,17 @@ objects:
   #   collisions: true
   #   fixed: true
 
+  # # rigid mesh
+  # - 
+  #   name: "tbone_v1"
+  #   type: "RigidMeshObject"
+  #   filename: "../resource/bone/tbone_v1.obj"
+  #   density: 100
+  #   position: [0, 0, 0]
+  #   rotation: [0, 90, 90]
+  #   velocity: [0, 0, 0]
+  #   angular-velocity: [0, 0, 0]
+  #   max-size: 1
+  #   collisions: true
+  #   fixed: true
 

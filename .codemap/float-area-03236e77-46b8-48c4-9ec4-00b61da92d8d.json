@@ -1,0 +1,116 @@
+{
+    "type": "float-area",
+    "_widgets": [
+        [
+            {
+                "widget": {
+                    "constructionOptions": {
+                        "factoryId": "code-editor-opener",
+                        "options": {
+                            "kind": "navigatable",
+                            "uri": "config/example_config.yaml",
+                            "floatAreaId": "03236e77-46b8-48c4-9ec4-00b61da92d8d"
+                        }
+                    },
+                    "innerWidgetState": {
+                        "cursorState": [
+                            {
+                                "inSelectionMode": false,
+                                "selectionStart": {
+                                    "lineNumber": 33,
+                                    "column": 9
+                                },
+                                "position": {
+                                    "lineNumber": 33,
+                                    "column": 9
+                                }
+                            }
+                        ],
+                        "viewState": {
+                            "scrollLeft": 0,
+                            "firstPosition": {
+                                "lineNumber": 28,
+                                "column": 1
+                            },
+                            "firstPositionDeltaTop": 0
+                        },
+                        "contributionsState": {
+                            "editor.contrib.folding": {
+                                "collapsedRegions": [
+                                    {
+                                        "startLineNumber": 33,
+                                        "endLineNumber": 159,
+                                        "isCollapsed": true,
+                                        "source": 0,
+                                        "checksum": 903199
+                                    }
+                                ],
+                                "lineCount": 161,
+                                "provider": "syntax",
+                                "foldedImports": false
+                            },
+                            "editor.contrib.wordHighlighter": false
+                        }
+                    }
+                },
+                "width": 452.6022890947671,
+                "height": 450,
+                "spacing": 0
+            },
+            {
+                "widget": {
+                    "constructionOptions": {
+                        "factoryId": "code-editor-opener",
+                        "options": {
+                            "kind": "navigatable",
+                            "uri": "src/simulation/Simulation.cpp",
+                            "floatAreaId": "03236e77-46b8-48c4-9ec4-00b61da92d8d"
+                        }
+                    },
+                    "innerWidgetState": {
+                        "cursorState": [
+                            {
+                                "inSelectionMode": false,
+                                "selectionStart": {
+                                    "lineNumber": 74,
+                                    "column": 9
+                                },
+                                "position": {
+                                    "lineNumber": 74,
+                                    "column": 9
+                                }
+                            }
+                        ],
+                        "viewState": {
+                            "scrollLeft": 0,
+                            "firstPosition": {
+                                "lineNumber": 108,
+                                "column": 1
+                            },
+                            "firstPositionDeltaTop": -7
+                        },
+                        "contributionsState": {
+                            "editor.contrib.folding": {
+                                "lineCount": 354,
+                                "provider": "syntax",
+                                "foldedImports": false
+                            },
+                            "editor.contrib.wordHighlighter": false
+                        }
+                    }
+                },
+                "width": 452.6022890947671,
+                "height": 450,
+                "spacing": 0
+            }
+        ]
+    ],
+    "_widths": [
+        452.6022890947671
+    ],
+    "_modelData": {
+        "connections": [],
+        "annotations": [],
+        "highlights": []
+    }
+}

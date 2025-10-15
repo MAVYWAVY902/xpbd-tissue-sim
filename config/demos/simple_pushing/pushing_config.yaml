@@ -1,0 +1,83 @@
+## NOTE: not all parameters below are required - the Simulation class and all Object classes have many default parameters
+
+name: "Simple Pushing"  # name of the simulation
+description: "Interactive pushing of mesh nodes with a spherical tool tip controlled by the user" # description of the simulation
+
+visualization: "Easy3D" # what graphics to use ('Easy3D' for Easy3D graphics or 'None' for no graphics)
+
+g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
+
+## different simulation "modes"
+# sim-mode: "Frame-by-frame"  # "Frame-by-frame" lets you advance the simulation one frame at a time by pressing any key
+sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time - BETTER for interactive pushing
+# sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
+
+enable-mouse-interaction: true  # enables/disables mouse interaction in the viewer (LMB + drag to change view, scroll to zoom, etc.)
+input-device: "Mouse" 
+
+time-step: 1e-3   # simulation time step [s] - MUCH SMALLER for complex meshes
+collision-rate: 1000 # rate at which to run collision detection [Hz] - HIGHER for stability
+fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
+end-time: 10000 # end time of the simulation [s]
+
+## define elastic material
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 3e4    # Young's modulus [Pa] - MUCH SOFTER for complex meshes (was 3e4)
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.0 # coefficient of static friction [-]
+    mu-k: 0.0 # coefficient of kinetic friction [-]
+
+## PushingSimulation-specific parameters
+tool-radius: 0.1       # initial tool radius [m] - VERY SMALL for complex meshes
+push-stiffness: 50.0    # stiffness for pushing forces [N/m] - VERY GENTLE pushing
+max-push-force: 20.0    # maximum force that can be applied [N] - VERY LOW
+fix-min-z: true         # whether or not to fix all vertices that have the mesh's minimum z-coordinate
+
+## objects in the simulation
+objects:
+
+  ## deformable object to push
+  -
+    name: "Cube1"
+
+    ## type of object
+    type: "FirstOrderXPBDMeshObject"  # use the 1st-order XPBD method
+    # type: "XPBDMeshObject"          # use the standard, 2nd-order XPBD method
+
+    ## filename to load from
+    # filename: "../resource/tissue/neuroma_segmentation_decimated.msh"
+    filename: "../resource/cube/cube8.msh"  # Use this for testing instead    materials: ["Soft Tissue"]
+    # filename: "../resource/cube/cube16.msh"
+    # filename: "../resource/tissue/neuroma_segmentation_decimated.obj"
+
+
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    color: [0.8, 0.3, 0.2, 1.0] # reddish color for the tissue
+    draw-points: false  # draw mesh points
+    draw-edges: true    # draw mesh edges
+    draw-faces: true    # draw mesh faces
+
+    ## initial configuration
+    max-size: 1   # size of largest model dimension (preserves aspect ratio)
+    position: [0, 0, 1.2]   # initial position of mesh center of mass [m]
+    velocity: [0, 0, 0.0]   # initial velocity [m/s]
+    rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
+
+    ## collisions
+    collisions: true
+
+    ## XPBD-specific options
+    num-solver-iters: 1   # number of solver loop iterations per time step - BALANCED for pushing
+    
+    solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver
+    constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints
+
+    residual-policy: "Never"              # don't compute the residuals
+
+    ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
+    damping-multiplier: 1000000   # 'b' from the 1st-Order XPBD paper - BALANCED for pushing

@@ -12,9 +12,10 @@ g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 # sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
 sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
-enable-mouse-interaction: false  # enables/disables mouse interaction in the viewer (LMB + drag to change view, scroll to zoom, etc.)
+enable-mouse-interaction: true  # enables/disables mouse interaction in the viewer (LMB + drag to change view, scroll to zoom, etc.)
+input-device: "Mouse" 
 
-time-step: 1e-3   # simulation time step [s]
+time-step: 5e-4   # simulation time step [s]
 collision-rate: 1000 # rate at which to run collision detection [Hz] 
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 10000 # end time of the simulation [s]
@@ -30,7 +31,7 @@ materials:
     mu-k: 0.0 # coefficient of kinetic friction [-]
 
 ## GraspingSimulation-specific parameters
-grasp-radius: 0.3 # initial grasp radius [m]
+grasp-radius: 0.1 # initial grasp radius [m] - LARGER for better mouse sensitivity
 fix-min-z: true   # whether or not to fix all vertices that have the mesh's minimum z-coordinate (i.e. fixes the bottom face of the mesh)
 
 
@@ -49,12 +50,14 @@ objects:
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/general/single.msh"
-    filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/cube/cube16.msh"
     # filename: "../resource/cube/cube32.msh"
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
+    filename: "../resource/tissue/neuroma_segmentation_decimated.obj"
+
 
     materials: ["Soft Tissue"]
 
@@ -75,7 +78,7 @@ objects:
     collisions: true
 
     ## XPBD-specific options
-    num-solver-iters: 1   # number of solver loop iterations per time step 
+    num-solver-iters: 5   # number of solver loop iterations per time step 
     
     solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (i.e. update mesh after every constraint projection)
     # solver-type: "Jacobi"       # use Jacobi solver (i.e. update mesh only after going through every constraint projection)
@@ -88,7 +91,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 10000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 500000   # 'b' from the 1st-Order XPBD paper
   
 
   ## examples of other possible objects to add to the simulation

@@ -129,7 +129,7 @@ objects:
     collisions: false
 
     ## XPBD-specific options
-    num-solver-iters: 10   # number of solver loop iterations per time step 
+    num-solver-iters: 50   # number of solver loop iterations per time step 
     
     solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (i.e. update mesh after every constraint projection)
     # solver-type: "Jacobi"       # use Jacobi solver (i.e. update mesh only after going through every constraint projection)
@@ -142,7 +142,7 @@ objects:
     # residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 100000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 400000   # 'b' from the 1st-Order XPBD paper 100000
     accelerate-convergence: false
   
 

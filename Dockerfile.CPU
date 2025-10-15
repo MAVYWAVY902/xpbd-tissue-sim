@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y \
     libusb-1.0-0-dev
 
 
+
+
 # create directory for third party software
 WORKDIR /thirdparty
 
@@ -77,6 +79,9 @@ RUN make install
 #########################
 WORKDIR /thirdparty
 RUN git clone https://github.com/smtobin/Mesh2SDF.git
+# modify CMakeLists.txt to not require specific Eigen version
+RUN sed -i 's/find_package(Eigen3 3.3 REQUIRED)/find_package(Eigen3 REQUIRED)/g' Mesh2SDF/CMakeLists.txt
+
 WORKDIR Mesh2SDF/build
 RUN cmake .. -DUSE_DOUBLE_PRECISION=1
 RUN make -j 8

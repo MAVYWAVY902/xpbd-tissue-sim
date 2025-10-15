@@ -69,6 +69,31 @@ install(FILES ${GRASPING_SIMULATION_HEADERS}
 
 
 ######################################
+# Pushing Simulation
+######################################
+set(PUSHING_SIMULATION_HEADERS
+    "${SIMULATION_INCLUDE_DIR}/PushingSimulation.hpp"
+)
+
+set(PUSHING_SIMULATION_SOURCES
+    "${SIMULATION_SRC_DIR}/PushingSimulation.cpp"
+)
+
+target_sources(PushingSimulation
+    PRIVATE
+        ${PUSHING_SIMULATION_HEADERS}
+        ${PUSHING_SIMULATION_SOURCES}
+)
+
+install(TARGETS PushingSimulation EXPORT PushingSimulation-targets
+    RUNTIME DESTINATION bin/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
+)
+install(FILES ${PUSHING_SIMULATION_HEADERS}
+    DESTINATION include/${PROJECT_NAME}/simulation)
+
+
+######################################
 # Virtuoso Simulation
 ######################################
 set(VIRTUOSO_SIMULATION_HEADERS
