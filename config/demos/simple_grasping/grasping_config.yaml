@@ -56,7 +56,7 @@ objects:
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
-    filename: "../resource/tissue/neuroma_segmentation_decimated.obj"
+    filename: "../resource/tissue/neuroma_segmentation_decimated_2000.obj"
 
 
     materials: ["Soft Tissue"]

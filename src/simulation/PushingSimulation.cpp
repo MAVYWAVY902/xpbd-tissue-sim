@@ -86,9 +86,9 @@ void PushingSimulation::notifyMouseMoved(double x, double y)
     // Move cursor when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
-        // Use gentler scaling when pushing is active to prevent explosions
-        const Real base_scaling = _tool_radius / 50.0;
-        const Real scaling = _pushing_enabled ? base_scaling * 0.2 : base_scaling; // 5x slower when pushing
+    // Increase sensitivity: more world motion per pixel; still slow down when pushing
+    const Real base_scaling = _tool_radius / 30.0; // was /50.0 (≈3.3x more sensitive)
+    const Real scaling = _pushing_enabled ? base_scaling * 0.35 : base_scaling; // was 0.2
 
         Real dx = x - _last_mouse_pos[0];
         Real dy = y - _last_mouse_pos[1];
@@ -133,9 +133,9 @@ void PushingSimulation::notifyMouseScrolled(double dx, double dy)
     // Mouse scrolling moves the tool tip in/out when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
-        // Use gentler scaling when pushing is active
-        const Real base_scaling = _tool_radius / 2.0;
-        const Real scaling = _pushing_enabled ? base_scaling * 0.3 : base_scaling; // 3x slower when pushing
+    // Increase scroll sensitivity; still slow down when pushing
+    const Real base_scaling = _tool_radius / 1.0; // was /2.0 (2x more sensitive)
+    const Real scaling = _pushing_enabled ? base_scaling * 0.5 : base_scaling; // was 0.3
 
         // Limit scroll delta to prevent explosive motion
         const Real limited_dy = std::max(-2.0, std::min(2.0, dy));

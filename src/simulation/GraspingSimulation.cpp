@@ -81,9 +81,9 @@ void GraspingSimulation::notifyMouseMoved(double x, double y)
     printf("DEBUG: Mouse moved: x=%.2f, y=%.2f, space_held=%d\n", x, y, _keys_held.count(SimulationInput::Key::SPACE) ? _keys_held.at(SimulationInput::Key::SPACE) : 0);
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0) // space bar = clutch
     {
-        // Use gentler scaling when grasping is active to prevent explosions
-        const Real base_scaling = _grasp_radius/50.0;
-        const Real scaling = _grasping ? base_scaling * 0.2 : base_scaling; // 5x slower when grasping
+    // Increase sensitivity: more world motion per pixel; still slow down when grasping
+    const Real base_scaling = _grasp_radius/15.0; // was /50.0 (≈3.3x more sensitive)
+    const Real scaling = _grasping ? base_scaling * 0.35 : base_scaling; // was 0.2
         
         Real dx = x - _last_mouse_pos[0];
         Real dy = y - _last_mouse_pos[1];
@@ -131,9 +131,9 @@ void GraspingSimulation::notifyMouseScrolled(double dx, double dy)
     // when using mouse input, mouse scrolling moves the robot tip in and out of the page
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0) // space bar = clutch
     {
-        // Use gentler scaling when grasping is active
-        const Real base_scaling = _grasp_radius/2.0;
-        const Real scaling = _grasping ? base_scaling * 0.3 : base_scaling; // 3x slower when grasping
+    // Increase scroll sensitivity; still slow down when grasping
+    const Real base_scaling = _grasp_radius/1.0; // was /2.0 (2x more sensitive)
+    const Real scaling = _grasping ? base_scaling * 0.5 : base_scaling; // was 0.3
         
         // Limit scroll delta to prevent explosive motion
         const Real limited_dy = std::max(-2.0, std::min(2.0, dy));
