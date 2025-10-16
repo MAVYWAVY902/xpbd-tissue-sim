@@ -99,11 +99,13 @@ void PushingSimulation::notifyMouseMoved(double x, double y)
         dy = std::max(-max_mouse_delta, std::min(max_mouse_delta, dy));
 
         // camera plane defined by camera up direction and camera right direction
-        const Vec3r up_vec = _graphics_scene->cameraUpDirection();
-        const Vec3r right_vec = _graphics_scene->cameraRightDirection();
+    const Vec3r up_vec = _graphics_scene->cameraUpDirection();
+    const Vec3r right_vec = _graphics_scene->cameraRightDirection();
         
-        const Vec3r offset = right_vec * dx + up_vec * -dy; // negate dy since increasing dy is opposite of camera up
-        _moveCursor(offset * scaling);
+    // Map screen-space mouse to world: right maps to +cameraRight, up maps to +cameraUp
+    // Using +dy here so moving mouse up moves tool up in the scene
+    const Vec3r offset = right_vec * dx + up_vec * dy;
+    _moveCursor(offset * scaling);
     }
 
     _last_mouse_pos[0] = x;
