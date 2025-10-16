@@ -12,6 +12,9 @@ PushingSimulation::PushingSimulation(const Config::PushingSimulationConfig* conf
     _max_push_force = config->maxPushForce();
     _fix_min_z = config->fixMinZ();
 
+    // Pre-allocate space for push targets to guarantee pointer stability
+    _push_targets.reserve(kMaxPushedVertices);
+
     // initialize the keys map with relevant keycodes
     SimulationInput::Key keys[] = {
         SimulationInput::Key::SPACE, // space bar for cursor movement
@@ -83,9 +86,17 @@ void PushingSimulation::notifyMouseMoved(double x, double y)
     // Move cursor when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
-        const Real scaling = _tool_radius / 50.0;
+        // Use gentler scaling when pushing is active to prevent explosions
+        const Real base_scaling = _tool_radius / 50.0;
+        const Real scaling = _pushing_enabled ? base_scaling * 0.2 : base_scaling; // 5x slower when pushing
+
         Real dx = x - _last_mouse_pos[0];
         Real dy = y - _last_mouse_pos[1];
+
+        // Limit maximum mouse movement per frame to prevent explosive motion
+        const Real max_mouse_delta = 20.0; // pixels
+        dx = std::max(-max_mouse_delta, std::min(max_mouse_delta, dx));
+        dy = std::max(-max_mouse_delta, std::min(max_mouse_delta, dy));
 
         // camera plane defined by camera up direction and camera right direction
         const Vec3r up_vec = _graphics_scene->cameraUpDirection();
@@ -120,10 +131,15 @@ void PushingSimulation::notifyMouseScrolled(double dx, double dy)
     // Mouse scrolling moves the tool tip in/out when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
-        const Real scaling = _tool_radius / 2.0;
+        // Use gentler scaling when pushing is active
+        const Real base_scaling = _tool_radius / 2.0;
+        const Real scaling = _pushing_enabled ? base_scaling * 0.3 : base_scaling; // 3x slower when pushing
+
+        // Limit scroll delta to prevent explosive motion
+        const Real limited_dy = std::max(-2.0, std::min(2.0, dy));
         const Vec3r view_dir = _graphics_scene->cameraViewDirection();
 
-        const Vec3r offset = view_dir * dy;
+        const Vec3r offset = view_dir * limited_dy;
         _moveCursor(offset * scaling);
     }
 
@@ -199,7 +215,7 @@ void PushingSimulation::_applyPushingForces()
     
     const Vec3r tool_center = _cursor->position();
     int vertices_pushed = 0;
-    const int max_vertices_pushed = 15; // Limit vertices to prevent explosions
+    const int max_vertices_pushed = kMaxPushedVertices; // Limit vertices to prevent explosions
 
     // First clear any previous pushing constraints
     for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
@@ -212,8 +228,9 @@ void PushingSimulation::_applyPushingForces()
     }
     
     // Store push targets to keep them alive during constraint solving
-    static std::vector<Vec3r> push_targets;
-    push_targets.clear();
+    _push_targets.clear();
+    // Ensure we never exceed reserved capacity to avoid pointer invalidation
+    _push_targets.reserve(kMaxPushedVertices);
     
     // Process XPBDMeshObject_Base objects
     for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
@@ -229,10 +246,11 @@ void PushingSimulation::_applyPushingForces()
             if (distance <= _tool_radius)
             {
                 Vec3r push_target = _calculatePushTarget(vertex_pos, tool_center, _tool_radius);
-                push_targets.push_back(push_target);
-                
-                // Create attachment constraint to push the vertex towards the target
-                xpbd_mesh_obj->addAttachmentConstraint(v, &push_targets.back(), Vec3r(0,0,0));
+                if ((int)_push_targets.size() < max_vertices_pushed) {
+                    _push_targets.emplace_back(push_target);
+                    // Create attachment constraint to push the vertex towards the target
+                    xpbd_mesh_obj->addAttachmentConstraint(v, &_push_targets.back(), Vec3r(0,0,0));
+                }
                 vertices_pushed++;
                 
                 if (vertices_pushed <= 5) // Limit debug output
@@ -259,10 +277,11 @@ void PushingSimulation::_applyPushingForces()
             if (distance <= _tool_radius)
             {
                 Vec3r push_target = _calculatePushTarget(vertex_pos, tool_center, _tool_radius);
-                push_targets.push_back(push_target);
-                
-                // Create attachment constraint to push the vertex towards the target
-                fo_xpbd_mesh_obj->addAttachmentConstraint(v, &push_targets.back(), Vec3r(0,0,0));
+                if ((int)_push_targets.size() < max_vertices_pushed) {
+                    _push_targets.emplace_back(push_target);
+                    // Create attachment constraint to push the vertex towards the target
+                    fo_xpbd_mesh_obj->addAttachmentConstraint(v, &_push_targets.back(), Vec3r(0,0,0));
+                }
                 vertices_pushed++;
                 
                 if (vertices_pushed <= 5) // Limit debug output
@@ -283,6 +302,7 @@ void PushingSimulation::_applyPushingForces()
 
 Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec3r& tool_center, Real tool_radius)
 {
+    // Direction outward from tool center
     Vec3r displacement = vertex_pos - tool_center;
     Real distance = displacement.norm();
     
@@ -301,13 +321,18 @@ Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec
     
     // Normalize displacement to get push direction (away from tool center)
     Vec3r push_direction = displacement / distance;
-    
-    // Calculate push distance based on penetration and stiffness - MUCH gentler for complex meshes
-    Real push_distance = penetration * (_push_stiffness / 100000.0); // 10x gentler scaling
-    
-    // Clamp push distance to very small limits for complex meshes
-    push_distance = std::min(push_distance, tool_radius * 0.1); // Only 10% of tool radius max
-    
+
+    // Compute push distance: small fraction of penetration to avoid overshoot
+    Real push_distance = penetration * std::min<Real>(1.0, _push_stiffness / 5000.0);
+
+    // Clamp push distance to a very small limit to maintain stability
+    const Real max_step = tool_radius * 0.05; // 5% of tool radius per frame
+    push_distance = std::min(push_distance, max_step);
+
+    // Soft cap: enforce max push force by limiting displacement magnitude heuristically
+    const Real force_scaled_step = _max_push_force / 10000.0; // heuristic mapping N -> meters/frame
+    push_distance = std::min(push_distance, force_scaled_step);
+
     return vertex_pos + push_direction * push_distance;
 }
 

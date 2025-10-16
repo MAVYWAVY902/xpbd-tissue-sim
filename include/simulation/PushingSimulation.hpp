@@ -3,6 +3,7 @@
 #include "simulation/Simulation.hpp"
 #include "config/simulation/PushingSimulationConfig.hpp"
 #include "simobject/RigidPrimitives.hpp"
+#include <vector>
 
 namespace Sim
 {
@@ -50,6 +51,9 @@ private:
     Vec3r _calculatePushTarget(const Vec3r& vertex_pos, const Vec3r& tool_center, Real tool_radius);
 
 private:
+    // Upper bound on how many vertices we will try to push per step
+    static constexpr int kMaxPushedVertices = 32;
+
     Real _tool_radius;                    ///< radius of the spherical tool tip
     Real _push_stiffness;                 ///< stiffness coefficient for pushing forces
     Real _max_push_force;                 ///< maximum force that can be applied
@@ -60,6 +64,9 @@ private:
     std::array<double, 2> _last_mouse_pos;           ///< last mouse position
     
     Sim::RigidSphere* _cursor;           ///< visual representation of the tool tip
+
+    // Storage for per-vertex push targets to ensure stable pointer lifetimes
+    std::vector<Vec3r> _push_targets;
 };
 
 } // namespace Sim
