@@ -15,7 +15,7 @@ sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-tim
 enable-mouse-interaction: true  # enables/disables mouse interaction in the viewer (LMB + drag to change view, scroll to zoom, etc.)
 input-device: "Mouse" 
 
-time-step: 5e-4   # simulation time step [s] - smaller for stability like grasping
+time-step: 1e-3   # simulation time step [s] - smaller for stability like grasping
 collision-rate: 1000 # rate at which to run collision detection [Hz] - HIGHER for stability
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 10000 # end time of the simulation [s]
@@ -32,8 +32,8 @@ materials:
 
 ## PushingSimulation-specific parameters
 tool-radius: 0.1        # initial tool radius [m]
-push-stiffness: 100.0   # moderate stiffness; logic clamps per-step motion
-max-push-force: 10.0    # conservative limit to avoid blowups
+push-stiffness: 50.0   # increased for more responsive pushing (was 100)
+max-push-force: 20.0    # increased for stronger pushing effect (was 10)
 fix-min-z: true         # whether or not to fix all vertices that have the mesh's minimum z-coordinate
 
 ## objects in the simulation
@@ -49,9 +49,9 @@ objects:
 
     ## filename to load from
     # filename: "../resource/tissue/neuroma_segmentation_decimated.msh"
-    filename: "../resource/cube/cube8.msh"  # Use this for testing instead    materials: ["Soft Tissue"]
+    # filename: "../resource/cube/cube8.msh"  # Use this for testing instead    materials: ["Soft Tissue"]
     # filename: "../resource/cube/cube16.msh"
-    # filename: "../resource/tissue/neuroma_segmentation_decimated.obj"
+    filename: "../resource/tissue/neuroma_segmentation_decimated_2000.obj"
 
 
     materials: ["Soft Tissue"]

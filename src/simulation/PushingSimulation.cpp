@@ -214,10 +214,14 @@ void PushingSimulation::_applyPushingForces()
     std::vector<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>& fo_xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
     
     const Vec3r tool_center = _cursor->position();
+    int vertices_contacted = 0;
     int vertices_pushed = 0;
-    const int max_vertices_pushed = kMaxPushedVertices; // Limit vertices to prevent explosions
 
-    // First clear any previous pushing constraints
+    printf("DEBUG: === PUSHING FRAME START ===\n");
+    printf("DEBUG: Tool center at (%.3f, %.3f, %.3f), radius: %.3f\n", 
+           tool_center.x(), tool_center.y(), tool_center.z(), _tool_radius);
+
+    // IMPORTANT: Clear attachment constraints - we don't want any for pushing!
     for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
     {
         xpbd_mesh_obj->clearAttachmentConstraints();
@@ -227,37 +231,65 @@ void PushingSimulation::_applyPushingForces()
         fo_xpbd_mesh_obj->clearAttachmentConstraints();
     }
     
-    // Store push targets to keep them alive during constraint solving
-    _push_targets.clear();
-    // Ensure we never exceed reserved capacity to avoid pointer invalidation
-    _push_targets.reserve(kMaxPushedVertices);
-    
     // Process XPBDMeshObject_Base objects
     for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
     {
-        for (int v = 0; v < xpbd_mesh_obj->mesh()->numVertices() && vertices_pushed < max_vertices_pushed; ++v)
+        printf("DEBUG: Processing XPBDMeshObject with %d vertices\n", xpbd_mesh_obj->mesh()->numVertices());
+        
+        for (int v = 0; v < xpbd_mesh_obj->mesh()->numVertices(); ++v)
         {
             if (xpbd_mesh_obj->vertexFixed(v)) continue;
 
             const Vec3r vertex_pos = xpbd_mesh_obj->mesh()->vertex(v);
             Real distance = (vertex_pos - tool_center).norm();
             
-            // Apply pushing if vertex is within tool radius
-            if (distance <= _tool_radius)
+            // Debug: Show vertices near tool
+            if (distance <= _tool_radius * 1.2) // Slightly larger radius for debug
             {
-                Vec3r push_target = _calculatePushTarget(vertex_pos, tool_center, _tool_radius);
-                if ((int)_push_targets.size() < max_vertices_pushed) {
-                    _push_targets.emplace_back(push_target);
-                    // Create attachment constraint to push the vertex towards the target
-                    xpbd_mesh_obj->addAttachmentConstraint(v, &_push_targets.back(), Vec3r(0,0,0));
+                vertices_contacted++;
+                printf("DEBUG: Vertex %d at distance %.4f (tool_radius=%.4f)\n", v, distance, _tool_radius);
+            }
+            
+            // Apply pushing if vertex is within tool radius (PENETRATION)
+            if (distance < _tool_radius)
+            {
+                Real penetration = _tool_radius - distance;
+                printf("DEBUG: PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
+                
+                // Calculate push direction (away from tool center)
+                Vec3r displacement = vertex_pos - tool_center;
+                Vec3r push_direction;
+                
+                if (displacement.norm() < 1e-6) // Handle zero displacement
+                {
+                    push_direction = Vec3r(0, 0, 1); // Push upward if at center
+                    printf("DEBUG: Zero displacement - pushing upward\n");
                 }
+                else
+                {
+                    push_direction = displacement.normalized();
+                }
+                
+                // Calculate push offset - this is the key for proper pushing!
+                Real push_magnitude = penetration * (_push_stiffness / 1000.0); // Gentle but visible
+                push_magnitude = std::min(push_magnitude, _tool_radius * 0.1); // Limit to 10% of radius
+                
+                Vec3r push_offset = push_direction * push_magnitude;
+                
+                printf("DEBUG: Pushing vertex %d by offset (%.6f, %.6f, %.6f), magnitude=%.6f\n", 
+                       v, push_offset.x(), push_offset.y(), push_offset.z(), push_magnitude);
+                
+                // DIRECT VERTEX DISPLACEMENT - NO ATTACHMENT CONSTRAINTS!
+                Vec3r new_position = vertex_pos + push_offset;
+                xpbd_mesh_obj->mesh()->setVertex(v, new_position);
+                
                 vertices_pushed++;
                 
-                if (vertices_pushed <= 5) // Limit debug output
+                if (vertices_pushed <= 3) // Detailed debug for first few
                 {
-                    printf("DEBUG: Pushing vertex %d from (%.2f, %.2f, %.2f) towards (%.2f, %.2f, %.2f)\n", 
+                    printf("DEBUG: Vertex %d: (%.3f,%.3f,%.3f) -> (%.3f,%.3f,%.3f)\n", 
                            v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(),
-                           push_target.x(), push_target.y(), push_target.z());
+                           new_position.x(), new_position.y(), new_position.z());
                 }
             }
         }
@@ -266,38 +298,69 @@ void PushingSimulation::_applyPushingForces()
     // Process FirstOrderXPBDMeshObject_Base objects
     for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs)
     {
-        for (int v = 0; v < fo_xpbd_mesh_obj->mesh()->numVertices() && vertices_pushed < max_vertices_pushed; ++v)
+        printf("DEBUG: Processing FirstOrderXPBDMeshObject with %d vertices\n", fo_xpbd_mesh_obj->mesh()->numVertices());
+        
+        for (int v = 0; v < fo_xpbd_mesh_obj->mesh()->numVertices(); ++v)
         {
             if (fo_xpbd_mesh_obj->vertexFixed(v)) continue;
 
             const Vec3r vertex_pos = fo_xpbd_mesh_obj->mesh()->vertex(v);
             Real distance = (vertex_pos - tool_center).norm();
             
-            // Apply pushing if vertex is within tool radius
-            if (distance <= _tool_radius)
+            // Debug: Show vertices near tool
+            if (distance <= _tool_radius * 1.2) // Slightly larger radius for debug
             {
-                Vec3r push_target = _calculatePushTarget(vertex_pos, tool_center, _tool_radius);
-                if ((int)_push_targets.size() < max_vertices_pushed) {
-                    _push_targets.emplace_back(push_target);
-                    // Create attachment constraint to push the vertex towards the target
-                    fo_xpbd_mesh_obj->addAttachmentConstraint(v, &_push_targets.back(), Vec3r(0,0,0));
+                vertices_contacted++;
+                printf("DEBUG: FO Vertex %d at distance %.4f (tool_radius=%.4f)\n", v, distance, _tool_radius);
+            }
+            
+            // Apply pushing if vertex is within tool radius (PENETRATION)
+            if (distance < _tool_radius)
+            {
+                Real penetration = _tool_radius - distance;
+                printf("DEBUG: FO PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
+                
+                // Calculate push direction (away from tool center)
+                Vec3r displacement = vertex_pos - tool_center;
+                Vec3r push_direction;
+                
+                if (displacement.norm() < 1e-6) // Handle zero displacement
+                {
+                    push_direction = Vec3r(0, 0, 1); // Push upward if at center
+                    printf("DEBUG: FO Zero displacement - pushing upward\n");
                 }
+                else
+                {
+                    push_direction = displacement.normalized();
+                }
+                
+                // Calculate push offset
+                Real push_magnitude = penetration * (_push_stiffness / 1000.0); // Gentle but visible
+                push_magnitude = std::min(push_magnitude, _tool_radius * 0.1); // Limit to 10% of radius
+                
+                Vec3r push_offset = push_direction * push_magnitude;
+                
+                printf("DEBUG: FO Pushing vertex %d by offset (%.6f, %.6f, %.6f), magnitude=%.6f\n", 
+                       v, push_offset.x(), push_offset.y(), push_offset.z(), push_magnitude);
+                
+                // DIRECT VERTEX DISPLACEMENT - NO ATTACHMENT CONSTRAINTS!
+                Vec3r new_position = vertex_pos + push_offset;
+                fo_xpbd_mesh_obj->mesh()->setVertex(v, new_position);
+                
                 vertices_pushed++;
                 
-                if (vertices_pushed <= 5) // Limit debug output
+                if (vertices_pushed <= 3) // Detailed debug for first few
                 {
-                    printf("DEBUG: Pushing vertex %d from (%.2f, %.2f, %.2f) towards (%.2f, %.2f, %.2f)\n", 
+                    printf("DEBUG: FO Vertex %d: (%.3f,%.3f,%.3f) -> (%.3f,%.3f,%.3f)\n", 
                            v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(),
-                           push_target.x(), push_target.y(), push_target.z());
+                           new_position.x(), new_position.y(), new_position.z());
                 }
             }
         }
     }
 
-    if (vertices_pushed > 0)
-    {
-        printf("DEBUG: Applied pushing to %d vertices\n", vertices_pushed);
-    }
+    printf("DEBUG: Frame summary - Vertices contacted: %d, Vertices pushed: %d\n", vertices_contacted, vertices_pushed);
+    printf("DEBUG: === PUSHING FRAME END ===\n\n");
 }
 
 Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec3r& tool_center, Real tool_radius)
@@ -308,7 +371,7 @@ Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec
     
     if (distance < 1e-6) // avoid division by zero - push straight up if at center
     {
-        return vertex_pos + Vec3r(0, 0, tool_radius * 0.1);
+        return vertex_pos + Vec3r(0, 0, tool_radius * 0.2);
     }
     
     // Calculate how far the vertex should be pushed
@@ -322,16 +385,19 @@ Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec
     // Normalize displacement to get push direction (away from tool center)
     Vec3r push_direction = displacement / distance;
 
-    // Compute push distance: small fraction of penetration to avoid overshoot
-    Real push_distance = penetration * std::min<Real>(1.0, _push_stiffness / 5000.0);
+    // MORE EFFECTIVE PUSHING: Scale penetration more aggressively
+    Real push_distance = penetration * (_push_stiffness / 500.0); // Much more responsive (was 5000)
 
-    // Clamp push distance to a very small limit to maintain stability
-    const Real max_step = tool_radius * 0.05; // 5% of tool radius per frame
+    // Reasonable max step per frame - allow meaningful deformation
+    const Real max_step = tool_radius * 0.3; // 30% of tool radius per frame (was 5%)
     push_distance = std::min(push_distance, max_step);
 
-    // Soft cap: enforce max push force by limiting displacement magnitude heuristically
-    const Real force_scaled_step = _max_push_force / 10000.0; // heuristic mapping N -> meters/frame
+    // Less restrictive force cap
+    const Real force_scaled_step = _max_push_force / 100.0; // More responsive (was 10000)
     push_distance = std::min(push_distance, force_scaled_step);
+
+    printf("DEBUG: Push calculation - penetration: %.4f, raw_distance: %.4f, final_distance: %.4f\n", 
+           penetration, penetration * (_push_stiffness / 500.0), push_distance);
 
     return vertex_pos + push_direction * push_distance;
 }
