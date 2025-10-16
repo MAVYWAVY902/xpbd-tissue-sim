@@ -82,16 +82,16 @@ void GraspingSimulation::notifyMouseMoved(double x, double y)
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0) // space bar = clutch
     {
     // Increase sensitivity: more world motion per pixel; still slow down when grasping
-    const Real base_scaling = _grasp_radius/15.0; // was /50.0 (≈3.3x more sensitive)
+    const Real base_scaling = _grasp_radius/30.0; // was /50.0 (≈3.3x more sensitive)
     const Real scaling = _grasping ? base_scaling * 0.35 : base_scaling; // was 0.2
         
         Real dx = x - _last_mouse_pos[0];
         Real dy = y - _last_mouse_pos[1];
         
-        // Limit maximum mouse movement per frame to prevent explosive motion
-        const Real max_mouse_delta = 20.0; // pixels
-        dx = std::max(-max_mouse_delta, std::min(max_mouse_delta, dx));
-        dy = std::max(-max_mouse_delta, std::min(max_mouse_delta, dy));
+    // Limit maximum mouse movement per frame to prevent explosive motion
+    const Real max_mouse_delta = _grasping ? 10.0 : 20.0; // tighter when grasping
+    dx = std::max(-max_mouse_delta, std::min(max_mouse_delta, dx));
+    dy = std::max(-max_mouse_delta, std::min(max_mouse_delta, dy));
 
         // camera plane defined by camera up direction and camera right direction
         // changes in mouse y position = changes along camera up direction
@@ -186,7 +186,11 @@ void GraspingSimulation::_toggleGrasping()
     // if not currently grasping, start grasping vertices inside grasping radius
     if (!_grasping)
     {
-        printf("DEBUG: Toggling grasp ON.\n");
+    printf("DEBUG: Toggling grasp ON.\n");
+
+    // Ensure a clean slate before adding new attachments
+    for (auto& xpbd_mesh_obj : xpbd_mesh_objs) { xpbd_mesh_obj->clearAttachmentConstraints(); }
+    for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs) { fo_xpbd_mesh_obj->clearAttachmentConstraints(); }
 
         const Vec3r grasp_center = _cursor->position();
         printf("DEBUG: Grasp center is at (%.2f, %.2f, %.2f)\n", grasp_center.x(), grasp_center.y(), grasp_center.z());
@@ -205,6 +209,8 @@ void GraspingSimulation::_toggleGrasping()
             int within_radius_count = 0;
             
             // Iterate over every vertex in the mesh
+            int attached_here = 0;
+            const int kMaxAttachPerObject = 256; // cap constraints per object to improve stability
             for (int v = 0; v < xpbd_mesh_obj->mesh()->numVertices(); ++v)
             {
                 // Check if the vertex is already fixed
@@ -214,16 +220,26 @@ void GraspingSimulation::_toggleGrasping()
                     continue;
                 }
 
+                // Prefer attaching on surface vertices for stability (skip internal nodes if info present)
+                if (xpbd_mesh_obj->mesh()->hasVertexProperty<bool>("surface"))
+                {
+                    if (!xpbd_mesh_obj->mesh()->vertexOnSurface(v))
+                        continue;
+                }
+
                 const Vec3r vertex_pos = xpbd_mesh_obj->mesh()->vertex(v);
                 Real distance = (vertex_pos - grasp_center).norm();
                 
                 // Check if the vertex is inside the grasping sphere
-                if (distance <= _grasp_radius)
+                if (distance <= _grasp_radius && attached_here < kMaxAttachPerObject)
                 {
                     within_radius_count++;
                     total_vertices_found++;
-                    // Use ZERO relative offset for gentler grasping - vertices will move toward cursor center
-                    xpbd_mesh_obj->addAttachmentConstraint(v, &_cursor->position(), Vec3r(0,0,0));
+                    // Use RELATIVE OFFSET so initial error is zero: target = cursor_pos + (vertex_pos - cursor_pos)
+                    // This avoids a large initial pull to the cursor center and is more stable.
+                    const Vec3r attachment_offset = xpbd_mesh_obj->mesh()->vertex(v) - _cursor->position();
+                    xpbd_mesh_obj->addAttachmentConstraint(v, &_cursor->position(), attachment_offset);
+                    attached_here++;
                     _grasped_vertices.push_back(std::make_pair(xpbd_mesh_obj.get(), v));
                     printf("DEBUG: Vertex %d at (%.2f, %.2f, %.2f) distance %.4f - SELECTED\n", 
                            v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(), distance);
@@ -240,6 +256,8 @@ void GraspingSimulation::_toggleGrasping()
             int within_radius_count = 0;
             
             // Iterate over every vertex in the mesh
+            int attached_here = 0;
+            const int kMaxAttachPerObject = 256; // cap constraints per object to improve stability
             for (int v = 0; v < fo_xpbd_mesh_obj->mesh()->numVertices(); ++v)
             {
                 // Check if the vertex is already fixed
@@ -249,16 +267,25 @@ void GraspingSimulation::_toggleGrasping()
                     continue;
                 }
 
+                // Prefer attaching on surface vertices for stability (skip internal nodes if info present)
+                if (fo_xpbd_mesh_obj->mesh()->hasVertexProperty<bool>("surface"))
+                {
+                    if (!fo_xpbd_mesh_obj->mesh()->vertexOnSurface(v))
+                        continue;
+                }
+
                 const Vec3r vertex_pos = fo_xpbd_mesh_obj->mesh()->vertex(v);
                 Real distance = (vertex_pos - grasp_center).norm();
                 
                 // Check if the vertex is inside the grasping sphere
-                if (distance <= _grasp_radius)
+                if (distance <= _grasp_radius && attached_here < kMaxAttachPerObject)
                 {
                     within_radius_count++;
                     total_vertices_found++;
-                    // Use ZERO relative offset for gentler grasping - vertices will move toward cursor center
-                    fo_xpbd_mesh_obj->addAttachmentConstraint(v, &_cursor->position(), Vec3r(0,0,0));
+                    // Use RELATIVE OFFSET so initial error is zero for stability
+                    const Vec3r attachment_offset = fo_xpbd_mesh_obj->mesh()->vertex(v) - _cursor->position();
+                    fo_xpbd_mesh_obj->addAttachmentConstraint(v, &_cursor->position(), attachment_offset);
+                    attached_here++;
                     // Note: Not storing FirstOrder objects in _grasped_vertices due to template type mismatch
                     printf("DEBUG: Vertex %d at (%.2f, %.2f, %.2f) distance %.4f - SELECTED\n", 
                            v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(), distance);
