@@ -15,7 +15,7 @@ sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-tim
 enable-mouse-interaction: true  # enables/disables mouse interaction in the viewer (LMB + drag to change view, scroll to zoom, etc.)
 input-device: "Mouse" 
 
-time-step: 1e-3   # simulation time step [s] - MUCH SMALLER for complex meshes
+time-step: 5e-4   # simulation time step [s] - smaller for stability like grasping
 collision-rate: 1000 # rate at which to run collision detection [Hz] - HIGHER for stability
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 10000 # end time of the simulation [s]
@@ -25,15 +25,15 @@ materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 3e4    # Young's modulus [Pa] - MUCH SOFTER for complex meshes (was 3e4)
+    E: 6e4    # Young's modulus [Pa] - match grasping defaults
     nu: 0.45  # Poisson's ratio [-]
     mu-s: 0.0 # coefficient of static friction [-]
     mu-k: 0.0 # coefficient of kinetic friction [-]
 
 ## PushingSimulation-specific parameters
-tool-radius: 0.1       # initial tool radius [m] - VERY SMALL for complex meshes
-push-stiffness: 50.0    # stiffness for pushing forces [N/m] - VERY GENTLE pushing
-max-push-force: 20.0    # maximum force that can be applied [N] - VERY LOW
+tool-radius: 0.1        # initial tool radius [m]
+push-stiffness: 100.0   # moderate stiffness; logic clamps per-step motion
+max-push-force: 10.0    # conservative limit to avoid blowups
 fix-min-z: true         # whether or not to fix all vertices that have the mesh's minimum z-coordinate
 
 ## objects in the simulation
@@ -72,7 +72,7 @@ objects:
     collisions: true
 
     ## XPBD-specific options
-    num-solver-iters: 1   # number of solver loop iterations per time step - BALANCED for pushing
+    num-solver-iters: 3   # a bit more iterations for stability under contact
     
     solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver
     constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints
