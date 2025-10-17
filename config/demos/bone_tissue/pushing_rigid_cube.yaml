@@ -1,0 +1,91 @@
+## Rigid + Soft Pushing Demo (Rigid Cube + Deformable Tissue)
+## Runs with the PushingTest executable and your existing PushingSimulation logic
+
+name: "Rigid-Soft Pushing (Cube)"
+description: "Deformable tissue pushed by a user-controlled spherical tool, interacting with a fixed rigid cube obstacle."
+
+visualization: "Easy3D"      # 'Easy3D' for viewer, 'None' for headless
+
+g-accel: 0                    # gravity in z [m/s^2]; 0 for a neutral testbed
+
+# Recommended for interactive pushing
+sim-mode: "Visualization"     # Visualization runs in real-time for smooth mouse interaction
+
+enable-mouse-interaction: true
+input-device: "Mouse"
+
+# Global sim timing
+# For stability with pushing, start conservative; you can tune up if stable
+# If your mesh is stiff or contact rich, reduce dt or increase collision-rate
+
+time-step: 1e-3               # [s]
+collision-rate: 1000          # [Hz]
+fps: 30                       # visualization FPS
+end-time: 10000               # [s]
+
+# Materials
+materials:
+  - name: "Soft Tissue"
+    density: 1000             # [kg/m^3]
+    E: 6e4                    # [Pa]
+    nu: 0.45                  # [-]
+    mu-s: 0.0                 # static friction
+    mu-k: 0.0                 # kinetic friction
+
+# PushingSimulation parameters (tool tip)
+tool-radius: 0.12             # [m] user-controlled sphere radius
+push-stiffness: 50.0          # responsiveness of penetration-based offsets (logic in your PushingSimulation)
+max-push-force: 20.0          # cap for per-step influence (logical cap; used in your pushing logic if applicable)
+fix-min-z: true               # pin bottom-most vertices (helps avoid drift during pushing)
+
+# Scene objects
+objects:
+  # Deformable tissue to push
+  - name: "Tissue"
+    type: "FirstOrderXPBDMeshObject"
+    # Alternative: type: "XPBDMeshObject"
+
+    # Provide a mesh. If you have a volumetric .msh, prefer that.
+    # If .obj/.stl is provided, the system will tetrahedralize it at load.
+    # Pick one that you know works well in your setup:
+    # filename: "../resource/cube/cube16.msh"
+    # filename: "../resource/general/single.msh"
+    filename: "../resource/tissue/neuroma_segmentation_decimated_2000.obj"
+
+    materials: ["Soft Tissue"]
+
+    # Visuals
+    color: [0.85, 0.35, 0.25, 1.0]
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    # Placement (try above the rigid cube so you can push it down onto it)
+    max-size: 1.0
+    position: [0.0, 0.0, 1.0]
+    rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+
+    collisions: true
+
+    # XPBD tuning
+    num-solver-iters: 4
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+
+    # First-Order XPBD damping (ignored by classic XPBD)
+    damping-multiplier: 500000
+
+  # Fixed rigid cube acting as a "bone" or obstacle
+  - name: "RigidCube"
+    type: "RigidBox"
+    size: [0.6, 0.6, 0.2]     # [x, y, z] meters
+    density: 1000             # density only affects mass when fixed: false
+    position: [0.55, 0.1, 0.8] # place cube near the origin; tissue starts above
+    rotation: [0, -90, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    fixed: true               # keep it static
+    collisions: true          # enable rigid-soft contact
+
