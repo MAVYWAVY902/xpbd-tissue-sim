@@ -80,9 +80,9 @@ objects:
   # Fixed rigid cube acting as a "bone" or obstacle
   - name: "RigidCube"
     type: "RigidBox"
-    size: [0.6, 0.6, 0.2]     # [x, y, z] meters
+    size: [1.6, 1.6, 0.015]     # [x, y, z] meters
     density: 1000             # density only affects mass when fixed: false
-    position: [0.55, 0.1, 0.8] # place cube near the origin; tissue starts above
+    position: [0.4, 0.1, 0.8] # place cube near the origin; tissue starts above
     rotation: [0, -90, 0]
     velocity: [0, 0, 0]
     angular-velocity: [0, 0, 0]
