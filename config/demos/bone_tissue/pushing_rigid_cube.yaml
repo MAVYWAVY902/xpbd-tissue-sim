@@ -50,7 +50,7 @@ objects:
     # Pick one that you know works well in your setup:
     # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/general/single.msh"
-    filename: "../resource/tissue/neuroma_segmentation_decimated_2000.obj"
+    filename: "../resource/tissue/neuroma_refined_uniform.obj"
 
     materials: ["Soft Tissue"]
 
