@@ -7,6 +7,7 @@
 #include "simobject/XPBDMeshObjectBase.hpp"
 #include "simobject/ElasticMaterial.hpp"
 #include "common/XPBDTypedefs.hpp"
+#include "solver/constraint/NerveStretchConstraint.hpp"
 
 // #include "solver/XPBDSolverUpdates.hpp"
 
@@ -140,6 +141,13 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      */
     virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::AttachmentConstraint>>  
     addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset) override;
+
+
+
+    /** Adds a nerve-style stretch (distance) constraint between two vertices. */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::NerveStretchConstraint>>
+        addNerveStretchConstraint(int v0, int v1, Real rest_len, Real alpha);
 
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() override;

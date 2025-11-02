@@ -16,6 +16,7 @@
 #include "solver/constraint/DeformableDeformableCollisionConstraint.hpp"
 #include "solver/constraint/HydrostaticConstraint.hpp"
 #include "solver/constraint/DeviatoricConstraint.hpp"
+#include "solver/constraint/NerveStretchConstraint.hpp" 
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
 #include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
@@ -263,6 +264,41 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addAtta
     using ConstraintRefType = Solver::ConstraintReference<Solver::AttachmentConstraint>;
     return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
+
+// ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+// NEW: addNerveStretchConstraint
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<
+    Solver::ConstraintProjector<IsFirstOrder, Solver::NerveStretchConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
+    ::addNerveStretchConstraint(int v0, int v1, Real rest_len, Real alpha)
+{
+    // 1. 两个顶点的指针
+    Real* p0 = _mesh->vertexPointer(v0);
+    Real* p1 = _mesh->vertexPointer(v1);
+
+    // 2. 两个顶点的约束质量（和 attachment 的取法一模一样）
+    Real m0 = vertexConstraintInertia(v0);
+    Real m1 = vertexConstraintInertia(v1);
+
+    // 3. 拿到这个类型的约束数组，然后 emplace 一条
+    auto& vec = _constraints.template get<Solver::NerveStretchConstraint>();
+    vec.emplace_back(
+        v0, p0, m0,
+        v1, p1, m1,
+        rest_len,
+        alpha
+    );
+
+    // 4. 像别的约束一样，把这条新加的约束告诉 solver
+    using RefType = Solver::ConstraintReference<Solver::NerveStretchConstraint>;
+    return _solver.addConstraintProjector(
+        _sim->dt(),
+        RefType(vec, vec.size() - 1)
+    );
+}
+// ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ NEW END
+
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::clearAttachmentConstraints()

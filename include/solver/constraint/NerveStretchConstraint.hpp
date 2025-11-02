@@ -30,43 +30,102 @@
 
 
 // include/solver/constraint/NerveStretchConstraint.hpp
-#ifndef SOLVER_NERVE_STRETCH_CONSTRAINT_HPP
-#define SOLVER_NERVE_STRETCH_CONSTRAINT_HPP
+#ifndef __NERVE_STRETCH_CONSTRAINT_HPP
+#define __NERVE_STRETCH_CONSTRAINT_HPP
 
 #include "solver/constraint/Constraint.hpp"
-#include <Eigen/Dense>
 
-namespace Solver
-{
+namespace Solver {
 
-// 一个最简单的“2 点距离 = restLen”约束
 class NerveStretchConstraint : public Constraint
 {
 public:
-    // 我们只有两个位置
+    // 两个点，每个点3个坐标
     static constexpr int NUM_POSITIONS   = 2;
-    // 只有一个标量约束：‖p0 - p1‖ - L0 = 0
-    static constexpr int NUM_COORDINATES = 1;
+    static constexpr int NUM_COORDINATES = 6;
 
-    // 构造函数的风格，照你的 AttachmentConstraint
-    NerveStretchConstraint(int i_idx, Real* i_ptr, Real i_invMass,
-                           int j_idx, Real* j_ptr, Real j_invMass,
-                           Real restLen);
+    // ctor 顺序一定要跟你 cpp 里 emplace_back 的顺序一样
+    // v_i, p_i, m_i, v_j, p_j, m_j, rest_len, alpha
+    NerveStretchConstraint(int v_i, Real* p_i, Real m_i,
+                           int v_j, Real* p_j, Real m_j,
+                           Real rest_length,
+                           Real alpha)
+    : Constraint(
+        // 这里要把两个参与的点都塞给基类
+        std::vector<PositionReference>{
+            PositionReference{v_i, p_i, m_i},
+            PositionReference{v_j, p_j, m_j}
+        },
+        alpha   // 基类里的 _alpha
+      )
+    , _rest_length(rest_length)
+    {}
 
-    // 下面这三个都是你基类里要求实现的纯虚函数
-    int  numPositions() const override;
-    int  numCoordinates() const override;
-    bool isInequality() const override;
+    // 这四个函数是 XPBD 要的
+    inline void evaluate(Real* C) const override
+    {
+        const auto& p_i = _positions[0];
+        const auto& p_j = _positions[1];
 
-    // 关键：算 C 和 ∂C/∂x
-    // C 大小 = 1
-    // grad 大小 = numPositions * 3 = 2 * 3 = 6
-    void evaluateWithGradient(Real* C, Real* grad) const override;
+        // 当前长度
+        Real dx = p_i.position_ptr[0] - p_j.position_ptr[0];
+        Real dy = p_i.position_ptr[1] - p_j.position_ptr[1];
+        Real dz = p_i.position_ptr[2] - p_j.position_ptr[2];
+        Real dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+        *C = dist - _rest_length;     // C(q) = |pi - pj| - L0
+    }
+
+    inline void gradient(Real* grad) const override
+    {
+        const auto& p_i = _positions[0];
+        const auto& p_j = _positions[1];
+
+        Real dx = p_i.position_ptr[0] - p_j.position_ptr[0];
+        Real dy = p_i.position_ptr[1] - p_j.position_ptr[1];
+        Real dz = p_i.position_ptr[2] - p_j.position_ptr[2];
+        Real dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+        // 防0
+        if (dist < Real(1e-12)) {
+            // i 的导数
+            grad[0] = grad[1] = grad[2] = 0;
+            // j 的导数
+            grad[3] = grad[4] = grad[5] = 0;
+            return;
+        }
+
+        Real invd = Real(1.0) / dist;
+
+        // ∂C/∂p_i
+        grad[0] = dx * invd;
+        grad[1] = dy * invd;
+        grad[2] = dz * invd;
+
+        // ∂C/∂p_j = - ∂C/∂p_i
+        grad[3] = -grad[0];
+        grad[4] = -grad[1];
+        grad[5] = -grad[2];
+    }
+
+    inline void evaluateWithGradient(Real* C, Real* grad) const override
+    {
+        evaluate(C);
+        gradient(grad);
+    }
+
+    inline int numPositions() const override  { return NUM_POSITIONS; }
+    inline int numCoordinates() const override { return NUM_COORDINATES; }
+
+    inline bool isInequality() const override { return false; }
+
+    // 注意：这里不要写 override，因为基类的 alpha 不是 virtual
+    inline Real alpha() const { return _alpha; }
 
 private:
-    Real _restLen;
+    Real _rest_length;
 };
 
 } // namespace Solver
 
-#endif // SOLVER_NERVE_STRETCH_CONSTRAINT_HPP
+#endif

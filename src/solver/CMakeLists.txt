@@ -26,6 +26,8 @@ set(SOLVER_HEADERS
     ${SOLVER_INCLUDE_DIR}/xpbd_solver/XPBDParallelJacobiSolver.hpp
     ${SOLVER_INCLUDE_DIR}/xpbd_solver/XPBDSolver.hpp
     ${SOLVER_INCLUDE_DIR}/xpbd_solver/XPBDSolverUpdates.hpp
+    ${SOLVER_INCLUDE_DIR}/constraint/NerveStretchConstraint.hpp
+
 )
 
 set(SOLVER_SOURCES
@@ -37,6 +39,8 @@ set(SOLVER_SOURCES
     ${SOLVER_SRC_DIR}/constraint/AttachmentConstraint.cpp
 
     ${SOLVER_SRC_DIR}/xpbd_projector/CombinedNeohookeanConstraintProjector.cpp
+    ${SOLVER_SRC_DIR}/constraint/NerveStretchConstraint.cpp
+
 )
 
 target_sources(Solver

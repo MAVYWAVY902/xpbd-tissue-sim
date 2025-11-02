@@ -54,6 +54,16 @@ class Simulation
     public:
         explicit Simulation(const Config::SimulationConfig* config);
 
+
+    protected:
+        // Step 1: 只做一个最简单的两点神经
+        Vec3r _nerveP0;
+        Vec3r _nerveP1;
+        Real  _nerveInvMass0;
+        Real  _nerveInvMass1;
+        Real  _nerveRestLen;
+
+
     protected:
         /** Protected default constructor - only callable from derived objects
          * Assumes that the _config object is set and exists

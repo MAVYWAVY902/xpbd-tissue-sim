@@ -6,6 +6,7 @@
 #include "config/simobject/RigidPrimitiveConfigs.hpp"
 #include "config/simobject/VirtuosoArmConfig.hpp"
 #include "config/simobject/VirtuosoRobotConfig.hpp"
+#include "solver/constraint/NerveStretchConstraint.hpp"
 
 #include "graphics/easy3d/Easy3DGraphicsScene.hpp"
 #include "graphics/vtk/VTKGraphicsScene.hpp"
@@ -88,6 +89,13 @@ Simulation::Simulation(const Config::SimulationConfig* config)
     {
         _materials.emplace_back(&mat_config);
     }
+    // ====== NERVE INIT (step 1) ======
+    _nerveP0 = Vec3r(0.0, 0.0, 0.0);
+    _nerveP1 = Vec3r(0.01, 0.0, 0.0);
+    _nerveInvMass0 = 1.0;
+    _nerveInvMass1 = 1.0;
+    _nerveRestLen  = (_nerveP1 - _nerveP0).norm();
+    // ====== END NERVE INIT ======
 }
 
 std::string Simulation::toString(const int indent) const
@@ -236,11 +244,50 @@ void Simulation::_timeStep()
         _collision_scene->collideObjects();
         auto t2 = std::chrono::steady_clock::now();
         // std::cout << "Collision detection took " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us\n";
+    }
+    _nerveP1 += Vec3r(0.004, 0.002, 0.001);  // every frame yank the tail up a bit
 
-        
+    // === Nerve stretch constraint (step 1) ===
+    // put this in _timeStep(), right before the projection
+    static int frame_cnt = 0;
+    frame_cnt++;
+
+    if (frame_cnt % 5 == 0) {
+        // every 50 frames, yank the tail
+        _nerveP1 += Vec3r(0.004, 0.002, 0.001);
+    }
+    {
+        Real pre_len = (_nerveP1 - _nerveP0).norm();
+        std::cout << "[pre]  nerve len = " << pre_len << std::endl;
     }
 
-    
+    // 4) 再做真正的距离投影
+    {
+        Vec3r d = _nerveP1 - _nerveP0;
+        Real len = d.norm();
+        if (len > Real(1e-9))
+        {
+            Real C = len - _nerveRestLen;
+            Vec3r n = d / len;
+            Real w0 = _nerveInvMass0;
+            Real w1 = _nerveInvMass1;
+            Real wsum = w0 + w1;
+            if (wsum > Real(1e-9))
+            {
+                Vec3r corr = (C / wsum) * n;
+                _nerveP0 += w0 * corr;   // p0 -> p1
+                _nerveP1 -= w1 * corr;   // p1 -> p0
+            }
+        }
+    }
+
+    // 5) 打印“投影后”的长度
+    {
+        Real post_len = (_nerveP1 - _nerveP0).norm();
+        std::cout << "[post] nerve len = " << post_len << std::endl;
+    }
+    // === end nerve stretch ===
+
     // auto update_t1 = std::chrono::steady_clock::now();
 
     _objects.for_each_element([](auto& obj)

@@ -1,154 +1,75 @@
-// #include "solver/constraint/NerveStretchConstraint.hpp"
-
-// namespace Solver {
-// // 全在 hpp 里写完了，这里可以先空着
-// }
-
 
 // #include "solver/constraint/NerveStretchConstraint.hpp"
+// #include <Eigen/Dense> 
 
 // namespace Solver {
 
-// NerveStretchConstraint::NerveStretchConstraint(
-//     int i_idx, Real* i_ptr, Real mi,
-//     int j_idx, Real* j_ptr, Real mj,
-//     Real rest_len,
-//     Real alpha)
-// : Constraint(
-//       std::vector<PositionReference>{
-//           PositionReference(i_idx, i_ptr, mi),
-//           PositionReference(j_idx, j_ptr, mj)
-//       },
-//       alpha),
-//   _rest_len(rest_len)
+// // C(q) = |p_j - p_i| - L0
+// inline void NerveStretchConstraint::evaluate(Real* C) const
 // {
-// }
+//     // 读出两个点的坐标
+//     Eigen::Map<const Eigen::Vector3d> pi(_p_i);
+//     Eigen::Map<const Eigen::Vector3d> pj(_p_j);
 
-// bool NerveStretchConstraint::isInequality() const
-// {
-//     return false;
-// }
+//     Eigen::Vector3d diff = pj - pi;
+//     Real dist = diff.norm();
 
-// void NerveStretchConstraint::evaluate(Real* C) const
-// {
-//     Eigen::Map<const Vec3r> pi(_positions[0].position_ptr);
-//     Eigen::Map<const Vec3r> pj(_positions[1].position_ptr);
-//     *C = (pj - pi).norm() - _rest_len;
-// }
-
-// void NerveStretchConstraint::gradient(Real* grad) const
-// {
-//     Eigen::Map<const Vec3r> pi(_positions[0].position_ptr);
-//     Eigen::Map<const Vec3r> pj(_positions[1].position_ptr);
-//     Vec3r d = pj - pi;
-//     Real n = d.norm();
-//     if (n < Real(1e-9)) {
-//         for (int k = 0; k < 6; ++k) {
-//             grad[k] = 0;
-//         }
+//     // 防止两个点完全重合导致 NAN
+//     if (dist < 1e-9)
+//     {
+//         *C = -_rest_length;   // 这时候其实就是“比想要的短了rest_length”
 //         return;
 //     }
 
-//     Vec3r g = d / n;
-
-//     // wrt point i
-//     grad[0] = -g[0];
-//     grad[1] = -g[1];
-//     grad[2] = -g[2];
-
-//     // wrt point j
-//     grad[3] =  g[0];
-//     grad[4] =  g[1];
-//     grad[5] =  g[2];
+//     *C = dist - _rest_length;
 // }
 
-// void NerveStretchConstraint::evaluateWithGradient(Real* C, Real* grad) const
+// // grad = dC/dq = [ -n,  +n ]
+// inline void NerveStretchConstraint::gradient(Real* grad) const
 // {
-//     evaluate(C);
-//     gradient(grad);
+//     // grad 要写满 6 个数：前 3 个是点 i 的，后 3 个是点 j 的
+//     Eigen::Map<const Eigen::Vector3d> pi(_p_i);
+//     Eigen::Map<const Eigen::Vector3d> pj(_p_j);
+
+//     Eigen::Vector3d diff = pj - pi;
+//     Real dist = diff.norm();
+
+//     // 先清零，防止下面只写了一部分
+//     for (int k = 0; k < NUM_COORDINATES; ++k)
+//         grad[k] = 0.0;
+
+//     if (dist < 1e-9)
+//     {
+//         // 太近了，就给个 0 梯度，避免除 0
+//         return;
+//     }
+
+//     Eigen::Vector3d n = diff / dist;   // 单位方向：i -> j
+
+//     // dC/dp_i = -n
+//     grad[0] = -n[0];
+//     grad[1] = -n[1];
+//     grad[2] = -n[2];
+
+//     // dC/dp_j = +n
+//     grad[3] =  n[0];
+//     grad[4] =  n[1];
+//     grad[5] =  n[2];
 // }
 
-// int NerveStretchConstraint::numPositions() const
+// inline std::vector<Constraint::PositionReference>
+// NerveStretchConstraint::positions() const
 // {
-//     return 2;  // i, j
-// }
-
-// int NerveStretchConstraint::numCoordinates() const
-// {
-//     return 6;  // 2 * 3
+//     // 跟 AttachmentConstraint 的写法一样：
+//     // PositionReference(index, pointer, weight)
+//     std::vector<Constraint::PositionReference> pos;
+//     pos.reserve(2);
+//     pos.emplace_back(_v_i, _p_i, _w_i);
+//     pos.emplace_back(_v_j, _p_j, _w_j);
+//     return pos;
 // }
 
 // } // namespace Solver
-#include "solver/constraint/NerveStretchConstraint.hpp"
-#include <array> 
-namespace Solver {
 
-NerveStretchConstraint::NerveStretchConstraint(
-    int   i_idx, Real* i_ptr, Real i_invMass,
-    int   j_idx, Real* j_ptr, Real j_invMass,
-    Real  restLen)
-    // ✅ 注意这里：基类要的是“一个 position 向量 + alpha”
-    : Constraint(
-        std::vector<PositionReference>{
-            PositionReference{i_idx, i_ptr, i_invMass},
-            PositionReference{j_idx, j_ptr, j_invMass}
-        },
-        /*alpha=*/0.0
-      )
-    , _restLen(restLen)
-{
-    // ctor 里其实不用再做别的了，因为上面已经把位置都交给基类了
-}
 
-int NerveStretchConstraint::numPositions() const
-{
-    return NUM_POSITIONS;
-}
-
-int NerveStretchConstraint::numCoordinates() const
-{
-    return NUM_COORDINATES;
-}
-
-bool NerveStretchConstraint::isInequality() const
-{
-    return false;
-}
-
-void NerveStretchConstraint::evaluateWithGradient(Real* C, Real* grad) const
-{
-    // 从基类里把两个点拿出来
-    // 基类里我们刚才传了 2 个 PositionReference，所以这里就是 0 和 1
-    const auto& pr0 = _positions[0];
-    const auto& pr1 = _positions[1];
-
-    Eigen::Map<const Vec3r> p0(pr0.position_ptr);
-    Eigen::Map<const Vec3r> p1(pr1.position_ptr);
-
-    Vec3r d  = p0 - p1;
-    Real len = d.norm();
-
-    *C = len - _restLen;
-
-    if (len < Real(1e-9))
-    {
-        // 长度太短就给个 0 梯度
-        for (int k = 0; k < 6; ++k)
-            grad[k] = Real(0);
-        return;
-    }
-
-    Vec3r n = d / len;
-
-    // 对 p0 的梯度
-    grad[0] = n[0];
-    grad[1] = n[1];
-    grad[2] = n[2];
-
-    // 对 p1 的梯度
-    grad[3] = -n[0];
-    grad[4] = -n[1];
-    grad[5] = -n[2];
-}
-
-} // namespace Solver
+// NerveStretchConstraint has header-only implementation.
