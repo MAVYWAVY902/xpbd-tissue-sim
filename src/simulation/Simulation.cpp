@@ -1258,29 +1258,32 @@ void Simulation::setup()
                                     std::cout << "[nerve] cast hit: " << tag << "\n";
 
                                     const auto& V = xpbd->mesh()->vertices();
-                                    const int nV = xpbd->mesh()->numVertices();
-                                    if (nV <= 1) { std::cout << "[nerve] mesh has <=1 vertex.\n"; return false; }
-
+                                    const int nV = xpbd->mesh()->numVertices();    // Get gmsh node tag -> internal vertex index map
+                                    const auto& tag2idx = xpbd->mesh()->tagMap();
+                                    // if (nV <= 1) { std::cout << "[nerve] mesh has <=1 vertex.\n"; return false; }
+                                    if (tag2idx.empty()) {
+                                        std::cout << "[nerve] WARNING: tagMap() is empty; did loader fill gmshTag2Index?\n";
+                                        return false;
+                                    }
                                     // bbox diag for tolerance
-                                    Vec3r vmin = V.rowwise().minCoeff();
-                                    Vec3r vmax = V.rowwise().maxCoeff();
-                                    const Real bbox_diag = (vmax - vmin).norm();
+                                    // Vec3r vmin = V.rowwise().minCoeff();
+                                    // Vec3r vmax = V.rowwise().maxCoeff();
+                                    // const Real bbox_diag = (vmax - vmin).norm();
 
                                     int add_ok = 0, add_fail = 0;
-                                    for (const auto& pr : line_pairs) {
-                                        auto it0 = tag2pos.find(pr.first);
-                                        auto it1 = tag2pos.find(pr.second);
-                                        if (it0 == tag2pos.end() || it1 == tag2pos.end()) { ++add_fail; continue; }
+                                    for (const auto& seg : line_pairs) {
+                                        auto it0 = tag2idx.find(seg.first);
+                                        auto it1 = tag2idx.find(seg.second);
+                                        if (it0 == tag2idx.end() || it1 == tag2idx.end()) { ++add_fail; continue; }
 
-                                        const int i = mapNodeToVertex(V, it0->second, bbox_diag);
-                                        const int j = mapNodeToVertex(V, it1->second, bbox_diag);
+                                        const int i = it0->second;
+                                        const int j = it1->second;
                                         if (i < 0 || j < 0 || i == j) { ++add_fail; continue; }
 
                                         const Real rest_len = (V.col(i) - V.col(j)).norm();
                                         xpbd->addNerveStretchConstraint(i, j, rest_len, /*alpha=*/0.0);
                                         ++add_ok;
 
-                                        // set a monitor pair for pre/post printing (first success only)
                                         if (!monitor_set) {
                                             s_edge_initialized = true;
                                             s_edge_i = i; s_edge_j = j; s_edge_rest_len = rest_len;

@@ -4,7 +4,7 @@
 #include "geometry/AABB.hpp"
 #include "common/types.hpp"
 #include "common/VariadicVectorContainer.hpp"
-
+#include <unordered_map>  //new, for store nerve node tags
 #include "geometry/MeshProperty.hpp"
 
 #include <optional>
@@ -315,6 +315,24 @@ public:
         return _gpu_resource.get();
     }
 #endif
+
+
+public:
+    // ★ read visit：gmsh node tag -> inner vertices index
+    const std::unordered_map<int,int>& tagMap() const { return _gmshTag2Index; }
+
+    // ★ write visit：only loader use
+    std::unordered_map<int,int>& mutableTagMap() { return _gmshTag2Index; }
+
+    // ★ tool：based on tag to look up for index，return -1 if not able to find (optional)
+    int findIndexByGmshTag(int tag) const {
+        auto it = _gmshTag2Index.find(tag);
+        return it == _gmshTag2Index.end() ? -1 : it->second;
+    }
+
+private:
+    // ★ new：Gmsh node tag -> inner vertices index
+    std::unordered_map<int,int> _gmshTag2Index;
 
 protected:
     /** Finds adjacent vertices for each vertex in the mesh.
