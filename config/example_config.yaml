@@ -42,7 +42,7 @@ objects:
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
     # filename: "../resource/cube/cube8.msh"
     # filename: "../resource/general/single.msh"
-    filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube8_nerve.msh"
     # filename: "../resource/cube/cube16.msh"
     # filename: "../resource/cube/cube32.msh"
     # filename: "../resource/tissue/Prostate.msh"
@@ -61,7 +61,7 @@ objects:
     ## initial configuration
     max-size: 1   # size of largest model dimension (preserves aspect ratio)
     # size: [1, 1, 1]   # specify size of each dimension
-    position: [0, 0, 1.8]   # initial position of mesh center of mass [m]
+    position: [0, 0, 0]   # initial position of mesh center of mass [m]
     velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
     rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
 
@@ -89,16 +89,16 @@ objects:
 
   # rigid box
   - 
-    name: "ramp"
-    type: "RigidBox"
-    size: [5, 1, 0.2]
-    density: 100000
-    position: [0, 0, 0]
-    rotation: [0, 0, 0]
-    velocity: [0, 0, 0]
-    angular-velocity: [0, 0, 0]
-    fixed: true
-    collisions: true
+    # name: "ramp"
+    # type: "RigidBox"
+    # size: [5, 1, 0.2]
+    # density: 100000
+    # position: [0, 0, 0]
+    # rotation: [0, 0, 0]
+    # velocity: [0, 0, 0]
+    # angular-velocity: [0, 0, 0]
+    # fixed: true
+    # collisions: true
 
 
   # # rigid sphere
