@@ -1316,7 +1316,7 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
 
     Geometry::TetMesh tet_mesh(vertices, faces, elements);
 
-    // --- NEW: persist the tag->index mapping into the mesh so Simulation can query tags directly.
+    // NEW: persist the tag->index mapping into the mesh so Simulation can query tags directly.
     {
         auto& mp = tet_mesh.mutableTagMap();
         mp.clear();
@@ -1327,6 +1327,21 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
             mp[pr.first] = pr.second;
         }
     }
+
+
+    /* ===================== DEBUG: GEOMETRY LAYER ===================== */
+    {
+        const auto& dbg_map = tet_mesh.tagMap();
+        std::cout << "[geom] tagMap size = " << dbg_map.size() << "\n";
+        // print a few entries to confirm (avoid flooding logs)
+        int shown = 0;
+        for (const auto& kv : dbg_map) {
+            if (shown++ >= 5) break;
+            std::cout << "  [geom] gmsh_tag=" << kv.first
+                    << " -> geom_idx=" << kv.second << "\n";
+        }
+    }
+    /* ================================================================ */
 
     // write the loaded surface mesh part to file
     const std::string surface_mesh_filename = filename.substr(0,filename.length()-4) + "_surface_mesh.obj";
