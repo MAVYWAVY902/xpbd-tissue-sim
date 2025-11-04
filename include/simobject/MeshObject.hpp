@@ -150,6 +150,10 @@ public:
     void loadAndConfigureMesh()
     {
         _loadMeshFromFile(_filename);
+        {
+            const auto* dbg = _mesh.get();
+            std::cout << "[meshobj] after load: tagMap size = " << dbg->tagMap().size() << "\n";
+        }
 
         // IMPORTANT: preserve gmsh node tag -> vertex index map across geometry ops.
         // Some mesh ops (resize/move/rotate/setCurrentStateAsUndeformedState) may
@@ -224,14 +228,25 @@ public:
     const Geometry::TetMesh* tetMesh() const { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
     Geometry::TetMesh* tetMesh() { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
 
+// need to debug!!!!!!
 protected:
-    // Ensure we actually load a TetMesh (so tagMap exists)
     virtual void _loadMeshFromFile(const std::string& fname) override
     {
-        _mesh = std::make_unique<Geometry::TetMesh>(MeshUtils::loadTetMeshFromGmshFile(fname));
+        // 1) 从 Gmsh 读出 Geometry::TetMesh（此时 tagMap 在 tmp 内是有内容的，
+        //    你在 MeshUtils 里已经打印过 [geom] size=600）
+        Geometry::TetMesh tmp = MeshUtils::loadTetMeshFromGmshFile(fname);
+
+        // 2) 先把 tagMap 拷一份出来，避免后面的 move 丢失
+        auto tagMapCopy = tmp.tagMap(); // 拷贝（不引用）
+
+        // 3) 把 mesh 移动进唯一指针
+        _mesh = std::make_unique<Geometry::TetMesh>(std::move(tmp));
+
+        // 4) 回填 tagMap，并打印确认
+        if (auto* tm = dynamic_cast<Geometry::TetMesh*>(_mesh.get())) {
+            tm->mutableTagMap() = std::move(tagMapCopy);
+            std::cout << "[meshobj] after load: tagMap size = " << tm->tagMap().size() << "\n";
+        } else {
+            std::cout << "[meshobj] after load: cast to TetMesh failed\n";
+        }
     }
-};
-
-} // namespace Sim
-
-#endif // __MESH_OBJECT_HPP
