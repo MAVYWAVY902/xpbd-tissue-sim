@@ -151,7 +151,7 @@ public:
     {
         _loadMeshFromFile(_filename);
 
-        // --- IMPORTANT: preserve gmsh node tag -> vertex index map across geometry ops.
+        // IMPORTANT: preserve gmsh node tag -> vertex index map across geometry ops.
         // Some mesh ops (resize/move/rotate/setCurrentStateAsUndeformedState) may
         // rebuild internal buffers and drop auxiliary maps.
         std::unordered_map<int, int> savedTagMap;

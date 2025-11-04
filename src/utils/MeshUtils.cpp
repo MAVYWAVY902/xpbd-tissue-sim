@@ -1103,6 +1103,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
+
 
 void MeshUtils::loadSurfaceMeshFromFile(const std::string& filename, Eigen::Matrix<Real, -1, 3, Eigen::RowMajor>& verts, Eigen::Matrix<unsigned, -1, 3>& faces)
 {
@@ -1276,16 +1278,29 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
                 triangle_vertex_indices.insert(triangle_vertex_indices.end(), elemNodeTags[i].begin(), elemNodeTags[i].end());
             }
         }
-
+        
+        // Create the mapping from gmsh node tags to vertex indices
+        std::unordered_map<int, int> gmshTag2GeomIndex;
+        for (const auto& pair : tag2idx_buffer) {
+            gmshTag2GeomIndex[pair.first] = pair.second;
+        }
+        
+        auto mapIndex = [&](std::size_t gmshNodeTag) -> int {
+            auto it = gmshTag2GeomIndex.find(static_cast<int>(gmshNodeTag));
+            if (it == gmshTag2GeomIndex.end()) {
+                throw std::runtime_error("gmsh element refers to unknown node tag");
+            }
+            return it->second;
+        };
         unsigned elem_offset = elements.cols();
-        unsigned num_tetrahedra = tetrahedra_vertex_indices.size()/4;
+        unsigned num_tetrahedra = static_cast<unsigned>(tetrahedra_vertex_indices.size()/4);
         elements.conservativeResize(4, elem_offset + num_tetrahedra);
         for (unsigned i = 0; i < num_tetrahedra; i++)
         {
-            elements(0, elem_offset + i) = tetrahedra_vertex_indices[i*4] - 1;
-            elements(1, elem_offset + i) = tetrahedra_vertex_indices[i*4 + 1] - 1;
-            elements(2, elem_offset + i) = tetrahedra_vertex_indices[i*4 + 2] - 1;
-            elements(3, elem_offset + i) = tetrahedra_vertex_indices[i*4 + 3] - 1;
+            elements(0, elem_offset + i) = mapIndex(tetrahedra_vertex_indices[i*4 + 0]);
+            elements(1, elem_offset + i) = mapIndex(tetrahedra_vertex_indices[i*4 + 1]);
+            elements(2, elem_offset + i) = mapIndex(tetrahedra_vertex_indices[i*4 + 2]);
+            elements(3, elem_offset + i) = mapIndex(tetrahedra_vertex_indices[i*4 + 3]);
         }
 
         unsigned face_offset = faces.cols();
