@@ -1174,15 +1174,21 @@ void Simulation::setup()
     {
         const char* env_msh  = std::getenv("NERVE_MSH");
         const char* env_name = std::getenv("NERVE_PHYS");
+        const char* env_enable = std::getenv("NERVE_ENABLE");
         const std::string msh_path  = env_msh  ? std::string(env_msh)  : std::string();
         const std::string phys_name = env_name ? std::string(env_name) : std::string("nerve_edge");
+        const bool nerve_enabled = env_enable ? (std::string(env_enable) == "1" || std::string(env_enable) == "true") : true;
 
         auto& xpbd_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
         std::cout << "[setup] XPBD objects count = " << xpbd_objs.size() << std::endl;
+        std::cout << "[setup] FirstOrder XPBD objects count = " << fo_xpbd_objs.size() << std::endl;
 
-        if (msh_path.empty()) {
+        if (!nerve_enabled) {
+            std::cout << "[nerve] NERVE_ENABLE=0/false; nerve constraints DISABLED for comparison test.\n";
+        } else if (msh_path.empty()) {
             std::cout << "[nerve] NERVE_MSH not set; skip .msh-driven nerve constraints.\n";
-        } else if (xpbd_objs.empty()) {
+        } else if (xpbd_objs.empty() && fo_xpbd_objs.empty()) {
             std::cout << "[nerve] No XPBD objects; skip.\n";
         } else {
             std::cout << "[nerve] Loading physical line from '" << msh_path
@@ -1249,11 +1255,8 @@ void Simulation::setup()
                             bool added_any = false;
                             bool monitor_set = false;
 
-                            // try on each XPBD object; the first matching template gets the constraints
-                            for (auto& uptr : xpbd_objs) {
-                                XPBDMeshObject_Base* base_ptr = uptr.get();
-
-                                auto try_add_for = [&](auto* xpbd, const char* tag)->bool {
+                            // Define lambda function that can be used by both loops
+                            auto try_add_for = [&](auto* xpbd, const char* tag)->bool {
                                     if (!xpbd) return false;
                                     std::cout << "[nerve] cast hit: " << tag << "\n";
 
@@ -1295,6 +1298,10 @@ void Simulation::setup()
                                               << "  fail=" << add_fail << "\n";
                                     return add_ok > 0;
                                 };
+
+                            // try on each XPBD object; the first matching template gets the constraints
+                            for (auto& uptr : xpbd_objs) {
+                                XPBDMeshObject_Base* base_ptr = uptr.get();
 
                                 bool added = false;
 
@@ -1347,6 +1354,41 @@ void Simulation::setup()
                                 }
 
                                 if (added) { added_any = true; break; }
+                            }
+
+                            // If no 2nd-order objects worked, try first-order objects
+                            if (!added_any) {
+                                for (auto& fo_uptr : fo_xpbd_objs) {
+                                    FirstOrderXPBDMeshObject_Base* fo_base_ptr = fo_uptr.get();
+
+                                    bool added = false;
+
+                                    // ===== 1st-order + Stable-Neohookean (Non-Combined) =====
+                                    {
+                                        using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                        using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                                        using A_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                                        using A_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                                        using A_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                                        if (!added) added = try_add_for(dynamic_cast<A_GS*>(fo_base_ptr), "1st + NonCombined + GS");
+                                        if (!added) added = try_add_for(dynamic_cast<A_J *>(fo_base_ptr), "1st + NonCombined + Jacobi");
+                                        if (!added) added = try_add_for(dynamic_cast<A_PJ*>(fo_base_ptr), "1st + NonCombined + ParallelJacobi");
+                                    }
+
+                                    // ===== 1st-order + Stable-Neohookean-Combined =====
+                                    {
+                                        using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                        using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                                        using B_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        using B_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        using B_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        if (!added) added = try_add_for(dynamic_cast<B_GS*>(fo_base_ptr), "1st + Combined + GS");
+                                        if (!added) added = try_add_for(dynamic_cast<B_J *>(fo_base_ptr), "1st + Combined + Jacobi");
+                                        if (!added) added = try_add_for(dynamic_cast<B_PJ*>(fo_base_ptr), "1st + Combined + ParallelJacobi");
+                                    }
+
+                                    if (added) { added_any = true; break; }
+                                }
                             }
 
                             if (!added_any) {
@@ -1526,6 +1568,39 @@ void Simulation::_timeStep()
             if (printed) break;
         }
 
+        // If no 2nd-order objects printed, try first-order objects
+        if (!printed) {
+            auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+            for (auto& fo_uptr : fo_xpbd_objs) {
+                auto* fo_base_ptr = fo_uptr.get();
+
+                // 1st + NonCombined
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                    using A_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                    using A_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                    using A_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                    if (!printed) printed = read_and_print(dynamic_cast<A_GS*>(fo_base_ptr), "1st+NonCombined+GS", "pre");
+                    if (!printed) printed = read_and_print(dynamic_cast<A_J *>(fo_base_ptr), "1st+NonCombined+Jacobi", "pre");
+                    if (!printed) printed = read_and_print(dynamic_cast<A_PJ*>(fo_base_ptr), "1st+NonCombined+PJacobi", "pre");
+                }
+                // 1st + Combined
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                    using B_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    using B_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    using B_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    if (!printed) printed = read_and_print(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS", "pre");
+                    if (!printed) printed = read_and_print(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi", "pre");
+                    if (!printed) printed = read_and_print(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJacobi", "pre");
+                }
+
+                if (printed) break;
+            }
+        }
+
         static bool warned_pre = false;
         if (!printed && !warned_pre) {
             std::cout << "[pre] WARNING: s_edge_initialized=true but couldn't read vertices; "
@@ -1606,6 +1681,39 @@ void Simulation::_timeStep()
             }
 
             if (printed) break;
+        }
+
+        // If no 2nd-order objects printed, try first-order objects
+        if (!printed) {
+            auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+            for (auto& fo_uptr : fo_xpbd_objs) {
+                auto* fo_base_ptr = fo_uptr.get();
+
+                // 1st + NonCombined
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                    using A_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                    using A_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                    using A_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                    if (!printed) printed = read_and_print_post(dynamic_cast<A_GS*>(fo_base_ptr), "1st+NonCombined+GS");
+                    if (!printed) printed = read_and_print_post(dynamic_cast<A_J *>(fo_base_ptr), "1st+NonCombined+Jacobi");
+                    if (!printed) printed = read_and_print_post(dynamic_cast<A_PJ*>(fo_base_ptr), "1st+NonCombined+PJacobi");
+                }
+                // 1st + Combined
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                    using B_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    using B_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    using B_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    if (!printed) printed = read_and_print_post(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS");
+                    if (!printed) printed = read_and_print_post(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi");
+                    if (!printed) printed = read_and_print_post(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJacobi");
+                }
+
+                if (printed) break;
+            }
         }
 
         static bool warned_post = false;

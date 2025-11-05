@@ -17,6 +17,13 @@ collision-rate: 1000 # rate at which to run collision detection [Hz]
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 100 # end time of the simulation [s]
 
+# nerve stretch constraint testing
+# To enable/disable nerve constraints for comparison tests, use environment variables:
+# export NERVE_ENABLE=1        # Enable nerve constraints (default)
+# export NERVE_ENABLE=0        # Disable nerve constraints for comparison
+# export NERVE_MSH="../resource/cube/cube8_nerve.msh"  # Path to mesh with nerve lines
+# export NERVE_PHYS="nerve_edge"  # Name of physical line in mesh (default)
+
 ## define elastic materials
 materials:
   -
@@ -35,8 +42,8 @@ objects:
     name: "Cube1"
 
     ## type of object
-    # type: "FirstOrderXPBDMeshObject"  # use the 1st-order XPBD method
-    type: "XPBDMeshObject"          # use the standard, 2nd-order XPBD method
+    type: "FirstOrderXPBDMeshObject"  # use the 1st-order XPBD method
+    # type: "XPBDMeshObject"          # use the standard, 2nd-order XPBD method
 
     ## filename to load from (.msh is GMSH's volumetric mesh format, but if .obj or .stl is provided, will automatically turn surface mesh to volume mesh)
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
@@ -82,7 +89,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 10000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 100000   # 'b' from the 1st-Order XPBD paper
   
 
 
