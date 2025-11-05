@@ -85,6 +85,8 @@ objects:
     damping-multiplier: 10000   # 'b' from the 1st-Order XPBD paper
   
 
+
+
   ## examples of other possible objects to add to the simulation
 
   # rigid box

@@ -112,17 +112,19 @@
 
 // #endif // __MESH_OBJECT_HPP
 
-
 #ifndef __MESH_OBJECT_HPP
 #define __MESH_OBJECT_HPP
+
+#include <memory>
+#include <optional>
+#include <unordered_map>
+#include <iostream>
 
 #include "geometry/Mesh.hpp"
 #include "geometry/TetMesh.hpp"
 #include "utils/MeshUtils.hpp"
 #include "config/simobject/ObjectConfig.hpp"
 #include "config/simobject/MeshObjectConfig.hpp"
-
-#include <unordered_map>
 
 namespace Sim
 {
@@ -132,7 +134,6 @@ class MeshObject
 public:
     using ConfigType = Config::MeshObjectConfig;
 
-public:
     MeshObject(const ConfigType* mesh_config, const Config::ObjectConfig* obj_config)
     {
         _filename = mesh_config->filename();
@@ -141,61 +142,41 @@ public:
         _initial_rotation = obj_config->initialRotation();
 
         _initial_size = mesh_config->size();
-        _max_size = mesh_config->maxSize();
+        _max_size     = mesh_config->maxSize();
     }
 
     const Geometry::Mesh* mesh() const { return _mesh.get(); }
-    Geometry::Mesh* mesh() { return _mesh.get(); }
+    Geometry::Mesh*       mesh()       { return _mesh.get(); }
 
     void loadAndConfigureMesh()
     {
         _loadMeshFromFile(_filename);
-        {
-            const auto* dbg = _mesh.get();
-            std::cout << "[meshobj] after load: tagMap size = " << dbg->tagMap().size() << "\n";
-        }
 
-        // IMPORTANT: preserve gmsh node tag -> vertex index map across geometry ops.
-        // Some mesh ops (resize/move/rotate/setCurrentStateAsUndeformedState) may
-        // rebuild internal buffers and drop auxiliary maps.
+        // Debug: after load
+        if (_mesh)
+            std::cout << "[meshobj] after load: tagMap size = " << _mesh->tagMap().size() << "\n";
+
+        // Preserve gmsh tag map across geometry ops (some ops may rebuild internals)
         std::unordered_map<int, int> savedTagMap;
         if (auto* tet = dynamic_cast<Geometry::TetMesh*>(_mesh.get()))
-        {
-            // Take a snapshot of the current tag map (filled by MeshUtils::loadTetMeshFromGmshFile)
-            savedTagMap = tet->tagMap();  // copy
-        }
+            savedTagMap = tet->tagMap();  // copy snapshot
 
-        // Order matters: resize (by max-size or explicit size) -> recenter -> rotate -> mark undeformed.
-        if (_max_size.has_value())
-        {
-            _mesh->resize(_max_size.value());
-        }
+        // Order: resize (max then explicit) -> recenter -> rotate -> set undeformed
+        if (_max_size.has_value())  _mesh->resize(_max_size.value());
+        if (_initial_size.has_value()) _mesh->resize(_initial_size.value());
 
-        if (_initial_size.has_value())
-        {
-            _mesh->resize(_initial_size.value());
-        }
-
-        const Vec3r center_of_mass = _mesh->massCenter();
-
-        // Move COM to desired position first
-        _mesh->moveTogether(-center_of_mass + _initial_position);
-
-        // Then rotate about desired origin
+        const Vec3r com = _mesh->massCenter();
+        _mesh->moveTogether(-com + _initial_position);
         _mesh->rotateAbout(_initial_position, _initial_rotation);
-
-        // Tell the mesh to treat the current configuration as the undeformed state
         _mesh->setCurrentStateAsUndeformedState();
 
-        // --- Restore the tag map after geometry ops so Simulation can look up tags.
+        // Restore tag map
         if (auto* tet = dynamic_cast<Geometry::TetMesh*>(_mesh.get()))
-        {
-            auto& dst = tet->mutableTagMap();
-            dst = std::move(savedTagMap);
-        }
+            tet->mutableTagMap() = std::move(savedTagMap);
     }
 
 protected:
+    // Surface-mesh loader (no tag map expected)
     virtual void _loadMeshFromFile(const std::string& fname)
     {
         _mesh = std::make_unique<Geometry::Mesh>(MeshUtils::loadSurfaceMeshFromFile(fname));
@@ -211,7 +192,7 @@ private:
     Vec3r _initial_position;
     Vec3r _initial_rotation;
     std::optional<Vec3r> _initial_size;
-    std::optional<Real> _max_size;
+    std::optional<Real>  _max_size;
 };
 
 ////////////////////////////////////////////////////////
@@ -222,27 +203,24 @@ class TetMeshObject : public MeshObject
 public:
     TetMeshObject(const ConfigType* mesh_config, const Config::ObjectConfig* obj_config)
         : MeshObject(mesh_config, obj_config)
-    {
-    }
+    {}
 
     const Geometry::TetMesh* tetMesh() const { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
-    Geometry::TetMesh* tetMesh() { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
+    Geometry::TetMesh*       tetMesh()       { return dynamic_cast<Geometry::TetMesh*>(_mesh.get()); }
 
-// need to debug!!!!!!
 protected:
-    virtual void _loadMeshFromFile(const std::string& fname) override
+    void _loadMeshFromFile(const std::string& fname) override
     {
-        // 1) 从 Gmsh 读出 Geometry::TetMesh（此时 tagMap 在 tmp 内是有内容的，
-        //    你在 MeshUtils 里已经打印过 [geom] size=600）
+        // Load TetMesh from Gmsh; MeshUtils already fills tagMap().
         Geometry::TetMesh tmp = MeshUtils::loadTetMeshFromGmshFile(fname);
 
-        // 2) 先把 tagMap 拷一份出来，避免后面的 move 丢失
-        auto tagMapCopy = tmp.tagMap(); // 拷贝（不引用）
+        // Copy out tagMap before move.
+        auto tagMapCopy = tmp.tagMap();
 
-        // 3) 把 mesh 移动进唯一指针
+        // Move into owned mesh.
         _mesh = std::make_unique<Geometry::TetMesh>(std::move(tmp));
 
-        // 4) 回填 tagMap，并打印确认
+        // Re-inject tagMap and debug print.
         if (auto* tm = dynamic_cast<Geometry::TetMesh*>(_mesh.get())) {
             tm->mutableTagMap() = std::move(tagMapCopy);
             std::cout << "[meshobj] after load: tagMap size = " << tm->tagMap().size() << "\n";
@@ -250,3 +228,8 @@ protected:
             std::cout << "[meshobj] after load: cast to TetMesh failed\n";
         }
     }
+};
+
+} // namespace Sim
+
+#endif // __MESH_OBJECT_HPP
