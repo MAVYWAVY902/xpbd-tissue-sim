@@ -29,7 +29,7 @@ materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 2e4    # Young's modulus [Pa]
+    E: 2e5    # Young's modulus [Pa]
     nu: 0.45  # Poisson's ratio [-]
     mu-s: 0.0 # coefficient of static friction [-]
     mu-k: 0.0 # coefficient of kinetic friction [-]

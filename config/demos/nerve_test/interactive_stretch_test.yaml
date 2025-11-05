@@ -1,0 +1,55 @@
+## Interactive Nerve Constraint Stretch Test
+## Use mouse to grab and stretch tissue to see nerve constraint effects
+
+name: "Interactive Nerve Stretch Test"
+description: "Mouse-controlled stretch test for nerve constraints"
+
+visualization: "Easy3D"
+g-accel: 0.0  # No gravity for clean testing
+
+sim-mode: "AFAP"
+enable-mouse-interaction: true
+input-device: "Mouse"
+
+time-step: 5e-4
+collision-rate: 1000
+fps: 60        # Higher FPS for responsive interaction
+end-time: 60   # 1 minute test session
+
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000
+    E: 8e3       # Medium-soft for visible deformation
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+
+objects:
+  -
+    name: "InteractiveNerveSample"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8_nerve.msh"
+    material: "Soft Tissue"
+    
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    constraint-solver-iterations: 12
+    damping-multiplier: 0.015
+    
+    ## Position the sample for easy mouse interaction
+    position: [0.0, 0.0, 0.0]
+    orientation: [0, 0, 0]
+    
+    render:
+      vertices: true
+      edges: true
+      faces: true
+      vertex-color: [1.0, 0.8, 0.6]
+      edge-color: [1.0, 0.0, 0.0]    # Bright red to highlight nerve constraints
+      face-color: [1.0, 0.8, 0.6]
+      
+render:
+  ## Good lighting for seeing deformation
+  background-color: [0.2, 0.2, 0.2]
+  lighting: true

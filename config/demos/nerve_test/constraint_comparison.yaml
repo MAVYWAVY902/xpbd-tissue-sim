@@ -1,0 +1,46 @@
+## Constraint Comparison Test
+## Demonstrates why nerve constraints are needed beyond tissue elasticity
+
+name: "Constraint Mechanism Comparison"
+description: "Shows difference between tissue elasticity and nerve constraints"
+
+visualization: "Easy3D"
+g-accel: 0.0
+
+sim-mode: "Visualization"
+time-step: 1e-3
+fps: 30
+end-time: 8.0
+
+## Very soft tissue to show elasticity clearly
+materials:
+  -
+    name: "Very Soft Tissue"
+    density: 1000
+    E: 2e3        # Very low stiffness - allows easy deformation
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+
+objects:
+  -
+    name: "ElasticityDemo"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8_nerve.msh"
+    material: "Very Soft Tissue"
+    
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    constraint-solver-iterations: 15
+    damping-multiplier: 0.02
+    
+    ## Apply external stretching forces
+    ## (This would need implementation of external forces)
+    
+    render:
+      vertices: true
+      edges: true
+      faces: true
+      vertex-color: [1.0, 0.8, 0.6]
+      edge-color: [0.8, 0.0, 0.0]    # Red edges show nerve/constraint status
+      face-color: [1.0, 0.8, 0.6]

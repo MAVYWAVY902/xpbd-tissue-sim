@@ -1,0 +1,67 @@
+## Nerve Stretch Test - Optimized for 1D Rod Future Compatibility
+## This test validates current point-to-point constraints while being designed
+## for future 1D rod element implementation
+
+name: "Nerve 1D Rod Stretch Test"
+description: "Stretch test optimized for nerve constraint validation and future 1D rod compatibility"
+
+visualization: "Easy3D"
+g-accel: 0.0  # Pure mechanical testing without gravity
+
+sim-mode: "Visualization"
+enable-mouse-interaction: true
+input-device: "Mouse"
+
+time-step: 2e-4   # Small timestep for constraint stability
+collision-rate: 1000
+fps: 60
+end-time: 30
+
+## Soft tissue properties for clear nerve constraint effect
+materials:
+  -
+    name: "Muscle Tissue"
+    density: 1060      # Realistic muscle density
+    E: 5e3            # Soft enough to show nerve constraint effect clearly
+    nu: 0.45          # Nearly incompressible like biological tissue
+    mu-s: 0.0
+    mu-k: 0.0
+
+objects:
+  -
+    name: "NerveSpecimen"
+    type: "FirstOrderXPBDMeshObject"
+    
+    ## Use the new nerve-optimized mesh
+    filename: "../resource/demos/nerve_test/nerve_stretch_specimen.msh"
+    
+    material: "Muscle Tissue"
+    
+    ## Solver settings optimized for constraint-heavy simulation
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    constraint-solver-iterations: 25    # More iterations for multiple nerve constraints
+    damping-multiplier: 0.008          # Light damping for stability
+    
+    ## Position for easy interaction
+    position: [0.0, 0.0, 0.0]
+    orientation: [0, 0, 0]
+    
+    render:
+      vertices: false
+      edges: true       # Show nerve fiber clearly
+      faces: true
+      vertex-color: [0.9, 0.7, 0.5]     # Tissue color
+      edge-color: [1.0, 0.2, 0.2]       # Bright red for nerve fiber
+      face-color: [0.9, 0.7, 0.5, 0.8]  # Semi-transparent tissue
+      
+## Enhanced rendering for better visualization
+render:
+  background-color: [0.15, 0.15, 0.15]
+  lighting: true
+  show-wireframe: true     # See internal structure
+  
+## Camera positioned for good stretch test viewing
+camera:
+  position: [0.1, -0.15, 0.1]
+  target: [0.1, 0.02, 0.02]
