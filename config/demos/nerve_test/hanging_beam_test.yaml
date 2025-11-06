@@ -35,7 +35,7 @@ objects:
   -
     name: "HangingBeam"
     type: "FirstOrderXPBDMeshObject"  # Use first-order XPBD for nerve constraints
-    filename: "../resource/beam/y2z_beam_nerve_y.msh"  # Mesh with nerve lines
+    filename: "../resource/beam/y2z_beam_nerve_y_all.msh"  # Mesh with nerve lines
     materials: ["Soft Tissue"]
     
       ## visualization options
