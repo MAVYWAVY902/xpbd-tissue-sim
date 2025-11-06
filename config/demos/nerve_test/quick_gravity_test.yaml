@@ -1,0 +1,73 @@
+## Quick Gravity Test - Single Run Configuration
+## This is a simplified version for quick testing
+## To test with/without nerve constraints, use environment variables:
+## export NERVE_ENABLE=1  # Enable nerve constraints (default)
+## export NERVE_ENABLE=0  # Disable nerve constraints for comparison
+
+name: "Quick Gravity Test"
+description: "Quick gravity stretch test - use NERVE_ENABLE environment variable to toggle constraints"
+
+visualization: "Easy3D"
+g-accel: 9.81             # Standard gravity
+
+sim-mode: "Visualization"  # Real-time visualization
+time-step: 1e-3           # 1ms time step
+collision-rate: 1000      
+fps: 30                   # Smooth 60fps for better observation
+end-time: 100              # 30 seconds should be enough to see the effect
+
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 2e5    # Young's modulus [Pa]
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.0 # coefficient of static friction [-]
+    mu-k: 0.0 # coefficient of kinetic friction [-]
+
+  
+objects:
+  ## Main tissue beam - will hang from ceiling
+  -
+    name: "TissueBeam"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8_nerve.msh"  # Mesh with nerve lines
+    materials: ["Soft Tissue"]
+    scale: [0.5, 0.5, 2.0] # Make it more beam-like (taller)
+    
+    ## Fixed vertices for ceiling attachment
+    ## Top face vertices are fixed to simulate hanging from ceiling
+    fixed-vertices: [4, 5, 6, 7]  # Standard cube top face
+
+      ## visualization options
+    color: [1.0, 0.5, 0.0, 1.0] # uniform color of the mesh
+    draw-points: false  # draw mesh points
+    draw-edges: true    # draw mesh edges
+    draw-faces: true    # draw mesh faces
+
+    ## initial configuration
+    max-size: 1   # size of largest model dimension (preserves aspect ratio)
+    # size: [1, 1, 1]   # specify size of each dimension
+    position: [0, 0, 0]   # initial position of mesh center of mass [m]
+    velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
+    rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
+
+    ## collisions
+    collisions: true
+
+    ## XPBD-specific options
+    num-solver-iters: 3   # number of solver loop iterations per time step 
+    
+    solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (i.e. update mesh after every constraint projection)
+    # solver-type: "Jacobi"       # use Jacobi solver (i.e. update mesh only after going through every constraint projection)
+    # solver-type: "Parallel-Jacobi"  # use parallelized Jacobi solver (note: unstable and requires GPU)
+
+    constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints with 2x2 block constraint solve for each tet element
+    # constraint-type: "Stable-Neohookean"          # use Stable Neohookean constraints with separate constraint solve for each tet element
+
+    # residual-policy: "Every-Substep"    # compute the residuals after every time step
+    residual-policy: "Never"              # don't compute the residuals
+
+    ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
+    damping-multiplier: 100000   # 'b' from the 1st-Order XPBD paper
+  

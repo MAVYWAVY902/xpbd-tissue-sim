@@ -1052,6 +1052,7 @@ static bool  s_edge_initialized = false;
 static int   s_edge_i = -1;
 static int   s_edge_j = -1;
 static Real  s_edge_rest_len = 0.0;
+static int   s_print_counter = 0;  // Counter for controlling print frequency
 
 // ===== helper: map gmsh node position -> nearest vertex index in internal mesh (with adaptive tolerance)
 static int mapNodeToVertex(
@@ -1186,6 +1187,151 @@ void Simulation::setup()
 
         if (!nerve_enabled) {
             std::cout << "[nerve] NERVE_ENABLE=0/false; nerve constraints DISABLED for comparison test.\n";
+            // BUT still set up monitoring edge for length comparison
+            if (!msh_path.empty() && (!xpbd_objs.empty() || !fo_xpbd_objs.empty())) {
+                std::cout << "[monitor] Setting up edge monitoring without constraints for comparison...\n";
+                
+                try {
+                    gmsh::model::add("monitor_tag_reader");
+                    gmsh::open(msh_path);
+
+                    // Find the physical line for monitoring
+                    std::vector<std::pair<int,int>> phys_groups;
+                    gmsh::model::getPhysicalGroups(phys_groups);
+                    int target_phys_tag = -1;
+                    for (auto [dim, tag] : phys_groups) {
+                        if (dim != 1) continue;
+                        std::string nm;
+                        gmsh::model::getPhysicalName(dim, tag, nm);
+                        if (nm == phys_name) { target_phys_tag = tag; break; }
+                    }
+                    
+                    if (target_phys_tag >= 0) {
+                        std::vector<int> curve_tags;
+                        gmsh::model::getEntitiesForPhysicalGroup(1, target_phys_tag, curve_tags);
+                        
+                        if (!curve_tags.empty()) {
+                            // Get node coordinates
+                            std::vector<std::size_t> nodeTags;
+                            std::vector<double> nodeCoords, nodeParams;
+                            gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams);
+                            
+                            // Collect line segments  
+                            std::vector<std::pair<std::size_t, std::size_t>> line_pairs;
+                            for (int ctag : curve_tags) {
+                                std::vector<int> types;
+                                std::vector<std::vector<std::size_t>> elemTags, elemNodeTags;
+                                gmsh::model::mesh::getElements(types, elemTags, elemNodeTags, 1, ctag);
+                                for (std::size_t k = 0; k < types.size(); ++k) {
+                                    if (types[k] != 1) continue;
+                                    const auto& nodes = elemNodeTags[k];
+                                    for (std::size_t i = 0; i + 1 < nodes.size(); i += 2) {
+                                        std::size_t n0 = nodes[i], n1 = nodes[i+1];
+                                        if (n0 != n1) line_pairs.emplace_back(n0, n1);
+                                    }
+                                }
+                            }
+                            
+                            // Set up monitoring on first available edge (no constraints added)
+                            auto setup_monitor = [&](auto* xpbd, const char* tag)->bool {
+                                if (!xpbd) return false;
+                                const auto& tag2idx = xpbd->mesh()->tagMap();
+                                if (tag2idx.empty()) return false;
+                                
+                                for (const auto& seg : line_pairs) {
+                                    auto it0 = tag2idx.find(seg.first);
+                                    auto it1 = tag2idx.find(seg.second);
+                                    if (it0 != tag2idx.end() && it1 != tag2idx.end()) {
+                                        const int i = it0->second;
+                                        const int j = it1->second;
+                                        if (i >= 0 && j >= 0 && i != j) {
+                                            const auto& V = xpbd->mesh()->vertices();
+                                            const Real rest_len = (V.col(i) - V.col(j)).norm();
+                                            s_edge_initialized = true;
+                                            s_edge_i = i; s_edge_j = j; s_edge_rest_len = rest_len;
+                                            std::cout << "[monitor] NO CONSTRAINTS, but monitoring edge (" 
+                                                      << i << "," << j << "), rest_len=" << rest_len << "\n";
+                                            return true;
+                                        }
+                                    }
+                                }
+                                return false;
+                            };
+                            
+                            // Try to set up monitoring on any available object
+                            bool monitor_set = false;
+                            for (auto& uptr : xpbd_objs) {
+                                XPBDMeshObject_Base* base_ptr = uptr.get();
+                                
+                                // Try all common template combinations for monitoring
+                                // 2nd + NonCombined
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                                    using Sol = XPBDObjectSolverTypes<false, typename Cfg::StableNeohookean::projector_type_list>;
+                                    using T_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                                    using T_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                                    using T_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                                    if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<T_GS*>(base_ptr), "2nd+NonCombined+GS");
+                                    if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<T_J *>(base_ptr), "2nd+NonCombined+Jacobi");
+                                    if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<T_PJ*>(base_ptr), "2nd+NonCombined+PJ");
+                                }
+                                // 2nd + Combined
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                                    using Sol = XPBDObjectSolverTypes<false, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                                    using T_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    using T_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    using T_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<T_GS*>(base_ptr), "2nd+Combined+GS");
+                                    if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<T_J *>(base_ptr), "2nd+Combined+Jacobi");
+                                    if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<T_PJ*>(base_ptr), "2nd+Combined+PJ");
+                                }
+                                if (monitor_set) break;
+                            }
+                            
+                            if (!monitor_set) {
+                                for (auto& fo_uptr : fo_xpbd_objs) {
+                                    FirstOrderXPBDMeshObject_Base* fo_base_ptr = fo_uptr.get();
+                                    
+                                    // 1st + NonCombined
+                                    {
+                                        using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                        using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                                        using A_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                                        using A_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                                        using A_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                                        if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<A_GS*>(fo_base_ptr), "1st+NonCombined+GS");
+                                        if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<A_J *>(fo_base_ptr), "1st+NonCombined+Jacobi");
+                                        if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<A_PJ*>(fo_base_ptr), "1st+NonCombined+PJ");
+                                    }
+                                    // 1st + Combined
+                                    {
+                                        using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                        using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                                        using B_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        using B_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        using B_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS");
+                                        if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi");
+                                        if (!monitor_set) monitor_set = setup_monitor(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJ");
+                                    }
+                                    if (monitor_set) break;
+                                }
+                            }
+                            
+                            if (!monitor_set) {
+                                std::cout << "[monitor] WARNING: Could not set up monitoring for NERVE_ENABLE=0 case.\n";
+                                std::cout << "[monitor] Template combination at runtime didn't match. Check YAML config.\n";
+                            }
+                        }
+                    }
+                    
+                    gmsh::clear();
+                } catch (std::exception& e) {
+                    std::cout << "[monitor] Exception while setting up monitoring: " << e.what() << "\n";
+                    try { gmsh::clear(); } catch (...) {}
+                }
+            }
         } else if (msh_path.empty()) {
             std::cout << "[nerve] NERVE_MSH not set; skip .msh-driven nerve constraints.\n";
         } else if (xpbd_objs.empty() && fo_xpbd_objs.empty()) {
@@ -1509,9 +1655,13 @@ void Simulation::_timeStep()
                 s_edge_i >= xpbd->mesh()->numVertices() ||
                 s_edge_j >= xpbd->mesh()->numVertices()) return false;
             const Real len = (V.col(s_edge_i) - V.col(s_edge_j)).norm();
-            std::cout << "[" << phase << "](" << tag << ") edge("
-                      << s_edge_i << "," << s_edge_j << ") len = "
-                      << len << " (rest = " << s_edge_rest_len << ")\n";
+            
+            // Only print every 300 steps to avoid flooding the terminal
+            if (s_print_counter % 900 == 0) {
+                std::cout << "[" << phase << "](" << tag << ") step=" << s_print_counter 
+                          << " edge(" << s_edge_i << "," << s_edge_j << ") len = "
+                          << len << " (rest = " << s_edge_rest_len << ")\n";
+            }
             return true;
         };
 
@@ -1624,9 +1774,13 @@ void Simulation::_timeStep()
                 s_edge_j >= xpbd->mesh()->numVertices()) return false;
             const Real len = (V.col(s_edge_i) - V.col(s_edge_j)).norm();
             const Real err = std::abs(len - s_edge_rest_len);
-            std::cout << "[post](" << tag << ") edge("
-                      << s_edge_i << "," << s_edge_j << ") len = "
-                      << len << "  |len-rest| = " << err << "\n";
+            
+            // Only print every 300 steps to avoid flooding the terminal
+            if (s_print_counter % 900 == 0) {
+                std::cout << "[post](" << tag << ") step=" << s_print_counter 
+                          << " edge(" << s_edge_i << "," << s_edge_j << ") len = "
+                          << len << "  |len-rest| = " << err << "\n";
+            }
             return true;
         };
 
@@ -1739,6 +1893,9 @@ void Simulation::_timeStep()
 
     // —— advance time —— //
     _time += _time_step;
+    
+    // —— increment print counter —— //
+    s_print_counter++;
 }
 
 void Simulation::_updateGraphics()

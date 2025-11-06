@@ -88,6 +88,29 @@ target_sources(PushingSimulation
 install(TARGETS PushingSimulation EXPORT PushingSimulation-targets
     RUNTIME DESTINATION bin/${PROJECT_NAME}
     LIBRARY DESTINATION lib/${PROJECT_NAME}
+    ARCHIVE DESTINATION lib/${PROJECT_NAME}
+)
+
+######################################
+# Hanging Simulation
+######################################
+set(HANGING_SIMULATION_HEADERS
+    "${SIMULATION_INCLUDE_DIR}/HangingSimulation.hpp"
+)
+
+set(HANGING_SIMULATION_SOURCES
+    "${SIMULATION_SRC_DIR}/HangingSimulation.cpp"
+)
+
+target_sources(HangingSimulation
+    PRIVATE
+        ${HANGING_SIMULATION_HEADERS}
+        ${HANGING_SIMULATION_SOURCES}
+)
+
+install(TARGETS HangingSimulation EXPORT HangingSimulation-targets
+    RUNTIME DESTINATION bin/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 install(FILES ${PUSHING_SIMULATION_HEADERS}
     DESTINATION include/${PROJECT_NAME}/simulation)

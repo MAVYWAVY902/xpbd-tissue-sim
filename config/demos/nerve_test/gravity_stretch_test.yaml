@@ -1,0 +1,74 @@
+## Gravity-Based Nerve Stretch Test
+## Similar to example_config.yaml but with "ceiling" attachment for stretch comparison
+## This demonstrates nerve constraint contribution under gravity loading
+
+name: "Gravity Nerve Stretch Test"
+description: "Gravity-driven stretch test comparing with/without nerve constraints"
+
+visualization: "Easy3D"
+g-accel: 9.81  # Full gravity for stretching effect
+
+sim-mode: "Visualization"
+time-step: 1e-3
+collision-rate: 1000
+fps: 30
+end-time: 30    # 30 seconds to see full stretching behavior
+
+## Same material as example_config.yaml but softer for visible stretching
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   
+    E: 8e3      # Softer than example (was 2e5) to show stretching clearly
+    nu: 0.45    
+    mu-s: 0.0   
+    mu-k: 0.0   
+
+objects:
+  ## Main test specimen - identical to example_config.yaml cube
+  -
+    name: "StretchSpecimen"
+    type: "FirstOrderXPBDMeshObject"  # Same as example
+    filename: "../resource/cube/cube8_nerve.msh"  # With nerve lines
+    
+    materials: ["Soft Tissue"]
+    
+    ## Visual settings - same as example
+    color: [1.0, 0.5, 0.0, 1.0]
+    draw-points: false
+    draw-edges: true    # Show nerve constraints as red edges
+    draw-faces: true
+    
+    ## Same physical setup as example
+    max-size: 1
+    position: [0, 0, 0.5]    # Start 0.5m above origin (room to stretch down)
+    velocity: [0, 0, 0.0]
+    rotation: [0, 0, 0]
+    
+    ## Same solver settings as example
+    collisions: true
+    num-solver-iters: 3
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 100000
+    
+  ## "Invisible ceiling" - fixed attachment points for top face
+  ## This simulates the cube being attached to a ceiling
+  -
+    name: "CeilingAnchor"
+    type: "RigidBox"
+    size: [0.02, 0.02, 0.02]    # Very small anchor point
+    density: 1000
+    position: [0, 0, 1.0]       # Above the cube
+    fixed: true                 # Acts as ceiling attachment
+    collisions: false           # Invisible
+    
+    ## Make it invisible but functional
+    color: [0.5, 0.5, 0.5, 0.1]  # Very transparent
+    draw-faces: false             # Don't draw
+
+## Camera positioned to see stretching behavior
+render:
+  camera-position: [2.0, 2.0, 0.5]
+  camera-target: [0.0, 0.0, 0.25]

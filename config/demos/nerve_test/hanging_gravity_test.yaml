@@ -1,0 +1,69 @@
+## Gravity Stretch Test - Simulating Hanging Beam with Ceiling Attachment
+## This recreates your example_config.yaml scene but with fixed top vertices (ceiling attachment)
+## Perfect for comparing nerve constraint effects under gravity
+
+name: "Hanging Beam Gravity Test"
+description: "Gravity stretch test with fixed top vertices - compare nerve constraint effects"
+
+visualization: "Easy3D"
+g-accel: 9.81  # Standard gravity for realistic stretching
+
+sim-mode: "Visualization"
+time-step: 5e-4    # Smaller timestep for stability during stretching
+collision-rate: 1000
+fps: 60
+end-time: 15       # Enough time to see full stretching behavior
+
+## Material identical to example_config.yaml but adjusted for visible stretching
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   
+    E: 1e4      # Softer than example (was 2e5) - allows gravity stretching
+    nu: 0.45    
+    mu-s: 0.0   
+    mu-k: 0.0   
+
+objects:
+  ## Test specimen - like a hanging beam/rope under gravity
+  -
+    name: "HangingBeam"
+    type: "FirstOrderXPBDMeshObject"
+    
+    ## Use rectangular beam mesh for better stretch visualization
+    ## If rectangular mesh not available, use cube8_nerve.msh
+    filename: "../resource/cube/cube8_nerve.msh"
+    
+    materials: ["Soft Tissue"]
+    
+    ## Visual settings optimized for stretch observation
+    color: [1.0, 0.6, 0.2, 1.0]   # Orange for good visibility
+    draw-points: false
+    draw-edges: true              # Show nerve constraints clearly
+    draw-faces: true
+    
+    ## Position the beam vertically for hanging test
+    max-size: 0.3                # Smaller for focused view
+    position: [0, 0, 0.2]         # Start position
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]           # No rotation
+    
+    ## Solver settings optimized for stretching simulation
+    collisions: true
+    num-solver-iters: 8           # More iterations for stability during stretch
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 50000     # Reduced damping to allow stretching
+    
+    ## CRITICAL: Fixed vertices configuration for ceiling attachment
+    ## This simulates hanging from ceiling - top face vertices are fixed in space
+    ## For a standard 8-vertex cube, vertices 4-7 are typically the top face
+    fixed-vertices: [4, 5, 6, 7]  # Top face vertices - these act as ceiling attachment points
+    
+## Measurement and visualization aids
+render:
+  background-color: [0.1, 0.1, 0.1]
+  camera-position: [0.8, 0.8, 0.2]
+  camera-target: [0.0, 0.0, 0.1]
+  show-wireframe: true
