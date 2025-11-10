@@ -265,7 +265,6 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addAtta
     return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
 
-// ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
 // NEW: addNerveStretchConstraint
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 Solver::ConstraintProjectorReference<
@@ -273,15 +272,15 @@ Solver::ConstraintProjectorReference<
 XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
     ::addNerveStretchConstraint(int v0, int v1, Real rest_len, Real alpha)
 {
-    // 1. 两个顶点的指针
+    // 1. Two vertices' pointers
     Real* p0 = _mesh->vertexPointer(v0);
     Real* p1 = _mesh->vertexPointer(v1);
 
-    // 2. 两个顶点的约束质量（和 attachment 的取法一模一样）
+    // 2. Constraint masses (same approach as other constraints)
     Real m0 = vertexConstraintInertia(v0);
     Real m1 = vertexConstraintInertia(v1);
 
-    // 3. 拿到这个类型的约束数组，然后 emplace 一条
+    // 3. Add to constraints array
     auto& vec = _constraints.template get<Solver::NerveStretchConstraint>();
     vec.emplace_back(
         v0, p0, m0,
@@ -290,14 +289,48 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
         alpha
     );
 
-    // 4. 像别的约束一样，把这条新加的约束告诉 solver
+    // 4. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::NerveStretchConstraint>;
     return _solver.addConstraintProjector(
         _sim->dt(),
         RefType(vec, vec.size() - 1)
     );
 }
-// ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ NEW END
+
+// NEW: addNerveBendingConstraint
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<
+    Solver::ConstraintProjector<IsFirstOrder, Solver::NerveBendingConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
+    ::addNerveBendingConstraint(int v0, int v1, int v2, Real rest_curvature, Real alpha)
+{
+    // 1. Three vertices' pointers
+    Real* p0 = _mesh->vertexPointer(v0);
+    Real* p1 = _mesh->vertexPointer(v1);
+    Real* p2 = _mesh->vertexPointer(v2);
+
+    // 2. Constraint masses (same approach as other constraints)
+    Real m0 = vertexConstraintInertia(v0);
+    Real m1 = vertexConstraintInertia(v1);
+    Real m2 = vertexConstraintInertia(v2);
+
+    // 3. Add to constraints array
+    auto& vec = _constraints.template get<Solver::NerveBendingConstraint>();
+    vec.emplace_back(
+        v0, p0, m0,
+        v1, p1, m1,
+        v2, p2, m2,
+        rest_curvature,
+        alpha
+    );
+
+    // 4. Tell solver about the new constraint
+    using RefType = Solver::ConstraintReference<Solver::NerveBendingConstraint>;
+    return _solver.addConstraintProjector(
+        _sim->dt(),
+        RefType(vec, vec.size() - 1)
+    );
+}
 
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>

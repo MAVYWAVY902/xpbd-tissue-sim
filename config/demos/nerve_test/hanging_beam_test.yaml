@@ -3,11 +3,18 @@
 ## to simulate hanging from an invisible ceiling
 ##
 ## Usage:
-##   export NERVE_ENABLE=1 && ./HangingTest hanging_beam_test.yaml  # With nerve constraints
-##   export NERVE_ENABLE=0 && ./HangingTest hanging_beam_test.yaml  # Without nerve constraints
+##   ./HangingTest hanging_beam_test.yaml  # Now uses YAML configuration
+##   (Set nerve-enable: false in YAML to disable constraints for comparison)
 
 name: "Hanging Beam Test"
 description: "Nerve constraint comparison - beam hanging from invisible ceiling"
+
+# Nerve configuration - controls constraint types separately
+nerve-enable: true                                        # Master switch for nerve constraints
+nerve-stretch-enable: true                                # Enable/disable stretch constraints
+nerve-bending-enable: false                                # Enable/disable bending constraints  
+nerve-mesh-file: "../resource/beam/beam_nerve_y_all.msh"  # Mesh file containing nerve lines
+nerve-physical-group: "nerve_edge"                        # Physical group name in mesh
 
 visualization: "Easy3D"
 g-accel: 9.81             # Standard gravity will pull the beam down

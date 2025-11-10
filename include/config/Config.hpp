@@ -85,6 +85,13 @@ class Config
         // load the name parameter
         _extractParameter("name", node, _name);
 
+        // load nerve configuration parameters (optional)
+        _extractParameter("nerve-enable", node, _nerve_enable);
+        _extractParameter("nerve-stretch-enable", node, _nerve_stretch_enable);
+        _extractParameter("nerve-bending-enable", node, _nerve_bending_enable);
+        _extractParameter("nerve-mesh-file", node, _nerve_mesh_file);
+        _extractParameter("nerve-physical-group", node, _nerve_physical_group);
+
         std::cout << "\nExtracting parameters for object with name " << BOLD << name() << RST << "..." << std::endl;
     }
 
@@ -99,6 +106,13 @@ class Config
 
     // Getters
     std::string name() const { return _name.value; }
+
+    // Nerve configuration getters
+    bool nerveEnable() const { return _nerve_enable.value.value_or(true); }  // default true
+    bool nerveStretchEnable() const { return _nerve_stretch_enable.value.value_or(true); }  // default true
+    bool nerveBendingEnable() const { return _nerve_bending_enable.value.value_or(true); }  // default true
+    std::string nerveMeshFile() const { return _nerve_mesh_file.value.value_or(""); }  // default empty
+    std::string nervePhysicalGroup() const { return _nerve_physical_group.value.value_or("nerve_edge"); }  // default "nerve_edge"
 
     protected:
 
@@ -441,6 +455,13 @@ class Config
     protected:
     /** Name parameter */
     ConfigParameter<std::string> _name = ConfigParameter<std::string>("");    
+
+    /** Nerve configuration parameters */
+    ConfigParameter<std::optional<bool>> _nerve_enable = ConfigParameter<std::optional<bool>>(true);
+    ConfigParameter<std::optional<bool>> _nerve_stretch_enable = ConfigParameter<std::optional<bool>>(true);
+    ConfigParameter<std::optional<bool>> _nerve_bending_enable = ConfigParameter<std::optional<bool>>(true);
+    ConfigParameter<std::optional<std::string>> _nerve_mesh_file = ConfigParameter<std::optional<std::string>>("");
+    ConfigParameter<std::optional<std::string>> _nerve_physical_group = ConfigParameter<std::optional<std::string>>("nerve_edge");
 };
 
 } // namespace Config

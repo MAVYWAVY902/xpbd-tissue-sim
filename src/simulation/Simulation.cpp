@@ -1030,6 +1030,7 @@
 #include "simobject/XPBDObjectFactory.hpp"
 
 #include "solver/constraint/NerveStretchConstraint.hpp"
+#include "solver/constraint/NerveBendingConstraint.hpp"
 #include "utils/MeshUtils.hpp"
 
 #include <gmsh.h>
@@ -1173,27 +1174,54 @@ void Simulation::setup()
 
     // ==================== Read Physical Line("nerve_edge") from .msh and add NerveStretchConstraint ====================
     {
+        // Read nerve configuration from YAML config instead of environment variables
+        const bool nerve_enabled = _config->nerveEnable();
+        const bool nerve_stretch_enabled = _config->nerveStretchEnable();
+        const bool nerve_bending_enabled = _config->nerveBendingEnable();
+        const std::string msh_path = _config->nerveMeshFile();
+        const std::string phys_name = _config->nervePhysicalGroup();
+
+        // Also check environment variables for backward compatibility (but YAML takes precedence)
         const char* env_msh  = std::getenv("NERVE_MSH");
         const char* env_name = std::getenv("NERVE_PHYS");
         const char* env_enable = std::getenv("NERVE_ENABLE");
-        const std::string msh_path  = env_msh  ? std::string(env_msh)  : std::string();
-        const std::string phys_name = env_name ? std::string(env_name) : std::string("nerve_edge");
-        const bool nerve_enabled = env_enable ? (std::string(env_enable) == "1" || std::string(env_enable) == "true") : true;
+        
+        // YAML configuration takes precedence, environment variables used as fallback
+        // Check if YAML explicitly set nerve-enable (not default)
+        const bool yaml_explicitly_set_enable = (_config->nerveEnable() != true) || 
+                                               (!_config->nerveMeshFile().empty()) ||
+                                               (_config->nervePhysicalGroup() != "nerve_edge");
+        
+        const std::string final_msh_path = (!msh_path.empty()) ? msh_path : (env_msh ? std::string(env_msh) : std::string());
+        const std::string final_phys_name = (phys_name != "nerve_edge") ? phys_name : (env_name ? std::string(env_name) : "nerve_edge");
+        
+        // Use YAML value if explicitly set, otherwise fall back to environment variable logic
+        const bool final_nerve_enabled = yaml_explicitly_set_enable ? 
+            nerve_enabled : 
+            (env_enable ? (std::string(env_enable) == "1" || std::string(env_enable) == "true") : true);
+            
+        // For individual constraint types, use YAML values (with nerve_enabled as master switch)
+        const bool final_stretch_enabled = final_nerve_enabled && nerve_stretch_enabled;
+        const bool final_bending_enabled = final_nerve_enabled && nerve_bending_enabled;
 
         auto& xpbd_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
         auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
         std::cout << "[setup] XPBD objects count = " << xpbd_objs.size() << std::endl;
         std::cout << "[setup] FirstOrder XPBD objects count = " << fo_xpbd_objs.size() << std::endl;
 
-        if (!nerve_enabled) {
-            std::cout << "[nerve] NERVE_ENABLE=0/false; nerve constraints DISABLED for comparison test.\n";
+        std::cout << "[nerve] Configuration: enable=" << final_nerve_enabled 
+                  << ", stretch=" << final_stretch_enabled << ", bending=" << final_bending_enabled
+                  << ", mesh='" << final_msh_path << "', physical-group='" << final_phys_name << "'" << std::endl;
+
+        if (!final_nerve_enabled) {
+            std::cout << "[nerve] Nerve constraints DISABLED (nerve-enable=false or NERVE_ENABLE=0).\n";
             // BUT still set up monitoring edge for length comparison
-            if (!msh_path.empty() && (!xpbd_objs.empty() || !fo_xpbd_objs.empty())) {
+            if (!final_msh_path.empty() && (!xpbd_objs.empty() || !fo_xpbd_objs.empty())) {
                 std::cout << "[monitor] Setting up edge monitoring without constraints for comparison...\n";
                 
                 try {
                     gmsh::model::add("monitor_tag_reader");
-                    gmsh::open(msh_path);
+                    gmsh::open(final_msh_path);
 
                     // Find the physical line for monitoring
                     std::vector<std::pair<int,int>> phys_groups;
@@ -1203,7 +1231,7 @@ void Simulation::setup()
                         if (dim != 1) continue;
                         std::string nm;
                         gmsh::model::getPhysicalName(dim, tag, nm);
-                        if (nm == phys_name) { target_phys_tag = tag; break; }
+                        if (nm == final_phys_name) { target_phys_tag = tag; break; }
                     }
                     
                     if (target_phys_tag >= 0) {
@@ -1332,18 +1360,18 @@ void Simulation::setup()
                     try { gmsh::clear(); } catch (...) {}
                 }
             }
-        } else if (msh_path.empty()) {
-            std::cout << "[nerve] NERVE_MSH not set; skip .msh-driven nerve constraints.\n";
+        } else if (final_msh_path.empty()) {
+            std::cout << "[nerve] nerve-mesh-file not set; skip .msh-driven nerve constraints.\n";
         } else if (xpbd_objs.empty() && fo_xpbd_objs.empty()) {
             std::cout << "[nerve] No XPBD objects; skip.\n";
         } else {
-            std::cout << "[nerve] Loading physical line from '" << msh_path
-                      << "'  name='" << phys_name << "'\n";
+            std::cout << "[nerve] Loading physical line from '" << final_msh_path
+                      << "'  name='" << final_phys_name << "'\n";
 
             // Build a temporary gmsh model to read just the nerve line
             try {
                 gmsh::model::add("nerve_tag_reader");
-                gmsh::open(msh_path);
+                gmsh::open(final_msh_path);
 
                 // 1) locate dim=1 physical group with given name
                 std::vector<std::pair<int,int>> phys_groups;
@@ -1353,10 +1381,10 @@ void Simulation::setup()
                     if (dim != 1) continue;
                     std::string nm;
                     gmsh::model::getPhysicalName(dim, tag, nm);
-                    if (nm == phys_name) { target_phys_tag = tag; break; }
+                    if (nm == final_phys_name) { target_phys_tag = tag; break; }
                 }
                 if (target_phys_tag < 0) {
-                    std::cout << "[nerve] Physical Line '" << phys_name << "' not found. Skip.\n";
+                    std::cout << "[nerve] Physical Line '" << final_phys_name << "' not found. Skip.\n";
                 } else {
                     // 2) curves under this physical
                     std::vector<int> curve_tags;
@@ -1420,28 +1448,84 @@ void Simulation::setup()
                                     // const Real bbox_diag = (vmax - vmin).norm();
 
                                     int add_ok = 0, add_fail = 0;
-                                    for (const auto& seg : line_pairs) {
-                                        auto it0 = tag2idx.find(seg.first);
-                                        auto it1 = tag2idx.find(seg.second);
-                                        if (it0 == tag2idx.end() || it1 == tag2idx.end()) { ++add_fail; continue; }
+                                    int bend_ok = 0, bend_fail = 0;
+                                    
+                                    // First pass: Add stretch constraints (if enabled)
+                                    if (final_stretch_enabled) {
+                                        for (const auto& seg : line_pairs) {
+                                            auto it0 = tag2idx.find(seg.first);
+                                            auto it1 = tag2idx.find(seg.second);
+                                            if (it0 == tag2idx.end() || it1 == tag2idx.end()) { ++add_fail; continue; }
 
-                                        const int i = it0->second;
-                                        const int j = it1->second;
-                                        if (i < 0 || j < 0 || i == j) { ++add_fail; continue; }
+                                            const int i = it0->second;
+                                            const int j = it1->second;
+                                            if (i < 0 || j < 0 || i == j) { ++add_fail; continue; }
 
-                                        const Real rest_len = (V.col(i) - V.col(j)).norm();
-                                        xpbd->addNerveStretchConstraint(i, j, rest_len, /*alpha=*/0.0);
-                                        ++add_ok;
+                                            const Real rest_len = (V.col(i) - V.col(j)).norm();
+                                            xpbd->addNerveStretchConstraint(i, j, rest_len, /*alpha=*/0.0);
+                                            ++add_ok;
 
-                                        if (!monitor_set) {
-                                            s_edge_initialized = true;
-                                            s_edge_i = i; s_edge_j = j; s_edge_rest_len = rest_len;
-                                            monitor_set = true;
+                                            if (!monitor_set) {
+                                                s_edge_initialized = true;
+                                                s_edge_i = i; s_edge_j = j; s_edge_rest_len = rest_len;
+                                                monitor_set = true;
+                                            }
                                         }
+                                    } else {
+                                        std::cout << "[nerve] Stretch constraints DISABLED (nerve-stretch-enable=false)\n";
+                                    }
+
+                                    // Second pass: Add bending constraints for consecutive triplets (if enabled)
+                                    if (final_bending_enabled) {
+                                        // Build adjacency to find consecutive vertices along the nerve
+                                        std::unordered_map<int, std::vector<int>> adjacency;
+                                        for (const auto& seg : line_pairs) {
+                                            auto it0 = tag2idx.find(seg.first);
+                                            auto it1 = tag2idx.find(seg.second);
+                                            if (it0 == tag2idx.end() || it1 == tag2idx.end()) continue;
+                                            
+                                            const int i = it0->second;
+                                            const int j = it1->second;
+                                            if (i < 0 || j < 0 || i == j) continue;
+                                            
+                                            adjacency[i].push_back(j);
+                                            adjacency[j].push_back(i);
+                                        }
+                                        
+                                        // Find triplets for bending constraints
+                                        std::set<std::array<int, 3>> triplets;
+                                        for (const auto& [center, neighbors] : adjacency) {
+                                            if (neighbors.size() == 2) {
+                                                // This vertex has exactly 2 neighbors - good for bending constraint
+                                                int v0 = neighbors[0];
+                                                int v1 = center;
+                                                int v2 = neighbors[1];
+                                                
+                                                // Ensure consistent ordering to avoid duplicates
+                                                if (v0 > v2) std::swap(v0, v2);
+                                                triplets.insert({v0, v1, v2});
+                                            }
+                                        }
+                                        
+                                        // Add bending constraints for all valid triplets
+                                        for (const auto& triplet : triplets) {
+                                            try {
+                                                // Rest curvature = 0 (straight nerve)
+                                                xpbd->addNerveBendingConstraint(triplet[0], triplet[1], triplet[2], 
+                                                                              /*rest_curvature=*/0.0, /*alpha=*/0.0);
+                                                ++bend_ok;
+                                            } catch (...) {
+                                                ++bend_fail;
+                                            }
+                                        }
+                                    } else {
+                                        std::cout << "[nerve] Bending constraints DISABLED (nerve-bending-enable=false)\n";
                                     }
 
                                     std::cout << "[nerve] addNerveStretchConstraint: ok=" << add_ok
                                               << "  fail=" << add_fail << "\n";
+                                    std::cout << "[nerve] addNerveBendingConstraint: ok=" << bend_ok
+                                              << "  fail=" << bend_fail << "\n";
                                     return add_ok > 0;
                                 };
 
@@ -1656,7 +1740,7 @@ void Simulation::_timeStep()
                 s_edge_j >= xpbd->mesh()->numVertices()) return false;
             const Real len = (V.col(s_edge_i) - V.col(s_edge_j)).norm();
             
-            // Only print every 300 steps to avoid flooding the terminal
+            // Only print every 900 steps to avoid flooding the terminal
             if (s_print_counter % 900 == 0) {
                 std::cout << "[" << phase << "](" << tag << ") step=" << s_print_counter 
                           << " edge(" << s_edge_i << "," << s_edge_j << ") len = "

@@ -149,6 +149,11 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
         Solver::ConstraintProjector<IsFirstOrder, Solver::NerveStretchConstraint>>
         addNerveStretchConstraint(int v0, int v1, Real rest_len, Real alpha);
 
+    /** Adds a nerve-style bending constraint between three consecutive vertices. */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::NerveBendingConstraint>>
+        addNerveBendingConstraint(int v0, int v1, int v2, Real rest_curvature = 0.0, Real alpha = 0.0);
+
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() override;
 

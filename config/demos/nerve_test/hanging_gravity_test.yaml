@@ -5,14 +5,22 @@
 name: "Hanging Beam Gravity Test"
 description: "Gravity stretch test with fixed top vertices - compare nerve constraint effects"
 
+
+# Nerve configuration - controls constraint types separately
+nerve-enable: true                                        # Master switch for nerve constraints
+nerve-stretch-enable: true                                # Enable/disable stretch constraints
+nerve-bending-enable: false                                # Enable/disable bending constraints  
+nerve-mesh-file: "../resource/beam/beam_nerve_y_all.msh"  # Mesh file containing nerve lines
+nerve-physical-group: "nerve_edge"  
+
 visualization: "Easy3D"
 g-accel: 9.81  # Standard gravity for realistic stretching
 
 sim-mode: "Visualization"
-time-step: 5e-4    # Smaller timestep for stability during stretching
+time-step: 1e-3     # Smaller timestep for stability during stretching
 collision-rate: 1000
 fps: 60
-end-time: 15       # Enough time to see full stretching behavior
+end-time: 30       # Enough time to see full stretching behavior
 
 ## Material identical to example_config.yaml but adjusted for visible stretching
 materials:

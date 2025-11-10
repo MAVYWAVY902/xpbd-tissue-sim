@@ -40,34 +40,34 @@ namespace Solver {
 class NerveStretchConstraint : public Constraint
 {
 public:
-    // 两个点，每个点3个坐标
+    // two points，each points 3x1
     static constexpr int NUM_POSITIONS   = 2;
     static constexpr int NUM_COORDINATES = 6;
 
-    // ctor 顺序一定要跟你 cpp 里 emplace_back 的顺序一样
+    // ctor sequence should be the same as the sequence of emplace_back in cpp!
     // v_i, p_i, m_i, v_j, p_j, m_j, rest_len, alpha
     NerveStretchConstraint(int v_i, Real* p_i, Real m_i,
                            int v_j, Real* p_j, Real m_j,
                            Real rest_length,
                            Real alpha)
     : Constraint(
-        // 这里要把两个参与的点都塞给基类
+        // put two points into base class
         std::vector<PositionReference>{
             PositionReference{v_i, p_i, m_i},
             PositionReference{v_j, p_j, m_j}
         },
-        alpha   // 基类里的 _alpha
+        alpha   // _alpha in base class
       )
     , _rest_length(rest_length)
     {}
 
-    // 这四个函数是 XPBD 要的
+    // XPBD need these four functions:
     inline void evaluate(Real* C) const override
     {
         const auto& p_i = _positions[0];
         const auto& p_j = _positions[1];
 
-        // 当前长度
+        // current length
         Real dx = p_i.position_ptr[0] - p_j.position_ptr[0];
         Real dy = p_i.position_ptr[1] - p_j.position_ptr[1];
         Real dz = p_i.position_ptr[2] - p_j.position_ptr[2];
@@ -86,11 +86,11 @@ public:
         Real dz = p_i.position_ptr[2] - p_j.position_ptr[2];
         Real dist = std::sqrt(dx*dx + dy*dy + dz*dz);
 
-        // 防0
+        // in case ==0
         if (dist < Real(1e-12)) {
-            // i 的导数
+            // i gradient
             grad[0] = grad[1] = grad[2] = 0;
-            // j 的导数
+            // j gradient
             grad[3] = grad[4] = grad[5] = 0;
             return;
         }
@@ -119,7 +119,7 @@ public:
 
     inline bool isInequality() const override { return false; }
 
-    // 注意：这里不要写 override，因为基类的 alpha 不是 virtual
+    // Note：do not use override，because alpha in base class is not virtual
     inline Real alpha() const { return _alpha; }
 
 private:
