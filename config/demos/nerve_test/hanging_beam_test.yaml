@@ -1,79 +1,79 @@
-## Hanging Test Configuration - Nerve Constraint Comparison
-## This test uses HangingTest executable which automatically fixes top vertices
-## to simulate hanging from an invisible ceiling
-##
-## Usage:
-##   ./HangingTest hanging_beam_test.yaml  # Now uses YAML configuration
-##   (Set nerve-enable: false in YAML to disable constraints for comparison)
+## Cantilever Beam Hanging Test - Simulating Hanging Beam with wall Attachment
+## Perfect for comapring nerve bending effects under gravity
 
-name: "Hanging Beam Test"
-description: "Nerve constraint comparison - beam hanging from invisible ceiling"
+name: "Horizontally Hanging Beam Test Bending Constraint Test"
+description: "Gravity bending test with fixed wall - compare nerve constraint effects"
+
 
 # Nerve configuration - controls constraint types separately
 nerve-enable: true                                        # Master switch for nerve constraints
 nerve-stretch-enable: true                                # Enable/disable stretch constraints
-nerve-bending-enable: true                                # Enable/disable bending constraints  
-nerve-mesh-file: "../resource/beam/y2z_beam_nerve_y_all.msh"  # Mesh file containing nerve lines
-nerve-physical-group: "nerve_edge"                        # Physical group name in mesh
+nerve-bending-enable: false                                # Enable/disable bending constraints  
+nerve-mesh-file: "../resource/beam/beam_nerve_y_all.msh"  # Mesh file containing nerve lines
+nerve-physical-group: "nerve_edge"  
 
 visualization: "Easy3D"
-g-accel: 9.81             # Standard gravity will pull the beam down
+g-accel: 9.81  # Standard gravity for realistic stretching
 
-sim-mode: "Visualization"  # Real-time visualization
-time-step: 1e-3           # 1ms time step for stability
-collision-rate: 1000      
-fps: 60                   # Smooth visualization
-end-time: 30              # 30 seconds to observe stretching
+sim-mode: "Visualization"
+time-step: 1e-3     # Smaller timestep for stability during stretching
+collision-rate: 1000
+fps: 60
+end-time: 30       # Enough time to see full stretching behavior
 
-# HangingTest-specific parameter
 fix-max-z: true           # Fix top vertices to create "ceiling attachment"
+
+## Material identical to example_config.yaml but adjusted for visible stretching
 
 materials:
   -
     name: "Soft Tissue"
-    density: 1000   # density [kg/m^3]
-    E: 2e3    # Young's modulus [Pa]
-    nu: 0.45  # Poisson's ratio [-]
-    mu-s: 0.0 # coefficient of static friction [-]
-    mu-k: 0.0 # coefficient of kinetic friction [-]
+    density: 1000   
+    E: 1e4      # Softer than example (was 2e5) - allows gravity stretching
+    nu: 0.45    
+    mu-s: 0.0   
+    mu-k: 0.0   
 
 objects:
-  ## Beam-like tissue object for hanging test
+  ## Test specimen - like a hanging beam/rope under gravity
   -
     name: "HangingBeam"
-    type: "FirstOrderXPBDMeshObject"  # Use first-order XPBD for nerve constraints
-    filename: "../resource/beam/y2z_beam_nerve_y_all.msh"  # Mesh with nerve lines
+    type: "FirstOrderXPBDMeshObject"
+    
+    ## Use rectangular beam mesh for better stretch visualization
+    ## If rectangular mesh not available, use cube8_nerve.msh
+    filename: "../resource/beam/beam_nerve_y_all.msh"
+    
     materials: ["Soft Tissue"]
     
-      ## visualization options
-    color: [1.0, 0.5, 0.0, 1.0] # uniform color of the mesh
-    draw-points: false  # draw mesh points
-    draw-edges: true    # draw mesh edges
-    draw-faces: true    # draw mesh faces
-
-    ## initial configuration
-    max-size: 1   # size of largest model dimension (preserves aspect ratio)
-    # size: [1, 1, 1]   # specify size of each dimension
-    position: [0, 0, 0]   # initial position of mesh center of mass [m]
-    velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
-    rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
-
-    ## collisions
-    collisions: true
-
-    ## XPBD-specific options
-    num-solver-iters: 2   # number of solver loop iterations per time step 
+    ## Visual settings optimized for stretch observation
+    color: [1.0, 0.6, 0.2, 1.0]   # Orange for good visibility
+    draw-points: false
+    draw-edges: true              # Show nerve constraints clearly
+    draw-faces: true
     
-    solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (i.e. update mesh after every constraint projection)
-    # solver-type: "Jacobi"       # use Jacobi solver (i.e. update mesh only after going through every constraint projection)
-    # solver-type: "Parallel-Jacobi"  # use parallelized Jacobi solver (note: unstable and requires GPU)
-
-    constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints with 2x2 block constraint solve for each tet element
-    # constraint-type: "Stable-Neohookean"          # use Stable Neohookean constraints with separate constraint solve for each tet element
-
-    # residual-policy: "Every-Substep"    # compute the residuals after every time step
-    residual-policy: "Never"              # don't compute the residuals
-
-    ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 1000000   # 'b' from the 1st-Order XPBD paper
-  
+    ## Position the beam vertically for hanging test
+    max-size: 0.3                # Smaller for focused view
+    position: [0, 0, 0.2]         # Start position
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]           # No rotation
+    
+    ## Solver settings optimized for stretching simulation
+    collisions: true
+    num-solver-iters: 8           # More iterations for stability during stretch
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 50000     # Reduced damping to allow stretching
+    
+    ## CRITICAL: Fixed vertices configuration for ceiling attachment
+    ## This simulates hanging from ceiling - top face vertices are fixed in space
+    ## For a standard 8-vertex cube, vertices 4-7 are typically the top face
+    # fixed-vertices: [4, 5, 6, 7]  # Top face vertices - these act as ceiling attachment points
+    
+# ## Measurement and visualization aids
+# render:
+#   background-color: [0.1, 0.1, 0.1]
+#   camera-position: [0.8, 0.8, 0.2]
+#   camera-target: [0.0, 0.0, 0.1]
+#   show-wireframe: true
