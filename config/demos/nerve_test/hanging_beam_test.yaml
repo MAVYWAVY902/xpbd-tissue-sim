@@ -12,8 +12,8 @@ description: "Nerve constraint comparison - beam hanging from invisible ceiling"
 # Nerve configuration - controls constraint types separately
 nerve-enable: true                                        # Master switch for nerve constraints
 nerve-stretch-enable: true                                # Enable/disable stretch constraints
-nerve-bending-enable: false                                # Enable/disable bending constraints  
-nerve-mesh-file: "../resource/beam/beam_nerve_y_all.msh"  # Mesh file containing nerve lines
+nerve-bending-enable: true                                # Enable/disable bending constraints  
+nerve-mesh-file: "../resource/beam/y2z_beam_nerve_y_all.msh"  # Mesh file containing nerve lines
 nerve-physical-group: "nerve_edge"                        # Physical group name in mesh
 
 visualization: "Easy3D"

@@ -1526,7 +1526,7 @@ void Simulation::setup()
                                               << "  fail=" << add_fail << "\n";
                                     std::cout << "[nerve] addNerveBendingConstraint: ok=" << bend_ok
                                               << "  fail=" << bend_fail << "\n";
-                                    return add_ok > 0;
+                                    return (add_ok > 0) || (bend_ok > 0);
                                 };
 
                             // try on each XPBD object; the first matching template gets the constraints
