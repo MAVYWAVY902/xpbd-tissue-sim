@@ -1462,7 +1462,9 @@ void Simulation::setup()
                                             if (i < 0 || j < 0 || i == j) { ++add_fail; continue; }
 
                                             const Real rest_len = (V.col(i) - V.col(j)).norm();
-                                            xpbd->addNerveStretchConstraint(i, j, rest_len, /*alpha=*/0.0);
+                                            // Use small compliance for numerical stability
+                                            Real stretch_alpha = 1e-8;  // Stiffer than bending but still compliant  
+                                            xpbd->addNerveStretchConstraint(i, j, rest_len, stretch_alpha);
                                             ++add_ok;
 
                                             if (!monitor_set) {
@@ -1511,8 +1513,10 @@ void Simulation::setup()
                                         for (const auto& triplet : triplets) {
                                             try {
                                                 // Rest curvature = 0 (straight nerve)
+                                                // Use softer compliance for bending to avoid over-stiffening
+                                                Real bend_alpha = 1e-6;  // Small compliance for stability
                                                 xpbd->addNerveBendingConstraint(triplet[0], triplet[1], triplet[2], 
-                                                                              /*rest_curvature=*/0.0, /*alpha=*/0.0);
+                                                                              /*rest_curvature=*/0.0, bend_alpha);
                                                 ++bend_ok;
                                             } catch (...) {
                                                 ++bend_fail;

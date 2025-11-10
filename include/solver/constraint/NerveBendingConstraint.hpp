@@ -150,44 +150,65 @@ private:
     /**
      * @brief Compute the gradient of the constraint.
      * 
-     * This is a simplified gradient computation following the same pattern as NerveStretchConstraint.
-     * For production use, you may want to implement the full analytical derivative.
+     * Implements proper analytical gradient for discrete curvature κ = 2|e1 × e2|/(|e1||e2|(|e1|+|e2|))
      */
     inline void computeGradient(const Vec3r& e1, const Vec3r& e2, const Vec3r& cross_product,
                               Real norm_e1, Real norm_e2, Real curvature_magnitude,
                               Real* grad) const
     {
-        // Safety guards to avoid division by zero / producing inf or NaN gradients.
         const Real eps = Real(1e-12);
         Real norm_cross = cross_product.norm();
-        if (norm_cross < eps) return;
+        
+        // Safety check
+        if (norm_cross < eps || norm_e1 < eps || norm_e2 < eps) return;
 
-        // Recompute denominator and check
         Real denominator = norm_e1 * norm_e2 * (norm_e1 + norm_e2);
         if (denominator < eps) return;
 
-        Vec3r cross_normalized = cross_product / norm_cross;
+        // Normalized cross product and scaling factor
+        Vec3r n = cross_product / norm_cross;
+        Real scale = Real(2.0) / denominator;
 
-        // Simplified gradient computation (approximation, following NerveStretchConstraint pattern)
-        Real factor = Real(2.0) / denominator;
+        // Unit vectors along edges
+        Vec3r u1 = e1 / norm_e1;
+        Vec3r u2 = e2 / norm_e2;
 
-        // ∂C/∂p_i (affects e1)
-        Vec3r grad_pi = -factor * cross_normalized;
+        // Gradient computation based on chain rule for discrete curvature
+        // κ = 2|e1 × e2|/(|e1||e2|(|e1|+|e2|))
+        
+        // For vertex i (affects e1 = pj - pi)
+        Vec3r dcross_dpi = u2.cross(n);  // ∂|e1×e2|/∂pi ∝ u2 × n
+        Vec3r dlen_dpi = -u1;            // ∂|e1|/∂pi = -u1
+        
+        Vec3r grad_pi = scale * dcross_dpi + curvature_magnitude * (
+            -Real(1.0)/(norm_e1 * (norm_e1 + norm_e2)) * dlen_dpi +
+            -Real(1.0)/(norm_e1 * norm_e1) * dlen_dpi
+        );
+        
         grad[0] = grad_pi[0];
         grad[1] = grad_pi[1];
         grad[2] = grad_pi[2];
 
-        // ∂C/∂p_j (affects both e1 and e2, middle vertex)
-        Vec3r grad_pj = factor * cross_normalized;
-        grad[3] = grad_pj[0];
-        grad[4] = grad_pj[1];
-        grad[5] = grad_pj[2];
-
-        // ∂C/∂p_k (affects e2)
-        Vec3r grad_pk = factor * cross_normalized;
+        // For vertex k (affects e2 = pk - pj)
+        Vec3r dcross_dpk = -u1.cross(n);  // ∂|e1×e2|/∂pk ∝ -u1 × n
+        Vec3r dlen_dpk = u2;              // ∂|e2|/∂pk = u2
+        
+        Vec3r grad_pk = scale * dcross_dpk + curvature_magnitude * (
+            -Real(1.0)/(norm_e2 * (norm_e1 + norm_e2)) * dlen_dpk +
+            -Real(1.0)/(norm_e2 * norm_e2) * dlen_dpk
+        );
+        
         grad[6] = grad_pk[0];
         grad[7] = grad_pk[1];
         grad[8] = grad_pk[2];
+
+        // For vertex j (middle vertex, affects both e1 and e2)
+        // ∂κ/∂pj = -∂κ/∂pi - ∂κ/∂pk (since e1 = pj-pi, e2 = pk-pj)
+        Vec3r grad_pj = -(grad_pi + grad_pk);
+        
+        grad[3] = grad_pj[0];
+        grad[4] = grad_pj[1];
+        grad[5] = grad_pj[2];
     }
 };
 
