@@ -9,12 +9,14 @@ name: "Nerve Bending Constraint Test"
 description: "Test nerve stretch and bending constraints - beam hanging with bending resistance"
 
 # Nerve configuration - controls stretch and bending constraints
-nerve-enable: true                                        # Enable/disable nerve constraints
-nerve-mesh-file: "../resource/beam/y2z_beam_nerve_y_all.msh"  # Mesh file containing nerve lines
+nerve-enable: false                                         # Master switch for nerve constraints
+nerve-stretch-enable: true                                # Enable/disable stretch constraints
+nerve-bending-enable: true                                # Enable/disable nerve constraints
+nerve-mesh-file: "../resource/beam/beam_nerve_y_all.msh"  # Mesh file containing nerve lines
 nerve-physical-group: "nerve_edge"                        # Physical group name in mesh
 
 visualization: "Easy3D"
-g-accel: 9.81             # Standard gravity will pull the beam down
+g-accel: 14.81             # Standard gravity will pull the beam down
 
 sim-mode: "Visualization"  # Real-time visualization
 time-step: 1e-3           # 1ms time step for stability
@@ -39,7 +41,7 @@ objects:
   -
     name: "BendingBeam"
     type: "FirstOrderXPBDMeshObject"  # Use first-order XPBD for nerve constraints
-    filename: "../resource/beam/y2z_beam_nerve_y_all.msh"  # Mesh with nerve lines
+    filename: "../resource/beam/beam_nerve_y_all.msh"  # Mesh with nerve lines
     materials: ["Soft Tissue"]
     
       ## visualization options
@@ -67,3 +69,15 @@ objects:
 
     ## 1st-Order XPBD options
     damping-multiplier: 1000000   # 'b' from the 1st-Order XPBD paper
+
+
+  - name: "RigidSphere"
+    type: "RigidSphere"
+    radius: 0.20                 # radius in meters
+    density: 1000             # density only affects mass when fixed: false
+    position: [0.0, 0.1, -0.35] # place sphere near the origin; tissue starts above
+    rotation: [0, 0, 0]       # rotation not as relevant for spheres
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    fixed: true               # keep it static
+    collisions: true          # enable rigid-soft contact

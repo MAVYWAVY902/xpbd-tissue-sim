@@ -6,7 +6,7 @@
 ##   ./HangingTest hanging_beam_test.yaml  # Now uses YAML configuration
 ##   (Set nerve-enable: false in YAML to disable constraints for comparison)
 
-name: "Vertically Hanging Beam Test for Stretch Constraint"
+name: "Vertically Hanging Beam for Stretch Constraint Test"
 description: "Gravity stretch test with fixed top vertices - compare nerve constraint effects"
 
 # Nerve configuration - controls constraint types separately
