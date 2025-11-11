@@ -4,52 +4,75 @@
 name: "Interactive Nerve Stretch Test"
 description: "Mouse-controlled stretch test for nerve constraints"
 
+
+# Nerve configuration - controls constraint types separately
+nerve-enable: true                                        # Master switch for nerve constraints
+nerve-stretch-enable: false                                # Enable/disable stretch constraints
+nerve-bending-enable: false                                # Enable/disable bending constraints  
+nerve-mesh-file: "../resource/beam/y2z_beam_nerve_y_all.msh"  # Mesh file containing nerve lines
+nerve-physical-group: "nerve_edge"   
+
 visualization: "Easy3D"
 g-accel: 0.0  # No gravity for clean testing
 
 sim-mode: "AFAP"
 enable-mouse-interaction: true
 input-device: "Mouse"
+time-step: 1e-3           # 1ms time step for stability
+collision-rate: 1000      
+fps: 60                   # Smooth visualization
+end-time: 30              # 30 seconds to observe stretching
 
-time-step: 5e-4
-collision-rate: 1000
-fps: 60        # Higher FPS for responsive interaction
-end-time: 60   # 1 minute test session
+# HangingTest-specific parameter
+fix-max-z: true           # Fix top vertices to create "ceiling attachment"
 
 materials:
   -
     name: "Soft Tissue"
-    density: 1000
-    E: 8e3       # Medium-soft for visible deformation
-    nu: 0.45
-    mu-s: 0.0
-    mu-k: 0.0
+    density: 1000   # density [kg/m^3]
+    E: 2e3    # Young's modulus [Pa]
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.0 # coefficient of static friction [-]
+    mu-k: 0.0 # coefficient of kinetic friction [-]
 
 objects:
+  ## Beam-like tissue object for hanging test
   -
-    name: "InteractiveNerveSample"
-    type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8_nerve.msh"
-    material: "Soft Tissue"
+    name: "HangingBeam"
+    type: "FirstOrderXPBDMeshObject"  # Use first-order XPBD for nerve constraints
+    filename: "../resource/beam/y2z_beam_nerve_y_all.msh"  # Mesh with nerve lines
+    materials: ["Soft Tissue"]
     
-    solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean-Combined"
-    constraint-solver-iterations: 12
-    damping-multiplier: 0.015
+      ## visualization options
+    color: [1.0, 0.5, 0.0, 1.0] # uniform color of the mesh
+    draw-points: false  # draw mesh points
+    draw-edges: true    # draw mesh edges
+    draw-faces: true    # draw mesh faces
+
+    ## initial configuration
+    max-size: 1   # size of largest model dimension (preserves aspect ratio)
+    # size: [1, 1, 1]   # specify size of each dimension
+    position: [0, 0, 0]   # initial position of mesh center of mass [m]
+    velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
+    rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
+
+    ## collisions
+    collisions: true
+
+    ## XPBD-specific options
+    num-solver-iters: 2   # number of solver loop iterations per time step 
     
-    ## Position the sample for easy mouse interaction
-    position: [0.0, 0.0, 0.0]
-    orientation: [0, 0, 0]
-    
-    render:
-      vertices: true
-      edges: true
-      faces: true
-      vertex-color: [1.0, 0.8, 0.6]
-      edge-color: [1.0, 0.0, 0.0]    # Bright red to highlight nerve constraints
-      face-color: [1.0, 0.8, 0.6]
-      
-render:
-  ## Good lighting for seeing deformation
-  background-color: [0.2, 0.2, 0.2]
-  lighting: true
+    solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (i.e. update mesh after every constraint projection)
+    # solver-type: "Jacobi"       # use Jacobi solver (i.e. update mesh only after going through every constraint projection)
+    # solver-type: "Parallel-Jacobi"  # use parallelized Jacobi solver (note: unstable and requires GPU)
+
+    constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints with 2x2 block constraint solve for each tet element
+    # constraint-type: "Stable-Neohookean"          # use Stable Neohookean constraints with separate constraint solve for each tet element
+
+    # residual-policy: "Every-Substep"    # compute the residuals after every time step
+    residual-policy: "Never"              # don't compute the residuals
+
+    ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
+    damping-multiplier: 1000000   # 'b' from the 1st-Order XPBD paper
+
+

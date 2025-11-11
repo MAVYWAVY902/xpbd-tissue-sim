@@ -1634,7 +1634,7 @@ void Simulation::setup()
                                             try {
                                                 // Rest curvature = 0 (straight nerve)
                                                 // Use softer compliance for bending to avoid over-stiffening
-                                                Real bend_alpha = 0;  // Small compliance for stability
+                                                Real bend_alpha = 1e-6;  // Small compliance for stability
                                                 xpbd->addNerveBendingConstraint(triplet[0], triplet[1], triplet[2], 
                                                                               /*rest_curvature=*/0.0, bend_alpha);
                                                 ++bend_ok;
