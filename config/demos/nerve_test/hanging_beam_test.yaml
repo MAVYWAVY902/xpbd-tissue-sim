@@ -8,7 +8,7 @@ description: "Gravity bending test with fixed wall - compare nerve constraint ef
 # Nerve configuration - controls constraint types separately
 nerve-enable: true                                        # Master switch for nerve constraints
 nerve-stretch-enable: true                                # Enable/disable stretch constraints
-nerve-bending-enable: false                                # Enable/disable bending constraints  
+nerve-bending-enable: true                                # Enable/disable bending constraints  
 nerve-mesh-file: "../resource/beam/beam_nerve_y_all.msh"  # Mesh file containing nerve lines
 nerve-physical-group: "nerve_edge"  
 

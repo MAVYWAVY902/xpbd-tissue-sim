@@ -1055,6 +1055,13 @@ static int   s_edge_j = -1;
 static Real  s_edge_rest_len = 0.0;
 static int   s_print_counter = 0;  // Counter for controlling print frequency
 
+// === Static cache for the picked triplet (bending) we'll monitor each frame ===
+static bool  s_triplet_initialized = false;
+static int   s_triplet_i = -1;  // first vertex
+static int   s_triplet_j = -1;  // middle vertex
+static int   s_triplet_k = -1;  // third vertex
+static Real  s_triplet_rest_curvature = 0.0;
+
 // ===== helper: map gmsh node position -> nearest vertex index in internal mesh (with adaptive tolerance)
 static int mapNodeToVertex(
     const Eigen::Matrix<Real, 3, Eigen::Dynamic>& V,
@@ -1352,6 +1359,119 @@ void Simulation::setup()
                                 std::cout << "[monitor] Template combination at runtime didn't match. Check YAML config.\n";
                             }
                         }
+
+                        // —— Setup triplet monitoring (even if no bending constraints) —— //
+                        if (!final_bending_enabled && !s_triplet_initialized) {
+                            try {
+                                // Set up monitoring on first available triplet (no bending constraints added)
+                                auto setup_triplet_monitor = [&](auto* xpbd, const char* tag)->bool {
+                                    if (!xpbd) return false;
+                                    const auto& mesh = xpbd->mesh();
+                                    if (mesh->numVertices() < 3) return false;
+                                    
+                                    // Find first valid triplet (3 consecutive vertices)
+                                    for (int i = 0; i < mesh->numVertices() - 2; ++i) {
+                                        int j = i + 1;
+                                        int k = i + 2;
+                                        
+                                        const auto& V = mesh->vertices();
+                                        const auto p0 = V.col(i);
+                                        const auto p1 = V.col(j);
+                                        const auto p2 = V.col(k);
+                                        
+                                        const auto e1 = p1 - p0;
+                                        const auto e2 = p2 - p1;
+                                        
+                                        const auto e1_norm = e1.norm();
+                                        const auto e2_norm = e2.norm();
+                                        
+                                        // Only use non-degenerate triplets
+                                        if (e1_norm > 1e-12 && e2_norm > 1e-12) {
+                                            const auto cross = e1.cross(e2);
+                                            const auto rest_curvature = 2.0 * cross.norm() / (e1_norm * e2_norm * (e1_norm + e2_norm));
+                                            
+                                            s_triplet_initialized = true;
+                                            s_triplet_i = i; s_triplet_j = j; s_triplet_k = k;
+                                            s_triplet_rest_curvature = rest_curvature;
+                                            std::cout << "[monitor] NO BENDING CONSTRAINTS, but monitoring triplet (" 
+                                                      << i << "," << j << "," << k << "), rest_curvature=" << rest_curvature << "\n";
+                                            return true;
+                                        }
+                                    }
+                                    return false;
+                                };
+                                
+                                // Try to set up triplet monitoring on any available object
+                                bool triplet_monitor_set = false;
+                                for (auto& uptr : xpbd_objs) {
+                                    XPBDMeshObject_Base* base_ptr = uptr.get();
+                                    
+                                    // Try all common template combinations for triplet monitoring
+                                    // 2nd + NonCombined
+                                    {
+                                        using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                                        using Sol = XPBDObjectSolverTypes<false, typename Cfg::StableNeohookean::projector_type_list>;
+                                        using T_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                                        using T_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                                        using T_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                                        if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<T_GS*>(base_ptr), "2nd+NonCombined+GS");
+                                        if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<T_J *>(base_ptr), "2nd+NonCombined+Jacobi");
+                                        if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<T_PJ*>(base_ptr), "2nd+NonCombined+PJ");
+                                    }
+                                    // 2nd + Combined
+                                    {
+                                        using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                                        using Sol = XPBDObjectSolverTypes<false, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                                        using T_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        using T_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        using T_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                        if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<T_GS*>(base_ptr), "2nd+Combined+GS");
+                                        if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<T_J *>(base_ptr), "2nd+Combined+Jacobi");
+                                        if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<T_PJ*>(base_ptr), "2nd+Combined+PJ");
+                                    }
+                                    if (triplet_monitor_set) break;
+                                }
+
+                                // If no 2nd-order objects worked, try first-order objects  
+                                if (!triplet_monitor_set) {
+                                    auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+                                    for (auto& fo_uptr : fo_xpbd_objs) {
+                                        FirstOrderXPBDMeshObject_Base* fo_base_ptr = fo_uptr.get();
+                                        
+                                        // 1st + NonCombined
+                                        {
+                                            using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                            using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                                            using A_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                                            using A_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                                            using A_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                                            if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<A_GS*>(fo_base_ptr), "1st+NonCombined+GS");
+                                            if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<A_J *>(fo_base_ptr), "1st+NonCombined+Jacobi");
+                                            if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<A_PJ*>(fo_base_ptr), "1st+NonCombined+PJ");
+                                        }
+                                        // 1st + Combined
+                                        {
+                                            using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                            using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                                            using B_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                            using B_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                            using B_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                            if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS");
+                                            if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi");
+                                            if (!triplet_monitor_set) triplet_monitor_set = setup_triplet_monitor(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJ");
+                                        }
+                                        if (triplet_monitor_set) break;
+                                    }
+                                }
+                                
+                                if (!triplet_monitor_set) {
+                                    std::cout << "[monitor] WARNING: Could not set up triplet monitoring for NERVE_BENDING_ENABLE=0 case.\n";
+                                    std::cout << "[monitor] Template combination at runtime didn't match. Check YAML config.\n";
+                                }
+                            } catch (std::exception& e) {
+                                std::cout << "[monitor] Exception while setting up triplet monitoring: " << e.what() << "\n";
+                            }
+                        }
                     }
                     
                     gmsh::clear();
@@ -1514,10 +1634,19 @@ void Simulation::setup()
                                             try {
                                                 // Rest curvature = 0 (straight nerve)
                                                 // Use softer compliance for bending to avoid over-stiffening
-                                                Real bend_alpha = 1e-6;  // Small compliance for stability
+                                                Real bend_alpha = 0;  // Small compliance for stability
                                                 xpbd->addNerveBendingConstraint(triplet[0], triplet[1], triplet[2], 
                                                                               /*rest_curvature=*/0.0, bend_alpha);
                                                 ++bend_ok;
+                                                
+                                                // Set up triplet monitoring (use first valid triplet)
+                                                if (!s_triplet_initialized) {
+                                                    s_triplet_initialized = true;
+                                                    s_triplet_i = triplet[0];
+                                                    s_triplet_j = triplet[1]; 
+                                                    s_triplet_k = triplet[2];
+                                                    s_triplet_rest_curvature = 0.0;
+                                                }
                                             } catch (...) {
                                                 ++bend_fail;
                                             }
@@ -1631,6 +1760,10 @@ void Simulation::setup()
                             } else if (s_edge_initialized) {
                                 std::cout << "[nerve] Monitor edge set to (" << s_edge_i << "," << s_edge_j
                                           << "), rest_len=" << s_edge_rest_len << "\n";
+                            }
+                            if (s_triplet_initialized) {
+                                std::cout << "[nerve] Monitor triplet set to (" << s_triplet_i << "," << s_triplet_j 
+                                          << "," << s_triplet_k << "), rest_curvature=" << s_triplet_rest_curvature << "\n";
                             }
                         }
                     }
@@ -1848,6 +1981,116 @@ void Simulation::_timeStep()
         }
     }
 
+    // —— PRE: read current curvature of the picked triplet —— //
+    if (s_triplet_initialized)
+    {
+        auto read_and_print_triplet = [&](auto* xpbd, const char* tag, const char* phase){
+            if (!xpbd) return false;
+            const auto& V = xpbd->mesh()->vertices();
+            if (s_triplet_i < 0 || s_triplet_j < 0 || s_triplet_k < 0 ||
+                s_triplet_i >= xpbd->mesh()->numVertices() ||
+                s_triplet_j >= xpbd->mesh()->numVertices() ||
+                s_triplet_k >= xpbd->mesh()->numVertices()) return false;
+            
+            // Compute discrete curvature manually
+            Vec3r p0 = V.col(s_triplet_i);
+            Vec3r p1 = V.col(s_triplet_j);
+            Vec3r p2 = V.col(s_triplet_k);
+            
+            Vec3r e1 = p1 - p0;
+            Vec3r e2 = p2 - p1;
+            Real norm_e1 = e1.norm();
+            Real norm_e2 = e2.norm();
+            
+            Real curvature = 0.0;
+            if (norm_e1 > 1e-12 && norm_e2 > 1e-12) {
+                Vec3r cross_product = e1.cross(e2);
+                Real denominator = norm_e1 * norm_e2 * (norm_e1 + norm_e2);
+                if (denominator > 1e-12) {
+                    curvature = 2.0 * cross_product.norm() / denominator;
+                }
+            }
+            
+            // Only print every 900 steps to avoid flooding the terminal
+            if (s_print_counter % 900 == 0) {
+                std::cout << "[" << phase << "](" << tag << ") step=" << s_print_counter 
+                          << " triplet(" << s_triplet_i << "," << s_triplet_j << "," << s_triplet_k 
+                          << ") curvature = " << curvature << " (rest = " << s_triplet_rest_curvature << ")\n";
+            }
+            return true;
+        };
+
+        auto& xpbd_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        
+        bool printed = false;
+        for (auto& uptr : xpbd_objs) {
+            auto* base_ptr = uptr.get();
+
+            // 2nd + NonCombined
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                using Sol = XPBDObjectSolverTypes<false, typename Cfg::StableNeohookean::projector_type_list>;
+                using T_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                using T_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                using T_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<T_GS*>(base_ptr), "2nd+NonCombined+GS", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<T_J *>(base_ptr), "2nd+NonCombined+Jacobi", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<T_PJ*>(base_ptr), "2nd+NonCombined+PJacobi", "pre");
+            }
+            // 2nd + Combined
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                using Sol = XPBDObjectSolverTypes<false, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                using T_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                using T_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                using T_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<T_GS*>(base_ptr), "2nd+Combined+GS", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<T_J *>(base_ptr), "2nd+Combined+Jacobi", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<T_PJ*>(base_ptr), "2nd+Combined+PJacobi", "pre");
+            }
+
+            if (printed) break;
+        }
+
+        for (auto& fo_uptr : fo_xpbd_objs) {
+            auto* fo_base_ptr = fo_uptr.get();
+            
+            // 1st + NonCombined
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                using A_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                using A_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                using A_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<A_GS*>(fo_base_ptr), "1st+NonCombined+GS", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<A_J *>(fo_base_ptr), "1st+NonCombined+Jacobi", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<A_PJ*>(fo_base_ptr), "1st+NonCombined+PJacobi", "pre");
+            }
+            // 1st + Combined
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                using B_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                using B_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                using B_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJacobi", "pre");
+            }
+
+            if (printed) break;
+        }
+
+        static bool warned_pre_triplet = false;
+        if (!printed && !warned_pre_triplet) {
+            std::cout << "[pre] WARNING: s_triplet_initialized=true but couldn't read vertices; "
+                         "template combo at runtime didn't match. Check setup prints."
+                      << std::endl;
+            warned_pre_triplet = true;
+        }
+    }
+
     // —— Run one XPBD step (objects do elasticity + collisions + your stretch) —— //
     _objects.for_each_element([](auto& obj) { obj->update(); });
 
@@ -1964,6 +2207,118 @@ void Simulation::_timeStep()
                          "template combo at runtime didn't match. Check setup prints."
                       << std::endl;
             warned_post = true;
+        }
+    }
+
+    // —— POST: read bending constraint and print curvature —— //
+    if (s_triplet_initialized)
+    {
+        auto read_and_print_triplet_post = [&](auto* xpbd, const char* tag){
+            if (!xpbd) return false;
+            const auto& V = xpbd->mesh()->vertices();
+            if (s_triplet_i < 0 || s_triplet_j < 0 || s_triplet_k < 0 ||
+                s_triplet_i >= xpbd->mesh()->numVertices() ||
+                s_triplet_j >= xpbd->mesh()->numVertices() ||
+                s_triplet_k >= xpbd->mesh()->numVertices()) return false;
+            
+            const auto p0 = V.col(s_triplet_i);
+            const auto p1 = V.col(s_triplet_j);
+            const auto p2 = V.col(s_triplet_k);
+            
+            const auto e1 = p1 - p0;
+            const auto e2 = p2 - p1;
+            
+            const Real e1_norm = e1.norm();
+            const Real e2_norm = e2.norm();
+            
+            Real current_curvature = 0.0;
+            if (e1_norm > 1e-12 && e2_norm > 1e-12) {
+                const auto cross = e1.cross(e2);
+                current_curvature = 2.0 * cross.norm() / (e1_norm * e2_norm * (e1_norm + e2_norm));
+            }
+            
+            const Real curvature_error = std::abs(current_curvature - s_triplet_rest_curvature);
+            
+            // Only print every 300 steps to avoid flooding the terminal
+            if (s_print_counter % 900 == 0) {
+                std::cout << "[post](" << tag << ") step=" << s_print_counter 
+                          << " triplet(" << s_triplet_i << "," << s_triplet_j << "," << s_triplet_k 
+                          << ") curvature = " << current_curvature 
+                          << " |curvature-rest| = " << curvature_error << "\n";
+            }
+            return true;
+        };
+
+        auto& xpbd_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        bool triplet_printed = false;
+        for (auto& uptr : xpbd_objs) {
+            auto* base_ptr = uptr.get();
+
+            // 2nd + NonCombined
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                using Sol = XPBDObjectSolverTypes<false, typename Cfg::StableNeohookean::projector_type_list>;
+                using T_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                using T_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                using T_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<T_GS*>(base_ptr), "2nd+NonCombined+GS");
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<T_J *>(base_ptr), "2nd+NonCombined+Jacobi");
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<T_PJ*>(base_ptr), "2nd+NonCombined+PJacobi");
+            }
+            // 2nd + Combined
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                using Sol = XPBDObjectSolverTypes<false, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                using T_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                using T_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                using T_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<T_GS*>(base_ptr), "2nd+Combined+GS");
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<T_J *>(base_ptr), "2nd+Combined+Jacobi");
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<T_PJ*>(base_ptr), "2nd+Combined+PJacobi");
+            }
+
+            if (triplet_printed) break;
+        }
+
+        // If no 2nd-order objects printed, try first-order objects
+        if (!triplet_printed) {
+            auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+            for (auto& fo_uptr : fo_xpbd_objs) {
+                auto* fo_base_ptr = fo_uptr.get();
+
+                // 1st + NonCombined
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                    using A_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                    using A_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
+                    using A_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<A_GS*>(fo_base_ptr), "1st+NonCombined+GS");
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<A_J *>(fo_base_ptr), "1st+NonCombined+Jacobi");
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<A_PJ*>(fo_base_ptr), "1st+NonCombined+PJacobi");
+                }
+                // 1st + Combined
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                    using B_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    using B_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    using B_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS");
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi");
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJacobi");
+                }
+
+                if (triplet_printed) break;
+            }
+        }
+
+        static bool warned_triplet_post = false;
+        if (!triplet_printed && !warned_triplet_post) {
+            std::cout << "[post] WARNING: s_triplet_initialized=true but couldn't read vertices; "
+                         "template combo at runtime didn't match. Check setup prints."
+                      << std::endl;
+            warned_triplet_post = true;
         }
     }
 
