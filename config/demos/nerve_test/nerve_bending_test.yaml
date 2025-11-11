@@ -9,7 +9,7 @@ name: "Nerve Bending Constraint Test"
 description: "Test nerve stretch and bending constraints - beam hanging with bending resistance"
 
 # Nerve configuration - controls stretch and bending constraints
-nerve-enable: false                                         # Master switch for nerve constraints
+nerve-enable: true                                         # Master switch for nerve constraints
 nerve-stretch-enable: true                                # Enable/disable stretch constraints
 nerve-bending-enable: true                                # Enable/disable nerve constraints
 nerve-mesh-file: "../resource/beam/beam_nerve_y_all.msh"  # Mesh file containing nerve lines

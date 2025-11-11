@@ -190,6 +190,9 @@ target_link_libraries(StiffnessMatrixTest Config SimObject Solver Simulation Mes
 add_executable(NerveBendingUnitTest src/exec/test/nerve_bending_unit_test.cpp)
 target_link_libraries(NerveBendingUnitTest Solver)
 
+add_executable(NerveStretchUnitTest src/exec/test/nerve_stretch_unit_test.cpp)
+target_link_libraries(NerveStretchUnitTest Solver)
+
 add_executable(AssignElements src/exec/util/assign_elements.cpp)
 target_link_libraries(AssignElements Config SimObject Geometry MeshUtils)
 
