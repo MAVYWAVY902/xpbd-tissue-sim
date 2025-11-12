@@ -1,0 +1,46 @@
+## Minimal 1D Rod — Nerve stretch + bending (only)
+## Based on expert recommendation for clean visualization debugging
+
+name: "1D Rod — Nerve stretch + bending (only)"
+visualization: "Easy3D"
+
+time-step: 1e-3
+end-time: 10.0
+g-accel: 9.81
+
+fix-max-z: false               # OFF until AABB-from-vertices is implemented
+
+nerve-enable: true
+nerve-stretch-enable: true
+nerve-bending-enable: true
+nerve-mesh-file: "../resource/rod/rod_1d_test.msh"
+nerve-physical-group: "nerve_edge"
+
+nerve-stretch-alpha: 0.0
+nerve-bending-alpha: 1e-6
+nerve-verbose: true
+
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000
+    E: 1e4
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+
+objects:
+  - name: "Rod1D"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/rod/rod_1d_test.msh"
+    materials: ["Soft Tissue"]
+    solver-type: "Gauss-Seidel"
+    # constraint-type: "Stable-Neohookean-Combined"   # keep to hit the dispatch
+    constraint-type: "Nerve-Only"   # keep to hit the dispatch
+    num-solver-iters: 5
+
+    # Proper underscored draw keys (not hyphenated)
+    draw_points: true
+    draw_edges: true
+    draw_faces: false
+    color: [1.0, 0.2, 0.2, 1.0]

@@ -1233,6 +1233,9 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
     // --- NEW: buffer to accumulate the (gmsh node tag -> final vertex column) mapping
     // We fill this as we append vertices; later we will inject it into the TetMesh.
     std::vector<std::pair<int,int>> tag2idx_buffer;
+    
+    // Accumulate line segments from all entities (NEW: for 1D meshes)
+    std::vector<unsigned> global_line_vertex_indices;
 
     for(auto e : entities) {
         // Dimension and tag of the entity:
@@ -1277,6 +1280,12 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
             {
                 triangle_vertex_indices.insert(triangle_vertex_indices.end(), elemNodeTags[i].begin(), elemNodeTags[i].end());
             }
+            
+            // NEW: Handle line elements (type 1) for 1D meshes
+            if (elemTypes[i] == 1)
+            {
+                global_line_vertex_indices.insert(global_line_vertex_indices.end(), elemNodeTags[i].begin(), elemNodeTags[i].end());
+            }
         }
         
         // Create the mapping from gmsh node tags to vertex indices
@@ -1314,7 +1323,39 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
         }
     }
 
+    // Create global mapping for line segment processing (after all entities are processed)
+    std::unordered_map<int, int> global_gmshTag2GeomIndex;
+    for (const auto& pair : tag2idx_buffer) {
+        global_gmshTag2GeomIndex[pair.first] = pair.second;
+    }
+
     Geometry::TetMesh tet_mesh(vertices, faces, elements);
+
+    // DEBUG: Verification prints for mesh loading (helps a ton)
+    std::cerr << "[viz] verts=" << vertices.cols() 
+              << " faces=" << faces.cols() 
+              << " elements=" << elements.cols()
+              << " lines=" << (global_line_vertex_indices.size()/2) << "\n";
+              
+    if (!global_line_vertex_indices.empty()) {
+        std::cerr << "[viz] Sample line segments:\n";
+        for (int k = 0; k < std::min<int>(3, static_cast<int>(global_line_vertex_indices.size()/2)); ++k) {
+            int idx_a = global_gmshTag2GeomIndex.at(global_line_vertex_indices[2*k]);
+            int idx_b = global_gmshTag2GeomIndex.at(global_line_vertex_indices[2*k+1]);
+            std::cerr << "[viz] Line[" << k << "] = (" << idx_a << "," << idx_b << ") "
+                      << "A=(" << vertices.col(idx_a).transpose() << ") "
+                      << "B=(" << vertices.col(idx_b).transpose() << ")\n";
+        }
+    }
+
+    // NEW: Store line segments for 1D visualization using supported property types
+    if (!global_line_vertex_indices.empty()) {
+        // Store the number of line segments as metadata
+        int num_segments = static_cast<int>(global_line_vertex_indices.size() / 2);
+        tet_mesh.addVertexProperty<int>("has_line_segments", num_segments);
+        
+        std::cerr << "[viz] Marked mesh as having " << num_segments << " line segments\n";
+    }
 
     // NEW: persist the tag->index mapping into the mesh so Simulation can query tags directly.
     {

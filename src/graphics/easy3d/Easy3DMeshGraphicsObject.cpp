@@ -127,6 +127,23 @@ std::vector<unsigned int> Easy3DMeshGraphicsObject::facesAsFlatList() const
 
 std::vector<unsigned int> Easy3DMeshGraphicsObject::edgesAsFlatList() const
 {
+    // NEW: Check for stored line segments marker first (for 1D meshes)
+    if (_mesh->hasVertexProperty<int>("has_line_segments")) {
+        int num_segments = _mesh->getVertexProperty<int>("has_line_segments").get(0);
+        std::cerr << "[viz] Found 1D mesh with " << num_segments << " line segments - using sequential edges\n";
+        
+        // For 1D meshes, create sequential line segments connecting consecutive vertices
+        std::vector<unsigned int> edges_flat_list;
+        edges_flat_list.reserve(num_segments * 2);
+        for (int i = 0; i < _mesh->numVertices() - 1; ++i) {
+            edges_flat_list.push_back(static_cast<unsigned int>(i));
+            edges_flat_list.push_back(static_cast<unsigned int>(i + 1));
+        }
+        
+        return edges_flat_list;
+    }
+    
+    // FALLBACK: Extract edges from faces (for traditional 3D meshes)
     // TODO: filter duplicate edges
     const Geometry::Mesh::FacesMat& faces = _mesh->faces();
     std::vector<unsigned int> edges_flat_list;

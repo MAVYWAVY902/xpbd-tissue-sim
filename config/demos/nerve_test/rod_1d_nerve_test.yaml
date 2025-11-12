@@ -23,8 +23,20 @@ collision-rate: 1000
 fps: 60                   # Smooth visualization
 end-time: 30              # Long enough to observe steady-state behavior
 
-# Constraint: Fix top end (hanging rod simulation)
-fix-max-z: true           # Fix topmost vertices - standard hanging simulation constraint
+# Graphics configuration for 1D rod visibility
+graphics:
+  camera:
+    eye: [4.0, 4.0, 2.0]         # Move camera far back for full view
+    center: [0.0, 0.0, 1.0]      # Look at center of rod  
+    up: [0.0, 0.0, 1.0]          # Z-axis up
+    field-of-view-y: 60.0        # Wide field of view
+  window-size: [1200, 900]       # Large window
+  sphere-radius-multiplier: 10.0  # Make vertices very visible
+  line-width-multiplier: 20.0     # Make edges very thick
+  background-color: [0.1, 0.1, 0.1, 1.0]  # Dark background for contrast
+
+# Constraint: Fix top end (hanging rod simulation) - DISABLED due to NaN on face-less meshes
+fix-max-z: false           # OFF until AABB-from-vertices is implemented (prevents NaN errors)
 
 materials:
   -
@@ -40,27 +52,27 @@ objects:
   -
     name: "Rod1D"
     type: "FirstOrderXPBDMeshObject"         # Use first-order XPBD for nerve constraints
-    filename: "../resource/rod/rod_1d_test.msh"  # Pure 1D line mesh
+    filename: "../resource/rod/rod_1d_test.msh"  # TEMPORARY: Use known working mesh for visualization test
     materials: ["Soft Tissue"]
     
-    ## Use standard constraint configuration that works with nerve constraints 
-    # constraint-type: "Stable-Neohookean-Combined"   # Works with nerve constraints (NOT Nerve-Only)
-    constraint-type: "Nerve-Only"   # Works with nerve constraints (NOT Nerve-Only)
+    ## Use Nerve-Only constraint configuration for pure nerve constraint testing
+    # constraint-type: "Stable-Neohookean-Combined"   # Would add Neo-Hookean constraints if tetrahedra exist
+    constraint-type: "Nerve-Only"   # ONLY nerve stretch/bending + collision constraints, no elastic
     
-    ## Visualization optimized for 1D rod debugging
-    color: [1.0, 0.2, 0.2, 1.0]  # Bright red for clear visibility
-    draw-points: true             # Show vertices as dots - important for 1D
-    draw-edges: true              # Show rod as connected line - ESSENTIAL
+    ## Visualization optimized for 1D rod - ESSENTIAL settings
+    color: [1.0, 0.0, 0.0, 1.0]  # Bright red for maximum visibility
+    draw-points: true             # Show vertices as dots - CRITICAL for 1D visualization
+    draw-edges: true              # Show rod as connected lines - ESSENTIAL for 1D
     draw-faces: false             # No faces in 1D mesh
 
-    ## Initial configuration
-    max-size: 0.5                 # Keep rod at 0.5m length
-    position: [0, 0, 0.25]        # Center rod in view, elevated for collision testing
+    ## Initial configuration - Make rod clearly visible
+    max-size: 2.0                 # Larger rod for better visibility
+    position: [0, 0, 1.0]         # Center rod at z=1 (middle of screen)
     velocity: [0, 0, 0]          
-    rotation: [0, 0, 0]           # Rod lies along x-axis
+    rotation: [0, 0, 0]           # Rod aligned along Z-axis (vertical)
 
-    ## Enable collision testing (may need modification for 1D)
-    collisions: true              # Test collision system with 1D rod
+    ## Disable collision testing for now (1D mesh collision support may be limited)
+    collisions: false             # Disable collision system for 1D rod
 
     ## XPBD solver settings optimized for 1D rod
     num-solver-iters: 15          # More iterations for bending constraint convergence
@@ -70,22 +82,22 @@ objects:
     ## 1st-Order XPBD damping for stability
     damping-multiplier: 100000    # Moderate damping for realistic motion
 
-  ## Optional: Add a collision object to test rod-rigid interaction
-  -
-    name: "CollisionPlane"
-    type: "RigidBox" 
-    size: [1.0, 1.0, 0.02]        # Thin platform
-    density: 1000
-    position: [0.25, 0, 0.1]      # Place below rod center
-    rotation: [0, 0, 0]
-    velocity: [0, 0, 0]
-    angular-velocity: [0, 0, 0]
-    fixed: true                   # Keep platform static
-    collisions: true              # Enable rod-platform collision testing
-    
-    ## Nerve parameters (disabled for rigid objects)
-    nerve-enable: false           # No nerve constraints for rigid objects
-    nerve-stretch-enable: false
-    nerve-bending-enable: false
-    nerve-mesh-file: ""           # Empty for disabled nerve constraints
-    nerve-physical-group: ""      # Empty for disabled nerve constraints
+  ## Collision object disabled for 1D rod testing
+  # -
+  #   name: "CollisionPlane"
+  #   type: "RigidBox" 
+  #   size: [1.0, 1.0, 0.02]        # Thin platform
+  #   density: 1000
+  #   position: [0.25, 0, 0.1]      # Place below rod center
+  #   rotation: [0, 0, 0]
+  #   velocity: [0, 0, 0]
+  #   angular-velocity: [0, 0, 0]
+  #   fixed: true                   # Keep platform static
+  #   collisions: true              # Enable rod-platform collision testing
+  #   
+  #   ## Nerve parameters (disabled for rigid objects)
+  #   nerve-enable: false           # No nerve constraints for rigid objects
+  #   nerve-stretch-enable: false
+  #   nerve-bending-enable: false
+  #   nerve-mesh-file: ""           # Empty for disabled nerve constraints
+  #   nerve-physical-group: ""      # Empty for disabled nerve constraints
