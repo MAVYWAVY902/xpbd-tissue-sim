@@ -22,9 +22,25 @@ void FirstOrderXPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_calcul
     XPBDMeshObject<SolverType, TypeList<ConstraintTypes...>>::_calculatePerVertexQuantities();
 
     _inv_B.resize(this->_mesh->numVertices());
-    for (int i = 0; i < this->_mesh->numVertices(); i++)
+    
+    // Check if this is a Nerve-Only configuration (no elastic material constraints)
+    if constexpr (std::is_same_v<typename SolverType::projector_type_list, FirstOrderXPBDMeshObjectConstraintConfigurations::NerveOnly::projector_type_list>)
     {
-        _inv_B[i] = 1.0 / (this->_vertex_volumes[i] * _damping_multiplier);
+        std::cout << "[xpbd] DEBUG: Nerve-Only configuration detected, using simplified damping (no volume dependency)\n";
+        // For Nerve-Only: use unit damping independent of volume
+        for (int i = 0; i < this->_mesh->numVertices(); i++)
+        {
+            _inv_B[i] = _damping_multiplier;  // Simple damping, no volume dependency
+        }
+    }
+    else
+    {
+        std::cout << "[xpbd] DEBUG: Standard elastic configuration, using volume-based damping\n";
+        // Standard volume-based damping for elastic materials
+        for (int i = 0; i < this->_mesh->numVertices(); i++)
+        {
+            _inv_B[i] = 1.0 / (this->_vertex_volumes[i] * _damping_multiplier);
+        }
     }
 }
 

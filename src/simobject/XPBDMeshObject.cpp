@@ -353,6 +353,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
 
     std::vector<Real> vertex_E(_mesh->numVertices());
     std::vector<Real> vertex_nu(_mesh->numVertices());
+    
     const Geometry::MeshProperty<int>& class_prop = tetMesh()->template getElementProperty<int>("class"); 
     for (int i = 0; i < tetMesh()->numElements(); i++)
     {
@@ -399,19 +400,58 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         vertex_nu[element[3]] += material.nu() / tetMesh()->vertexAttachedElements(element[3]).size();
     }
 
+    // Check for 1D meshes with no tetrahedral elements - assign fallback masses
+    bool has_zero_masses = true;
+    for (int i = 0; i < _mesh->numVertices(); i++) {
+        if (_vertex_masses[i] > 0) {
+            has_zero_masses = false;
+            break;
+        }
+    }
+    
+    if (has_zero_masses && tetMesh()->numElements() == 0) {
+        std::cout << "[xpbd] DEBUG: 1D mesh detected (no tetrahedral elements), assigning fallback masses\n";
+        // For 1D meshes, assign default mass based on material density
+        const ElasticMaterial& default_material = _materials[0];
+        const Real default_mass = default_material.density() * 1e-6;  // Small unit mass
+        
+        for (int i = 0; i < _mesh->numVertices(); i++) {
+            _vertex_masses[i] = default_mass;
+            // Also assign fallback material properties for 1D meshes
+            vertex_E[i] = default_material.E();
+            vertex_nu[i] = default_material.nu();
+        }
+    }
+
     // for 1st-order objects, calculate per-vertex damping
     if constexpr (IsFirstOrder)
     {
         _vertex_B.resize(_mesh->numVertices());
-        for (int i = 0; i < _mesh->numVertices(); i++)
+        
+        // Check if this is a Nerve-Only configuration (no elastic material constraints)
+        if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::NerveOnly::projector_type_list>)
         {
-            if (_adjust_b_to_material)
+            std::cout << "[xpbd] DEBUG: Nerve-Only configuration detected in base class, using simplified damping (no volume dependency)\n";
+            // For Nerve-Only: use unit damping independent of volume
+            for (int i = 0; i < _mesh->numVertices(); i++)
             {
-                _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier * vertex_E[i] / (1+vertex_nu[i]);
+                _vertex_B[i] = _damping_multiplier;  // Simple damping, no volume dependency
             }
-            else
+        }
+        else
+        {
+            std::cout << "[xpbd] DEBUG: Standard elastic configuration in base class, using volume-based damping\n";
+            // Standard volume-based damping for elastic materials
+            for (int i = 0; i < _mesh->numVertices(); i++)
             {
-                _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier;
+                if (_adjust_b_to_material)
+                {
+                    _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier * vertex_E[i] / (1+vertex_nu[i]);
+                }
+                else
+                {
+                    _vertex_B[i] = _vertex_volumes[i] * _damping_multiplier;
+                }
             }
         }
     }

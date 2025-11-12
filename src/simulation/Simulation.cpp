@@ -1556,6 +1556,16 @@ void Simulation::setup()
 
                                     const auto& V = xpbd->mesh()->vertices();
                                     const int nV = xpbd->mesh()->numVertices();    // Get gmsh node tag -> internal vertex index map
+                                    
+                                    // DEBUG: Check if vertices are valid after getting them from xpbd mesh
+                                    std::cout << "[nerve] DEBUG: XPBD mesh has nV=" << nV << ", V.cols()=" << V.cols() << ", V.rows()=" << V.rows() << std::endl;
+                                    if (V.cols() > 0) {
+                                        std::cout << "[nerve] DEBUG: V.col(0)=" << V.col(0).transpose() << std::endl;
+                                        if (V.cols() > 1) {
+                                            std::cout << "[nerve] DEBUG: V.col(1)=" << V.col(1).transpose() << std::endl;
+                                        }
+                                    }
+                                    
                                     const auto& tag2idx = xpbd->mesh()->tagMap();
                                     // if (nV <= 1) { std::cout << "[nerve] mesh has <=1 vertex.\n"; return false; }
                                     if (tag2idx.empty()) {
@@ -1582,6 +1592,7 @@ void Simulation::setup()
                                             if (i < 0 || j < 0 || i == j) { ++add_fail; continue; }
 
                                             const Real rest_len = (V.col(i) - V.col(j)).norm();
+                                            std::cerr << "[nerve] DEBUG: monitor edge (" << i << "," << j << "), V[" << i << "]=" << V.col(i).transpose() << ", V[" << j << "]=" << V.col(j).transpose() << ", rest_len=" << rest_len << "\n";
                                             // Use small compliance for numerical stability
                                             Real stretch_alpha = 1e-8;  // Stiffer than bending but still compliant  
                                             xpbd->addNerveStretchConstraint(i, j, rest_len, stretch_alpha);
@@ -1590,6 +1601,7 @@ void Simulation::setup()
                                             if (!monitor_set) {
                                                 s_edge_initialized = true;
                                                 s_edge_i = i; s_edge_j = j; s_edge_rest_len = rest_len;
+                                                std::cerr << "[nerve] DEBUG: setting monitor globals: s_edge_rest_len=" << s_edge_rest_len << "\n";
                                                 monitor_set = true;
                                             }
                                         }
@@ -1692,6 +1704,18 @@ void Simulation::setup()
                                     if (!added) added = try_add_for(dynamic_cast<T_PJ*>(base_ptr), "2nd + Combined + ParallelJacobi");
                                 }
 
+                                // ===== 2nd-order + Nerve-Only =====
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                                    using Sol = XPBDObjectSolverTypes<false, typename Cfg::NerveOnly::projector_type_list>;
+                                    using N_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                                    using N_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                                    using N_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                                    if (!added) added = try_add_for(dynamic_cast<N_GS*>(base_ptr), "2nd + NerveOnly + GS");
+                                    if (!added) added = try_add_for(dynamic_cast<N_J *>(base_ptr), "2nd + NerveOnly + Jacobi");
+                                    if (!added) added = try_add_for(dynamic_cast<N_PJ*>(base_ptr), "2nd + NerveOnly + ParallelJacobi");
+                                }
+
                                 // ===== 1st-order + Stable-Neohookean (Non-Combined) =====
                                 {
                                     using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
@@ -1714,6 +1738,18 @@ void Simulation::setup()
                                     if (!added) added = try_add_for(dynamic_cast<B_GS*>(base_ptr), "1st + Combined + GS");
                                     if (!added) added = try_add_for(dynamic_cast<B_J *>(base_ptr), "1st + Combined + Jacobi");
                                     if (!added) added = try_add_for(dynamic_cast<B_PJ*>(base_ptr), "1st + Combined + ParallelJacobi");
+                                }
+
+                                // ===== 1st-order + Nerve-Only =====
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                    using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                                    using C_GS = XPBDMeshObject_<true, Sol3::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                                    using C_J  = XPBDMeshObject_<true, Sol3::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                                    using C_PJ = XPBDMeshObject_<true, Sol3::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                                    if (!added) added = try_add_for(dynamic_cast<C_GS*>(base_ptr), "1st + NerveOnly + GS");
+                                    if (!added) added = try_add_for(dynamic_cast<C_J *>(base_ptr), "1st + NerveOnly + Jacobi");
+                                    if (!added) added = try_add_for(dynamic_cast<C_PJ*>(base_ptr), "1st + NerveOnly + ParallelJacobi");
                                 }
 
                                 if (added) { added_any = true; break; }
@@ -1748,6 +1784,18 @@ void Simulation::setup()
                                         if (!added) added = try_add_for(dynamic_cast<B_GS*>(fo_base_ptr), "1st + Combined + GS");
                                         if (!added) added = try_add_for(dynamic_cast<B_J *>(fo_base_ptr), "1st + Combined + Jacobi");
                                         if (!added) added = try_add_for(dynamic_cast<B_PJ*>(fo_base_ptr), "1st + Combined + ParallelJacobi");
+                                    }
+
+                                    // ===== 1st-order + Nerve-Only (fallback) =====
+                                    {
+                                        using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                        using Sol = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                                        using C_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                                        using C_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                                        using C_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                                        if (!added) added = try_add_for(dynamic_cast<C_GS*>(fo_base_ptr), "1st + NerveOnly + GS");
+                                        if (!added) added = try_add_for(dynamic_cast<C_J *>(fo_base_ptr), "1st + NerveOnly + Jacobi");
+                                        if (!added) added = try_add_for(dynamic_cast<C_PJ*>(fo_base_ptr), "1st + NerveOnly + ParallelJacobi");
                                     }
 
                                     if (added) { added_any = true; break; }
@@ -1913,6 +1961,17 @@ void Simulation::_timeStep()
                 if (!printed) printed = read_and_print(dynamic_cast<T_J *>(base_ptr), "2nd+Combined+Jacobi", "pre");
                 if (!printed) printed = read_and_print(dynamic_cast<T_PJ*>(base_ptr), "2nd+Combined+PJacobi", "pre");
             }
+            // 2nd + NerveOnly
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                using Sol = XPBDObjectSolverTypes<false, typename Cfg::NerveOnly::projector_type_list>;
+                using N_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                using N_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                using N_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                if (!printed) printed = read_and_print(dynamic_cast<N_GS*>(base_ptr), "2nd+NerveOnly+GS", "pre");
+                if (!printed) printed = read_and_print(dynamic_cast<N_J *>(base_ptr), "2nd+NerveOnly+Jacobi", "pre");
+                if (!printed) printed = read_and_print(dynamic_cast<N_PJ*>(base_ptr), "2nd+NerveOnly+PJacobi", "pre");
+            }
             // 1st + NonCombined
             {
                 using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
@@ -1966,6 +2025,17 @@ void Simulation::_timeStep()
                     if (!printed) printed = read_and_print(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS", "pre");
                     if (!printed) printed = read_and_print(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi", "pre");
                     if (!printed) printed = read_and_print(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJacobi", "pre");
+                }
+                // 1st + NerveOnly
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                    using C_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                    using C_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                    using C_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                    if (!printed) printed = read_and_print(dynamic_cast<C_GS*>(fo_base_ptr), "1st+NerveOnly+GS", "pre");
+                    if (!printed) printed = read_and_print(dynamic_cast<C_J *>(fo_base_ptr), "1st+NerveOnly+Jacobi", "pre");
+                    if (!printed) printed = read_and_print(dynamic_cast<C_PJ*>(fo_base_ptr), "1st+NerveOnly+PJacobi", "pre");
                 }
 
                 if (printed) break;
@@ -2049,6 +2119,17 @@ void Simulation::_timeStep()
                 if (!printed) printed = read_and_print_triplet(dynamic_cast<T_J *>(base_ptr), "2nd+Combined+Jacobi", "pre");
                 if (!printed) printed = read_and_print_triplet(dynamic_cast<T_PJ*>(base_ptr), "2nd+Combined+PJacobi", "pre");
             }
+            // 2nd + NerveOnly
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                using Sol = XPBDObjectSolverTypes<false, typename Cfg::NerveOnly::projector_type_list>;
+                using N_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                using N_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                using N_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<N_GS*>(base_ptr), "2nd+NerveOnly+GS", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<N_J *>(base_ptr), "2nd+NerveOnly+Jacobi", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<N_PJ*>(base_ptr), "2nd+NerveOnly+PJacobi", "pre");
+            }
 
             if (printed) break;
         }
@@ -2077,6 +2158,17 @@ void Simulation::_timeStep()
                 if (!printed) printed = read_and_print_triplet(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS", "pre");
                 if (!printed) printed = read_and_print_triplet(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi", "pre");
                 if (!printed) printed = read_and_print_triplet(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJacobi", "pre");
+            }
+            // 1st + NerveOnly
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                using C_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                using C_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                using C_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<C_GS*>(fo_base_ptr), "1st+NerveOnly+GS", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<C_J *>(fo_base_ptr), "1st+NerveOnly+Jacobi", "pre");
+                if (!printed) printed = read_and_print_triplet(dynamic_cast<C_PJ*>(fo_base_ptr), "1st+NerveOnly+PJacobi", "pre");
             }
 
             if (printed) break;
@@ -2142,6 +2234,17 @@ void Simulation::_timeStep()
                 if (!printed) printed = read_and_print_post(dynamic_cast<T_J *>(base_ptr), "2nd+Combined+Jacobi");
                 if (!printed) printed = read_and_print_post(dynamic_cast<T_PJ*>(base_ptr), "2nd+Combined+PJacobi");
             }
+            // 2nd + NerveOnly
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                using Sol = XPBDObjectSolverTypes<false, typename Cfg::NerveOnly::projector_type_list>;
+                using N_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                using N_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                using N_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                if (!printed) printed = read_and_print_post(dynamic_cast<N_GS*>(base_ptr), "2nd+NerveOnly+GS");
+                if (!printed) printed = read_and_print_post(dynamic_cast<N_J *>(base_ptr), "2nd+NerveOnly+Jacobi");
+                if (!printed) printed = read_and_print_post(dynamic_cast<N_PJ*>(base_ptr), "2nd+NerveOnly+PJacobi");
+            }
             // 1st + NonCombined
             {
                 using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
@@ -2195,6 +2298,17 @@ void Simulation::_timeStep()
                     if (!printed) printed = read_and_print_post(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS");
                     if (!printed) printed = read_and_print_post(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi");
                     if (!printed) printed = read_and_print_post(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJacobi");
+                }
+                // 1st + NerveOnly
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                    using C_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                    using C_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                    using C_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                    if (!printed) printed = read_and_print_post(dynamic_cast<C_GS*>(fo_base_ptr), "1st+NerveOnly+GS");
+                    if (!printed) printed = read_and_print_post(dynamic_cast<C_J *>(fo_base_ptr), "1st+NerveOnly+Jacobi");
+                    if (!printed) printed = read_and_print_post(dynamic_cast<C_PJ*>(fo_base_ptr), "1st+NerveOnly+PJacobi");
                 }
 
                 if (printed) break;
@@ -2276,6 +2390,17 @@ void Simulation::_timeStep()
                 if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<T_J *>(base_ptr), "2nd+Combined+Jacobi");
                 if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<T_PJ*>(base_ptr), "2nd+Combined+PJacobi");
             }
+            // 2nd + NerveOnly
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<false>;
+                using Sol = XPBDObjectSolverTypes<false, typename Cfg::NerveOnly::projector_type_list>;
+                using N_GS = XPBDMeshObject_<false, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                using N_J  = XPBDMeshObject_<false, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                using N_PJ = XPBDMeshObject_<false, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<N_GS*>(base_ptr), "2nd+NerveOnly+GS");
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<N_J *>(base_ptr), "2nd+NerveOnly+Jacobi");
+                if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<N_PJ*>(base_ptr), "2nd+NerveOnly+PJacobi");
+            }
 
             if (triplet_printed) break;
         }
@@ -2307,6 +2432,17 @@ void Simulation::_timeStep()
                     if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<B_GS*>(fo_base_ptr), "1st+Combined+GS");
                     if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<B_J *>(fo_base_ptr), "1st+Combined+Jacobi");
                     if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<B_PJ*>(fo_base_ptr), "1st+Combined+PJacobi");
+                }
+                // 1st + NerveOnly
+                {
+                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                    using Sol = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                    using C_GS = XPBDMeshObject_<true, Sol::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                    using C_J  = XPBDMeshObject_<true, Sol::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
+                    using C_PJ = XPBDMeshObject_<true, Sol::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<C_GS*>(fo_base_ptr), "1st+NerveOnly+GS");
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<C_J *>(fo_base_ptr), "1st+NerveOnly+Jacobi");
+                    if (!triplet_printed) triplet_printed = read_and_print_triplet_post(dynamic_cast<C_PJ*>(fo_base_ptr), "1st+NerveOnly+PJacobi");
                 }
 
                 if (triplet_printed) break;

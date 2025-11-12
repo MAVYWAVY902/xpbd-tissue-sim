@@ -1246,13 +1246,27 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
         std::vector<double> nodeCoords, nodeParams;
         gmsh::model::mesh::getNodes(nodeTags, nodeCoords, nodeParams, dim, tag);
 
+        std::cout << "[mesh] DEBUG: entity(" << dim << "," << tag << ") has " << nodeTags.size() << " nodes, " << nodeCoords.size() << " coords" << std::endl;
+        if (!nodeCoords.empty()) {
+            std::cout << "[mesh] DEBUG: first node coords: " << nodeCoords[0] << ", " << nodeCoords[1] << ", " << nodeCoords[2] << std::endl;
+        }
+
         unsigned vert_offset = vertices.cols();
         vertices.conservativeResize(3, vert_offset + nodeTags.size());
         for (unsigned i = 0; i < nodeTags.size(); i++)
         {
-            vertices(0, vert_offset + i) = static_cast<Real>(nodeCoords[i*3]);
-            vertices(1, vert_offset + i) = static_cast<Real>(nodeCoords[i*3 + 1]);
-            vertices(2, vert_offset + i) = static_cast<Real>(nodeCoords[i*3 + 2]);
+            double x = nodeCoords[i*3];
+            double y = nodeCoords[i*3 + 1];
+            double z = nodeCoords[i*3 + 2];
+            
+            if (i < 5) {  // Debug first few vertices
+                std::cout << "[mesh] DEBUG: vertex " << (vert_offset + i) << ": gmsh(" << x << "," << y << "," << z << ") -> stored(" 
+                          << static_cast<Real>(x) << "," << static_cast<Real>(y) << "," << static_cast<Real>(z) << ")" << std::endl;
+            }
+            
+            vertices(0, vert_offset + i) = static_cast<Real>(x);
+            vertices(1, vert_offset + i) = static_cast<Real>(y);
+            vertices(2, vert_offset + i) = static_cast<Real>(z);
 
             // --- NEW: record mapping from global gmsh node tag to our final vertex index
             // This relies on the fact that we are appending vertices without reordering.

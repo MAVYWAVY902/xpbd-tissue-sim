@@ -153,24 +153,91 @@ public:
         _loadMeshFromFile(_filename);
 
         // Debug: after load
-        if (_mesh)
+        if (_mesh) {
             std::cout << "[meshobj] after load: tagMap size = " << _mesh->tagMap().size() << "\n";
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: after load, V.col(0) = " << V.col(0).transpose() << "\n";
+                std::cout << "[meshobj] DEBUG: after load, V.col(1) = " << V.col(1).transpose() << "\n";
+            }
+        }
 
         // Preserve gmsh tag map across geometry ops (some ops may rebuild internals)
         std::unordered_map<int, int> savedTagMap;
         if (auto* tet = dynamic_cast<Geometry::TetMesh*>(_mesh.get()))
             savedTagMap = tet->tagMap();  // copy snapshot
 
-        // Order: resize (max then explicit) -> recenter -> rotate -> set undeformed
-        if (_max_size.has_value())  _mesh->resize(_max_size.value());
-        if (_initial_size.has_value()) _mesh->resize(_initial_size.value());
+        // Check if this is a 1D line mesh (no faces/tetrahedra, only edges)
+        bool isLineMesh = (_mesh->numFaces() == 0 && _mesh->numVertices() > 0);
+        if (auto* tetMesh = dynamic_cast<Geometry::TetMesh*>(_mesh.get())) {
+            isLineMesh = (tetMesh->numElements() == 0 && tetMesh->numFaces() == 0 && tetMesh->numVertices() > 0);
+        }
+        
+        if (isLineMesh) {
+            std::cout << "[meshobj] DEBUG: Detected 1D line mesh, skipping geometric operations that require volume\n";
+            
+            // For line meshes, only apply basic transformations if needed
+            // Skip: resize, massCenter, moveTogether, rotateAbout (these need volume/area)
+            // Only do: setCurrentStateAsUndeformedState
+            
+            std::cout << "[meshobj] DEBUG: calling setCurrentStateAsUndeformedState for line mesh\n";
+            _mesh->setCurrentStateAsUndeformedState();
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: after setCurrentStateAsUndeformedState, V.col(0) = " << V.col(0).transpose() << "\n";
+            }
+        } else {
+            std::cout << "[meshobj] DEBUG: Standard 3D mesh, applying full geometric operations\n";
+            
+            // Order: resize (max then explicit) -> recenter -> rotate -> set undeformed
+            if (_max_size.has_value()) {
+                std::cout << "[meshobj] DEBUG: calling resize(_max_size=" << _max_size.value() << ")\n";
+                _mesh->resize(_max_size.value());
+                if (_mesh->numVertices() > 0) {
+                    const auto& V = _mesh->vertices();
+                    std::cout << "[meshobj] DEBUG: after resize, V.col(0) = " << V.col(0).transpose() << "\n";
+                }
+            }
+            if (_initial_size.has_value()) {
+                std::cout << "[meshobj] DEBUG: calling resize(_initial_size=" << _initial_size.value() << ")\n";
+                _mesh->resize(_initial_size.value());
+                if (_mesh->numVertices() > 0) {
+                    const auto& V = _mesh->vertices();
+                    std::cout << "[meshobj] DEBUG: after initial_size resize, V.col(0) = " << V.col(0).transpose() << "\n";
+                }
+            }
 
-        const Vec3r com = _mesh->massCenter();
-        _mesh->moveTogether(-com + _initial_position);
-        _mesh->rotateAbout(_initial_position, _initial_rotation);
-        _mesh->setCurrentStateAsUndeformedState();
-
-        // Restore tag map
+            std::cout << "[meshobj] DEBUG: calling massCenter()\n";
+            const Vec3r com = _mesh->massCenter();
+            std::cout << "[meshobj] DEBUG: massCenter = " << com.transpose() << "\n";
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: after massCenter, V.col(0) = " << V.col(0).transpose() << "\n";
+            }
+            
+            std::cout << "[meshobj] DEBUG: calling moveTogether(-com + _initial_position)\n";
+            _mesh->moveTogether(-com + _initial_position);
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: after moveTogether, V.col(0) = " << V.col(0).transpose() << "\n";
+            }
+            
+            std::cout << "[meshobj] DEBUG: calling rotateAbout\n";
+            _mesh->rotateAbout(_initial_position, _initial_rotation);
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: after rotateAbout, V.col(0) = " << V.col(0).transpose() << "\n";
+            }
+            
+            std::cout << "[meshobj] DEBUG: calling setCurrentStateAsUndeformedState\n";
+            _mesh->setCurrentStateAsUndeformedState();
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: after setCurrentStateAsUndeformedState, V.col(0) = " << V.col(0).transpose() << "\n";
+            }
+        }
+        
+        // Restore tag map for both cases
         if (auto* tet = dynamic_cast<Geometry::TetMesh*>(_mesh.get()))
             tet->mutableTagMap() = std::move(savedTagMap);
     }
@@ -213,12 +280,26 @@ protected:
     {
         // Load TetMesh from Gmsh; MeshUtils already fills tagMap().
         Geometry::TetMesh tmp = MeshUtils::loadTetMeshFromGmshFile(fname);
+        
+        // Debug: check vertices before move
+        std::cout << "[meshobj] DEBUG: before move, tmp has " << tmp.numVertices() << " vertices" << std::endl;
+        if (tmp.numVertices() > 0) {
+            const auto& V_before = tmp.vertices();
+            std::cout << "[meshobj] DEBUG: before move, V.col(0)= " << V_before.col(0).transpose() << std::endl;
+        }
 
         // Copy out tagMap before move.
         auto tagMapCopy = tmp.tagMap();
 
         // Move into owned mesh.
         _mesh = std::make_unique<Geometry::TetMesh>(std::move(tmp));
+        
+        // Debug: check vertices after move
+        std::cout << "[meshobj] DEBUG: after move, _mesh has " << _mesh->numVertices() << " vertices" << std::endl;
+        if (_mesh->numVertices() > 0) {
+            const auto& V_after = _mesh->vertices();
+            std::cout << "[meshobj] DEBUG: after move, V.col(0)= " << V_after.col(0).transpose() << std::endl;
+        }
 
         // Re-inject tagMap and debug print.
         if (auto* tm = dynamic_cast<Geometry::TetMesh*>(_mesh.get())) {

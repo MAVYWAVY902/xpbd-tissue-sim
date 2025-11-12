@@ -51,7 +51,10 @@ objects:
   ## 1D Rod object - ONLY nerve constraints will be active
   -
     name: "Rod1D"
-    type: "FirstOrderXPBDMeshObject"         # Use first-order XPBD for nerve constraints
+    # type: "FirstOrderXPBDMeshObject"         # Use first-order XPBD for nerve constraints
+    type: "XPBDMeshObject"         # Use 2nd-order XPBD for nerve constraints
+    
+    
     filename: "../resource/rod/rod_1d_test.msh"  # TEMPORARY: Use known working mesh for visualization test
     materials: ["Soft Tissue"]
     
