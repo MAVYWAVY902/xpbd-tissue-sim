@@ -10,10 +10,21 @@ namespace Graphics {
 Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::ObjectRenderConfig& render_config)
     : MeshGraphicsObject(name, mesh)
 {
-    _init(render_config);
+    std::cout << "[Easy3D] DEBUG: Creating MeshGraphicsObject '" << name << "' with " << mesh->numVertices() << " vertices, " 
+              << mesh->numFaces() << " faces\n";
+    std::cout << "[Easy3D] DEBUG: Render config - drawFaces=" << render_config.drawFaces() 
+              << " drawEdges=" << render_config.drawEdges() << " drawPoints=" << render_config.drawPoints() << "\n";
+    
+    // TEMPORARY FIX: Force edge rendering for 1D meshes
+    bool force_draw_edges = (mesh->numFaces() == 0 && mesh->numVertices() > 1);
+    if (force_draw_edges) {
+        std::cout << "[Easy3D] DEBUG: 1D mesh detected (0 faces), FORCING drawEdges=true\n";
+    }
+    
+    _init(render_config, force_draw_edges);
 }
 
-void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config)
+void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config, bool force_draw_edges)
 {
     // first ensure that the vertex cache has enough space for each vertex
     _vertex_cache.resize(_mesh->numVertices());
@@ -58,8 +69,10 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config)
         });
     }
 
-    if (config.drawEdges())
+    if (config.drawEdges() || force_draw_edges)
     {
+        std::cout << "[Easy3D] DEBUG: drawEdges=" << (config.drawEdges() ? "true" : "false") 
+                  << " force_draw_edges=" << (force_draw_edges ? "true" : "false") << ", creating LinesDrawable\n";
         easy3d::LinesDrawable* lines_drawable = renderer()->add_lines_drawable("lines");
         lines_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
             // downcast to MeshObject for access to facesAsFlatList
@@ -68,7 +81,8 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config)
             {
                 // update the vertex buffer and element buffer
                 d->update_vertex_buffer(mo->points(), true);
-                d->update_element_buffer(mo->edgesAsFlatList());
+                auto edges = mo->edgesAsFlatList();
+                d->update_element_buffer(edges);
             }
         });
     }
@@ -130,7 +144,13 @@ std::vector<unsigned int> Easy3DMeshGraphicsObject::edgesAsFlatList() const
     // NEW: Check for stored line segments marker first (for 1D meshes)
     if (_mesh->hasVertexProperty<int>("has_line_segments")) {
         int num_segments = _mesh->getVertexProperty<int>("has_line_segments").get(0);
-        std::cerr << "[viz] Found 1D mesh with " << num_segments << " line segments - using sequential edges\n";
+        
+        // Only print this message once per object to avoid spam
+        static bool printed_1d_mesh_info = false;
+        if (!printed_1d_mesh_info) {
+            std::cerr << "[viz] Found 1D mesh with " << num_segments << " line segments - using sequential edges\n";
+            printed_1d_mesh_info = true;
+        }
         
         // For 1D meshes, create sequential line segments connecting consecutive vertices
         std::vector<unsigned int> edges_flat_list;

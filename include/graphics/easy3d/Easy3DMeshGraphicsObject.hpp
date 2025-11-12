@@ -66,7 +66,7 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
      */
     void _updateVertexCache();
 
-    void _init(const Config::ObjectRenderConfig& config);
+    void _init(const Config::ObjectRenderConfig& config, bool force_draw_edges = false);
 
     protected:
     /** Vector of easy3d::vec3 vertices that is updated before every redraw.

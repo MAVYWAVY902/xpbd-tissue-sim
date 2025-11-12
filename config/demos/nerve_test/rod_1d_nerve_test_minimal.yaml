@@ -6,7 +6,7 @@ visualization: "Easy3D"
 
 time-step: 1e-4   # Smaller time step for stability
 end-time: 10.0
-g-accel: 0.0       # Disable gravity to focus on nerve constraints only
+g-accel: 9.81       # Disable gravity to focus on nerve constraints only
 
 fix-max-z: false               # OFF until AABB-from-vertices is implemented
 
