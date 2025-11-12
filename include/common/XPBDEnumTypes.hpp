@@ -13,7 +13,8 @@ enum class XPBDObjectSolverTypeEnum
 enum class XPBDMeshObjectConstraintConfigurationEnum
 {
     STABLE_NEOHOOKEAN,
-    STABLE_NEOHOOKEAN_COMBINED
+    STABLE_NEOHOOKEAN_COMBINED,
+    NERVE_ONLY
 };
 
 // TODO: rename to something slightly more descriptive, i.e. XPBDSolverResidualPolicy

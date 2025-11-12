@@ -37,7 +37,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     { 
         static std::map<std::string, XPBDMeshObjectConstraintConfigurationEnum> constraint_type_options{
             {"Stable-Neohookean", XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN},
-            {"Stable-Neohookean-Combined", XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED}
+            {"Stable-Neohookean-Combined", XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED},
+            {"Nerve-Only", XPBDMeshObjectConstraintConfigurationEnum::NERVE_ONLY}
         };
         return constraint_type_options;
     }

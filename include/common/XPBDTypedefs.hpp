@@ -59,12 +59,14 @@ struct XPBDMeshObjectConstraintConfigurations
     public:
     using StableNeohookean = XPBDMeshObjectConstraintConfiguration<DevProjector, HydProjector, StatCollProjector, DefCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector>;
     using StableNeohookeanCombined = XPBDMeshObjectConstraintConfiguration<DevHydProjector, StatCollProjector, DefCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector>;
+    using NerveOnly = XPBDMeshObjectConstraintConfiguration<StatCollProjector, DefCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector>;
 
-    using type_list = TypeList<StableNeohookean, StableNeohookeanCombined>;
-    using variant_type = std::variant<StableNeohookean, StableNeohookeanCombined>;
+    using type_list = TypeList<StableNeohookean, StableNeohookeanCombined, NerveOnly>;
+    using variant_type = std::variant<StableNeohookean, StableNeohookeanCombined, NerveOnly>;
 
     constexpr static StableNeohookean STABLE_NEOHOOKEAN{};
     constexpr static StableNeohookeanCombined STABLE_NEOHOOKEAN_COMBINED{};
+    constexpr static NerveOnly NERVE_ONLY{};
 };
 
 // Declare XPBDMeshObject constraint configurations

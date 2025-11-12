@@ -24,6 +24,10 @@ class XPBDObjectFactory
         {
             return _createXPBDMeshObject<XPBDMeshObjectConstraintConfigurations<false>::StableNeohookeanCombined>(sim, config);
         }
+        else if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::NERVE_ONLY)
+        {
+            return _createXPBDMeshObject<XPBDMeshObjectConstraintConfigurations<false>::NerveOnly>(sim, config);
+        }
         else
         {
             assert(0); // something's wrong
@@ -41,6 +45,10 @@ class XPBDObjectFactory
         else if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED)
         {
             return _createFirstOrderXPBDMeshObject<XPBDMeshObjectConstraintConfigurations<true>::StableNeohookeanCombined>(sim, config);
+        }
+        else if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::NERVE_ONLY)
+        {
+            return _createFirstOrderXPBDMeshObject<XPBDMeshObjectConstraintConfigurations<true>::NerveOnly>(sim, config);
         }
         else
         {

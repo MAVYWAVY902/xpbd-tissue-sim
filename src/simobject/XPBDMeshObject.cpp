@@ -421,9 +421,13 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_createElasticConstraints()
 {
-    // reserve space for the elastic constraints we're creating
-    _constraints.template reserve<Solver::HydrostaticConstraint>(tetMesh()->numElements());
-    _constraints.template reserve<Solver::DeviatoricConstraint>(tetMesh()->numElements());
+    // Only reserve space for elastic constraints if they're in our constraint configuration
+    if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookean::projector_type_list> ||
+                  std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+    {
+        _constraints.template reserve<Solver::HydrostaticConstraint>(tetMesh()->numElements());
+        _constraints.template reserve<Solver::DeviatoricConstraint>(tetMesh()->numElements());
+    }
 
     // create constraint(s) for each element
     const Geometry::MeshProperty<int>& class_prop = tetMesh()->template getElementProperty<int>("class"); 
@@ -467,7 +471,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
             
         }
         // if the constraint configuration is StableNeohookeanCombined, add a combined constraint projector for the hydrostatic and deviatoric constraints
-        if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+        else if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
         {
             std::vector<Solver::HydrostaticConstraint>& hyd_constraint_vec = _constraints.template get<Solver::HydrostaticConstraint>();
             std::vector<Solver::DeviatoricConstraint>& dev_constraint_vec = _constraints.template get<Solver::DeviatoricConstraint>();
@@ -481,6 +485,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
                 DevConstraintRefType(dev_constraint_vec, dev_constraint_vec.size()-1), 
                 HydConstraintRefType(hyd_constraint_vec, hyd_constraint_vec.size()-1)
             );
+        }
+        // For NerveOnly configuration, skip adding elastic constraints (hydrostatic/deviatoric)
+        else if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::NerveOnly::projector_type_list>)
+        {
+            // No elastic constraints for NerveOnly configuration
+            // Only nerve stretch and bending constraints will be added
         }
     }
 }
@@ -606,13 +616,20 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::totalStrainEnergy() const
 {
-    // iterate over all hydrostatic and deviatoric constraints
     Real total_energy = 0;
-    _constraints.template for_each_element<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>([&total_energy](const auto& constraint){
-        Real eval;
-        constraint.evaluate(&eval);
-        total_energy += eval * eval / constraint.alpha();
-    });
+    
+    // Only compute elastic strain energy if we have elastic constraints
+    if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookean::projector_type_list> ||
+                  std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+    {
+        // iterate over all hydrostatic and deviatoric constraints
+        _constraints.template for_each_element<Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>([&total_energy](const auto& constraint){
+            Real eval;
+            constraint.evaluate(&eval);
+            total_energy += eval * eval / constraint.alpha();
+        });
+    }
+    // For NerveOnly configuration, strain energy is 0 (no elastic constraints)
 
     return total_energy;
 }
@@ -620,56 +637,63 @@ Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::to
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 Vec3r XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::elasticForceAtVertex(int index) const
 {
-    // get elements attached to the vertex in the mesh
-    const std::vector<int>& _attached_elements = tetMesh()->vertexAttachedElements(index);
-
-    /** TODO: figure out which approach is correct. */
     Vec3r total_force = Vec3r::Zero();
-    Vec3r total_force_proj = Vec3r::Zero();
-    for (const auto& elem_index : _attached_elements)
+    
+    // Only compute elastic forces if we have elastic constraints
+    if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookean::projector_type_list> ||
+                  std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
     {
-        // std::cout << "Elastic force for element " << elem_index << std::endl;
-        const Vec3r& dev_force = _constraints.template get<Solver::DeviatoricConstraint>()[elem_index].elasticForce(index);
-        const Vec3r& hyd_force = _constraints.template get<Solver::HydrostaticConstraint>()[elem_index].elasticForce(index);
+        // get elements attached to the vertex in the mesh
+        const std::vector<int>& _attached_elements = tetMesh()->vertexAttachedElements(index);
 
-        Vec3r proj_force = Vec3r::Zero();
-
-        if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
+        /** TODO: figure out which approach is correct. */
+        Vec3r total_force_proj = Vec3r::Zero();
+        for (const auto& elem_index : _attached_elements)
         {
-            const auto& proj = 
-                _solver.template getConstraintProjector<Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>>(elem_index);
-            std::vector<Vec3r> proj_forces = proj.constraintForces();
-            const std::vector<Solver::PositionReference>& positions = proj.positions();
-            
-            for (unsigned i = 0; i < positions.size(); i++)
+            // std::cout << "Elastic force for element " << elem_index << std::endl;
+            const Vec3r& dev_force = _constraints.template get<Solver::DeviatoricConstraint>()[elem_index].elasticForce(index);
+            const Vec3r& hyd_force = _constraints.template get<Solver::HydrostaticConstraint>()[elem_index].elasticForce(index);
+
+            Vec3r proj_force = Vec3r::Zero();
+
+            if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookeanCombined::projector_type_list>)
             {
-                if (positions[i].index == index)
+                const auto& proj = 
+                    _solver.template getConstraintProjector<Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>>(elem_index);
+                std::vector<Vec3r> proj_forces = proj.constraintForces();
+                const std::vector<Solver::PositionReference>& positions = proj.positions();
+                
+                for (unsigned i = 0; i < positions.size(); i++)
                 {
-                    proj_force = proj_forces[i];
-                    break;
+                    if (positions[i].index == index)
+                    {
+                        proj_force = proj_forces[i];
+                        break;
+                    }
                 }
             }
+
+            // TODO: THIS IS A HACK THAT WILL PROBABLY BITE ME IN THE ASS LATER
+            // for some reason, very small elements produce incorrect forces (they are very large, probably due to machine precision limits) - which messes up force feedback in the Haptic demos
+            // need to find a better fix than this
+            if (_constraints.template get<Solver::DeviatoricConstraint>()[elem_index].restVolume() > 1e-10)
+            {
+                total_force += dev_force + hyd_force;
+                total_force_proj += proj_force;
+            } 
+                
+            // else
+            //     std::cout << "LARGE FORCE ELEMENT VOLUME: " << _constraints.template get<Solver::DeviatoricConstraint>()[elem_index].restVolume() << std::endl;
+            // std::cout << "Forces at element " << elem_index << ": (" << dev_force[0] << ", " << dev_force[1] << ", " << dev_force[2] << ") Hyd: ("<< hyd_force[0] << ", " << hyd_force[1] << ", " << hyd_force[2] << ")" << std::endl;
+            
         }
 
-        // TODO: THIS IS A HACK THAT WILL PROBABLY BITE ME IN THE ASS LATER
-        // for some reason, very small elements produce incorrect forces (they are very large, probably due to machine precision limits) - which messes up force feedback in the Haptic demos
-        // need to find a better fix than this
-        if (_constraints.template get<Solver::DeviatoricConstraint>()[elem_index].restVolume() > 1e-10)
-        {
-            total_force += dev_force + hyd_force;
-            total_force_proj += proj_force;
-        } 
-            
-        // else
-        //     std::cout << "LARGE FORCE ELEMENT VOLUME: " << _constraints.template get<Solver::DeviatoricConstraint>()[elem_index].restVolume() << std::endl;
-        // std::cout << "Forces at element " << elem_index << ": (" << dev_force[0] << ", " << dev_force[1] << ", " << dev_force[2] << ") Hyd: ("<< hyd_force[0] << ", " << hyd_force[1] << ", " << hyd_force[2] << ")" << std::endl;
-        
+        // std::cout << ""
+
+        std::cout << "\nTotal elastic force at vertex (from constraints): " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
+        std::cout << "Total elastic force at vertex (from projectors): " << total_force_proj[0] << ", " << total_force_proj[1] << ", " << total_force_proj[2] << std::endl;
     }
-
-    // std::cout << ""
-
-    std::cout << "\nTotal elastic force at vertex (from constraints): " << total_force[0] << ", " << total_force[1] << ", " << total_force[2] << std::endl;
-    std::cout << "Total elastic force at vertex (from projectors): " << total_force_proj[0] << ", " << total_force_proj[1] << ", " << total_force_proj[2] << std::endl;
+    // For NerveOnly configuration, elastic force is 0 (no elastic constraints)
 
     return total_force;
 }
@@ -869,7 +893,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_gather
                     }
                 }
             }
-            else if (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookean::projector_type_list>)
+            else if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::StableNeohookean::projector_type_list>)
             {
                 using DevProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint>;
                 using DevProjectorTypeRef = Solver::ConstraintProjectorReference<DevProjectorType>;
@@ -886,6 +910,12 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_gather
                         proj_to_reproject.template emplace_back<HydProjectorTypeRef>(hyd_projectors, element_index);
                     }
                 }
+            }
+            else if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::NerveOnly::projector_type_list>)
+            {
+                // For NerveOnly configuration, there are no elastic constraints to reproject
+                // Only nerve constraints would need reprojection, but they are edge-based not element-based
+                // so we skip adding any elastic element constraints here
             }
         }
     }
@@ -1016,6 +1046,23 @@ template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::Para
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::GaussSeidel, FirstOrderStableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::Jacobi, FirstOrderStableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::ParallelJacobi, FirstOrderStableNeohookeanCombinedConstraints>;
+
+// Nerve-Only constraint config
+using SolverTypesNerveOnly = XPBDObjectSolverTypes<false, typename XPBDMeshObjectConstraintConfigurations<false>::NerveOnly::projector_type_list>;
+using NerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigurations<false>::NerveOnly::constraint_type_list;
+
+template class XPBDMeshObject_<false, SolverTypesNerveOnly::GaussSeidel, NerveOnlyConstraints>;
+template class XPBDMeshObject_<false, SolverTypesNerveOnly::Jacobi, NerveOnlyConstraints>;
+template class XPBDMeshObject_<false, SolverTypesNerveOnly::ParallelJacobi, NerveOnlyConstraints>;
+
+// First Order Nerve-Only constraint config
+using FirstOrderSolverTypesNerveOnly = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::projector_type_list>;
+using FirstOrderNerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::constraint_type_list;
+
+template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::GaussSeidel, FirstOrderNerveOnlyConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::Jacobi, FirstOrderNerveOnlyConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::ParallelJacobi, FirstOrderNerveOnlyConstraints>;
+
 // CTAD
 // template<typename SolverType, typename ...ConstraintTypes> XPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const XPBDMeshObjectConfig* config)
 //     -> XPBDMeshObject<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>;

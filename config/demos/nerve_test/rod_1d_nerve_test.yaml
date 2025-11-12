@@ -1,0 +1,91 @@
+## 1D Rod Nerve Constraint Evaluation Test
+## Pure 1D rod testing for stretch and bending constraints isolation
+## Built on existing framework with nerve constraint toggles for debugging
+##
+## Usage: ./HangingTest rod_1d_nerve_test.yaml
+
+name: "1D Rod Nerve Constraint Evaluation"
+description: "Isolated testing of nerve stretch and bending constraints on 1D rod - no hydrostatic/deviatoric interference"
+
+# Nerve configuration - TOGGLE SWITCHES for constraint debugging
+nerve-enable: true                                   # Master switch for nerve constraints
+nerve-stretch-enable: true                          # TOGGLE: Enable/disable stretch constraints
+nerve-bending-enable: true                          # TOGGLE: Enable/disable bending constraints  
+nerve-mesh-file: "../resource/rod/rod_1d_test.msh"  # Pure 1D rod mesh (no tets)
+nerve-physical-group: "nerve_edge"                  # Physical group for nerve constraints
+
+visualization: "Easy3D"
+g-accel: 9.81             # Gravity to create deformation and test constraint response
+
+sim-mode: "Visualization"  # Real-time visualization for debugging
+time-step: 1e-3           # Small timestep for numerical stability
+collision-rate: 1000      
+fps: 60                   # Smooth visualization
+end-time: 30              # Long enough to observe steady-state behavior
+
+# Constraint: Fix top end (hanging rod simulation)
+fix-max-z: true           # Fix topmost vertices - standard hanging simulation constraint
+
+materials:
+  -
+    name: "Soft Tissue"     # Use standard tissue material name (matches existing configs)
+    density: 1000           # kg/m³ - standard tissue density
+    E: 1e4                  # Pa - Soft Young's modulus (like hanging_beam_test.yaml) for visible deformation
+    nu: 0.45                # Poisson's ratio - standard tissue value
+    mu-s: 0.0               # Static friction - no friction for pure constraint testing
+    mu-k: 0.0               # Kinetic friction
+
+objects:
+  ## 1D Rod object - ONLY nerve constraints will be active
+  -
+    name: "Rod1D"
+    type: "FirstOrderXPBDMeshObject"         # Use first-order XPBD for nerve constraints
+    filename: "../resource/rod/rod_1d_test.msh"  # Pure 1D line mesh
+    materials: ["Soft Tissue"]
+    
+    ## Use standard constraint configuration that works with nerve constraints 
+    # constraint-type: "Stable-Neohookean-Combined"   # Works with nerve constraints (NOT Nerve-Only)
+    constraint-type: "Nerve-Only"   # Works with nerve constraints (NOT Nerve-Only)
+    
+    ## Visualization optimized for 1D rod debugging
+    color: [1.0, 0.2, 0.2, 1.0]  # Bright red for clear visibility
+    draw-points: true             # Show vertices as dots - important for 1D
+    draw-edges: true              # Show rod as connected line - ESSENTIAL
+    draw-faces: false             # No faces in 1D mesh
+
+    ## Initial configuration
+    max-size: 0.5                 # Keep rod at 0.5m length
+    position: [0, 0, 0.25]        # Center rod in view, elevated for collision testing
+    velocity: [0, 0, 0]          
+    rotation: [0, 0, 0]           # Rod lies along x-axis
+
+    ## Enable collision testing (may need modification for 1D)
+    collisions: true              # Test collision system with 1D rod
+
+    ## XPBD solver settings optimized for 1D rod
+    num-solver-iters: 15          # More iterations for bending constraint convergence
+    solver-type: "Gauss-Seidel"   # Proven solver for nerve constraints
+    residual-policy: "Never"      # Skip residual calculation for performance
+
+    ## 1st-Order XPBD damping for stability
+    damping-multiplier: 100000    # Moderate damping for realistic motion
+
+  ## Optional: Add a collision object to test rod-rigid interaction
+  -
+    name: "CollisionPlane"
+    type: "RigidBox" 
+    size: [1.0, 1.0, 0.02]        # Thin platform
+    density: 1000
+    position: [0.25, 0, 0.1]      # Place below rod center
+    rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    fixed: true                   # Keep platform static
+    collisions: true              # Enable rod-platform collision testing
+    
+    ## Nerve parameters (disabled for rigid objects)
+    nerve-enable: false           # No nerve constraints for rigid objects
+    nerve-stretch-enable: false
+    nerve-bending-enable: false
+    nerve-mesh-file: ""           # Empty for disabled nerve constraints
+    nerve-physical-group: ""      # Empty for disabled nerve constraints
