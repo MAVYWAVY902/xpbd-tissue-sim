@@ -10,7 +10,7 @@ sim-mode: "Visualization"     # Real-time simulation for interactive testing
 enable-mouse-interaction: true
 input-device: "Mouse" 
 
-time-step: 1e-4   # Small time step for stability with nerve constraints
+time-step: 5e-4   # Small time step for stability with nerve constraints
 collision-rate: 1000
 fps: 30
 end-time: 10000   # Long simulation for testing
@@ -51,7 +51,7 @@ objects:
     materials: ["Soft Tissue"]
     solver-type: "Gauss-Seidel"
     constraint-type: "Nerve-Only"   # Pure nerve constraint physics
-    num-solver-iters: 5
+    num-solver-iters: 3
 
     # Fix only first vertex - free end for interaction
     fixed-vertices: [0]  # Only fix start (z=1), leave end (z=0) free
