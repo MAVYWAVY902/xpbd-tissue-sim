@@ -6,7 +6,7 @@ visualization: "Easy3D"
 
 time-step: 1e-4   # Smaller time step for stability
 end-time: 10.0
-g-accel: 9.81       # Disable gravity to focus on nerve constraints only
+g-accel: 0.0       # Disable gravity to focus on nerve constraints only
 
 fix-max-z: false               # OFF until AABB-from-vertices is implemented
 
@@ -41,8 +41,8 @@ objects:
     constraint-type: "Nerve-Only"   # keep to hit the dispatch
     num-solver-iters: 20
 
-    # Fix first and last vertices to prevent free-floating
-    fixed-vertices: [0, 750]  # Fix both ends of the rod
+    # Fix only first vertex to allow testing nerve constraints with free end
+    fixed-vertices: [0]  # Only fix start, let end be free for interaction
 
     # Proper underscored draw keys (not hyphenated)
     draw_points: true

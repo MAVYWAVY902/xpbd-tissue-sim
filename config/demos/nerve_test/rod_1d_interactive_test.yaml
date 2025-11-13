@@ -1,0 +1,63 @@
+## Interactive 1D Rod — Test Nerve Constraints with Mouse
+## Based on simple_pushing + nerve constraint physics
+
+name: "1D Rod — Interactive Nerve Testing"
+description: "Test nerve stretch + bending constraints by pushing/dragging the free end of the rod"
+visualization: "Easy3D"
+
+g-accel: 0.0       # Disable gravity to focus on nerve constraints only
+sim-mode: "Visualization"     # Real-time simulation for interactive testing
+enable-mouse-interaction: true
+input-device: "Mouse" 
+
+time-step: 1e-4   # Small time step for stability with nerve constraints
+collision-rate: 1000
+fps: 30
+end-time: 10000   # Long simulation for testing
+
+fix-max-z: false  # OFF until AABB-from-vertices is implemented
+
+## Nerve constraint configuration
+nerve-enable: true
+nerve-stretch-enable: true
+nerve-bending-enable: true
+nerve-mesh-file: "../resource/rod/rod_1d_test.msh"
+nerve-physical-group: "nerve_edge"
+
+nerve-stretch-alpha: 1e-2   # Stretch constraint strength
+nerve-bending-alpha: 1e-3   # Bending constraint strength
+nerve-verbose: true
+
+## PushingSimulation-specific parameters for interactive testing
+tool-radius: 0.01        # Smaller tool for precise rod manipulation
+push-stiffness: 25.0     # Moderate stiffness for smooth interaction
+max-push-force: 15.0     # Reasonable force for nerve constraint testing
+
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000
+    E: 1e4
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+
+objects:
+  - name: "Rod1D"
+    type: "FirstOrderXPBDMeshObject"
+    # type: "XPBDMeshObject"
+    
+    filename: "../resource/rod/rod_1d_test.msh"
+    materials: ["Soft Tissue"]
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Nerve-Only"   # Pure nerve constraint physics
+    num-solver-iters: 5
+
+    # Fix only first vertex - free end for interaction
+    fixed-vertices: [0]  # Only fix start (z=1), leave end (z=0) free
+
+    # Visualization settings
+    draw_points: true
+    draw_edges: true
+    draw_faces: false
+    color: [1.0, 0.2, 0.2, 1.0]  # Red rod
