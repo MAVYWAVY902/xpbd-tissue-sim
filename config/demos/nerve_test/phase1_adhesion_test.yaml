@@ -1,0 +1,96 @@
+## Phase 1 Test: Nerve-Tumor Adhesion Constraint 
+## Tests basic adhesion behavior with distance-threshold implementation
+
+name: "Nerve-Tumor Adhesion Test — Phase 1"
+description: "Test basic nerve-tumor adhesion constraints with distance-threshold behavior"
+visualization: "Easy3D"
+
+g-accel: 0.0       # Disable gravity to focus on adhesion behavior
+sim-mode: "Visualization"     
+enable-mouse-interaction: true
+input-device: "Mouse" 
+
+time-step: 1e-3    # Very small time step for adhesion stability
+collision-rate: 1000
+fps: 30
+end-time: 10000   
+
+fix-max-z: false  
+
+## Nerve constraint configuration
+nerve-enable: true
+nerve-stretch-enable: true
+nerve-bending-enable: true
+nerve-mesh-file: "../resource/rod/rod_1d_test.msh"
+nerve-physical-group: "nerve_edge"
+
+nerve-stretch-alpha: 1e-8   # Stiff stretch constraints
+nerve-bending-alpha: 1e-9   # Very stiff bending constraints
+nerve-verbose: true
+
+## Phase 1: Nerve-Tumor Adhesion configuration
+nerve-tumor-adhesion-enable: true
+nerve-tumor-adhesion-distance-window: 5e-4    # 0.5 mm adhesion detection window
+nerve-tumor-adhesion-target-gap: 1e-4         # 0.1 mm target separation  
+nerve-tumor-adhesion-alpha: 1e-7              # Normal adhesion compliance
+nerve-tumor-adhesion-bond-distance: 3e-4      # 0.3 mm bond creation threshold
+nerve-tumor-adhesion-break-distance: 7e-4     # 0.7 mm bond breaking threshold
+
+## Interactive testing parameters
+tool-radius: 0.005       # Small tool for precise manipulation
+push-stiffness: 10.0     # Moderate stiffness for smooth interaction
+max-push-force: 10.0     # Reasonable force for adhesion testing
+
+materials:
+  -
+    name: "Nerve Tissue"
+    density: 1000
+    E: 5e4          # Softer than previous tests for adhesion visibility
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+  -
+    name: "Tumor Tissue"  
+    density: 1100
+    E: 8e4          # Slightly stiffer tumor
+    nu: 0.4
+    mu-s: 0.0
+    mu-k: 0.0
+
+objects:
+  # 1D Rod representing nerve fiber
+  - name: "NerveFiber"
+    type: "FirstOrderXPBDMeshObject"
+    
+    filename: "../resource/rod/rod_1d_test.msh"
+    materials: ["Nerve Tissue"]
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Nerve-Only"   # Includes nerve + adhesion constraints
+    num-solver-iters: 3
+
+    # Fix only first vertex, leave rest free for adhesion testing
+    fixed-vertices: [0]  
+
+    # Visualization settings
+    draw_points: true
+    draw_edges: true
+    draw_faces: false
+    color: [1.0, 0.2, 0.2, 1.0]  # Red nerve
+    
+  # Simple tumor mesh for adhesion testing (if available)
+  # - name: "TumorMass"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   
+  #   filename: "../resource/tissue/simple_tumor.msh"  # Would need to create this
+  #   materials: ["Tumor Tissue"]
+  #   solver-type: "Gauss-Seidel"
+  #   constraint-type: "Stable-Neohookean"
+  #   num-solver-iters: 2
+  #   
+  #   fixed-vertices: []  # Free to move
+  #   
+  #   # Visualization settings
+  #   draw_points: false
+  #   draw_edges: false
+  #   draw_faces: true
+  #   color: [0.2, 0.8, 0.2, 0.7]  # Semi-transparent green tumor

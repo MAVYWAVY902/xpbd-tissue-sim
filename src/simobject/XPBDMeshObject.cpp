@@ -17,6 +17,7 @@
 #include "solver/constraint/HydrostaticConstraint.hpp"
 #include "solver/constraint/DeviatoricConstraint.hpp"
 #include "solver/constraint/NerveStretchConstraint.hpp" 
+#include "solver/constraint/NerveTumorAdhesionConstraint.hpp" 
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
 #include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
@@ -326,6 +327,44 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
 
     // 4. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::NerveBendingConstraint>;
+    return _solver.addConstraintProjector(
+        _sim->dt(),
+        RefType(vec, vec.size() - 1)
+    );
+}
+
+// NEW: addNerveTumorAdhesionConstraint
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<
+    Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
+    ::addNerveTumorAdhesionConstraint(int nerve_v, int tri_v1, int tri_v2, int tri_v3, 
+                                     Real target_gap, Real alpha)
+{
+    // 1. Get vertex position pointers and masses
+    Real* nerve_p = _mesh->vertexPointer(nerve_v);
+    Real* tri_p1 = _mesh->vertexPointer(tri_v1);
+    Real* tri_p2 = _mesh->vertexPointer(tri_v2);
+    Real* tri_p3 = _mesh->vertexPointer(tri_v3);
+    
+    Real nerve_m = vertexConstraintInertia(nerve_v);
+    Real tri_m1 = vertexConstraintInertia(tri_v1);
+    Real tri_m2 = vertexConstraintInertia(tri_v2);
+    Real tri_m3 = vertexConstraintInertia(tri_v3);
+
+    // 2. Add to constraints array
+    auto& vec = _constraints.template get<Solver::NerveTumorAdhesionConstraint>();
+    vec.emplace_back(
+        nerve_v, nerve_p, nerve_m,
+        tri_v1, tri_p1, tri_m1,
+        tri_v2, tri_p2, tri_m2,
+        tri_v3, tri_p3, tri_m3,
+        target_gap,
+        alpha
+    );
+
+    // 3. Tell solver about the new constraint
+    using RefType = Solver::ConstraintReference<Solver::NerveTumorAdhesionConstraint>;
     return _solver.addConstraintProjector(
         _sim->dt(),
         RefType(vec, vec.size() - 1)

@@ -28,6 +28,8 @@ set(SOLVER_HEADERS
     ${SOLVER_INCLUDE_DIR}/xpbd_solver/XPBDSolverUpdates.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/NerveStretchConstraint.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/NerveBendingConstraint.hpp
+    ${SOLVER_INCLUDE_DIR}/constraint/NerveTumorAdhesionConstraint.hpp
+    ${SOLVER_INCLUDE_DIR}/constraint/NerveTumorBond.hpp
 
 )
 
@@ -42,6 +44,7 @@ set(SOLVER_SOURCES
     ${SOLVER_SRC_DIR}/xpbd_projector/CombinedNeohookeanConstraintProjector.cpp
     ${SOLVER_SRC_DIR}/constraint/NerveStretchConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/NerveBendingConstraint.cpp
+    ${SOLVER_SRC_DIR}/constraint/NerveTumorAdhesionConstraint.cpp
 
 )
 

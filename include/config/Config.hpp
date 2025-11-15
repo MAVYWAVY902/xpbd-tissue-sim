@@ -91,6 +91,14 @@ class Config
         _extractParameter("nerve-bending-enable", node, _nerve_bending_enable);
         _extractParameter("nerve-mesh-file", node, _nerve_mesh_file);
         _extractParameter("nerve-physical-group", node, _nerve_physical_group);
+        
+        // load nerve-tumor adhesion parameters (optional)
+        _extractParameter("nerve-tumor-adhesion-enable", node, _nerve_tumor_adhesion_enable);
+        _extractParameter("nerve-tumor-adhesion-distance-window", node, _nerve_tumor_adhesion_distance_window);
+        _extractParameter("nerve-tumor-adhesion-target-gap", node, _nerve_tumor_adhesion_target_gap);
+        _extractParameter("nerve-tumor-adhesion-alpha", node, _nerve_tumor_adhesion_alpha);
+        _extractParameter("nerve-tumor-adhesion-bond-distance", node, _nerve_tumor_adhesion_bond_distance);
+        _extractParameter("nerve-tumor-adhesion-break-distance", node, _nerve_tumor_adhesion_break_distance);
 
         std::cout << "\nExtracting parameters for object with name " << BOLD << name() << RST << "..." << std::endl;
     }
@@ -113,6 +121,14 @@ class Config
     bool nerveBendingEnable() const { return _nerve_bending_enable.value.value_or(true); }  // default true
     std::string nerveMeshFile() const { return _nerve_mesh_file.value.value_or(""); }  // default empty
     std::string nervePhysicalGroup() const { return _nerve_physical_group.value.value_or("nerve_edge"); }  // default "nerve_edge"
+    
+    // Nerve-tumor adhesion configuration getters
+    bool nerveTumorAdhesionEnable() const { return _nerve_tumor_adhesion_enable.value.value_or(false); }  // default false
+    Real nerveTumorAdhesionDistanceWindow() const { return _nerve_tumor_adhesion_distance_window.value.value_or(5e-4); }  // 0.5 mm
+    Real nerveTumorAdhesionTargetGap() const { return _nerve_tumor_adhesion_target_gap.value.value_or(1e-4); }  // 0.1 mm  
+    Real nerveTumorAdhesionAlpha() const { return _nerve_tumor_adhesion_alpha.value.value_or(1e-7); }  // compliance
+    Real nerveTumorAdhesionBondDistance() const { return _nerve_tumor_adhesion_bond_distance.value.value_or(3e-4); }  // bond creation threshold
+    Real nerveTumorAdhesionBreakDistance() const { return _nerve_tumor_adhesion_break_distance.value.value_or(7e-4); }  // bond break threshold
 
     protected:
 
@@ -462,6 +478,14 @@ class Config
     ConfigParameter<std::optional<bool>> _nerve_bending_enable = ConfigParameter<std::optional<bool>>(true);
     ConfigParameter<std::optional<std::string>> _nerve_mesh_file = ConfigParameter<std::optional<std::string>>("");
     ConfigParameter<std::optional<std::string>> _nerve_physical_group = ConfigParameter<std::optional<std::string>>("nerve_edge");
+    
+    /** Nerve-tumor adhesion configuration parameters */
+    ConfigParameter<std::optional<bool>> _nerve_tumor_adhesion_enable = ConfigParameter<std::optional<bool>>(false);
+    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_distance_window = ConfigParameter<std::optional<Real>>(5e-4);
+    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_target_gap = ConfigParameter<std::optional<Real>>(1e-4);
+    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_alpha = ConfigParameter<std::optional<Real>>(1e-7);
+    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_bond_distance = ConfigParameter<std::optional<Real>>(3e-4);
+    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_break_distance = ConfigParameter<std::optional<Real>>(7e-4);
 };
 
 } // namespace Config
