@@ -1902,6 +1902,10 @@ void Simulation::setup()
                                             
                                             if (distance <= distance_window) {
                                                 try {
+                                                    if (constraints_added == 0) {
+                                                        std::cout << "[adhesion] Creating constraints with: target_gap=" << target_gap 
+                                                                  << "m, alpha=" << alpha << ", distance_window=" << distance_window << "m\n";
+                                                    }
                                                     typed_tumor_ptr->addNerveTumorAdhesionConstraint(v, v1, v2, v3, target_gap, alpha);
                                                     ++constraints_added; ++total_constraints;
                                                     if (constraints_added <= 3) {
