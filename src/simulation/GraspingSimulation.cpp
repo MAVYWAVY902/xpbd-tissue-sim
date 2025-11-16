@@ -366,8 +366,8 @@ void GraspingSimulation::_toggleGrasping()
                                 fo_xpbd_mesh_obj->addAttachmentConstraint(closest_vertex, &_cursor->position(), attachment_offset);
                                 attached_here++;
                                 // Note: Not storing FirstOrder objects in _grasped_vertices due to template type mismatch
-                                printf("DEBUG: FirstOrder edge sample at (%.2f, %.2f, %.2f) distance %.4f - attached to vertex %d\n", 
-                                       sample_pos.x(), sample_pos.y(), sample_pos.z(), distance, closest_vertex);
+                                // printf("DEBUG: FirstOrder edge sample at (%.2f, %.2f, %.2f) distance %.4f - attached to vertex %d\n", 
+                                //        sample_pos.x(), sample_pos.y(), sample_pos.z(), distance, closest_vertex);
                             }
                         }
                     }

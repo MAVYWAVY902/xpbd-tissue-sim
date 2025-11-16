@@ -1,7 +1,7 @@
-## Nerve-Tumor Adhesion Test Configuration
-## 1D Rod (nerve) interacting with deformable cube (tumor) via adhesion constraints
+## Nerve-Tumor Adhesion Test Configuration - Strong Adhesion Version
+## 1D Rod (nerve) interacting with deformable cube (tumor) via STRONG adhesion constraints
 
-name: "Nerve-Tumor Adhesion Test"
+name: "Nerve-Tumor Strong Adhesion Test"
 visualization: "Easy3D"
 
 time-step: 5e-5   # Smaller time step for better collision detection
@@ -22,13 +22,13 @@ nerve-stretch-alpha: 1e-6   # Moderate stiffness for nerve stretch
 nerve-bending-alpha: 1e-7   # Moderate stiffness for nerve bending
 nerve-verbose: true
 
-# ==================== NERVE-TUMOR ADHESION SETTINGS ====================
+# ==================== NERVE-TUMOR ADHESION SETTINGS - STRONG VERSION ====================
 nerve-tumor-adhesion-enable: true
-nerve-tumor-adhesion-target-gap: 0.0002      # 0.2mm target separation distance
-nerve-tumor-adhesion-alpha: 1e-6             # compliance (lower = stiffer constraint) 
+nerve-tumor-adhesion-target-gap: 0.001       # 1.0mm target separation distance (larger)
+nerve-tumor-adhesion-alpha: 1e-9             # MUCH lower compliance = STIFFER constraint
 nerve-tumor-adhesion-distance-window: 0.5    # 50.0cm detection range for creating constraints
-nerve-tumor-adhesion-bond-distance: 0.0005   # 0.5mm distance to form adhesion bonds
-nerve-tumor-adhesion-break-distance: 0.0015  # 1.5mm distance to break adhesion bonds
+nerve-tumor-adhesion-bond-distance: 0.002    # 2.0mm distance to form adhesion bonds
+nerve-tumor-adhesion-break-distance: 0.005   # 5.0mm distance to break adhesion bonds
 
 # ==================== MATERIALS ====================
 materials:
@@ -56,9 +56,9 @@ objects:
     materials: ["Nerve Tissue"]
     solver-type: "Gauss-Seidel"
     constraint-type: "Nerve-Only"   # Only nerve constraints + adhesion
-    num-solver-iters: 10           # More iterations for better collision resolution
+    num-solver-iters: 20           # MORE iterations for strong constraint resolution
     
-    # Enable collision detection
+    # Enable collision detection (won't work for deformable-deformable but doesn't hurt)
     collisions: true
     
     # Fix one end of the nerve to simulate attachment
@@ -80,9 +80,9 @@ objects:
     materials: ["Tumor Tissue"]
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"  # Elastic constraints for tumor
-    num-solver-iters: 10           # More iterations for better collision resolution
+    num-solver-iters: 20           # MORE iterations for strong constraint resolution
     
-    # Enable collision detection
+    # Enable collision detection (won't work for deformable-deformable but doesn't hurt)
     collisions: true
     
     # Fix bottom vertices to simulate tumor attachment to tissue
@@ -96,13 +96,10 @@ objects:
     color: [0.2, 0.8, 0.2, 0.7]  # Semi-transparent green for tumor
     
     # Position tumor at origin (center of scene)
-    position: [0.0, 0.0, 0.0]   # Tumor at ground level - same X as nerve
-    # position: [0.6, 0.0, 0.0]   # Tumor at ground level - same X as nerve
-
+    position: [0.6, 0.0, 0.0]   # Tumor at ground level - same X as nerve
 
     # residual-policy: "Every-Substep"    # compute the residuals after every time step
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
     damping-multiplier: 100000   # 'b' from the 1st-Order XPBD paper
-  

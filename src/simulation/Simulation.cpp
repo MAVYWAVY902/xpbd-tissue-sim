@@ -1598,7 +1598,7 @@ void Simulation::setup()
                                             if (i < 0 || j < 0 || i == j) { ++add_fail; continue; }
 
                                             const Real rest_len = (V.col(i) - V.col(j)).norm();
-                                            std::cerr << "[nerve] DEBUG: monitor edge (" << i << "," << j << "), V[" << i << "]=" << V.col(i).transpose() << ", V[" << j << "]=" << V.col(j).transpose() << ", rest_len=" << rest_len << "\n";
+                                            // std::cerr << "[nerve] DEBUG: monitor edge (" << i << "," << j << "), V[" << i << "]=" << V.col(i).transpose() << ", V[" << j << "]=" << V.col(j).transpose() << ", rest_len=" << rest_len << "\n";
                                             // Use small compliance for numerical stability
                                             Real stretch_alpha = 1e-8;  // Stiffer than bending but still compliant  
                                             xpbd->addNerveStretchConstraint(i, j, rest_len, stretch_alpha);
