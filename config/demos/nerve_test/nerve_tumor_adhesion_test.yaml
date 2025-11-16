@@ -15,7 +15,7 @@ fix-max-z: true
 nerve-enable: true
 nerve-stretch-enable: true
 nerve-bending-enable: true
-nerve-mesh-file: "../resource/rod/rod_1d_test.msh"
+nerve-mesh-file: "../resource/rod/surface_nerve.msh"
 nerve-physical-group: "nerve_edge"
 
 nerve-stretch-alpha: 1e-6   # Moderate stiffness for nerve stretch
@@ -24,11 +24,11 @@ nerve-verbose: true
 
 # ==================== NERVE-TUMOR ADHESION SETTINGS ====================
 nerve-tumor-adhesion-enable: true
-nerve-tumor-adhesion-target-gap: 0.0002      # 0.2mm target separation distance
-nerve-tumor-adhesion-alpha: 1e-6             # compliance (lower = stiffer constraint) 
-nerve-tumor-adhesion-distance-window: 0.5    # 50.0cm detection range for creating constraints
-nerve-tumor-adhesion-bond-distance: 0.0005   # 0.5mm distance to form adhesion bonds
-nerve-tumor-adhesion-break-distance: 0.0015  # 1.5mm distance to break adhesion bonds
+nerve-tumor-adhesion-target-gap: 0.0         # 0mm target separation (contact state)
+nerve-tumor-adhesion-alpha: 1e-7             # Stiffer constraint for realistic adhesion
+nerve-tumor-adhesion-distance-window: 2.0    # 2cm detection range (reasonable for neuroma size)
+nerve-tumor-adhesion-bond-distance: 0.005    # 5mm distance to form adhesion bonds  
+nerve-tumor-adhesion-break-distance: 0.02    # 2cm distance to break adhesion bonds
 
 # ==================== MATERIALS ====================
 materials:
@@ -49,10 +49,10 @@ materials:
 
 # ==================== SIMULATION OBJECTS ====================
 objects:
-  # 1D Rod representing the nerve
+  # 1D Rod representing the nerve (generated to match neuroma)
   - name: "Nerve_Rod"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/rod/rod_1d_test.msh"
+    filename: "../resource/rod/neuroma_nerve.msh"
     materials: ["Nerve Tissue"]
     solver-type: "Gauss-Seidel"
     constraint-type: "Nerve-Only"   # Only nerve constraints + adhesion
@@ -70,13 +70,13 @@ objects:
     draw_faces: false
     color: [1.0, 0.2, 0.2, 1.0]  # Red for nerve
     
-    # Position the nerve close to tumor to trigger adhesion
-    position: [0.0, 0.0, 0.1]   # Place nerve 10cm above tumor (within detection range)
+    # Both objects are pre-positioned correctly - no translation needed
+    position: [0.0, 0.0, 0.0]   # Nerve already positioned through tumor center
     
-  # Deformable cube representing tumor
+  # Neuroma tumor mesh
   - name: "Tumor_Cube"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8_nerve.msh"
+    filename: "../resource/tissue/neuroma_refined_uniform.msh"
     materials: ["Tumor Tissue"]
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"  # Elastic constraints for tumor
@@ -95,9 +95,8 @@ objects:
     draw_faces: true
     color: [0.2, 0.8, 0.2, 0.7]  # Semi-transparent green for tumor
     
-    # Position tumor at origin (center of scene)
-    position: [0.0, 0.0, 0.0]   # Tumor at ground level - same X as nerve
-    # position: [0.6, 0.0, 0.0]   # Tumor at ground level - same X as nerve
+    # Position tumor at origin (neuroma is already positioned correctly)
+    position: [0.0, 0.0, 0.0]   # Neuroma at its natural position
 
 
     # residual-policy: "Every-Substep"    # compute the residuals after every time step

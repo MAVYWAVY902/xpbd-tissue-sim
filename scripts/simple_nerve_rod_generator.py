@@ -9,42 +9,116 @@ import os
 import re
 
 def parse_gmsh_msh_simple(msh_file):
-    """Parse Gmsh .msh file to extract vertex coordinates (basic parsing)"""
+    """Parse Gmsh .msh file to extract vertex coordinates (supports both v2.2 and v4.1 formats)"""
     vertices = []
     
     try:
         with open(msh_file, 'r') as f:
             lines = f.readlines()
         
+        # Detect Gmsh version
+        version = "2.2"  # default
+        for line in lines:
+            if line.strip().startswith('$MeshFormat'):
+                continue
+            elif line.strip() and not line.startswith('$'):
+                version_info = line.strip().split()
+                if len(version_info) > 0:
+                    version = version_info[0]
+                    break
+        
+        print(f"Detected Gmsh format version: {version}")
+        
         # Find $Nodes section
         node_section = False
         for i, line in enumerate(lines):
             if line.strip() == '$Nodes':
                 node_section = True
-                # Next line should be number of nodes
-                if i + 1 < len(lines):
-                    try:
-                        num_nodes = int(lines[i + 1].strip())
-                        print(f"Found {num_nodes} nodes in mesh")
-                        
-                        # Read node coordinates
-                        for j in range(i + 2, min(i + 2 + num_nodes, len(lines))):
-                            parts = lines[j].strip().split()
-                            if len(parts) >= 4:  # node_id x y z
-                                x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
-                                vertices.append([x, y, z])
-                        break
-                    except ValueError:
-                        continue
+                print(f"Found $Nodes section at line {i+1}")
+                
+                if version.startswith('4'):
+                    # Gmsh 4.x format parsing
+                    # Line after $Nodes: numEntityBlocks numNodes minNodeTag maxNodeTag
+                    if i + 1 < len(lines):
+                        header_parts = lines[i + 1].strip().split()
+                        if len(header_parts) >= 2:
+                            num_nodes = int(header_parts[1])
+                            print(f"Gmsh 4.x format: {num_nodes} total nodes")
+                            
+                            # Parse entity blocks
+                            line_idx = i + 2
+                            nodes_read = 0
+                            
+                            while line_idx < len(lines) and nodes_read < num_nodes:
+                                line_content = lines[line_idx].strip()
+                                if line_content == '$EndNodes':
+                                    break
+                                
+                                # Try to parse as entity block header: entityDim entityTag parametric numNodesInBlock
+                                entity_parts = line_content.split()
+                                if len(entity_parts) == 4 and entity_parts[0].isdigit():
+                                    entity_dim, entity_tag, parametric, num_nodes_in_block = map(int, entity_parts)
+                                    line_idx += 1
+                                    
+                                    # Read node tags first (if any)
+                                    node_tags = []
+                                    for tag_line_offset in range(num_nodes_in_block):
+                                        if line_idx + tag_line_offset < len(lines):
+                                            tag_line = lines[line_idx + tag_line_offset].strip()
+                                            if tag_line.isdigit():
+                                                node_tags.append(int(tag_line))
+                                            else:
+                                                break
+                                    
+                                    # Skip to coordinates (after node tags)
+                                    line_idx += len(node_tags)
+                                    
+                                    # Read coordinates
+                                    for coord_offset in range(num_nodes_in_block):
+                                        coord_line_idx = line_idx + coord_offset
+                                        if coord_line_idx < len(lines):
+                                            coord_parts = lines[coord_line_idx].strip().split()
+                                            if len(coord_parts) >= 3:
+                                                try:
+                                                    x, y, z = float(coord_parts[0]), float(coord_parts[1]), float(coord_parts[2])
+                                                    vertices.append([x, y, z])
+                                                    nodes_read += 1
+                                                except ValueError:
+                                                    continue
+                                    
+                                    line_idx += num_nodes_in_block
+                                else:
+                                    line_idx += 1
+                            
+                            break
+                
+                else:
+                    # Gmsh 2.x format parsing (original code)
+                    if i + 1 < len(lines):
+                        try:
+                            num_nodes = int(lines[i + 1].strip())
+                            print(f"Gmsh 2.x format: {num_nodes} nodes")
+                            
+                            # Read node coordinates
+                            for j in range(i + 2, min(i + 2 + num_nodes, len(lines))):
+                                parts = lines[j].strip().split()
+                                if len(parts) >= 4:  # node_id x y z
+                                    x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+                                    vertices.append([x, y, z])
+                            break
+                        except ValueError:
+                            continue
             elif line.strip() == '$EndNodes':
                 break
         
         if not vertices:
             print("Warning: No vertices found in mesh file")
+            print("Debug: First 10 lines of file:")
+            for i, line in enumerate(lines[:10]):
+                print(f"  {i+1}: {line.strip()}")
             return None
         
         # Calculate bounding box
-        vertices = [[x, y, z] for x, y, z in vertices]  # Ensure list format
         xs = [v[0] for v in vertices]
         ys = [v[1] for v in vertices]
         zs = [v[2] for v in vertices]
@@ -71,6 +145,8 @@ def parse_gmsh_msh_simple(msh_file):
         
     except Exception as e:
         print(f"Error parsing mesh file: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def generate_rod_configurations():
