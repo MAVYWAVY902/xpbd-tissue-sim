@@ -73,7 +73,7 @@ objects:
     rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
 
     ## collisions
-    collisions: false
+    collisions: true
 
     ## XPBD-specific options
     num-solver-iters: 1   # number of solver loop iterations per time step 
@@ -126,7 +126,7 @@ objects:
     rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
 
     ## collisions
-    collisions: false
+    collisions: true
 
     ## XPBD-specific options
     num-solver-iters: 50   # number of solver loop iterations per time step 

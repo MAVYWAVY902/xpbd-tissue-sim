@@ -78,7 +78,7 @@ void GraspingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton b
 
 void GraspingSimulation::notifyMouseMoved(double x, double y)
 {
-    printf("DEBUG: Mouse moved: x=%.2f, y=%.2f, space_held=%d\n", x, y, _keys_held.count(SimulationInput::Key::SPACE) ? _keys_held.at(SimulationInput::Key::SPACE) : 0);
+    // printf("DEBUG: Mouse moved: x=%.2f, y=%.2f, space_held=%d\n", x, y, _keys_held.count(SimulationInput::Key::SPACE) ? _keys_held.at(SimulationInput::Key::SPACE) : 0);
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0) // space bar = clutch
     {
     // Increase sensitivity: more world motion per pixel; still slow down when grasping

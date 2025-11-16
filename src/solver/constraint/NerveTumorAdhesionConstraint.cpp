@@ -51,6 +51,15 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
     // When C>0, too far apart → attractive force  
     // When C<0, too close → repulsive force
     *C = _n_cached.dot(nerve_pos - _xs_cached) - _target_gap;
+    
+    // DEBUG: Print constraint evaluation details (limit output frequency)
+    static int debug_count = 0;
+    if (debug_count++ % 900 == 0) {  // Print every 900 evaluations
+        std::cout << "[adhesion DEBUG] Constraint eval #" << debug_count 
+                  << ": nerve=(" << nerve_pos.transpose() << ")"
+                  << " distance=" << distance << " C=" << *C 
+                  << " target_gap=" << _target_gap << "\n";
+    }
 }
 
 void NerveTumorAdhesionConstraint::gradient(Real* grad) const

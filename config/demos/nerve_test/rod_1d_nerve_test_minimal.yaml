@@ -16,8 +16,8 @@ nerve-bending-enable: true
 nerve-mesh-file: "../resource/rod/rod_1d_test.msh"
 nerve-physical-group: "nerve_edge"
 
-nerve-stretch-alpha: 1e-2   # Increase stretch constraint strength
-nerve-bending-alpha: 1e-3   # Increase bending constraint strength
+nerve-stretch-alpha: 1e-4   # Increase stretch constraint strength
+nerve-bending-alpha: 1e-5   # Increase bending constraint strength
 nerve-verbose: true
 
 materials:

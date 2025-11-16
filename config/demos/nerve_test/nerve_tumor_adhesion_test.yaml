@@ -1,0 +1,107 @@
+## Nerve-Tumor Adhesion Test Configuration
+## 1D Rod (nerve) interacting with deformable cube (tumor) via adhesion constraints
+
+name: "Nerve-Tumor Adhesion Test"
+visualization: "Easy3D"
+
+time-step: 5e-5   # Smaller time step for better collision detection
+end-time: 10.0
+g-accel: 9.81     # Enable gravity to create motion
+collision-rate: 2000 # Higher collision detection rate
+
+fix-max-z: false
+
+# ==================== NERVE CONFIGURATION ====================
+nerve-enable: true
+nerve-stretch-enable: true
+nerve-bending-enable: true
+nerve-mesh-file: "../resource/rod/rod_1d_test.msh"
+nerve-physical-group: "nerve_edge"
+
+nerve-stretch-alpha: 1e-6   # Moderate stiffness for nerve stretch
+nerve-bending-alpha: 1e-7   # Moderate stiffness for nerve bending
+nerve-verbose: true
+
+# ==================== NERVE-TUMOR ADHESION SETTINGS ====================
+nerve-tumor-adhesion-enable: true
+nerve-tumor-adhesion-target-gap: 0.0002      # 0.2mm target separation distance
+nerve-tumor-adhesion-alpha: 1e-6             # compliance (lower = stiffer constraint) 
+nerve-tumor-adhesion-distance-window: 0.5    # 50.0cm detection range for creating constraints
+nerve-tumor-adhesion-bond-distance: 0.0005   # 0.5mm distance to form adhesion bonds
+nerve-tumor-adhesion-break-distance: 0.0015  # 1.5mm distance to break adhesion bonds
+
+# ==================== MATERIALS ====================
+materials:
+  -
+    name: "Nerve Tissue"
+    density: 1000
+    E: 1e3      # Softer for nerve
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+  -
+    name: "Tumor Tissue"  
+    density: 1200
+    E: 5e4      # Stiffer than nerve but still soft
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+
+# ==================== SIMULATION OBJECTS ====================
+objects:
+  # 1D Rod representing the nerve
+  - name: "Nerve_Rod"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/rod/rod_1d_test.msh"
+    materials: ["Nerve Tissue"]
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Nerve-Only"   # Only nerve constraints + adhesion
+    num-solver-iters: 10           # More iterations for better collision resolution
+    
+    # Enable collision detection
+    collisions: true
+    
+    # Fix one end of the nerve to simulate attachment
+    fixed-vertices: [0]  # Fix start vertex
+    
+    # Visualization settings
+    draw_points: true
+    draw_edges: true
+    draw_faces: false
+    color: [1.0, 0.2, 0.2, 1.0]  # Red for nerve
+    
+    # Position the nerve further away to avoid initial overlap
+    translate: [0.0, 0.0, 1.0]   # Place nerve 1.0m above tumor (was 0.5m)
+    
+  # Deformable cube representing tumor
+  - name: "Tumor_Cube"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8_nerve.msh"
+    materials: ["Tumor Tissue"]
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"  # Elastic constraints for tumor
+    num-solver-iters: 10           # More iterations for better collision resolution
+    
+    # Enable collision detection
+    collisions: true
+    
+    # Fix bottom vertices to simulate tumor attachment to tissue
+    # (You may need to adjust these vertex indices based on the actual mesh)
+    fixed-vertices: [0, 1, 4, 5]  # Fix bottom face vertices
+    
+    # Visualization settings
+    draw_points: false
+    draw_edges: false
+    draw_faces: true
+    color: [0.2, 0.8, 0.2, 0.7]  # Semi-transparent green for tumor
+    
+    # Position tumor at origin
+    translate: [0.0, 0.0, 0.0]
+
+
+    # residual-policy: "Every-Substep"    # compute the residuals after every time step
+    residual-policy: "Never"              # don't compute the residuals
+
+    ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
+    damping-multiplier: 100000   # 'b' from the 1st-Order XPBD paper
+  

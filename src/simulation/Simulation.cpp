@@ -1181,12 +1181,18 @@ void Simulation::setup()
 
     // ==================== Read Physical Line("nerve_edge") from .msh and add NerveStretchConstraint ====================
     {
+        std::cout << "[DEBUG] *** ENTERING NERVE SECTION ***\n";
+        
         // Read nerve configuration from YAML config instead of environment variables
         const bool nerve_enabled = _config->nerveEnable();
         const bool nerve_stretch_enabled = _config->nerveStretchEnable();
         const bool nerve_bending_enabled = _config->nerveBendingEnable();
         const std::string msh_path = _config->nerveMeshFile();
         const std::string phys_name = _config->nervePhysicalGroup();
+        
+        std::cout << "[DEBUG] Nerve config: enabled=" << nerve_enabled 
+                  << " stretch=" << nerve_stretch_enabled << " bending=" << nerve_bending_enabled 
+                  << " mesh='" << msh_path << "' group='" << phys_name << "'\n";
 
         // Also check environment variables for backward compatibility (but YAML takes precedence)
         const char* env_msh  = std::getenv("NERVE_MSH");
@@ -1813,9 +1819,148 @@ void Simulation::setup()
                                 std::cout << "[nerve] Monitor triplet set to (" << s_triplet_i << "," << s_triplet_j 
                                           << "," << s_triplet_k << "), rest_curvature=" << s_triplet_rest_curvature << "\n";
                             }
+                            
+                            std::cout << "[DEBUG] *** NERVE SECTION COMPLETED *** About to start adhesion section...\n";
                         }
                     }
                 }
+
+                // ==================== NERVE-TUMOR ADHESION CONSTRAINTS ====================
+                
+                std::cout << "[adhesion DEBUG] Checking if adhesion is enabled...\n";
+                std::cout << "[adhesion DEBUG] nerveTumorAdhesionEnable() = " << _config->nerveTumorAdhesionEnable() << "\n";
+                std::cout << "[adhesion DEBUG] Config object pointer: " << _config << "\n";
+                
+                // Check if nerve-tumor adhesion is enabled
+                if (_config->nerveTumorAdhesionEnable()) {
+                    std::cout << "[adhesion] *** NERVE-TUMOR ADHESION ENABLED *** Creating constraints...\n";
+                    
+                    // Get adhesion parameters from config
+                    const Real target_gap = _config->nerveTumorAdhesionTargetGap();
+                    const Real alpha = _config->nerveTumorAdhesionAlpha();
+                    const Real distance_window = _config->nerveTumorAdhesionDistanceWindow();
+                    
+                    std::cout << "[adhesion] Parameters: target_gap=" << target_gap 
+                              << ", alpha=" << alpha << ", distance_window=" << distance_window << "\n";
+                    
+                    // Cross-object approach: collect nerve (vertex-only) and tumor (face-containing) objects
+                    int total_constraints = 0;
+                    std::vector<FirstOrderXPBDMeshObject_Base*> nerve_objs;
+                    std::vector<FirstOrderXPBDMeshObject_Base*> tumor_objs;
+
+                    for (auto& fo_uptr : fo_xpbd_objs) {
+                        FirstOrderXPBDMeshObject_Base* fo_base_ptr = fo_uptr.get();
+                        if (!fo_base_ptr) continue;
+                        const auto* mesh = fo_base_ptr->mesh();
+                        const int num_vertices = mesh->numVertices();
+                        const int num_faces = mesh->numFaces();
+                        std::cout << "[adhesion] Processing object: vertices=" << num_vertices 
+                                  << ", faces=" << num_faces << "\n";
+
+                        if (num_vertices > 0 && num_faces == 0) {
+                            nerve_objs.push_back(fo_base_ptr);
+                        } else if (num_faces > 0) {
+                            tumor_objs.push_back(fo_base_ptr);
+                        }
+                    }
+
+                    // Try pairing each nerve object with each tumor object and create adhesion constraints
+                    for (auto* nerve_ptr : nerve_objs) {
+                        const auto* nerve_mesh = nerve_ptr->mesh();
+                        const int nerve_nv = nerve_mesh->numVertices();
+
+                        for (auto* tumor_ptr : tumor_objs) {
+                            const auto* tumor_mesh = tumor_ptr->mesh();
+                            const int tumor_nf = tumor_mesh->numFaces();
+
+                            int constraints_added = 0;
+                            Real min_distance = std::numeric_limits<Real>::max();
+                            Real max_checked_distance = 0.0;
+                            int distances_checked = 0;
+                            
+                            try {
+                                // For tumor object, try several possible XPBD instantiations and call addNerveTumorAdhesionConstraint
+                                bool tumor_cast_handled = false;
+
+                                // Helper lambda: attempt to cast tumor_ptr to a concrete XPBD type and add constraints
+                                auto try_add_on_tumor = [&](auto* typed_tumor_ptr)->bool {
+                                    if (!typed_tumor_ptr) return false;
+                                    for (int v = 0; v < std::min(nerve_nv, 200); ++v) {
+                                        const Vec3r nerve_pos = nerve_mesh->vertex(v);
+                                        for (int f = 0; f < std::min(tumor_nf, 200); ++f) {
+                                            const auto face = tumor_mesh->face(f);
+                                            const int v1 = face[0], v2 = face[1], v3 = face[2];
+                                            // Skip if nerve vertex equals a face vertex (unlikely across different objects, but safe)
+                                            if (v == v1 || v == v2 || v == v3) continue;
+                                            const Vec3r tri_center = (tumor_mesh->vertex(v1) + tumor_mesh->vertex(v2) + tumor_mesh->vertex(v3)) / 3.0;
+                                            const Real distance = (nerve_pos - tri_center).norm();
+                                            
+                                            // Track distance statistics
+                                            min_distance = std::min(min_distance, distance);
+                                            max_checked_distance = std::max(max_checked_distance, distance);
+                                            distances_checked++;
+                                            
+                                            if (distance <= distance_window) {
+                                                try {
+                                                    typed_tumor_ptr->addNerveTumorAdhesionConstraint(v, v1, v2, v3, target_gap, alpha);
+                                                    ++constraints_added; ++total_constraints;
+                                                    if (constraints_added <= 3) {
+                                                        std::cout << "[adhesion] Added constraint (nerve->tumor): nerve_v=" << v 
+                                                                  << " face=[" << v1 << "," << v2 << "," << v3 << "] dist=" << distance << "m\n";
+                                                    }
+                                                    if (constraints_added >= 100) return true; // limit per pair
+                                                } catch (const std::exception& e) {
+                                                    std::cout << "[adhesion] Failed to add constraint on tumor instance: " << e.what() << "\n";
+                                                }
+                                            }
+                                        }
+                                    }
+                                    return constraints_added > 0;
+                                };
+
+                                // Try known constraint configurations for first-order tumor objects
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                    using Sol1 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                                    using TumorType1 = XPBDMeshObject_<true, Sol1::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                                    if (!tumor_cast_handled) tumor_cast_handled = try_add_on_tumor(dynamic_cast<TumorType1*>(tumor_ptr));
+                                }
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                    using Sol2 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                                    using TumorType2 = XPBDMeshObject_<true, Sol2::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    if (!tumor_cast_handled) tumor_cast_handled = try_add_on_tumor(dynamic_cast<TumorType2*>(tumor_ptr));
+                                }
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                    using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                                    using TumorType3 = XPBDMeshObject_<true, Sol3::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                                    if (!tumor_cast_handled) tumor_cast_handled = try_add_on_tumor(dynamic_cast<TumorType3*>(tumor_ptr));
+                                }
+                            } catch (const std::exception& e) {
+                                std::cout << "[adhesion] Error pairing nerve and tumor objects: " << e.what() << "\n";
+                            }
+                            
+                            // Print distance statistics
+                            if (distances_checked > 0) {
+                                std::cout << "[adhesion] Distance stats: min=" << min_distance << "m, max=" << max_checked_distance 
+                                          << "m, window=" << distance_window << "m, checked=" << distances_checked << " pairs\n";
+                            }
+                            
+                            std::cout << "[adhesion] Added " << constraints_added << " constraints for this nerve/tumor pair\n";
+                        }
+                    }
+                    
+                    if (total_constraints > 0) {
+                        std::cout << "[adhesion] Successfully added " << total_constraints << " adhesion constraints\n";
+                    } else {
+                        std::cout << "[adhesion] Warning: No adhesion constraints were created\n";
+                    }
+                } else {
+                    std::cout << "[adhesion] Nerve-tumor adhesion disabled\n";
+                }
+                
+                // ==================== END ADHESION CONSTRAINTS ====================
 
                 // clear the temporary model
                 gmsh::clear();

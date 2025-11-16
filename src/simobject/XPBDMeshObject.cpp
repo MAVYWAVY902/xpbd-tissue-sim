@@ -152,6 +152,11 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
 
     _solver.setup();
 
+    // Reserve space for adhesion constraints
+    // Estimate: assume each vertex might have adhesion constraints to several triangles
+    const int estimated_adhesion_constraints = _mesh->numVertices() * 5; // conservative estimate
+    _constraints.template reserve<Solver::NerveTumorAdhesionConstraint>(estimated_adhesion_constraints);
+
     // initialize the previous vertices matrix once we've loaded the mesh
     _previous_vertices = _mesh->vertices();
     _vertex_velocities = Geometry::Mesh::VerticesMat::Zero(3, _mesh->numVertices());

@@ -28,8 +28,16 @@ void DeformableDeformableCollisionConstraint::evaluate(Real* C) const
     const Vec3r a = (p2 - p1).cross(p3 - p1);
     Real a_norm = a.norm();
 
-
     *C = (q - p1).dot(a) / a_norm + 1e-5;
+    
+    // DEBUG: Print collision constraint evaluation (limit output frequency)
+    static int collision_debug_count = 0;
+    if (collision_debug_count++ % 900 == 0) {  // Print every 900 evaluations
+        std::cout << "[collision DEBUG] Deformable-deformable eval #" << collision_debug_count
+                  << ": point=(" << q.transpose() << ")"
+                  << " triangle_center=(" << ((p1 + p2 + p3) / 3.0).transpose() << ")"
+                  << " C=" << *C << " (C>0 means separated, C<=0 means penetration)\n";
+    }
 }
 
 void DeformableDeformableCollisionConstraint::gradient(Real* delC) const
