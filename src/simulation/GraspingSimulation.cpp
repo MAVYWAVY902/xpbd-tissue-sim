@@ -112,7 +112,7 @@ void GraspingSimulation::notifyMouseMoved(double x, double y)
 void GraspingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
     if (key == SimulationInput::Key::SPACE) {
-        printf("DEBUG: Spacebar event: action=%d\n", static_cast<int>(action));
+        // printf("DEBUG: Spacebar event: action=%d\n", static_cast<int>(action));
     }
 
     // find key in map

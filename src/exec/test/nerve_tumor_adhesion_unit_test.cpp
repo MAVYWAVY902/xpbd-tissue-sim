@@ -127,7 +127,7 @@ bool checkGradientFiniteDifference(Real* positions[4], Real target_gap = 0.1,
 // Test constraint evaluation for basic geometric configurations
 // NOTE: Uses orientation-invariant distance (always non-negative)
 bool testBasicEvaluation() {
-    std::cout << "Testing basic constraint evaluation..." << std::endl;
+    // std::cout << "Testing basic constraint evaluation..." << std::endl;
     
     // Test 1: Nerve vertex above triangle plane
     Real nerve_pos[3] = {0.0, 0.0, 1.0};     // 1 unit above origin

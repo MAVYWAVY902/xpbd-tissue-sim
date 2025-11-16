@@ -71,7 +71,7 @@ objects:
     color: [1.0, 0.2, 0.2, 1.0]  # Red for nerve
     
     # Position the nerve further away to avoid initial overlap
-    translate: [1.5, 0.0, 0.5]   # Place nerve 1.0m above tumor (was 0.5m)
+    translate: [1.0, 0.0, 1.0]   # Place nerve 1.0m above tumor
     
   # Deformable cube representing tumor
   - name: "Tumor_Cube"
@@ -95,8 +95,8 @@ objects:
     draw_faces: true
     color: [0.2, 0.8, 0.2, 0.7]  # Semi-transparent green for tumor
     
-    # Position tumor at origin
-    translate: [0.0, 0.0, 0.0]
+    # Position tumor at origin (center of scene)
+    translate: [3.0, 0.0, 0.0]   # Tumor at ground level
 
 
     # residual-policy: "Every-Substep"    # compute the residuals after every time step

@@ -76,7 +76,15 @@ objects:
     draw_edges: true
     draw_faces: false
     color: [1.0, 0.2, 0.2, 1.0]  # Red nerve
-    
+    translate: [3.0, 0.0, 0.0]   # Tumor at ground level
+
+
+    residual-policy: "Never"              # don't compute the residuals
+
+    ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
+    damping-multiplier: 100000   # 'b' from the 1st-Order XPBD paper
+  
+
   # Simple tumor mesh for adhesion testing (if available)
   # - name: "TumorMass"
   #   type: "FirstOrderXPBDMeshObject"
