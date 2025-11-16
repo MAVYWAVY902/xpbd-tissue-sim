@@ -70,8 +70,8 @@ objects:
     draw_faces: false
     color: [1.0, 0.2, 0.2, 1.0]  # Red for nerve
     
-    # Position the nerve further away to avoid initial overlap
-    position: [1.0, 0.0, 1.0]   # Place nerve 1.0m above tumor
+    # Position the nerve close to tumor to trigger adhesion
+    position: [0.0, 0.0, 0.1]   # Place nerve 10cm above tumor (within detection range)
     
   # Deformable cube representing tumor
   - name: "Tumor_Cube"
