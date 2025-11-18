@@ -6,10 +6,15 @@ description: "Test single-sided adhesion constraints with proper breakage on ell
 
 # adhesion parameters
 nerve-tumor-adhesion-enable: true            # Enable adhesion constraint testing
-nerve-tumor-adhesion-target-gap: 0.035       # 3.5cm target gap - 接近初始距离，减少预拉伸
+nerve-tumor-adhesion-target-gap: 0.035       # 3.5cm target gap
 nerve-tumor-adhesion-alpha: 1e-4             # Softer adhesion (larger alpha = weaker forces)
-nerve-tumor-adhesion-distance-window: 0.05   # 5cm detection window (increased to capture 2.34cm separation)
-nerve-tumor-adhesion-break-distance: 0.15    # 15cm break threshold - 给约束更多空间
+nerve-tumor-adhesion-distance-window: 0.08   # 8cm detection window (ensure 100% coverage)
+nerve-tumor-adhesion-break-distance: 0.15    # 15cm break threshold 
+
+# NEW: Nerve adhesion zone specification (optional)
+nerve-adhesion-vertex-start: 0               # First nerve vertex that can have adhesion (0-based)
+nerve-adhesion-vertex-end: 29                # Last nerve vertex that can have adhesion (0-based)  
+nerve-adhesion-zone-center: [0.0, 0.0, 0.0] # Center of adhesion zone (for region-based assignment)
 
 # nerve configuration
 nerve-mesh-file: "../resource/rod/ellipsoid_rod.msh"  # Nerve mesh for constraint setup
@@ -48,7 +53,7 @@ materials:
   -
     name: "Ellipsoid Tumor"
     density: 1000    # density [kg/m^3]
-    E: 2e3          # Much softer material to prevent explosion
+    E: 2e5         # Much softer material to prevent explosion
     nu: 0.45        # Standard soft tissue Poisson's ratio
     mu-s: 0.0       # coefficient of static friction [-]
     mu-k: 0.0       # coefficient of kinetic friction [-]
@@ -84,11 +89,11 @@ objects:
     collisions: true  # disable collision to prevent self-intersection issues
 
     ## XPBD solver settings
-    num-solver-iters: 4
+    num-solver-iters: 3
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"  # simpler constraint type
     residual-policy: "Never"
-    damping-multiplier: 1000000    # Standard damping from working configs
+    damping-multiplier: 100000    # Standard damping from working configs
 
   ## Nerve rod - 1D rod following ellipsoid surface  
   -
@@ -118,5 +123,5 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Nerve-Only"  # nerve constraints only
     residual-policy: "Never"
-    damping-multiplier: 1000000
+    damping-multiplier: 100000
     

@@ -2009,11 +2009,9 @@ void Simulation::setup()
                                             Real distance = computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
                                                                                        closest_point, normal, bary_coords);
                                             
-                                            // Track distance statistics (use centroid distance for stats to match previous output)
-                                            const Vec3r tri_center = (tri_p1 + tri_p2 + tri_p3) / 3.0;
-                                            const Real centroid_distance = (nerve_pos - tri_center).norm();
-                                            min_distance = std::min(min_distance, centroid_distance);
-                                            max_checked_distance = std::max(max_checked_distance, centroid_distance);
+                                            // Track distance statistics using ACTUAL point-to-triangle distance
+                                            min_distance = std::min(min_distance, distance);
+                                            max_checked_distance = std::max(max_checked_distance, distance);
                                             distances_checked++;
                                             
                                             // Check if this is the closest triangle so far (use actual distance for constraint selection)
