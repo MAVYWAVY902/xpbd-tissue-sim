@@ -1049,6 +1049,86 @@
 namespace Sim
 {
 
+// Helper function: Compute point-to-triangle distance for adhesion constraint creation
+// Simplified version of NerveTumorAdhesionConstraint::computePointTriangleDistance
+static Real computePointTriangleDistance(const Vec3r& nerve_pos,
+                                        const Vec3r& tri_p1, 
+                                        const Vec3r& tri_p2,
+                                        const Vec3r& tri_p3,
+                                        Vec3r& closest_point,
+                                        Vec3r& normal,
+                                        Vec3r& bary_coords)
+{
+    // Compute triangle normal and area
+    const Vec3r edge1 = tri_p2 - tri_p1;
+    const Vec3r edge2 = tri_p3 - tri_p1;
+    const Vec3r triangle_normal = edge1.cross(edge2);
+    const Real area = triangle_normal.norm();
+    
+    if (area < 1e-12) {
+        // Degenerate triangle - return large distance
+        normal = Vec3r::UnitZ(); // arbitrary normal
+        closest_point = tri_p1; // arbitrary point on triangle
+        bary_coords = Vec3r(1.0, 0.0, 0.0); // all weight on first vertex
+        return 1e6; // large distance to indicate invalid
+    }
+
+    normal = triangle_normal / area;
+    
+    // Compute plane signed distance  
+    Real signed_distance = (nerve_pos - tri_p1).dot(normal);
+    
+    // Flip normal to point toward nerve if needed (orientation-invariant)
+    if (signed_distance < 0) {
+        normal = -normal;
+        signed_distance = -signed_distance;
+    }
+    
+    // Project point onto triangle plane (with corrected normal)
+    const Vec3r projected_point = nerve_pos - signed_distance * normal;
+    
+    // Compute barycentric coordinates of projected point
+    const Vec3r v0 = edge2;
+    const Vec3r v1 = edge1;  
+    const Vec3r v2 = projected_point - tri_p1;
+    
+    const Real dot00 = v0.dot(v0);
+    const Real dot01 = v0.dot(v1);
+    const Real dot02 = v0.dot(v2);
+    const Real dot11 = v1.dot(v1);
+    const Real dot12 = v1.dot(v2);
+    
+    const Real inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+    const Real u = (dot11 * dot02 - dot01 * dot12) * inv_denom; // weight for tri_p3
+    const Real v = (dot00 * dot12 - dot01 * dot02) * inv_denom; // weight for tri_p2
+    const Real w = 1.0 - u - v; // weight for tri_p1
+    
+    bary_coords = Vec3r(w, v, u);
+    
+    // Check if point is inside triangle
+    if (u >= 0.0 && v >= 0.0 && (u + v) <= 1.0) {
+        // Point projects inside triangle
+        closest_point = projected_point;
+        return signed_distance; // Always non-negative due to normal flip
+    } else {
+        // Point projects outside triangle - clamp to triangle boundary
+        Real u_clamp = std::max(0.0, std::min(1.0, u));
+        Real v_clamp = std::max(0.0, std::min(1.0, v));
+        if (u_clamp + v_clamp > 1.0) {
+            const Real scale = 1.0 / (u_clamp + v_clamp);
+            u_clamp *= scale;
+            v_clamp *= scale;
+        }
+        const Real w_clamp = 1.0 - u_clamp - v_clamp;
+        
+        bary_coords = Vec3r(w_clamp, v_clamp, u_clamp);
+        closest_point = w_clamp * tri_p1 + v_clamp * tri_p2 + u_clamp * tri_p3;
+        
+        // For outside points: return actual distance to closest point on triangle
+        return (nerve_pos - closest_point).norm();
+    }
+}
+
 // === Static cache for the picked edge we’ll monitor each frame ===
 static bool  s_edge_initialized = false;
 static int   s_edge_i = -1;
@@ -1903,48 +1983,79 @@ void Simulation::setup()
                                 // Helper lambda: attempt to cast tumor_ptr to a concrete XPBD type and add constraints
                                 auto try_add_on_tumor = [&](auto* typed_tumor_ptr)->bool {
                                     if (!typed_tumor_ptr) return false;
+                                    
+                                    // FIXED: One constraint per nerve vertex approach
                                     for (int v = 0; v < std::min(nerve_nv, 200); ++v) {
                                         const Vec3r nerve_pos = nerve_mesh->vertex(v);
+                                        
+                                        // Find the closest triangle to this nerve vertex using proper distance calculation
+                                        Real closest_distance = std::numeric_limits<Real>::max();
+                                        int closest_face = -1;
+                                        int closest_v1 = -1, closest_v2 = -1, closest_v3 = -1;
+                                        
                                         for (int f = 0; f < std::min(tumor_nf, 200); ++f) {
                                             const auto face = tumor_mesh->face(f);
                                             const int v1 = face[0], v2 = face[1], v3 = face[2];
                                             // Skip if nerve vertex equals a face vertex (unlikely across different objects, but safe)
                                             if (v == v1 || v == v2 || v == v3) continue;
-                                            const Vec3r tri_center = (tumor_mesh->vertex(v1) + tumor_mesh->vertex(v2) + tumor_mesh->vertex(v3)) / 3.0;
-                                            const Real distance = (nerve_pos - tri_center).norm();
                                             
-                                            // Track distance statistics
-                                            min_distance = std::min(min_distance, distance);
-                                            max_checked_distance = std::max(max_checked_distance, distance);
+                                            // FIXED: Use proper point-to-triangle distance instead of centroid distance
+                                            const Vec3r tri_p1 = tumor_mesh->vertex(v1);
+                                            const Vec3r tri_p2 = tumor_mesh->vertex(v2);
+                                            const Vec3r tri_p3 = tumor_mesh->vertex(v3);
+                                            
+                                            // Compute actual point-to-triangle distance (simplified version)
+                                            Vec3r closest_point, normal, bary_coords;
+                                            Real distance = computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
+                                                                                       closest_point, normal, bary_coords);
+                                            
+                                            // Track distance statistics (use centroid distance for stats to match previous output)
+                                            const Vec3r tri_center = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+                                            const Real centroid_distance = (nerve_pos - tri_center).norm();
+                                            min_distance = std::min(min_distance, centroid_distance);
+                                            max_checked_distance = std::max(max_checked_distance, centroid_distance);
                                             distances_checked++;
                                             
-                                            if (distance <= distance_window) {
-                                                try {
-                                                    if (constraints_added == 0) {
-                                                        std::cout << "[adhesion] Creating constraints with: target_gap=" << target_gap 
-                                                                  << "m, alpha=" << alpha << ", distance_window=" << distance_window << "m\n";
-                                                    }
-                                                    typed_tumor_ptr->addNerveTumorAdhesionConstraint(v, v1, v2, v3, target_gap, alpha);
-                                                    
-                                                    // Also mark the nerve vertex on the nerve mesh for visualization
-                                                    if (!nerve_ptr->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
-                                                        nerve_ptr->mesh()->template addVertexProperty<bool>("has_adhesion_constraint", false);
-                                                        std::cout << "[viz] Created adhesion constraint property for nerve mesh " << nerve_ptr->mesh() << "\n";
-                                                    }
-                                                    auto& nerve_adhesion_prop = nerve_ptr->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
-                                                    nerve_adhesion_prop.set(v, true);
-                                                    std::cout << "[viz] Marked nerve vertex " << v << " as having adhesion constraint on nerve mesh " << nerve_ptr->mesh() << "\n";
-                                                    
-                                                    ++constraints_added; ++total_constraints;
-                                                    if (constraints_added <= 3) {
-                                                        std::cout << "[adhesion] Added constraint (nerve->tumor): nerve_v=" << v 
-                                                                  << " face=[" << v1 << "," << v2 << "," << v3 << "] dist=" << distance << "m\n";
-                                                    }
-                                                    if (constraints_added >= 100) return true; // limit per pair
-                                                } catch (const std::exception& e) {
-                                                    std::cout << "[adhesion] Failed to add constraint on tumor instance: " << e.what() << "\n";
-                                                }
+                                            // Check if this is the closest triangle so far (use actual distance for constraint selection)
+                                            if (distance < closest_distance && distance <= distance_window) {
+                                                closest_distance = distance;
+                                                closest_face = f;
+                                                closest_v1 = v1;
+                                                closest_v2 = v2;
+                                                closest_v3 = v3;
                                             }
+                                        }
+                                        
+                                        // Only create constraint for the closest triangle (if within window)
+                                        if (closest_face >= 0) {
+                                            try {
+                                                if (constraints_added == 0) {
+                                                    std::cout << "[adhesion] Creating ONE constraint per nerve vertex: target_gap=" << target_gap 
+                                                              << "m, alpha=" << alpha << ", distance_window=" << distance_window << "m\n";
+                                                }
+                                                typed_tumor_ptr->addNerveTumorAdhesionConstraint(v, closest_v1, closest_v2, closest_v3, target_gap, alpha);
+                                                
+                                                // Also mark the nerve vertex on the nerve mesh for visualization
+                                                if (!nerve_ptr->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+                                                    nerve_ptr->mesh()->template addVertexProperty<bool>("has_adhesion_constraint", false);
+                                                    std::cout << "[viz] Created adhesion constraint property for nerve mesh " << nerve_ptr->mesh() << "\n";
+                                                }
+                                                auto& nerve_adhesion_prop = nerve_ptr->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
+                                                nerve_adhesion_prop.set(v, true);
+                                                std::cout << "[viz] Marked nerve vertex " << v << " as having adhesion constraint on nerve mesh " << nerve_ptr->mesh() << "\n";
+                                                
+                                                ++constraints_added; ++total_constraints;
+                                                if (constraints_added <= 10) { // Show more examples since we have fewer constraints now
+                                                    std::cout << "[adhesion] Added constraint (nerve->tumor): nerve_v=" << v 
+                                                              << " closest_face=[" << closest_v1 << "," << closest_v2 << "," << closest_v3 << "] dist=" << closest_distance << "m\n";
+                                                }
+                                            } catch (const std::exception& e) {
+                                                std::cout << "[adhesion] Failed to add constraint on tumor instance: " << e.what() << "\n";
+                                            }
+                                        } else {
+                                            // DEBUG: Show why this nerve vertex didn't get a constraint
+                                            std::cout << "[adhesion] No constraint for nerve_v=" << v 
+                                                      << " (no triangle within " << distance_window << "m window)\n";
                                         }
                                     }
                                     return constraints_added > 0;
@@ -1983,8 +2094,26 @@ void Simulation::setup()
                         }
                     }
                     
+                    // Summary report
+                    int total_nerve_vertices = 0;
+                    for (auto* nerve_ptr : nerve_objs) {
+                        total_nerve_vertices += nerve_ptr->mesh()->numVertices();
+                    }
+                    
                     if (total_constraints > 0) {
-                        std::cout << "[adhesion] Successfully added " << total_constraints << " adhesion constraints\n";
+                        std::cout << "[adhesion] =========================\n";
+                        std::cout << "[adhesion] SUMMARY REPORT:\n";
+                        std::cout << "[adhesion] Total nerve vertices: " << total_nerve_vertices << "\n";
+                        std::cout << "[adhesion] Constraints created: " << total_constraints << "\n";
+                        std::cout << "[adhesion] Success rate: " << (total_constraints * 100 / total_nerve_vertices) << "%\n";
+                        std::cout << "[adhesion] Target: One constraint per nerve vertex (1:1 mapping)\n";
+                        if (total_constraints == total_nerve_vertices) {
+                            std::cout << "[adhesion] ✅ SUCCESS: Perfect 1:1 mapping achieved!\n";
+                        } else {
+                            std::cout << "[adhesion] ⚠️  PARTIAL: " << (total_nerve_vertices - total_constraints) 
+                                      << " nerve vertices have no constraints (outside distance window)\n";
+                        }
+                        std::cout << "[adhesion] =========================\n";
                     } else {
                         std::cout << "[adhesion] Warning: No adhesion constraints were created\n";
                     }

@@ -6,10 +6,10 @@ description: "Test single-sided adhesion constraints with proper breakage on ell
 
 # adhesion parameters
 nerve-tumor-adhesion-enable: true            # Enable adhesion constraint testing
-nerve-tumor-adhesion-target-gap: 0.01        # 1cm target gap instead of direct contact
+nerve-tumor-adhesion-target-gap: 0.035       # 3.5cm target gap - 接近初始距离，减少预拉伸
 nerve-tumor-adhesion-alpha: 1e-4             # Softer adhesion (larger alpha = weaker forces)
 nerve-tumor-adhesion-distance-window: 0.05   # 5cm detection window (increased to capture 2.34cm separation)
-nerve-tumor-adhesion-break-distance: 1000.0  # Effectively disable breaking for testing visualization
+nerve-tumor-adhesion-break-distance: 0.15    # 15cm break threshold - 给约束更多空间
 
 # nerve configuration
 nerve-mesh-file: "../resource/rod/ellipsoid_rod.msh"  # Nerve mesh for constraint setup
@@ -84,7 +84,7 @@ objects:
     collisions: true  # disable collision to prevent self-intersection issues
 
     ## XPBD solver settings
-    num-solver-iters: 2
+    num-solver-iters: 4
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"  # simpler constraint type
     residual-policy: "Never"

@@ -271,7 +271,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::checkAndBreakAdhesionConstraints(Real break_distance)
 {
-    std::cout << "[viz] checkAndBreakAdhesionConstraints called with break_distance=" << break_distance << "\n";
+    static int call_count = 0;
+    call_count++;
+    
+    // Only print debug message every 9000 calls
+    if (call_count % 9000 == 0) {
+        std::cout << "[viz] checkAndBreakAdhesionConstraints called with break_distance=" << break_distance 
+                  << " (call #" << call_count << ")\n";
+    }
 
     // Get all adhesion constraint projectors
     using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
@@ -326,6 +333,40 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             if (!has_active_constraint) {
                 adhesion_prop.set(nerve_v, false);
                 std::cout << "[viz] Removed adhesion marker from vertex " << nerve_v << " (constraint broken)\n";
+                
+                // ALSO UPDATE NERVE MESH PROPERTY: Find nerve objects and clear their adhesion property
+                // This is important because graphics displays nerve mesh property, not tumor mesh property
+                if (_sim) {
+                    // Check FirstOrderXPBDMeshObject_Base objects (most common case for nerve objects)
+                    auto& fo_xpbd_objs = _sim->objects().template get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+                    for (auto& obj_ptr : fo_xpbd_objs) {
+                        if (obj_ptr && obj_ptr->name().find("Nerve") != std::string::npos) {
+                            auto* nerve_obj = obj_ptr.get();
+                            if (nerve_obj && nerve_obj->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+                                auto& nerve_adhesion_prop = nerve_obj->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
+                                if (nerve_v < nerve_obj->mesh()->numVertices() && nerve_adhesion_prop.get(nerve_v)) {
+                                    nerve_adhesion_prop.set(nerve_v, false);
+                                    std::cout << "[viz] Also cleared nerve mesh adhesion marker for vertex " << nerve_v << "\n";
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Also check XPBDMeshObject_Base objects (in case nerve is not first-order)
+                    auto& xpbd_objs = _sim->objects().template get<std::unique_ptr<XPBDMeshObject_Base>>();
+                    for (auto& obj_ptr : xpbd_objs) {
+                        if (obj_ptr && obj_ptr->name().find("Nerve") != std::string::npos) {
+                            auto* nerve_obj = obj_ptr.get();
+                            if (nerve_obj && nerve_obj->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+                                auto& nerve_adhesion_prop = nerve_obj->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
+                                if (nerve_v < nerve_obj->mesh()->numVertices() && nerve_adhesion_prop.get(nerve_v)) {
+                                    nerve_adhesion_prop.set(nerve_v, false);
+                                    std::cout << "[viz] Also cleared nerve mesh adhesion marker for vertex " << nerve_v << " (XPBDMeshObject_Base)\n";
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
