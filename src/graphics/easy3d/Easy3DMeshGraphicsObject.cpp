@@ -64,9 +64,40 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config, b
         easy3d::PointsDrawable* points_drawable = renderer()->add_points_drawable("vertices");
         // specify the update function for the points
         points_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
-            // update the vertex buffer with the vertices of the mesh
-            d->update_vertex_buffer(m->points(), true);
+            Easy3DMeshGraphicsObject* mo = dynamic_cast<Easy3DMeshGraphicsObject*>(m);
+            if (mo) {
+                std::cout << "[viz] Graphics update called for object with " << mo->_mesh->numVertices() << " vertices\n";
+                // update the vertex buffer with the vertices of the mesh
+                d->update_vertex_buffer(m->points(), true);
+                
+                // Check if we have adhesion constraint markers and apply per-vertex coloring
+                std::cout << "[viz] Graphics update - checking mesh " << mo->_mesh << " for adhesion property\n";
+                if (mo->_mesh->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+                    const auto& adhesion_prop = mo->_mesh->template getVertexProperty<bool>("has_adhesion_constraint");
+                    std::vector<easy3d::vec3> colors;
+                    colors.reserve(mo->_mesh->numVertices());
+                    
+                    int adhesion_count = 0;
+                    for (int i = 0; i < mo->_mesh->numVertices(); ++i) {
+                        if (adhesion_prop.get(i)) {
+                            // Bright cyan color for vertices with adhesion constraints  
+                            colors.emplace_back(0.0f, 1.0f, 1.0f); // Bright cyan
+                            adhesion_count++;
+                        } else {
+                            // Darker color for contrast
+                            colors.emplace_back(0.2f, 0.2f, 0.2f); // Dark gray
+                        }
+                    }
+                    std::cout << "[viz] Applied per-vertex coloring: " << adhesion_count << "/" << mo->_mesh->numVertices() << " vertices have adhesion constraints (blue)\n";
+                    d->update_color_buffer(colors);
+                } else {
+                    std::cout << "[viz] No adhesion constraint property found, using default coloring\n";
+                }
+            }
         });
+        
+        // Set a much larger point size to make adhesion markers clearly visible
+        points_drawable->set_point_size(15.0f);
     }
 
     if (config.drawEdges() || force_draw_edges)

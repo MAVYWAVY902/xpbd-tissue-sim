@@ -46,11 +46,14 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
     _bary_cached = bary_coords;
     _cache_valid = true;
 
-    // Adhesion constraint: C = n^T(q - x_s) - d_0
-    // When C=0, we have desired separation d_0
-    // When C>0, too far apart → attractive force  
-    // When C<0, too close → repulsive force
-    *C = _n_cached.dot(nerve_pos - _xs_cached) - _target_gap;
+    // ✅ FIXED: Single-sided adhesion constraint (only attractive, no repulsion)
+    // C = max(0, n^T(q - x_s) - d_0)
+    // This creates a one-way spring that only pulls when separated beyond target gap
+    Real separation_distance = _n_cached.dot(nerve_pos - _xs_cached);
+    Real constraint_violation = separation_distance - _target_gap;
+    
+    // Only activate constraint when separated beyond target gap (adhesive pull)
+    *C = std::max(0.0, constraint_violation);
     
     // DEBUG: Print constraint evaluation details (limit output frequency)
     static int debug_count = 0;
@@ -58,7 +61,9 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
     if (debug_count % 9000 == 0) {  // Print every 9000 evaluations (10x less frequent)
         std::cout << "[adhesion DEBUG] Constraint eval #" << debug_count 
                   << ": nerve=(" << nerve_pos.transpose() << ")"
-                  << " distance=" << distance << " C=" << *C 
+                  << " separation=" << separation_distance 
+                  << " constraint_violation=" << constraint_violation
+                  << " C=" << *C 
                   << " target_gap=" << _target_gap << "\n";
     }
 }
@@ -80,6 +85,20 @@ void NerveTumorAdhesionConstraint::gradient(Real* grad) const
         }
     }
 
+    // ✅ FIXED: Check if constraint is active (C > 0)
+    // For single-sided adhesion, gradient is zero when constraint is inactive
+    Eigen::Map<const Vec3r> nerve_pos(_positions[0].position_ptr);
+    Real separation_distance = _n_cached.dot(nerve_pos - _xs_cached);
+    Real constraint_violation = separation_distance - _target_gap;
+    
+    if (constraint_violation <= 0.0) {
+        // Constraint is inactive (not separated beyond target gap)
+        for (int i = 0; i < NUM_COORDINATES; i++) {
+            grad[i] = 0.0;
+        }
+        return;
+    }
+
     // Use frozen normal and barycentric coordinates from last evaluate() call
     const Vec3r& n = _n_cached;        // unit normal (triangle to point)
     const Real b1 = _bary_cached[0];   // weight for tri_p1
@@ -87,9 +106,9 @@ void NerveTumorAdhesionConstraint::gradient(Real* grad) const
     const Real b3 = _bary_cached[2];   // weight for tri_p3
 
     // Gradient computation with frozen contact frame:
-    // C = n^T(q - x_s) - d_0, where x_s = b1*p1 + b2*p2 + b3*p3
-    // ∂C/∂q = n
-    // ∂C/∂pi = -bi * n   (distribute through barycentric coordinates)
+    // C = max(0, n^T(q - x_s) - d_0), where x_s = b1*p1 + b2*p2 + b3*p3
+    // When C > 0: ∂C/∂q = n, ∂C/∂pi = -bi * n
+    // When C = 0: all gradients are 0 (handled above)
 
     // Gradient w.r.t. nerve vertex (point q)
     grad[0] = n[0];   grad[1] = n[1];   grad[2] = n[2];
@@ -182,6 +201,37 @@ Real NerveTumorAdhesionConstraint::computePointTriangleDistance(const Vec3r& ner
         // For outside points: use consistent plane distance (orientation-invariant)
         return std::abs((nerve_pos - tri_p1).dot(normal));
     }
+}
+
+bool NerveTumorAdhesionConstraint::shouldBreak(Real break_distance) const
+{
+    // Extract positions
+    Eigen::Map<const Vec3r> nerve_pos(_positions[0].position_ptr);
+    Eigen::Map<const Vec3r> tri_p1(_positions[1].position_ptr);
+    Eigen::Map<const Vec3r> tri_p2(_positions[2].position_ptr);
+    Eigen::Map<const Vec3r> tri_p3(_positions[3].position_ptr);
+
+    // Compute current distance
+    Vec3r closest_point, normal, bary_coords;
+    const Real distance = computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
+                                                      closest_point, normal, bary_coords);
+    
+    // Check if distance exceeds break threshold
+    return (distance > break_distance);
+}
+
+Real NerveTumorAdhesionConstraint::getCurrentDistance() const
+{
+    // Extract positions
+    Eigen::Map<const Vec3r> nerve_pos(_positions[0].position_ptr);
+    Eigen::Map<const Vec3r> tri_p1(_positions[1].position_ptr);
+    Eigen::Map<const Vec3r> tri_p2(_positions[2].position_ptr);
+    Eigen::Map<const Vec3r> tri_p3(_positions[3].position_ptr);
+
+    // Compute current distance
+    Vec3r closest_point, normal, bary_coords;
+    return computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
+                                       closest_point, normal, bary_coords);
 }
 
 } // namespace Solver

@@ -66,6 +66,15 @@ class NerveTumorAdhesionConstraint : public Constraint
 
     /** Update target gap (useful for dynamic adhesion strength) */
     void setTargetGap(Real target_gap) { _target_gap = target_gap; }
+    
+    /** Check if adhesion bond should break based on separation distance
+     * @param break_distance - maximum distance before bond breaks
+     * @return true if bond should be broken and constraint removed
+     */
+    bool shouldBreak(Real break_distance) const;
+    
+    /** Get current separation distance between nerve and tumor surface */
+    Real getCurrentDistance() const;
 
     protected:
     /** Compute signed distance from nerve point to triangle and closest point info

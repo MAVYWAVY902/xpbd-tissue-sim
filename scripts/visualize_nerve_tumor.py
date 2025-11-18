@@ -13,6 +13,42 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+def parse_tumor_file(tumor_file, max_vertices=None):
+    """Parse tumor file (either .msh or .obj format)"""
+    file_ext = os.path.splitext(tumor_file)[1].lower()
+    
+    if file_ext == '.obj':
+        return parse_obj_file(tumor_file, max_vertices)
+    elif file_ext == '.msh':
+        return parse_gmsh_nodes(tumor_file, max_vertices)
+    else:
+        print(f"Unsupported file format: {file_ext}")
+        return np.array([])
+
+def parse_obj_file(obj_file, max_vertices=None):
+    """Parse OBJ file to extract vertex coordinates"""
+    vertices = []
+    
+    try:
+        with open(obj_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('v '):  # Vertex line
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+                        vertices.append([x, y, z])
+                        if max_vertices and len(vertices) >= max_vertices:
+                            break
+        
+        print(f"Parsing {obj_file} (OBJ format)")
+        print(f"  Loaded: {len(vertices)} vertices")
+        return np.array(vertices)
+        
+    except Exception as e:
+        print(f"Error parsing OBJ file: {e}")
+        return np.array([])
+
 def parse_gmsh_nodes(msh_file, max_vertices=None):
     """Parse Gmsh .msh file to extract vertex coordinates"""
     vertices = []
@@ -263,11 +299,11 @@ def create_2d_projections(tumor_vertices, nerve_points, title="Nerve-Tumor Proje
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python3 visualize_nerve_tumor.py <tumor.msh> <nerve.geo> [--save-images]")
+        print("Usage: python3 visualize_nerve_tumor.py <tumor.msh|obj> <nerve.geo> [--save-images]")
         print("")
         print("Example:")
-        print("  python3 visualize_nerve_tumor.py resource/tissue/neuroma_refined_uniform.msh resource/rod/neuroma_nerve.geo")
-        print("  python3 visualize_nerve_tumor.py tumor.msh nerve.geo --save-images")
+        print("  python3 visualize_nerve_tumor.py resource/tissue/neuroma_refined_uniform.msh resource/rod/clean_surface_nerve.geo")
+        print("  python3 visualize_nerve_tumor.py tumor.obj nerve.geo --save-images")
         sys.exit(1)
     
     tumor_file = sys.argv[1]
@@ -284,7 +320,7 @@ def main():
         sys.exit(1)
     
     print("Loading tumor mesh...")
-    tumor_vertices = parse_gmsh_nodes(tumor_file, max_vertices=10000)  # Limit for performance
+    tumor_vertices = parse_tumor_file(tumor_file, max_vertices=10000)  # Limit for performance
     
     print("Loading nerve geometry...")
     nerve_points = parse_nerve_rod_geo(nerve_file)

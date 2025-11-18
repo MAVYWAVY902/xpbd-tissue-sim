@@ -258,6 +258,86 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::clearAdhesionConstraints()
+{
+    // set any adhesion constraint projectors in the solver invalid
+    using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
+    _solver.template clearProjectorsOfType<AdhesionConstraintType>();
+
+    // clear the adhesion constraints list
+    _constraints.template clear<Solver::NerveTumorAdhesionConstraint>();
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::checkAndBreakAdhesionConstraints(Real break_distance)
+{
+    std::cout << "[viz] checkAndBreakAdhesionConstraints called with break_distance=" << break_distance << "\n";
+
+    // Get all adhesion constraint projectors
+    using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
+    auto& adhesion_projectors = _solver.template getConstraintProjectorsOfType<AdhesionConstraintType>();
+    
+    // Iterate through projectors and check if any should break
+    std::vector<int> projectors_to_invalidate;
+    for (size_t i = 0; i < adhesion_projectors.size(); ++i) {
+        auto& projector = adhesion_projectors[i];
+        
+        // Only check valid (active) projectors
+        if (!projector.isValid()) continue;
+        
+        // Get the constraint from the projector
+        const auto& constraint_ref = projector.constraint();
+        const auto* constraint = &constraint_ref.get();
+        if (!constraint) continue;
+        
+        // Check if this constraint should break
+        if (constraint->shouldBreak(break_distance)) {
+            projectors_to_invalidate.push_back(static_cast<int>(i));
+        }
+    }
+    
+    // Invalidate the projectors that should break (mark as invalid rather than removing)
+    for (int idx : projectors_to_invalidate) {
+        _solver.template setProjectorValidity<AdhesionConstraintType>(idx, false);
+        
+        // Update vertex property to reflect broken constraint
+        auto& projector = adhesion_projectors[idx];
+        const auto& constraint_ref = projector.constraint();
+        const auto* constraint = &constraint_ref.get();
+        if (constraint && this->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+            // Get nerve vertex index from the first position reference (nerve vertex is always first)
+            int nerve_v = constraint->positions()[0].index;
+            auto& adhesion_prop = this->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
+            
+            // Check if this vertex has any remaining active constraints
+            bool has_active_constraint = false;
+            for (size_t j = 0; j < adhesion_projectors.size(); ++j) {
+                if (j != static_cast<size_t>(idx) && adhesion_projectors[j].isValid()) {
+                    const auto& other_constraint_ref = adhesion_projectors[j].constraint();
+                    const auto* other_constraint = &other_constraint_ref.get();
+                    // Get nerve vertex index from the first position reference
+                    if (other_constraint && other_constraint->positions()[0].index == nerve_v) {
+                        has_active_constraint = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!has_active_constraint) {
+                adhesion_prop.set(nerve_v, false);
+                std::cout << "[viz] Removed adhesion marker from vertex " << nerve_v << " (constraint broken)\n";
+            }
+        }
+    }
+    
+    // Optional: print debug information about broken constraints
+    if (!projectors_to_invalidate.empty()) {
+        std::cout << "[adhesion BREAK] Invalidated " << projectors_to_invalidate.size() 
+                  << " adhesion constraints (break_distance=" << break_distance << ")\n";
+    }
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::AttachmentConstraint>> 
 XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset)
 {
@@ -368,7 +448,16 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
         alpha
     );
 
-    // 3. Tell solver about the new constraint
+    // 3. Mark nerve vertex as having adhesion constraint for visualization
+    if (!_mesh->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+        _mesh->template addVertexProperty<bool>("has_adhesion_constraint", false);
+        std::cout << "[viz] Created adhesion constraint property for mesh " << _mesh.get() << "\n";
+    }
+    auto& adhesion_prop = _mesh->template getVertexProperty<bool>("has_adhesion_constraint");
+    adhesion_prop.set(nerve_v, true);
+    std::cout << "[viz] Marked nerve vertex " << nerve_v << " as having adhesion constraint on mesh " << _mesh.get() << "\n";
+
+    // 4. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::NerveTumorAdhesionConstraint>;
     return _solver.addConstraintProjector(
         _sim->dt(),

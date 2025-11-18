@@ -1,0 +1,122 @@
+## Ellipsoid Adhesion Test Configuration
+## Tests the fixed adhesion constraint implementation with ellipsoid geometry
+
+name: "Ellipsoid Adhesion Test"
+description: "Test single-sided adhesion constraints with proper breakage on ellipsoid tumor"
+
+# adhesion parameters
+nerve-tumor-adhesion-enable: true            # Enable adhesion constraint testing
+nerve-tumor-adhesion-target-gap: 0.01        # 1cm target gap instead of direct contact
+nerve-tumor-adhesion-alpha: 1e-4             # Softer adhesion (larger alpha = weaker forces)
+nerve-tumor-adhesion-distance-window: 0.05   # 5cm detection window (increased to capture 2.34cm separation)
+nerve-tumor-adhesion-break-distance: 1000.0  # Effectively disable breaking for testing visualization
+
+# nerve configuration
+nerve-mesh-file: "../resource/rod/ellipsoid_rod.msh"  # Nerve mesh for constraint setup
+nerve-physical-group: "nerve_edge"                   # Default physical group name
+
+nerve-stretch-enable: true
+nerve-bending-enable: true
+
+nerve-stretch-alpha: 1e-8   # Stronger nerve stretch (smaller alpha = stiffer)
+nerve-bending-alpha: 1e-9   # Stronger nerve bending (smaller alpha = stiffer)
+nerve-verbose: true
+
+
+
+# constraint-type-specific nerve control (new feature!)
+stable-neohookean-nerve-stretch-enable: false         # Enable/disable nerve stretch for Stable-Neohookean
+stable-neohookean-nerve-bending-enable: false         # Enable/disable nerve bending for Stable-Neohookean
+stable-neohookean-combined-nerve-stretch-enable: false  # DISABLED for tumor (example)
+stable-neohookean-combined-nerve-bending-enable: false   # DISABLED for tumor (example)
+
+visualization: "Easy3D"
+g-accel: 0.0              # Standard gravity
+
+sim-mode: "Visualization"   # Real-time visualization  
+time-step: 1e-3            # 1ms time step for stability
+collision-rate: 1000       
+fps: 30                    # Smooth visualization
+end-time: 60               # 10 seconds test
+
+
+enable-mouse-interaction: true
+input-device: "Mouse"
+
+
+materials:
+  -
+    name: "Ellipsoid Tumor"
+    density: 1000    # density [kg/m^3]
+    E: 2e3          # Much softer material to prevent explosion
+    nu: 0.45        # Standard soft tissue Poisson's ratio
+    mu-s: 0.0       # coefficient of static friction [-]
+    mu-k: 0.0       # coefficient of kinetic friction [-]
+  -
+    name: "Nerve Rod"
+    density: 1000    # density [kg/m^3] 
+    E: 1e4          # Young's modulus [Pa] - stiffer nerve
+    nu: 0.3         # Poisson's ratio [-]
+    mu-s: 0.0       # coefficient of static friction [-]
+    mu-k: 0.0       # coefficient of kinetic friction [-]
+
+objects:
+  ## Ellipsoid tumor - deformable with surface triangles
+  -
+    name: "EllipsoidTumor"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tissue/ellipsoid_tumor_with_surfaces.msh"
+    materials: ["Ellipsoid Tumor"]
+    
+    ## visualization
+    color: [0.6, 0.8, 0.4, 0.7]  # semi-transparent green
+    draw-points: false
+    draw-edges: false  
+    draw-faces: true
+
+    ## initial configuration
+    # max-size: 1.0    # REMOVED - use original size
+    position: [0.5, 0.48, 0.4]    # Move tumor down to show clear separation
+    velocity: [0, 0, 0]    
+    rotation: [0, 0, 0]     
+
+    ## physics
+    collisions: true  # disable collision to prevent self-intersection issues
+
+    ## XPBD solver settings
+    num-solver-iters: 2
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"  # simpler constraint type
+    residual-policy: "Never"
+    damping-multiplier: 1000000    # Standard damping from working configs
+
+  ## Nerve rod - 1D rod following ellipsoid surface  
+  -
+    name: "SurfaceNerve"
+    type: "FirstOrderXPBDMeshObject"
+    # filename: "../resource/rod/ellipsoid_rod_surface_mesh.msh"
+    filename: "../resource/rod/ellipsoid_rod.msh"
+    materials: ["Nerve Rod"]
+    
+    ## visualization
+    # color: [1.0, 0.2, 0.2, 1.0]  # DISABLED to allow per-vertex coloring
+    draw-points: true
+    draw-edges: true
+    draw-faces: false
+
+    ## initial configuration  
+    # max-size: 1.0    # REMOVED - use original size
+    position: [0, 0, 0.0]    # Much larger separation (50 units above)
+    velocity: [0, 0, 0.0]     # No movement initially
+    rotation: [0, 0, 0]
+
+    ## physics
+    collisions: false  
+
+    ## XPBD solver settings
+    num-solver-iters: 3
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Nerve-Only"  # nerve constraints only
+    residual-policy: "Never"
+    damping-multiplier: 1000000
+    

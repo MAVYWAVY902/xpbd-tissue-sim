@@ -92,6 +92,12 @@ class Config
         _extractParameter("nerve-mesh-file", node, _nerve_mesh_file);
         _extractParameter("nerve-physical-group", node, _nerve_physical_group);
         
+        // load constraint-type-specific nerve control parameters (optional)
+        _extractParameter("stable-neohookean-nerve-stretch-enable", node, _stable_neohookean_nerve_stretch_enable);
+        _extractParameter("stable-neohookean-nerve-bending-enable", node, _stable_neohookean_nerve_bending_enable);
+        _extractParameter("stable-neohookean-combined-nerve-stretch-enable", node, _stable_neohookean_combined_nerve_stretch_enable);
+        _extractParameter("stable-neohookean-combined-nerve-bending-enable", node, _stable_neohookean_combined_nerve_bending_enable);
+        
         // load nerve-tumor adhesion parameters (optional)
         _extractParameter("nerve-tumor-adhesion-enable", node, _nerve_tumor_adhesion_enable);
         _extractParameter("nerve-tumor-adhesion-distance-window", node, _nerve_tumor_adhesion_distance_window);
@@ -121,6 +127,12 @@ class Config
     bool nerveBendingEnable() const { return _nerve_bending_enable.value.value_or(true); }  // default true
     std::string nerveMeshFile() const { return _nerve_mesh_file.value.value_or(""); }  // default empty
     std::string nervePhysicalGroup() const { return _nerve_physical_group.value.value_or("nerve_edge"); }  // default "nerve_edge"
+    
+    // Constraint-type-specific nerve control getters
+    bool stableNeohookeanNerveStretchEnable() const { return _stable_neohookean_nerve_stretch_enable.value.value_or(true); }  // default true
+    bool stableNeohookeanNerveBendingEnable() const { return _stable_neohookean_nerve_bending_enable.value.value_or(true); }  // default true  
+    bool stableNeohookeanCombinedNerveStretchEnable() const { return _stable_neohookean_combined_nerve_stretch_enable.value.value_or(true); }  // default true
+    bool stableNeohookeanCombinedNerveBendingEnable() const { return _stable_neohookean_combined_nerve_bending_enable.value.value_or(true); }  // default true
     
     // Nerve-tumor adhesion configuration getters
     bool nerveTumorAdhesionEnable() const { return _nerve_tumor_adhesion_enable.value.value_or(false); }  // default false
@@ -478,6 +490,12 @@ class Config
     ConfigParameter<std::optional<bool>> _nerve_bending_enable = ConfigParameter<std::optional<bool>>(true);
     ConfigParameter<std::optional<std::string>> _nerve_mesh_file = ConfigParameter<std::optional<std::string>>("");
     ConfigParameter<std::optional<std::string>> _nerve_physical_group = ConfigParameter<std::optional<std::string>>("nerve_edge");
+    
+    /** Constraint-type-specific nerve control parameters */
+    ConfigParameter<std::optional<bool>> _stable_neohookean_nerve_stretch_enable = ConfigParameter<std::optional<bool>>(true);
+    ConfigParameter<std::optional<bool>> _stable_neohookean_nerve_bending_enable = ConfigParameter<std::optional<bool>>(true);
+    ConfigParameter<std::optional<bool>> _stable_neohookean_combined_nerve_stretch_enable = ConfigParameter<std::optional<bool>>(true);
+    ConfigParameter<std::optional<bool>> _stable_neohookean_combined_nerve_bending_enable = ConfigParameter<std::optional<bool>>(true);
     
     /** Nerve-tumor adhesion configuration parameters */
     ConfigParameter<std::optional<bool>> _nerve_tumor_adhesion_enable = ConfigParameter<std::optional<bool>>(false);

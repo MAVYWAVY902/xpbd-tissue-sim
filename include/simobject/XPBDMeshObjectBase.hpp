@@ -165,6 +165,12 @@ public:
 
     /** Clears all collision constraints that are on this object. */
     virtual void clearCollisionConstraints() = 0;
+
+    /** Clears all adhesion constraints that are on this object. */
+    virtual void clearAdhesionConstraints() = 0;
+
+    /** Checks and removes adhesion constraints that should break based on distance threshold. */
+    virtual void checkAndBreakAdhesionConstraints(Real break_distance) = 0;
     
     /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
      * @param v_ind : the index of the vertex

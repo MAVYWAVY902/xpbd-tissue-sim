@@ -15,7 +15,7 @@ fix-max-z: true
 nerve-enable: true
 nerve-stretch-enable: true
 nerve-bending-enable: true
-nerve-mesh-file: "../resource/rod/surface_nerve.msh"
+nerve-mesh-file: "../resource/rod/clean_surface_nerve.msh"
 nerve-physical-group: "nerve_edge"
 
 nerve-stretch-alpha: 1e-6   # Moderate stiffness for nerve stretch
@@ -49,10 +49,10 @@ materials:
 
 # ==================== SIMULATION OBJECTS ====================
 objects:
-  # 1D Rod representing the nerve (generated to match neuroma)
+  # 1D Rod representing the nerve (clean, long surface nerve)
   - name: "Nerve_Rod"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/rod/neuroma_nerve.msh"
+    filename: "../resource/rod/clean_surface_nerve.msh"
     materials: ["Nerve Tissue"]
     solver-type: "Gauss-Seidel"
     constraint-type: "Nerve-Only"   # Only nerve constraints + adhesion

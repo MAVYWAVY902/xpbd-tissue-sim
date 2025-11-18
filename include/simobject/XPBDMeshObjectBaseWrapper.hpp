@@ -196,6 +196,16 @@ public:
         return std::visit([](auto& obj) { obj->clearCollisionConstraints(); }, _variant);
     }
 
+    void clearAdhesionConstraints()
+    {
+        return std::visit([](auto& obj) { obj->clearAdhesionConstraints(); }, _variant);
+    }
+
+    void checkAndBreakAdhesionConstraints(Real break_distance)
+    {
+        return std::visit([break_distance](auto& obj) { obj->checkAndBreakAdhesionConstraints(break_distance); }, _variant);
+    }
+
     
 
     void clearAttachmentConstraints()

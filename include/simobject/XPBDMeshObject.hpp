@@ -133,6 +133,12 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
 
     /** Clears all collision constraints that are on this object. */
     virtual void clearCollisionConstraints() override;
+
+    /** Clears all adhesion constraints that are on this object. */
+    virtual void clearAdhesionConstraints() override;
+
+    /** Checks and removes adhesion constraints that should break based on distance threshold. */
+    virtual void checkAndBreakAdhesionConstraints(Real break_distance);
     
     /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
      * @param v_ind : the index of the vertex
@@ -164,6 +170,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     virtual void clearAttachmentConstraints() override;
 
     /** === Querying the solver === */
+
+    /** @returns the constraint configuration type of this XPBD mesh object */
+    XPBDMeshObjectConstraintConfigurationEnum constraintType() const { return _constraint_type; }
 
     /** @returns the most recently calculated primary residual from the solver object */
     virtual VecXr lastPrimaryResidual() const override { return _solver.primaryResidual(); };

@@ -1032,6 +1032,7 @@
 #include "solver/constraint/NerveStretchConstraint.hpp"
 #include "solver/constraint/NerveBendingConstraint.hpp"
 #include "utils/MeshUtils.hpp"
+#include "common/XPBDEnumTypes.hpp"
 
 #include <gmsh.h>
 #include <chrono>
@@ -1560,6 +1561,21 @@ void Simulation::setup()
                                     if (!xpbd) return false;
                                     std::cout << "[nerve] cast hit: " << tag << "\n";
 
+                                    // Check constraint-type-specific nerve control flags
+                                    const auto constraint_type = xpbd->constraintType();
+                                    bool object_stretch_enabled = final_stretch_enabled;
+                                    bool object_bending_enabled = final_bending_enabled;
+                                    
+                                    // Apply constraint-type-specific overrides
+                                    if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN) {
+                                        object_stretch_enabled = object_stretch_enabled && _config->stableNeohookeanNerveStretchEnable();
+                                        object_bending_enabled = object_bending_enabled && _config->stableNeohookeanNerveBendingEnable();
+                                    } else if (constraint_type == XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED) {
+                                        object_stretch_enabled = object_stretch_enabled && _config->stableNeohookeanCombinedNerveStretchEnable();
+                                        object_bending_enabled = object_bending_enabled && _config->stableNeohookeanCombinedNerveBendingEnable();
+                                    }
+                                    // For NERVE_ONLY, use the global flags (no additional constraints)
+
                                     const auto& V = xpbd->mesh()->vertices();
                                     const int nV = xpbd->mesh()->numVertices();    // Get gmsh node tag -> internal vertex index map
                                     
@@ -1587,7 +1603,7 @@ void Simulation::setup()
                                     int bend_ok = 0, bend_fail = 0;
                                     
                                     // First pass: Add stretch constraints (if enabled)
-                                    if (final_stretch_enabled) {
+                                    if (object_stretch_enabled) {
                                         for (const auto& seg : line_pairs) {
                                             auto it0 = tag2idx.find(seg.first);
                                             auto it1 = tag2idx.find(seg.second);
@@ -1612,11 +1628,12 @@ void Simulation::setup()
                                             }
                                         }
                                     } else {
-                                        std::cout << "[nerve] Stretch constraints DISABLED (nerve-stretch-enable=false)\n";
+                                        std::cout << "[nerve] Stretch constraints DISABLED for " << tag 
+                                                  << " (object-specific or global nerve-stretch-enable=false)\n";
                                     }
 
                                     // Second pass: Add bending constraints for consecutive triplets (if enabled)
-                                    if (final_bending_enabled) {
+                                    if (object_bending_enabled) {
                                         // Build adjacency to find consecutive vertices along the nerve
                                         std::unordered_map<int, std::vector<int>> adjacency;
                                         for (const auto& seg : line_pairs) {
@@ -1670,7 +1687,8 @@ void Simulation::setup()
                                             }
                                         }
                                     } else {
-                                        std::cout << "[nerve] Bending constraints DISABLED (nerve-bending-enable=false)\n";
+                                        std::cout << "[nerve] Bending constraints DISABLED for " << tag 
+                                                  << " (object-specific or global nerve-bending-enable=false)\n";
                                     }
 
                                     std::cout << "[nerve] addNerveStretchConstraint: ok=" << add_ok
@@ -1907,6 +1925,16 @@ void Simulation::setup()
                                                                   << "m, alpha=" << alpha << ", distance_window=" << distance_window << "m\n";
                                                     }
                                                     typed_tumor_ptr->addNerveTumorAdhesionConstraint(v, v1, v2, v3, target_gap, alpha);
+                                                    
+                                                    // Also mark the nerve vertex on the nerve mesh for visualization
+                                                    if (!nerve_ptr->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+                                                        nerve_ptr->mesh()->template addVertexProperty<bool>("has_adhesion_constraint", false);
+                                                        std::cout << "[viz] Created adhesion constraint property for nerve mesh " << nerve_ptr->mesh() << "\n";
+                                                    }
+                                                    auto& nerve_adhesion_prop = nerve_ptr->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
+                                                    nerve_adhesion_prop.set(v, true);
+                                                    std::cout << "[viz] Marked nerve vertex " << v << " as having adhesion constraint on nerve mesh " << nerve_ptr->mesh() << "\n";
+                                                    
                                                     ++constraints_added; ++total_constraints;
                                                     if (constraints_added <= 3) {
                                                         std::cout << "[adhesion] Added constraint (nerve->tumor): nerve_v=" << v 
@@ -2061,6 +2089,17 @@ void Simulation::_timeStep()
         for (auto& obj : virtuoso_arms) obj->clearCollisionConstraints();
 
         _collision_scene->collideObjects();
+    }
+
+    // —— check and break adhesion constraints —— //
+    if (_config->nerveTumorAdhesionEnable()) {
+        const Real break_distance = _config->nerveTumorAdhesionBreakDistance();
+        
+        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        for (auto& obj : xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
+
+        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (auto& obj : fo_xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
     }
 
     // —— PRE: read current length of the picked edge —— //
@@ -2348,11 +2387,11 @@ void Simulation::_timeStep()
             const Real err = std::abs(len - s_edge_rest_len);
             
             // Only print every 300 steps to avoid flooding the terminal
-            if (s_print_counter % 900 == 0) {
-                std::cout << "[post](" << tag << ") step=" << s_print_counter 
-                          << " edge(" << s_edge_i << "," << s_edge_j << ") len = "
-                          << len << "  |len-rest| = " << err << "\n";
-            }
+            // if (s_print_counter % 900 == 0) {
+            //     std::cout << "[post](" << tag << ") step=" << s_print_counter 
+            //               << " edge(" << s_edge_i << "," << s_edge_j << ") len = "
+            //               << len << "  |len-rest| = " << err << "\n";
+            // }
             return true;
         };
 
@@ -2502,13 +2541,13 @@ void Simulation::_timeStep()
             
             const Real curvature_error = std::abs(current_curvature - s_triplet_rest_curvature);
             
-            // Only print every 300 steps to avoid flooding the terminal
-            if (s_print_counter % 900 == 0) {
-                std::cout << "[post](" << tag << ") step=" << s_print_counter 
-                          << " triplet(" << s_triplet_i << "," << s_triplet_j << "," << s_triplet_k 
-                          << ") curvature = " << current_curvature 
-                          << " |curvature-rest| = " << curvature_error << "\n";
-            }
+            // // Only print every 300 steps to avoid flooding the terminal
+            // if (s_print_counter % 900 == 0) {
+            //     std::cout << "[post](" << tag << ") step=" << s_print_counter 
+            //               << " triplet(" << s_triplet_i << "," << s_triplet_j << "," << s_triplet_k 
+            //               << ") curvature = " << current_curvature 
+            //               << " |curvature-rest| = " << curvature_error << "\n";
+            // }
             return true;
         };
 
