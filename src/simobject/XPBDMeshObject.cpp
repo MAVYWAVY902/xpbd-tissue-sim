@@ -273,16 +273,24 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
 {
     static int call_count = 0;
     call_count++;
-    
-    // Only print debug message every 9000 calls
-    if (call_count % 9000 == 0) {
-        std::cout << "[viz] checkAndBreakAdhesionConstraints called with break_distance=" << break_distance 
-                  << " (call #" << call_count << ")\n";
-    }
 
     // Get all adhesion constraint projectors
     using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
     auto& adhesion_projectors = _solver.template getConstraintProjectorsOfType<AdhesionConstraintType>();
+    
+    // Count active (valid) constraints every 90000 calls
+    if (call_count % 9000 == 0) {
+        int active_count = 0;
+        for (size_t i = 0; i < adhesion_projectors.size(); ++i) {
+            if (adhesion_projectors[i].isValid()) {
+                active_count++;
+            }
+        }
+        std::cout << "[active adhesion counter] Step #" << call_count 
+                  << ": Active constraints = " << active_count 
+                  << " / " << adhesion_projectors.size() << " total"
+                  << " (break_distance=" << break_distance << "m)\n";
+    }
     
     // Iterate through projectors and check if any should break
     std::vector<int> projectors_to_invalidate;

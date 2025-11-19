@@ -56,16 +56,16 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
     *C = std::max(0.0, constraint_violation);
     
     // DEBUG: Print constraint evaluation details (limit output frequency)
-    static int debug_count = 0;
-    debug_count++;
-    if (debug_count % 90000 == 0) {  // Print every 9000 evaluations (10x less frequent)
-        std::cout << "[adhesion DEBUG] Constraint eval #" << debug_count 
-                  << ": nerve=(" << nerve_pos.transpose() << ")"
-                  << " separation=" << separation_distance 
-                  << " constraint_violation=" << constraint_violation
-                  << " C=" << *C 
-                  << " target_gap=" << _target_gap << "\n";
-    }
+    // static int debug_count = 0;
+    // debug_count++;
+    // if (debug_count % 90000 == 0) {  // Print every 9000 evaluations (10x less frequent)
+    //     std::cout << "[adhesion DEBUG] Constraint eval #" << debug_count 
+    //               << ": nerve=(" << nerve_pos.transpose() << ")"
+    //               << " separation=" << separation_distance 
+    //               << " constraint_violation=" << constraint_violation
+    //               << " C=" << *C 
+    //               << " target_gap=" << _target_gap << "\n";
+    // }
 }
 
 void NerveTumorAdhesionConstraint::gradient(Real* grad) const
