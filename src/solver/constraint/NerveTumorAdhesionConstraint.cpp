@@ -58,7 +58,7 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
     // DEBUG: Print constraint evaluation details (limit output frequency)
     static int debug_count = 0;
     debug_count++;
-    if (debug_count % 9000 == 0) {  // Print every 9000 evaluations (10x less frequent)
+    if (debug_count % 90000 == 0) {  // Print every 9000 evaluations (10x less frequent)
         std::cout << "[adhesion DEBUG] Constraint eval #" << debug_count 
                   << ": nerve=(" << nerve_pos.transpose() << ")"
                   << " separation=" << separation_distance 
