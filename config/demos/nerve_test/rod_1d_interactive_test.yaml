@@ -21,7 +21,7 @@ fix-max-z: false  # OFF until AABB-from-vertices is implemented
 nerve-enable: true
 nerve-stretch-enable: true
 nerve-bending-enable: true
-nerve-mesh-file: "../resource/rod/rod_1d_test.msh"
+nerve-mesh-file: "../resource/rod/linear_rod.msh"
 nerve-physical-group: "nerve_edge"
 
 nerve-stretch-alpha: 1e-7   # Stretch constraint strength
@@ -47,11 +47,12 @@ objects:
     type: "FirstOrderXPBDMeshObject"
     # type: "XPBDMeshObject"
     
-    filename: "../resource/rod/rod_1d_test.msh"
+    filename: "../resource/rod/linear_rod.msh"
     materials: ["Soft Tissue"]
     solver-type: "Gauss-Seidel"
     constraint-type: "Nerve-Only"   # Pure nerve constraint physics
     num-solver-iters: 2
+    damping-multiplier: 10000 
 
     # Fix only first vertex - free end for interaction
     fixed-vertices: [0]  # Only fix start (z=1), leave end (z=0) free

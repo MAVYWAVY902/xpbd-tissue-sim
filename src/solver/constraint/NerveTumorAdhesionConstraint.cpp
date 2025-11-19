@@ -215,9 +215,9 @@ bool NerveTumorAdhesionConstraint::shouldBreak(Real break_distance) const
     Vec3r closest_point, normal, bary_coords;
     const Real distance = computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
                                                       closest_point, normal, bary_coords);
-    
-    // Check if distance exceeds break threshold
+
     return (distance > break_distance);
+                                                      
 }
 
 Real NerveTumorAdhesionConstraint::getCurrentDistance() const

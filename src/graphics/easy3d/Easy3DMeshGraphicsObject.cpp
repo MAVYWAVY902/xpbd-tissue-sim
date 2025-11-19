@@ -66,12 +66,12 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config, b
         points_drawable->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
             Easy3DMeshGraphicsObject* mo = dynamic_cast<Easy3DMeshGraphicsObject*>(m);
             if (mo) {
-                std::cout << "[viz] Graphics update called for object with " << mo->_mesh->numVertices() << " vertices\n";
+                // std::cout << "[viz] Graphics update called for object with " << mo->_mesh->numVertices() << " vertices\n";
                 // update the vertex buffer with the vertices of the mesh
                 d->update_vertex_buffer(m->points(), true);
                 
                 // Check if we have adhesion constraint markers and apply per-vertex coloring
-                std::cout << "[viz] Graphics update - checking mesh " << mo->_mesh << " for adhesion property\n";
+                // std::cout << "[viz] Graphics update - checking mesh " << mo->_mesh << " for adhesion property\n";
                 if (mo->_mesh->template hasVertexProperty<bool>("has_adhesion_constraint")) {
                     const auto& adhesion_prop = mo->_mesh->template getVertexProperty<bool>("has_adhesion_constraint");
                     std::vector<easy3d::vec3> colors;
@@ -88,10 +88,10 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config, b
                             colors.emplace_back(0.2f, 0.2f, 0.2f); // Dark gray
                         }
                     }
-                    std::cout << "[viz] Applied per-vertex coloring: " << adhesion_count << "/" << mo->_mesh->numVertices() << " vertices have adhesion constraints (blue)\n";
+                    // std::cout << "[viz] Applied per-vertex coloring: " << adhesion_count << "/" << mo->_mesh->numVertices() << " vertices have adhesion constraints (blue)\n";
                     d->update_color_buffer(colors);
                 } else {
-                    std::cout << "[viz] No adhesion constraint property found, using default coloring\n";
+                    // std::cout << "[viz] No adhesion constraint property found, using default coloring\n";
                 }
             }
         });

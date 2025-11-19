@@ -6,18 +6,13 @@ description: "Test single-sided adhesion constraints with proper breakage on ell
 
 # adhesion parameters
 nerve-tumor-adhesion-enable: true            # Enable adhesion constraint testing
-nerve-tumor-adhesion-target-gap: 0.035       # 3.5cm target gap
-nerve-tumor-adhesion-alpha: 1e-4             # Softer adhesion (larger alpha = weaker forces)
-nerve-tumor-adhesion-distance-window: 0.08   # 8cm detection window (ensure 100% coverage)
-nerve-tumor-adhesion-break-distance: 0.15    # 15cm break threshold 
-
-# NEW: Nerve adhesion zone specification (optional)
-nerve-adhesion-vertex-start: 0               # First nerve vertex that can have adhesion (0-based)
-nerve-adhesion-vertex-end: 29                # Last nerve vertex that can have adhesion (0-based)  
-nerve-adhesion-zone-center: [0.0, 0.0, 0.0] # Center of adhesion zone (for region-based assignment)
+nerve-tumor-adhesion-target-gap: 0.0       # 0cm target gap (let nerve stick to surface)
+nerve-tumor-adhesion-alpha: 1e-6             # Softer adhesion (larger alpha = weaker forces)
+nerve-tumor-adhesion-distance-window: 0.1   # 10cm detection window (ensure 100% coverage)
+nerve-tumor-adhesion-break-distance: 0.05    # 5cm break threshold - REDUCED for easier breaking during grasp! 
 
 # nerve configuration
-nerve-mesh-file: "../resource/rod/ellipsoid_rod.msh"  # Nerve mesh for constraint setup
+nerve-mesh-file: "../resource/rod/linear_rod.msh"  # Nerve mesh for constraint setup
 nerve-physical-group: "nerve_edge"                   # Default physical group name
 
 nerve-stretch-enable: true
@@ -42,7 +37,7 @@ sim-mode: "Visualization"   # Real-time visualization
 time-step: 1e-3            # 1ms time step for stability
 collision-rate: 1000       
 fps: 30                    # Smooth visualization
-end-time: 60               # 10 seconds test
+end-time: 600               # 10 seconds test
 
 
 enable-mouse-interaction: true
@@ -70,7 +65,8 @@ objects:
   -
     name: "EllipsoidTumor"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/tissue/ellipsoid_tumor_with_surfaces.msh"
+    # filename: "../resource/tissue/ellipsoid_tumor_with_surfaces.msh"
+    filename: "../resource/cube/cube8.msh"
     materials: ["Ellipsoid Tumor"]
     
     ## visualization
@@ -81,7 +77,8 @@ objects:
 
     ## initial configuration
     # max-size: 1.0    # REMOVED - use original size
-    position: [0.5, 0.48, 0.4]    # Move tumor down to show clear separation
+    # position: [0.5, 0.48, 0.4]    # Move tumor down to show clear separation
+    position: [0.0, 0.56, 0.05]    # Move tumor down to show clear separation
     velocity: [0, 0, 0]    
     rotation: [0, 0, 0]     
 
@@ -100,7 +97,7 @@ objects:
     name: "SurfaceNerve"
     type: "FirstOrderXPBDMeshObject"
     # filename: "../resource/rod/ellipsoid_rod_surface_mesh.msh"
-    filename: "../resource/rod/ellipsoid_rod.msh"
+    filename: "../resource/rod/linear_rod.msh"
     materials: ["Nerve Rod"]
     
     ## visualization
@@ -111,7 +108,7 @@ objects:
 
     ## initial configuration  
     # max-size: 1.0    # REMOVED - use original size
-    position: [0, 0, 0.0]    # Much larger separation (50 units above)
+    position: [0.1, 0.05, 0.0]    # Much larger separation (50 units above)
     velocity: [0, 0, 0.0]     # No movement initially
     rotation: [0, 0, 0]
 
