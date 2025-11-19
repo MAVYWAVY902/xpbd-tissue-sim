@@ -216,7 +216,27 @@ bool NerveTumorAdhesionConstraint::shouldBreak(Real break_distance) const
     const Real distance = computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
                                                       closest_point, normal, bary_coords);
 
-    return (distance > break_distance);
+    // Standard break condition: distance too large
+    if (distance > break_distance) {
+        return true;
+    }
+    
+    // ✅ Break "stuck" constraints that are extremely close (numerical zero)
+    // These constraints produce negligible forces but waste computation
+    
+    // Case 1: Dead constraints (target_gap > 0 but distance ≈ 0)
+    if (distance < 1e-10 && _target_gap > 1e-6) {
+        return true;  // Never activates, remove it
+    }
+    
+    // Case 2: Micro-distance constraints (distance at atomic/molecular scale)
+    // For target_gap = 0, constraints with distance < 1e-5 (10 micrometers) produce
+    // very large forces due to small alpha, causing jitter
+    if (_target_gap < 1e-6 && distance < 1e-5) {
+        return true;  // Too close, remove to prevent numerical instability
+    }
+    
+    return false;
                                                       
 }
 

@@ -5,11 +5,11 @@ name: "Ellipsoid Adhesion Test"
 description: "Test single-sided adhesion constraints with proper breakage on ellipsoid tumor"
 
 # adhesion parameters
-nerve-tumor-adhesion-enable: false            # Enable adhesion constraint testing
-nerve-tumor-adhesion-target-gap: 0.0       # 0cm target gap (let nerve stick to surface)
+nerve-tumor-adhesion-enable: true            # Enable adhesion constraint testing
+nerve-tumor-adhesion-target-gap: 0.0       # 0mm target gap - nerve should stick to surface
 nerve-tumor-adhesion-alpha: 1e-6             # Softer adhesion (larger alpha = weaker forces)
 nerve-tumor-adhesion-distance-window: 0.1   # 10cm detection window (ensure 100% coverage)
-nerve-tumor-adhesion-break-distance: 0.05    # 5cm break threshold - REDUCED for easier breaking during grasp! 
+nerve-tumor-adhesion-break-distance: 0.015   # 1.5cm break threshold 
 
 # nerve configuration
 nerve-mesh-file: "../resource/rod/linear_rod.msh"  # Nerve mesh for constraint setup

@@ -278,18 +278,39 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
     auto& adhesion_projectors = _solver.template getConstraintProjectorsOfType<AdhesionConstraintType>();
     
-    // Count active (valid) constraints every 90000 calls
+    // Count active (valid) constraints every 9000 calls
     if (call_count % 9000 == 0) {
         int active_count = 0;
+        Real min_distance = 1e6;
+        Real max_distance = 0.0;
+        Real avg_distance = 0.0;
+        
         for (size_t i = 0; i < adhesion_projectors.size(); ++i) {
             if (adhesion_projectors[i].isValid()) {
                 active_count++;
+                
+                // Get current distance for this constraint
+                const auto& constraint_ref = adhesion_projectors[i].constraint();
+                const auto* constraint = &constraint_ref.get();
+                if (constraint) {
+                    Real dist = constraint->getCurrentDistance();
+                    min_distance = std::min(min_distance, dist);
+                    max_distance = std::max(max_distance, dist);
+                    avg_distance += dist;
+                }
             }
         }
+        
+        if (active_count > 0) {
+            avg_distance /= active_count;
+        }
+        
         std::cout << "[active adhesion counter] Step #" << call_count 
                   << ": Active constraints = " << active_count 
                   << " / " << adhesion_projectors.size() << " total"
-                  << " (break_distance=" << break_distance << "m)\n";
+                  << " | Distances: min=" << min_distance << "m, max=" << max_distance 
+                  << "m, avg=" << avg_distance << "m"
+                  << " (break_threshold=" << break_distance << "m)\n";
     }
     
     // Iterate through projectors and check if any should break
