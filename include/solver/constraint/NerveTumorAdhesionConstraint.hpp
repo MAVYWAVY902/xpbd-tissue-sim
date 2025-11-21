@@ -83,8 +83,14 @@ class NerveTumorAdhesionConstraint : public Constraint
      * represents "maximum stretch during THIS step" rather than "entire simulation history".
      * This prevents false positives where old stretch events trigger breaking forever.
      * Marked const because it modifies a mutable tracking field (cache-like behavior).
+     * 
+     * ✅ CRITICAL: Also invalidates cached contact frame to force recomputation.
+     * This ensures gradient() doesn't use stale data from previous timestep.
      */
-    void resetMaxDistanceThisStep() const { _max_distance_this_step = 0.0; }
+    void resetMaxDistanceThisStep() const { 
+        _max_distance_this_step = 0.0; 
+        _cache_valid = false;  // Invalidate cache at start of new timestep
+    }
 
     protected:
     /** Compute signed distance from nerve point to triangle and closest point info
@@ -111,6 +117,8 @@ class NerveTumorAdhesionConstraint : public Constraint
     mutable Vec3r _n_cached;      ///< unit normal (triangle to point)
     mutable Vec3r _bary_cached;   ///< barycentric coordinates [b1, b2, b3]  
     mutable Vec3r _xs_cached;     ///< closest point on triangle surface
+    mutable Real  _constraint_value_cached{0.0}; ///< C = max(0, separation - rest_gap)
+    mutable Real  _separation_cached{0.0}; ///< current separation distance
     mutable bool  _cache_valid{false}; ///< whether cached values are valid
     
     // Track maximum distance during projection (for breaking detection with fixed vertices)

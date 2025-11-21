@@ -2001,6 +2001,9 @@ void Simulation::setup()
                                 auto try_add_on_tumor = [&](auto* typed_tumor_ptr)->bool {
                                     if (!typed_tumor_ptr) return false;
                                     
+                                    // Performance optimization: Track culled triangles
+                                    int triangles_culled_by_aabb = 0;
+                                    
                                     // FIXED: One constraint per nerve vertex approach
                                     // Check ALL nerve vertices and ALL tumor faces for proper distance calculation
                                     for (int v = 0; v < nerve_nv; ++v) {
@@ -2018,10 +2021,25 @@ void Simulation::setup()
                                             // Skip if nerve vertex equals a face vertex (unlikely across different objects, but safe)
                                             if (v == v1 || v == v2 || v == v3) continue;
                                             
-                                            // FIXED: Use proper point-to-triangle distance instead of centroid distance
+                                            // PERFORMANCE: Get triangle vertices
                                             const Vec3r tri_p1 = tumor_mesh->vertex(v1);
                                             const Vec3r tri_p2 = tumor_mesh->vertex(v2);
                                             const Vec3r tri_p3 = tumor_mesh->vertex(v3);
+                                            
+                                            // PERFORMANCE OPTIMIZATION: Early rejection using triangle AABB
+                                            // Compute triangle bounding box
+                                            const Vec3r tri_min = tri_p1.cwiseMin(tri_p2).cwiseMin(tri_p3);
+                                            const Vec3r tri_max = tri_p1.cwiseMax(tri_p2).cwiseMax(tri_p3);
+                                            
+                                            // Compute distance from nerve point to AABB
+                                            Vec3r closest_aabb_point = nerve_pos.cwiseMax(tri_min).cwiseMin(tri_max);
+                                            Real aabb_distance = (nerve_pos - closest_aabb_point).norm();
+                                            
+                                            // Skip this triangle if AABB is too far (conservative early rejection)
+                                            if (aabb_distance > distance_window) {
+                                                ++triangles_culled_by_aabb;
+                                                continue;
+                                            }
                                             
                                             // Compute actual point-to-triangle distance (simplified version)
                                             Vec3r closest_point, normal, bary_coords;
@@ -2094,6 +2112,16 @@ void Simulation::setup()
                                                       << " (no triangle within " << distance_window << "m window)\n";
                                         }
                                     }
+                                    
+                                    // Performance report
+                                    if (constraints_added > 0) {
+                                        std::cout << "[adhesion PERFORMANCE] AABB culling rejected " << triangles_culled_by_aabb 
+                                                  << " / " << distances_checked + triangles_culled_by_aabb 
+                                                  << " triangle checks (" 
+                                                  << (100.0 * triangles_culled_by_aabb / (distances_checked + triangles_culled_by_aabb)) 
+                                                  << "% speedup)\n";
+                                    }
+                                    
                                     return constraints_added > 0;
                                 };
 

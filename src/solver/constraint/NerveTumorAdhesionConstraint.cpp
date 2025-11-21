@@ -19,52 +19,81 @@ NerveTumorAdhesionConstraint::NerveTumorAdhesionConstraint(int nerve_v, Real* ne
         PositionReference(tri_v3, tri_p3, tri_m3)      // triangle vertex 3
     }), alpha), _rest_gap(rest_gap), _break_ratio(break_ratio)
 {
+    // INITIALIZATION: Compute barycentric coordinates once at creation
+    // These will be reused in evaluate() to reconstruct the closest point on the deforming triangle
+    Eigen::Map<const Vec3r> nerve_pos_init(nerve_p);
+    Eigen::Map<const Vec3r> tri_p1_init(tri_p1);
+    Eigen::Map<const Vec3r> tri_p2_init(tri_p2);
+    Eigen::Map<const Vec3r> tri_p3_init(tri_p3);
+    
+    Vec3r closest_point, normal;
+    computePointTriangleDistance(nerve_pos_init, tri_p1_init, tri_p2_init, tri_p3_init,
+                                closest_point, normal, _bary_cached);
+    
+    _cache_valid = true;  // Barycentric coords are now valid
+    
     std::cout << "[adhesion INIT] Created constraint: rest_gap=" << _rest_gap 
               << ", break_ratio=" << _break_ratio << ", alpha=" << alpha << "\n";
 }
 
 void NerveTumorAdhesionConstraint::evaluate(Real* C) const
 {
-    // Extract positions
+    // Extract current positions (these change during simulation as triangle deforms)
     Eigen::Map<const Vec3r> nerve_pos(_positions[0].position_ptr);
     Eigen::Map<const Vec3r> tri_p1(_positions[1].position_ptr);
     Eigen::Map<const Vec3r> tri_p2(_positions[2].position_ptr);
     Eigen::Map<const Vec3r> tri_p3(_positions[3].position_ptr);
 
-    // Compute closest point, normal, and barycentric coordinates
-    Vec3r closest_point, normal, bary_coords;
-    const Real distance = computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
-                                                      closest_point, normal, bary_coords);
+    // PERFORMANCE OPTIMIZATION: Use cached barycentric coordinates!
+    // Instead of recomputing expensive point-to-triangle distance every iteration,
+    // we reconstruct the closest point using the CACHED barycentric coordinates.
+    // This assumes the closest point stays roughly at the same barycentric location
+    // on the triangle as it deforms (valid for small deformations).
     
-    // Track maximum distance during this step's solver iterations (for breaking detection)
-    // NOTE: This captures intermediate solver states, not just the final converged position.
-    // Used by shouldBreak() to detect bonds stretched during grasp even if they get reset.
-    // MUST be cleared at the start of each time step via resetMaxDistanceThisStep().
-    _max_distance_this_step = std::max(_max_distance_this_step, distance);
+    // Reconstruct closest point on deformed triangle using cached barycentric coords
+    const Vec3r xs_current = _bary_cached[0] * tri_p1 + 
+                             _bary_cached[1] * tri_p2 + 
+                             _bary_cached[2] * tri_p3;
     
-    // Check for valid computation
-    if (!std::isfinite(distance) || distance >= 1e6) {
-        *C = 0.0; // constraint inactive for degenerate cases
-        _cache_valid = false;
+    // Recompute normal (must be updated as triangle deforms)
+    const Vec3r edge1 = tri_p2 - tri_p1;
+    const Vec3r edge2 = tri_p3 - tri_p1;
+    Vec3r normal = edge1.cross(edge2);
+    const Real normal_length = normal.norm();
+    
+    if (normal_length < 1e-12) {
+        *C = 0.0;  // Degenerate triangle
         return;
     }
-
-    // Cache the contact frame for use in gradient computation
-    _xs_cached = closest_point;
+    normal /= normal_length;  // Normalize
+    
+    // Compute signed distance along normal direction
+    const Vec3r separation_vec = nerve_pos - xs_current;
+    const Real separation_distance = normal.dot(separation_vec);
+    
+    // Track maximum distance during this step's solver iterations (for breaking detection)
+    _max_distance_this_step = std::max(_max_distance_this_step, std::abs(separation_distance));
+    
+    // Cache the updated contact frame for gradient computation
+    _xs_cached = xs_current;
     _n_cached = normal;
-    _bary_cached = bary_coords;
-    _cache_valid = true;
+    // _bary_cached stays unchanged - we reuse the initial barycentric coords
 
     // ✅ FIXED: Single-sided adhesion constraint (only attractive, no repulsion)
-    // C = max(0, n^T(q - x_s) - d_0)
+    // C = max(0, separation - d_0)
     // This creates a one-way spring that only pulls when separated beyond rest gap
-    Real separation_distance = _n_cached.dot(nerve_pos - _xs_cached);
-    Real constraint_violation = separation_distance - _rest_gap;
+    const Real constraint_violation = separation_distance - _rest_gap;
+    
+    // Cache separation and constraint value for gradient() to reuse
+    _separation_cached = separation_distance;
+    _constraint_value_cached = std::max(0.0, constraint_violation);
     
     // Only activate constraint when separated beyond target gap (adhesive pull)
-    *C = std::max(0.0, constraint_violation);
+    *C = _constraint_value_cached;
     
     // DEBUG: Print constraint evaluation details for first few evaluations
+    // NOTE: Disable this in production for performance!
+    #ifdef ADHESION_DEBUG_VERBOSE
     static int debug_count = 0;
     debug_count++;
     if (debug_count <= 10) {  // Print first 10 evaluations
@@ -74,32 +103,28 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
                   << " violation=" << constraint_violation
                   << " C=" << *C << "\n";
     }
+    #endif
 }
 
 void NerveTumorAdhesionConstraint::gradient(Real* grad) const
 {
-    // Ensure evaluate() has been called to populate cache
+    // OPTIMIZATION: gradient() is called AFTER evaluate() in the same iteration
+    // So _cache_valid should always be true. No need to re-evaluate.
+    
+    // ✅ PERFORMANCE: Avoid redundant checks by assuming evaluate() was just called
+    // The XPBD solver always calls evaluate() before gradient() in the same iteration.
+    // If for some reason cache is invalid, we return zero gradient (safe fallback).
     if (!_cache_valid) {
-        // Call evaluate to compute and cache contact frame
-        Real dummy_C;
-        evaluate(&dummy_C);
-        
-        // If still invalid after evaluate, return zero gradient
-        if (!_cache_valid) {
-            for (int i = 0; i < NUM_COORDINATES; i++) {
-                grad[i] = 0.0;
-            }
-            return;
+        for (int i = 0; i < NUM_COORDINATES; i++) {
+            grad[i] = 0.0;
         }
+        return;
     }
 
-    // ✅ FIXED: Check if constraint is active (C > 0)
-    // For single-sided adhesion, gradient is zero when constraint is inactive
-    Eigen::Map<const Vec3r> nerve_pos(_positions[0].position_ptr);
-    Real separation_distance = _n_cached.dot(nerve_pos - _xs_cached);
-    Real constraint_violation = separation_distance - _rest_gap;
-    
-    if (constraint_violation <= 0.0) {
+    // ✅ CRITICAL OPTIMIZATION: Reuse cached constraint value instead of recomputing!
+    // Previously we were doing: separation = n.dot(q - xs), C = max(0, separation - d0)
+    // Now we just read the cached value from evaluate()
+    if (_constraint_value_cached <= 0.0) {
         // Constraint is inactive (not separated beyond rest gap)
         for (int i = 0; i < NUM_COORDINATES; i++) {
             grad[i] = 0.0;

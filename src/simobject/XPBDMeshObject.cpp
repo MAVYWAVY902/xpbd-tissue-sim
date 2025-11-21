@@ -17,7 +17,9 @@
 #include "solver/constraint/HydrostaticConstraint.hpp"
 #include "solver/constraint/DeviatoricConstraint.hpp"
 #include "solver/constraint/NerveStretchConstraint.hpp" 
-#include "solver/constraint/NerveTumorAdhesionConstraint.hpp" 
+#include "solver/constraint/NerveTumorAdhesionConstraint.hpp"
+
+#include <chrono> 
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
 #include "solver/xpbd_projector/ConstraintProjector.hpp"
 #include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
@@ -768,23 +770,55 @@ std::string XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes..
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::update()
 {
+    // ✅ PERFORMANCE PROFILING: Measure time spent in different parts
+    auto start_total = std::chrono::high_resolution_clock::now();
+    
     // Reset max distance tracking for all adhesion constraints at the start of each time step
     // This ensures _max_distance_this_step represents "maximum stretch during THIS step"
     // rather than "entire simulation history", preventing false positives in breaking detection
     using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
     auto& adhesion_projectors = _solver.template getConstraintProjectorsOfType<AdhesionConstraintType>();
+    
+    auto start_reset = std::chrono::high_resolution_clock::now();
+    int num_adhesion_constraints = 0;
     for (auto& projector : adhesion_projectors) {
         if (projector.isValid()) {
             // Use -> operator on ConstraintReference to access the constraint
             projector.constraint()->resetMaxDistanceThisStep();
+            num_adhesion_constraints++;
         }
     }
+    auto end_reset = std::chrono::high_resolution_clock::now();
 
     // set _x_prev to be ready for the next substep
     _previous_vertices = _mesh->vertices();
 
+    auto start_inertia = std::chrono::high_resolution_clock::now();
     _movePositionsInertially();
+    auto end_inertia = std::chrono::high_resolution_clock::now();
+    
+    auto start_projection = std::chrono::high_resolution_clock::now();
     _projectConstraints();
+    auto end_projection = std::chrono::high_resolution_clock::now();
+    
+    auto end_total = std::chrono::high_resolution_clock::now();
+    
+    // Print timing every 60 frames (once per second at 60 FPS)
+    static int frame_count = 0;
+    frame_count++;
+    if (frame_count % 60 == 0) {
+        auto reset_us = std::chrono::duration_cast<std::chrono::microseconds>(end_reset - start_reset).count();
+        auto inertia_us = std::chrono::duration_cast<std::chrono::microseconds>(end_inertia - start_inertia).count();
+        auto projection_us = std::chrono::duration_cast<std::chrono::microseconds>(end_projection - start_projection).count();
+        auto total_us = std::chrono::duration_cast<std::chrono::microseconds>(end_total - start_total).count();
+        
+        std::cout << "[PERFORMANCE frame " << frame_count << "] "
+                  << "reset=" << reset_us << "us (" << num_adhesion_constraints << " constraints), "
+                  << "inertia=" << inertia_us << "us, "
+                  << "projection=" << projection_us << "us, "
+                  << "total=" << total_us << "us ("
+                  << (projection_us * 100.0 / total_us) << "% in projection)\n";
+    }
 
     // for (int i = 0; i < tetMesh()->numElements(); i++)
     // {
