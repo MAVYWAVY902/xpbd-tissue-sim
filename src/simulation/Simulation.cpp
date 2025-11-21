@@ -2064,8 +2064,10 @@ void Simulation::setup()
                                                     std::cout << "[adhesion] Each constraint stores its own rest_gap (d_0 = initial distance)\n";
                                                 }
                                                 
-                                                // Pass rest_gap (d_0) and break_ratio instead of global target_gap
-                                                typed_tumor_ptr->addNerveTumorAdhesionConstraint(v, closest_v1, closest_v2, closest_v3, 
+                                                // ✅ CRITICAL FIX: Pass nerve_ptr so tumor can get position pointer from NERVE mesh!
+                                                // Previously was passing nerve vertex index, causing tumor to look up wrong mesh
+                                                typed_tumor_ptr->addNerveTumorAdhesionConstraint(nerve_ptr, v, 
+                                                                                                closest_v1, closest_v2, closest_v3, 
                                                                                                 rest_gap, break_ratio, alpha);
                                                 
                                                 // Also mark the nerve vertex on the nerve mesh for visualization

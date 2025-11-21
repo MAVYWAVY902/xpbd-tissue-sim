@@ -509,16 +509,19 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 Solver::ConstraintProjectorReference<
     Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>>
 XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
-    ::addNerveTumorAdhesionConstraint(int nerve_v, int tri_v1, int tri_v2, int tri_v3, 
+    ::addNerveTumorAdhesionConstraint(XPBDMeshObject_Base_<IsFirstOrder>* nerve_obj, int nerve_v,
+                                     int tri_v1, int tri_v2, int tri_v3, 
                                      Real rest_gap, Real break_ratio, Real alpha)
 {
-    // 1. Get vertex position pointers and masses
-    Real* nerve_p = _mesh->vertexPointer(nerve_v);
+    // 1. Get nerve vertex position pointer and mass from the NERVE object (not tumor!)
+    Real* nerve_p = nerve_obj->mesh()->vertexPointer(nerve_v);
+    Real nerve_m = nerve_obj->vertexConstraintInertia(nerve_v);
+    
+    // 2. Get TUMOR vertex position pointers and masses from THIS object
     Real* tri_p1 = _mesh->vertexPointer(tri_v1);
     Real* tri_p2 = _mesh->vertexPointer(tri_v2);
     Real* tri_p3 = _mesh->vertexPointer(tri_v3);
     
-    Real nerve_m = vertexConstraintInertia(nerve_v);
     Real tri_m1 = vertexConstraintInertia(tri_v1);
     Real tri_m2 = vertexConstraintInertia(tri_v2);
     Real tri_m3 = vertexConstraintInertia(tri_v3);

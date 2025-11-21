@@ -160,10 +160,18 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
         Solver::ConstraintProjector<IsFirstOrder, Solver::NerveBendingConstraint>>
         addNerveBendingConstraint(int v0, int v1, int v2, Real rest_curvature = 0.0, Real alpha = 0.0);
 
-    /** Adds an adhesion constraint between a nerve vertex and tumor triangle face. */
+    /** Adds an adhesion constraint between a nerve vertex and tumor triangle face.
+     * @param nerve_obj - pointer to the nerve mesh object (to get vertex pointer and mass)
+     * @param nerve_v - nerve vertex index
+     * @param tri_v1, tri_v2, tri_v3 - tumor triangle vertex indices (from THIS object's mesh)
+     * @param rest_gap - rest separation distance
+     * @param break_ratio - strain threshold for breaking
+     * @param alpha - compliance parameter
+     */
     virtual Solver::ConstraintProjectorReference<
         Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>>
-        addNerveTumorAdhesionConstraint(int nerve_v, int tri_v1, int tri_v2, int tri_v3, 
+        addNerveTumorAdhesionConstraint(XPBDMeshObject_Base_<IsFirstOrder>* nerve_obj, int nerve_v,
+                                       int tri_v1, int tri_v2, int tri_v3, 
                                        Real rest_gap, Real break_ratio, Real alpha = 0.0);
 
     /** Clears all attachment constraint that are on this object. */
