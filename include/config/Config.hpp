@@ -101,8 +101,11 @@ class Config
         // load nerve-tumor adhesion parameters (optional)
         _extractParameter("nerve-tumor-adhesion-enable", node, _nerve_tumor_adhesion_enable);
         _extractParameter("nerve-tumor-adhesion-distance-window", node, _nerve_tumor_adhesion_distance_window);
-        _extractParameter("nerve-tumor-adhesion-target-gap", node, _nerve_tumor_adhesion_target_gap);
         _extractParameter("nerve-tumor-adhesion-alpha", node, _nerve_tumor_adhesion_alpha);
+        _extractParameter("nerve-tumor-adhesion-break-ratio", node, _nerve_tumor_adhesion_break_ratio);
+        
+        // Legacy parameters (kept for backward compatibility but not used in new logic)
+        _extractParameter("nerve-tumor-adhesion-target-gap", node, _nerve_tumor_adhesion_target_gap);
         _extractParameter("nerve-tumor-adhesion-bond-distance", node, _nerve_tumor_adhesion_bond_distance);
         _extractParameter("nerve-tumor-adhesion-break-distance", node, _nerve_tumor_adhesion_break_distance);
 
@@ -136,9 +139,12 @@ class Config
     
     // Nerve-tumor adhesion configuration getters
     bool nerveTumorAdhesionEnable() const { return _nerve_tumor_adhesion_enable.value.value_or(false); }  // default false
-    Real nerveTumorAdhesionDistanceWindow() const { return _nerve_tumor_adhesion_distance_window.value.value_or(5e-4); }  // 0.5 mm
-    Real nerveTumorAdhesionTargetGap() const { return _nerve_tumor_adhesion_target_gap.value.value_or(1e-4); }  // 0.1 mm  
+    Real nerveTumorAdhesionDistanceWindow() const { return _nerve_tumor_adhesion_distance_window.value.value_or(0.05); }  // 5 cm detection window
     Real nerveTumorAdhesionAlpha() const { return _nerve_tumor_adhesion_alpha.value.value_or(1e-7); }  // compliance
+    Real nerveTumorAdhesionBreakRatio() const { return _nerve_tumor_adhesion_break_ratio.value.value_or(1.5); }  // 50% strain breaks bond
+    
+    // Legacy getters (kept for backward compatibility but not used in new strain-based logic)
+    Real nerveTumorAdhesionTargetGap() const { return _nerve_tumor_adhesion_target_gap.value.value_or(1e-4); }  // 0.1 mm  
     Real nerveTumorAdhesionBondDistance() const { return _nerve_tumor_adhesion_bond_distance.value.value_or(3e-4); }  // bond creation threshold
     Real nerveTumorAdhesionBreakDistance() const { return _nerve_tumor_adhesion_break_distance.value.value_or(7e-4); }  // bond break threshold
 
@@ -499,9 +505,12 @@ class Config
     
     /** Nerve-tumor adhesion configuration parameters */
     ConfigParameter<std::optional<bool>> _nerve_tumor_adhesion_enable = ConfigParameter<std::optional<bool>>(false);
-    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_distance_window = ConfigParameter<std::optional<Real>>(5e-4);
-    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_target_gap = ConfigParameter<std::optional<Real>>(1e-4);
+    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_distance_window = ConfigParameter<std::optional<Real>>(0.05);  // 5 cm
     ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_alpha = ConfigParameter<std::optional<Real>>(1e-7);
+    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_break_ratio = ConfigParameter<std::optional<Real>>(1.5);  // 50% strain
+    
+    // Legacy parameters (backward compatibility)
+    ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_target_gap = ConfigParameter<std::optional<Real>>(1e-4);
     ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_bond_distance = ConfigParameter<std::optional<Real>>(3e-4);
     ConfigParameter<std::optional<Real>> _nerve_tumor_adhesion_break_distance = ConfigParameter<std::optional<Real>>(7e-4);
 };

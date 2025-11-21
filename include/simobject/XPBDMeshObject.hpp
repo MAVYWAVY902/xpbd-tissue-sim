@@ -164,7 +164,7 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     virtual Solver::ConstraintProjectorReference<
         Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>>
         addNerveTumorAdhesionConstraint(int nerve_v, int tri_v1, int tri_v2, int tri_v3, 
-                                       Real target_gap, Real alpha = 0.0);
+                                       Real rest_gap, Real break_ratio, Real alpha = 0.0);
 
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() override;

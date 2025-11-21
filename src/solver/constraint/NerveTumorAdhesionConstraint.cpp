@@ -9,14 +9,15 @@ NerveTumorAdhesionConstraint::NerveTumorAdhesionConstraint(int nerve_v, Real* ne
                                                          int tri_v1, Real* tri_p1, Real tri_m1,
                                                          int tri_v2, Real* tri_p2, Real tri_m2, 
                                                          int tri_v3, Real* tri_p3, Real tri_m3,
-                                                         Real target_gap,
+                                                         Real rest_gap,
+                                                         Real break_ratio,
                                                          Real alpha)
     : Constraint(std::vector<PositionReference>({
         PositionReference(nerve_v, nerve_p, nerve_m),  // nerve vertex
         PositionReference(tri_v1, tri_p1, tri_m1),     // triangle vertex 1
         PositionReference(tri_v2, tri_p2, tri_m2),     // triangle vertex 2  
         PositionReference(tri_v3, tri_p3, tri_m3)      // triangle vertex 3
-    }), alpha), _target_gap(target_gap)
+    }), alpha), _rest_gap(rest_gap), _break_ratio(break_ratio)
 {
 }
 
@@ -33,6 +34,12 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
     const Real distance = computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
                                                       closest_point, normal, bary_coords);
     
+    // Track maximum distance during this step's solver iterations (for breaking detection)
+    // NOTE: This captures intermediate solver states, not just the final converged position.
+    // Used by shouldBreak() to detect bonds stretched during grasp even if they get reset.
+    // MUST be cleared at the start of each time step via resetMaxDistanceThisStep().
+    _max_distance_this_step = std::max(_max_distance_this_step, distance);
+    
     // Check for valid computation
     if (!std::isfinite(distance) || distance >= 1e6) {
         *C = 0.0; // constraint inactive for degenerate cases
@@ -48,9 +55,9 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
 
     // ✅ FIXED: Single-sided adhesion constraint (only attractive, no repulsion)
     // C = max(0, n^T(q - x_s) - d_0)
-    // This creates a one-way spring that only pulls when separated beyond target gap
+    // This creates a one-way spring that only pulls when separated beyond rest gap
     Real separation_distance = _n_cached.dot(nerve_pos - _xs_cached);
-    Real constraint_violation = separation_distance - _target_gap;
+    Real constraint_violation = separation_distance - _rest_gap;
     
     // Only activate constraint when separated beyond target gap (adhesive pull)
     *C = std::max(0.0, constraint_violation);
@@ -89,10 +96,10 @@ void NerveTumorAdhesionConstraint::gradient(Real* grad) const
     // For single-sided adhesion, gradient is zero when constraint is inactive
     Eigen::Map<const Vec3r> nerve_pos(_positions[0].position_ptr);
     Real separation_distance = _n_cached.dot(nerve_pos - _xs_cached);
-    Real constraint_violation = separation_distance - _target_gap;
+    Real constraint_violation = separation_distance - _rest_gap;
     
     if (constraint_violation <= 0.0) {
-        // Constraint is inactive (not separated beyond target gap)
+        // Constraint is inactive (not separated beyond rest gap)
         for (int i = 0; i < NUM_COORDINATES; i++) {
             grad[i] = 0.0;
         }
@@ -203,41 +210,87 @@ Real NerveTumorAdhesionConstraint::computePointTriangleDistance(const Vec3r& ner
     }
 }
 
-bool NerveTumorAdhesionConstraint::shouldBreak(Real break_distance) const
+bool NerveTumorAdhesionConstraint::shouldBreak() const
 {
-    // Extract positions
-    Eigen::Map<const Vec3r> nerve_pos(_positions[0].position_ptr);
-    Eigen::Map<const Vec3r> tri_p1(_positions[1].position_ptr);
-    Eigen::Map<const Vec3r> tri_p2(_positions[2].position_ptr);
-    Eigen::Map<const Vec3r> tri_p3(_positions[3].position_ptr);
-
-    // Compute current distance
-    Vec3r closest_point, normal, bary_coords;
-    const Real distance = computePointTriangleDistance(nerve_pos, tri_p1, tri_p2, tri_p3, 
-                                                      closest_point, normal, bary_coords);
-
-    // Standard break condition: distance too large
-    if (distance > break_distance) {
-        return true;
+    // DESIGN RATIONALE: Strain-based breaking with initial geometry as rest state
+    // 
+    // PREVIOUS APPROACH (FLAWED):
+    // - Used fixed global target_gap for all constraints
+    // - Broke when absolute gap exceeded threshold: gap = distance - target_gap > break_distance
+    // - Problem: Initial geometry didn't match target_gap, causing immediate breakage
+    // 
+    // NEW APPROACH (CORRECT):
+    // - Each constraint remembers its initial distance d_0 as rest_gap
+    // - Break when STRAIN RATIO exceeds threshold: (distance / d_0) > break_ratio
+    // - Example: break_ratio = 1.5 means bond breaks at 50% extension (d = 1.5 * d_0)
+    // - Physically correct: bonds break from relative stretch, not absolute distance
+    // 
+    // WHY USE _max_distance_this_step?
+    // The solver performs multiple Gauss-Seidel iterations to satisfy constraints.
+    // During these iterations, positions can be temporarily stretched far beyond their
+    // final converged state. For example:
+    //   - Iteration 1: nerve pulled 10cm from tumor (large violation)
+    //   - Iteration 5: adhesion constraint corrects, distance → 2mm (converged)
+    // If we only checked final distance, we'd miss the bond being stretched during solve.
+    // 
+    // FROZEN VERTEX PROBLEM: When nerve vertices are fixed (by contact/haptics),
+    // the adhesion constraint correction gets entirely applied to tumor vertices,
+    // which then get reset by their own fixed constraint. The final distance looks
+    // small, but the bond was actually stretched significantly DURING projection.
+    // 
+    // WHAT THIS DOES: Track the maximum distance seen across all solver iterations
+    // within this time step. If max_ratio = max_dist / rest_gap > break_ratio, break.
+    // 
+    // CAVEAT: _max_distance_this_step includes intermediate solver states (not fully 
+    // converged), so it's a heuristic to detect bonds that *would* break if not for
+    // solver-level position corrections (like fixed vertex reset).
+    // 
+    // CRITICAL: resetMaxDistanceThisStep() MUST be called at the start of each time step
+    // (done in XPBDMeshObject::update()), otherwise this becomes "max over entire simulation"
+    // and will trigger false positives forever.
+    
+    // PHYSICS: Break when STRAIN RATIO exceeds threshold
+    // strain_ratio = max_distance_this_step / rest_gap
+    // Bond breaks when stretched beyond critical extension (e.g., 1.5 = 50% strain)
+    Real strain_ratio = _max_distance_this_step / _rest_gap;
+    bool should_break = (strain_ratio > _break_ratio);
+    
+    // DEBUG: Print max distance info when checking breaking
+    // Get nerve vertex index for identification
+    int nerve_v = _positions[0].index;
+    int tri_v1 = _positions[1].index;
+    int tri_v2 = _positions[2].index;
+    int tri_v3 = _positions[3].index;
+    
+    // Also compute current distance and ratio (not max) for comparison
+    Real current_distance = getCurrentDistance();
+    Real current_ratio = current_distance / _rest_gap;
+    
+    // Optional: Print debug info for constraints close to breaking (within 20% of threshold)
+    // Uncomment for detailed debugging of near-breaking constraints
+    // if (strain_ratio > 0.8 * _break_ratio && strain_ratio <= _break_ratio) {
+    //     std::cout << "[shouldBreak NEAR] nerve_v=" << nerve_v 
+    //               << " tri=[" << tri_v1 << "," << tri_v2 << "," << tri_v3 << "]"
+    //               << "\n  | current_ratio=" << current_ratio << " (" << current_distance << "m)"
+    //               << "\n  | max_ratio=" << strain_ratio << " (" << _max_distance_this_step << "m)"
+    //               << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << "\n";
+    // }
+    
+    // If breaking, always print (important events)
+    if (should_break) {
+        std::cout << "[BREAKING!] nerve_v=" << nerve_v 
+                  << " tri=[" << tri_v1 << "," << tri_v2 << "," << tri_v3 << "]"
+                  << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
+                  << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
+                  << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
     }
     
-    // ✅ Break "stuck" constraints that are extremely close (numerical zero)
-    // These constraints produce negligible forces but waste computation
+    // NOTE: Do NOT reset _max_distance_this_step here! 
+    // Multiple constraints are checked during the same breaking phase, and resetting
+    // would cause all constraints after the first to see max_distance=0 and never break.
+    // The reset happens correctly in resetMaxDistanceThisStep() at the start of update().
     
-    // Case 1: Dead constraints (target_gap > 0 but distance ≈ 0)
-    if (distance < 1e-10 && _target_gap > 1e-6) {
-        return true;  // Never activates, remove it
-    }
-    
-    // Case 2: Micro-distance constraints (distance at atomic/molecular scale)
-    // For target_gap = 0, constraints with distance < 1e-5 (10 micrometers) produce
-    // very large forces due to small alpha, causing jitter
-    if (_target_gap < 1e-6 && distance < 1e-5) {
-        return true;  // Too close, remove to prevent numerical instability
-    }
-    
-    return false;
-                                                      
+    return should_break;
 }
 
 Real NerveTumorAdhesionConstraint::getCurrentDistance() const

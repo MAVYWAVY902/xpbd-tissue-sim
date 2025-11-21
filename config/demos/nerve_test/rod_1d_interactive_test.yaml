@@ -24,8 +24,8 @@ nerve-bending-enable: true
 nerve-mesh-file: "../resource/rod/linear_rod.msh"
 nerve-physical-group: "nerve_edge"
 
-nerve-stretch-alpha: 1e-7   # Stretch constraint strength
-nerve-bending-alpha: 1e-8   # Bending constraint strength
+nerve-stretch-alpha: 1e-9   # Stretch constraint strength
+nerve-bending-alpha: 1e-9   # Bending constraint strength
 nerve-verbose: true
 
 ## PushingSimulation-specific parameters for interactive testing
@@ -36,8 +36,8 @@ max-push-force: 15.0     # Reasonable force for nerve constraint testing
 materials:
   -
     name: "Soft Tissue"
-    density: 1000
-    E: 1e5
+    density: 10000
+    E: 1e6
     nu: 0.45
     mu-s: 0.0
     mu-k: 0.0
@@ -51,8 +51,8 @@ objects:
     materials: ["Soft Tissue"]
     solver-type: "Gauss-Seidel"
     constraint-type: "Nerve-Only"   # Pure nerve constraint physics
-    num-solver-iters: 2
-    damping-multiplier: 10000 
+    num-solver-iters: 4
+    damping-multiplier: 1000 
 
     # Fix only first vertex - free end for interaction
     fixed-vertices: [0]  # Only fix start (z=1), leave end (z=0) free

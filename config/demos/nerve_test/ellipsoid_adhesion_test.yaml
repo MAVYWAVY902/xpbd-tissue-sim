@@ -4,12 +4,15 @@
 name: "Ellipsoid Adhesion Test"
 description: "Test single-sided adhesion constraints with proper breakage on ellipsoid tumor"
 
-# adhesion parameters
-nerve-tumor-adhesion-enable: true            # Enable adhesion constraint testing
-nerve-tumor-adhesion-target-gap: 0.0       # 0mm target gap - nerve should stick to surface
-nerve-tumor-adhesion-alpha: 1e-6             # Softer adhesion (larger alpha = weaker forces)
-nerve-tumor-adhesion-distance-window: 0.1   # 10cm detection window (ensure 100% coverage)
-nerve-tumor-adhesion-break-distance: 0.015   # 1.5cm break threshold 
+# adhesion parameters (STRAIN-BASED MODEL)
+nerve-tumor-adhesion-enable: true                 # Enable adhesion constraint testing
+nerve-tumor-adhesion-distance-window: 0.1         # 1m detection window (must exceed max initial separation!)
+nerve-tumor-adhesion-alpha: 1e-9                  # Compliance (stiffness = 1/alpha)
+nerve-tumor-adhesion-break-ratio: 1.2             # Break at 50% strain (1.5x initial distance)
+
+# OLD PARAMETERS (deprecated, no longer used):
+# nerve-tumor-adhesion-target-gap: 0.05           # UNUSED - each constraint now uses its own d_0
+# nerve-tumor-adhesion-break-distance: 0.37       # UNUSED - replaced by break-ratio 
 
 # nerve configuration
 nerve-mesh-file: "../resource/rod/linear_rod.msh"  # Nerve mesh for constraint setup
@@ -18,7 +21,7 @@ nerve-physical-group: "nerve_edge"                   # Default physical group na
 nerve-stretch-enable: true
 nerve-bending-enable: true
 
-nerve-stretch-alpha: 1e-8   # Stronger nerve stretch (smaller alpha = stiffer)
+nerve-stretch-alpha: 1e-11   # Stronger nerve stretch (smaller alpha = stiffer)
 nerve-bending-alpha: 1e-9   # Stronger nerve bending (smaller alpha = stiffer)
 nerve-verbose: true
 
@@ -77,8 +80,8 @@ objects:
 
     ## initial configuration
     # max-size: 1.0    # REMOVED - use original size
-    # position: [0.5, 0.48, 0.4]    # Move tumor down to show clear separation
-    position: [0.0, 0.56, 0.05]    # Move tumor down to show clear separation
+    # position: [0.5, 0.48, 0.4]    # Old position
+    position: [0.0, 0.0, 0.0]    # Tumor at origin for close contact with nerve
     velocity: [0, 0, 0]    
     rotation: [0, 0, 0]     
 
@@ -108,9 +111,9 @@ objects:
 
     ## initial configuration  
     # max-size: 1.0    # REMOVED - use original size
-    position: [0.1, 0.05, 0.0]    # Much larger separation (50 units above)
+    position: [0.56, 0.0, 0.0]    # NOW WORKS! Nerve positioned at origin (close to tumor)
     velocity: [0, 0, 0.0]     # No movement initially
-    rotation: [0, 0, 0]
+    rotation: [0, 0, 0]        # NOW WORKS! Can rotate nerve via YAML
 
     ## physics
     collisions: false  

@@ -1966,10 +1966,27 @@ void Simulation::setup()
                     for (auto* nerve_ptr : nerve_objs) {
                         const auto* nerve_mesh = nerve_ptr->mesh();
                         const int nerve_nv = nerve_mesh->numVertices();
+                        
+                        // DEBUG: Print nerve actual positions
+                        if (nerve_nv > 0) {
+                            Vec3r nerve_first = nerve_mesh->vertex(0);
+                            Vec3r nerve_last = nerve_mesh->vertex(nerve_nv - 1);
+                            std::cout << "[adhesion DEBUG] Nerve mesh (" << nerve_nv << " vertices):\n";
+                            std::cout << "  First vertex: " << nerve_first.transpose() << "\n";
+                            std::cout << "  Last vertex:  " << nerve_last.transpose() << "\n";
+                        }
 
                         for (auto* tumor_ptr : tumor_objs) {
                             const auto* tumor_mesh = tumor_ptr->mesh();
                             const int tumor_nf = tumor_mesh->numFaces();
+                            
+                            // DEBUG: Print tumor actual positions
+                            if (tumor_mesh->numVertices() > 0) {
+                                Vec3r tumor_vertex = tumor_mesh->vertex(0);
+                                std::cout << "[adhesion DEBUG] Tumor mesh (" << tumor_nf << " faces, " 
+                                          << tumor_mesh->numVertices() << " vertices):\n";
+                                std::cout << "  First vertex: " << tumor_vertex.transpose() << "\n";
+                            }
 
                             int constraints_added = 0;
                             Real min_distance = std::numeric_limits<Real>::max();
@@ -1985,7 +2002,8 @@ void Simulation::setup()
                                     if (!typed_tumor_ptr) return false;
                                     
                                     // FIXED: One constraint per nerve vertex approach
-                                    for (int v = 0; v < std::min(nerve_nv, 200); ++v) {
+                                    // Check ALL nerve vertices and ALL tumor faces for proper distance calculation
+                                    for (int v = 0; v < nerve_nv; ++v) {
                                         const Vec3r nerve_pos = nerve_mesh->vertex(v);
                                         
                                         // Find the closest triangle to this nerve vertex using proper distance calculation
@@ -1993,7 +2011,8 @@ void Simulation::setup()
                                         int closest_face = -1;
                                         int closest_v1 = -1, closest_v2 = -1, closest_v3 = -1;
                                         
-                                        for (int f = 0; f < std::min(tumor_nf, 200); ++f) {
+                                        // Check ALL tumor faces to find the globally closest triangle
+                                        for (int f = 0; f < tumor_nf; ++f) {
                                             const auto face = tumor_mesh->face(f);
                                             const int v1 = face[0], v2 = face[1], v3 = face[2];
                                             // Skip if nerve vertex equals a face vertex (unlikely across different objects, but safe)
@@ -2027,11 +2046,27 @@ void Simulation::setup()
                                         // Only create constraint for the closest triangle (if within window)
                                         if (closest_face >= 0) {
                                             try {
+                                                // ✅ NEW APPROACH: Use initial distance d_0 as rest_gap for this constraint
+                                                // Instead of using a global target_gap, each constraint stores its own
+                                                // initial separation distance as the rest state.
+                                                Real rest_gap = closest_distance; // d_0 = initial distance
+                                                Real break_ratio = _config->nerveTumorAdhesionBreakRatio(); // e.g., 1.5 = 50% strain
+                                                
+                                                // ✅ FIXED: Use distance_window as the threshold (from YAML config)
+                                                // This allows you to control the adhesion formation distance via YAML
+                                                // No need for hardcoded threshold - distance_window already filters in outer loop
+                                                
                                                 if (constraints_added == 0) {
-                                                    std::cout << "[adhesion] Creating ONE constraint per nerve vertex: target_gap=" << target_gap 
-                                                              << "m, alpha=" << alpha << ", distance_window=" << distance_window << "m\n";
+                                                    std::cout << "[adhesion] Creating ONE constraint per nerve vertex:"
+                                                              << " alpha=" << alpha 
+                                                              << ", distance_window=" << distance_window << "m"
+                                                              << ", break_ratio=" << break_ratio << " (strain-based)\n";
+                                                    std::cout << "[adhesion] Each constraint stores its own rest_gap (d_0 = initial distance)\n";
                                                 }
-                                                typed_tumor_ptr->addNerveTumorAdhesionConstraint(v, closest_v1, closest_v2, closest_v3, target_gap, alpha);
+                                                
+                                                // Pass rest_gap (d_0) and break_ratio instead of global target_gap
+                                                typed_tumor_ptr->addNerveTumorAdhesionConstraint(v, closest_v1, closest_v2, closest_v3, 
+                                                                                                rest_gap, break_ratio, alpha);
                                                 
                                                 // Also mark the nerve vertex on the nerve mesh for visualization
                                                 if (!nerve_ptr->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
@@ -2040,12 +2075,13 @@ void Simulation::setup()
                                                 }
                                                 auto& nerve_adhesion_prop = nerve_ptr->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
                                                 nerve_adhesion_prop.set(v, true);
-                                                std::cout << "[viz] Marked nerve vertex " << v << " as having adhesion constraint on nerve mesh " << nerve_ptr->mesh() << "\n";
+                                                // std::cout << "[viz] Marked nerve vertex " << v << " as having adhesion constraint on nerve mesh " << nerve_ptr->mesh() << "\n";
                                                 
                                                 ++constraints_added; ++total_constraints;
                                                 if (constraints_added <= 10) { // Show more examples since we have fewer constraints now
                                                     std::cout << "[adhesion] Added constraint (nerve->tumor): nerve_v=" << v 
-                                                              << " closest_face=[" << closest_v1 << "," << closest_v2 << "," << closest_v3 << "] dist=" << closest_distance << "m\n";
+                                                              << " closest_face=[" << closest_v1 << "," << closest_v2 << "," << closest_v3 
+                                                              << "] d_0=" << rest_gap << "m (rest_gap)\n";
                                                 }
                                             } catch (const std::exception& e) {
                                                 std::cout << "[adhesion] Failed to add constraint on tumor instance: " << e.what() << "\n";
@@ -2218,17 +2254,6 @@ void Simulation::_timeStep()
         _collision_scene->collideObjects();
     }
 
-    // —— check and break adhesion constraints —— //
-    if (_config->nerveTumorAdhesionEnable()) {
-        const Real break_distance = _config->nerveTumorAdhesionBreakDistance();
-        
-        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
-        for (auto& obj : xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
-
-        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
-        for (auto& obj : fo_xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
-    }
-
     // —— PRE: read current length of the picked edge —— //
     if (s_edge_initialized)
     {
@@ -2240,8 +2265,8 @@ void Simulation::_timeStep()
                 s_edge_j >= xpbd->mesh()->numVertices()) return false;
             const Real len = (V.col(s_edge_i) - V.col(s_edge_j)).norm();
             
-            // Only print every 900 steps to avoid flooding the terminal
-            if (s_print_counter % 900 == 0) {
+            // Only print every 3000 steps to avoid flooding the terminal
+            if (s_print_counter % 3000 == 0) {
                 std::cout << "[" << phase << "](" << tag << ") step=" << s_print_counter 
                           << " edge(" << s_edge_i << "," << s_edge_j << ") len = "
                           << len << " (rest = " << s_edge_rest_len << ")\n";
@@ -2396,8 +2421,8 @@ void Simulation::_timeStep()
                 }
             }
             
-            // Only print every 900 steps to avoid flooding the terminal
-            if (s_print_counter % 900 == 0) {
+            // Only print every 3000 steps to avoid flooding the terminal
+            if (s_print_counter % 3000 == 0) {
                 std::cout << "[" << phase << "](" << tag << ") step=" << s_print_counter 
                           << " triplet(" << s_triplet_i << "," << s_triplet_j << "," << s_triplet_k 
                           << ") curvature = " << curvature << " (rest = " << s_triplet_rest_curvature << ")\n";
@@ -2500,6 +2525,18 @@ void Simulation::_timeStep()
 
     // —— Run one XPBD step (objects do elasticity + collisions + your stretch) —— //
     _objects.for_each_element([](auto& obj) { obj->update(); });
+
+    // —— check and break adhesion constraints AFTER physics update —— //
+    // This ensures we check distances AFTER constraint projection and fixed vertex enforcement
+    if (_config->nerveTumorAdhesionEnable()) {
+        const Real break_distance = _config->nerveTumorAdhesionBreakDistance();
+        
+        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        for (auto& obj : xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
+
+        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (auto& obj : fo_xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
+    }
 
     // —— POST: read again and print error —— //
     if (s_edge_initialized)

@@ -29,14 +29,16 @@ class NerveTumorAdhesionConstraint : public Constraint
      * @param tri_v1, tri_v2, tri_v3 - tumor triangle vertex indices
      * @param tri_p1, tri_p2, tri_p3 - tumor triangle vertex position pointers  
      * @param tri_m1, tri_m2, tri_m3 - tumor triangle vertex masses
-     * @param target_gap - target separation distance d_0
+     * @param rest_gap - rest/initial separation distance d_0 (specific to this constraint)
+     * @param break_ratio - strain ratio threshold for breaking (e.g., 1.5 = 50% extension)
      * @param alpha - compliance parameter
      */
     NerveTumorAdhesionConstraint(int nerve_v, Real* nerve_p, Real nerve_m,
                                 int tri_v1, Real* tri_p1, Real tri_m1,
                                 int tri_v2, Real* tri_p2, Real tri_m2, 
                                 int tri_v3, Real* tri_p3, Real tri_m3,
-                                Real target_gap,
+                                Real rest_gap,
+                                Real break_ratio,
                                 Real alpha = 0.0);
 
     int numPositions() const override { return NUM_POSITIONS; }
@@ -61,20 +63,28 @@ class NerveTumorAdhesionConstraint : public Constraint
     /** Adhesion constraints are equality constraints (not inequalities like collision) */
     inline bool isInequality() const override { return false; }
 
-    /** Get target separation distance */
-    Real getTargetGap() const { return _target_gap; }
+    /** Get rest separation distance (initial d_0 for this constraint) */
+    Real getRestGap() const { return _rest_gap; }
 
-    /** Update target gap (useful for dynamic adhesion strength) */
-    void setTargetGap(Real target_gap) { _target_gap = target_gap; }
+    /** Get break ratio threshold */
+    Real getBreakRatio() const { return _break_ratio; }
     
-    /** Check if adhesion bond should break based on separation distance
-     * @param break_distance - maximum distance before bond breaks
+    /** Check if adhesion bond should break based on strain ratio.
+     * Bond breaks when max_distance_this_step / rest_gap > break_ratio
      * @return true if bond should be broken and constraint removed
      */
-    bool shouldBreak(Real break_distance) const;
+    bool shouldBreak() const;
     
     /** Get current separation distance between nerve and tumor surface */
     Real getCurrentDistance() const;
+    
+    /** Reset max distance tracker at the beginning of each time step.
+     * MUST be called before constraint projection to ensure _max_distance_this_step
+     * represents "maximum stretch during THIS step" rather than "entire simulation history".
+     * This prevents false positives where old stretch events trigger breaking forever.
+     * Marked const because it modifies a mutable tracking field (cache-like behavior).
+     */
+    void resetMaxDistanceThisStep() const { _max_distance_this_step = 0.0; }
 
     protected:
     /** Compute signed distance from nerve point to triangle and closest point info
@@ -94,13 +104,17 @@ class NerveTumorAdhesionConstraint : public Constraint
                                      Vec3r& bary_coords) const;
 
     private:
-    Real _target_gap; ///< Target separation distance d_0
+    Real _rest_gap;    ///< Rest separation distance d_0 (initial distance for this constraint)
+    Real _break_ratio; ///< Strain ratio threshold for breaking (e.g., 1.5 = 50% extension)
     
     // Cached values for frozen contact frame approach (mutable for const methods)
     mutable Vec3r _n_cached;      ///< unit normal (triangle to point)
     mutable Vec3r _bary_cached;   ///< barycentric coordinates [b1, b2, b3]  
     mutable Vec3r _xs_cached;     ///< closest point on triangle surface
     mutable bool  _cache_valid{false}; ///< whether cached values are valid
+    
+    // Track maximum distance during projection (for breaking detection with fixed vertices)
+    mutable Real _max_distance_this_step{0.0}; ///< Maximum distance reached during current step
 };
 
 } // namespace Solver

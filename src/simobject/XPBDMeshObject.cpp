@@ -278,39 +278,55 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
     auto& adhesion_projectors = _solver.template getConstraintProjectorsOfType<AdhesionConstraintType>();
     
+    // Skip printing if this object has no adhesion constraints
+    if (adhesion_projectors.empty()) return;
+    
     // Count active (valid) constraints every 9000 calls
     if (call_count % 9000 == 0) {
         int active_count = 0;
         Real min_distance = 1e6;
         Real max_distance = 0.0;
         Real avg_distance = 0.0;
+        Real min_ratio = 1e6;
+        Real max_ratio = 0.0;
+        Real avg_ratio = 0.0;
         
         for (size_t i = 0; i < adhesion_projectors.size(); ++i) {
             if (adhesion_projectors[i].isValid()) {
                 active_count++;
                 
-                // Get current distance for this constraint
+                // Get current distance and strain ratio for this constraint
                 const auto& constraint_ref = adhesion_projectors[i].constraint();
                 const auto* constraint = &constraint_ref.get();
                 if (constraint) {
                     Real dist = constraint->getCurrentDistance();
+                    Real rest_gap = constraint->getRestGap();
+                    Real ratio = (rest_gap > 0) ? (dist / rest_gap) : 0.0;
+                    
                     min_distance = std::min(min_distance, dist);
                     max_distance = std::max(max_distance, dist);
                     avg_distance += dist;
+                    
+                    min_ratio = std::min(min_ratio, ratio);
+                    max_ratio = std::max(max_ratio, ratio);
+                    avg_ratio += ratio;
                 }
             }
         }
         
         if (active_count > 0) {
             avg_distance /= active_count;
+            avg_ratio /= active_count;
         }
         
-        std::cout << "[active adhesion counter] Step #" << call_count 
+        std::cout << "[active adhesion counter] Object: " << this->name() 
+                  << " | Step #" << call_count 
                   << ": Active constraints = " << active_count 
                   << " / " << adhesion_projectors.size() << " total"
-                  << " | Distances: min=" << min_distance << "m, max=" << max_distance 
+                  << "\n  | Distances: min=" << min_distance << "m, max=" << max_distance 
                   << "m, avg=" << avg_distance << "m"
-                  << " (break_threshold=" << break_distance << "m)\n";
+                  << "\n  | Strain ratios: min=" << min_ratio << ", max=" << max_ratio 
+                  << ", avg=" << avg_ratio << " (strain-based breaking)\n";
     }
     
     // Iterate through projectors and check if any should break
@@ -326,8 +342,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
         const auto* constraint = &constraint_ref.get();
         if (!constraint) continue;
         
-        // Check if this constraint should break
-        if (constraint->shouldBreak(break_distance)) {
+        // Check if this constraint should break (now uses internal break_ratio, no parameter needed)
+        if (constraint->shouldBreak()) {
             projectors_to_invalidate.push_back(static_cast<int>(i));
         }
     }
@@ -494,7 +510,7 @@ Solver::ConstraintProjectorReference<
     Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>>
 XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
     ::addNerveTumorAdhesionConstraint(int nerve_v, int tri_v1, int tri_v2, int tri_v3, 
-                                     Real target_gap, Real alpha)
+                                     Real rest_gap, Real break_ratio, Real alpha)
 {
     // 1. Get vertex position pointers and masses
     Real* nerve_p = _mesh->vertexPointer(nerve_v);
@@ -514,7 +530,8 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
         tri_v1, tri_p1, tri_m1,
         tri_v2, tri_p2, tri_m2,
         tri_v3, tri_p3, tri_m3,
-        target_gap,
+        rest_gap,
+        break_ratio,
         alpha
     );
 
@@ -748,6 +765,18 @@ std::string XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes..
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::update()
 {
+    // Reset max distance tracking for all adhesion constraints at the start of each time step
+    // This ensures _max_distance_this_step represents "maximum stretch during THIS step"
+    // rather than "entire simulation history", preventing false positives in breaking detection
+    using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
+    auto& adhesion_projectors = _solver.template getConstraintProjectorsOfType<AdhesionConstraintType>();
+    for (auto& projector : adhesion_projectors) {
+        if (projector.isValid()) {
+            // Use -> operator on ConstraintReference to access the constraint
+            projector.constraint()->resetMaxDistanceThisStep();
+        }
+    }
+
     // set _x_prev to be ready for the next substep
     _previous_vertices = _mesh->vertices();
 

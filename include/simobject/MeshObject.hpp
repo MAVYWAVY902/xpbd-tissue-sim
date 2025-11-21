@@ -174,12 +174,46 @@ public:
         }
         
         if (isLineMesh) {
-            std::cout << "[meshobj] DEBUG: Detected 1D line mesh, skipping geometric operations that require volume\n";
+            std::cout << "[meshobj] DEBUG: Detected 1D line mesh, applying position/rotation transforms\n";
             
-            // For line meshes, only apply basic transformations if needed
-            // Skip: resize, massCenter, moveTogether, rotateAbout (these need volume/area)
-            // Only do: setCurrentStateAsUndeformedState
+            // For line meshes:
+            // - Skip: resize (needs volume/area)
+            // - Skip: massCenter (needs volume/area) 
+            // - APPLY: moveTogether (works for point clouds!)
+            // - APPLY: rotateAbout (works for point clouds!)
+            // - APPLY: setCurrentStateAsUndeformedState
             
+            // Compute geometric center instead of mass center (simple average of vertices)
+            Vec3r geometric_center = Vec3r::Zero();
+            const int nv = _mesh->numVertices();
+            for (int i = 0; i < nv; ++i) {
+                geometric_center += _mesh->vertex(i);
+            }
+            geometric_center /= nv;
+            
+            std::cout << "[meshobj] DEBUG: 1D mesh geometric_center = " << geometric_center.transpose() << "\n";
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: before moveTogether, V.col(0) = " << V.col(0).transpose() << "\n";
+            }
+            
+            // Move mesh from geometric center to desired position
+            std::cout << "[meshobj] DEBUG: calling moveTogether(-geometric_center + _initial_position)\n";
+            _mesh->moveTogether(-geometric_center + _initial_position);
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: after moveTogether, V.col(0) = " << V.col(0).transpose() << "\n";
+            }
+            
+            // Apply rotation around the target position
+            std::cout << "[meshobj] DEBUG: calling rotateAbout(_initial_position, _initial_rotation)\n";
+            _mesh->rotateAbout(_initial_position, _initial_rotation);
+            if (_mesh->numVertices() > 0) {
+                const auto& V = _mesh->vertices();
+                std::cout << "[meshobj] DEBUG: after rotateAbout, V.col(0) = " << V.col(0).transpose() << "\n";
+            }
+            
+            // Set current state as undeformed (reference configuration)
             std::cout << "[meshobj] DEBUG: calling setCurrentStateAsUndeformedState for line mesh\n";
             _mesh->setCurrentStateAsUndeformedState();
             if (_mesh->numVertices() > 0) {
