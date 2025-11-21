@@ -19,6 +19,8 @@ NerveTumorAdhesionConstraint::NerveTumorAdhesionConstraint(int nerve_v, Real* ne
         PositionReference(tri_v3, tri_p3, tri_m3)      // triangle vertex 3
     }), alpha), _rest_gap(rest_gap), _break_ratio(break_ratio)
 {
+    std::cout << "[adhesion INIT] Created constraint: rest_gap=" << _rest_gap 
+              << ", break_ratio=" << _break_ratio << ", alpha=" << alpha << "\n";
 }
 
 void NerveTumorAdhesionConstraint::evaluate(Real* C) const
@@ -62,17 +64,16 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
     // Only activate constraint when separated beyond target gap (adhesive pull)
     *C = std::max(0.0, constraint_violation);
     
-    // DEBUG: Print constraint evaluation details (limit output frequency)
-    // static int debug_count = 0;
-    // debug_count++;
-    // if (debug_count % 90000 == 0) {  // Print every 9000 evaluations (10x less frequent)
-    //     std::cout << "[adhesion DEBUG] Constraint eval #" << debug_count 
-    //               << ": nerve=(" << nerve_pos.transpose() << ")"
-    //               << " separation=" << separation_distance 
-    //               << " constraint_violation=" << constraint_violation
-    //               << " C=" << *C 
-    //               << " target_gap=" << _target_gap << "\n";
-    // }
+    // DEBUG: Print constraint evaluation details for first few evaluations
+    static int debug_count = 0;
+    debug_count++;
+    if (debug_count <= 10) {  // Print first 10 evaluations
+        std::cout << "[adhesion EVAL#" << debug_count << "] "
+                  << "separation=" << separation_distance 
+                  << " rest_gap=" << _rest_gap
+                  << " violation=" << constraint_violation
+                  << " C=" << *C << "\n";
+    }
 }
 
 void NerveTumorAdhesionConstraint::gradient(Real* grad) const

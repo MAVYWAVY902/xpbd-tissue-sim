@@ -51,7 +51,7 @@ materials:
   -
     name: "Ellipsoid Tumor"
     density: 1000    # density [kg/m^3]
-    E: 2e5         # Much softer material to prevent explosion
+    E: 1e6         # Stiffer material for stability (was 2e5, too soft!)
     nu: 0.45        # Standard soft tissue Poisson's ratio
     mu-s: 0.0       # coefficient of static friction [-]
     mu-k: 0.0       # coefficient of kinetic friction [-]
@@ -89,11 +89,11 @@ objects:
     collisions: true  # disable collision to prevent self-intersection issues
 
     ## XPBD solver settings
-    num-solver-iters: 3
+    num-solver-iters: 50           # INCREASED from 3 to prevent instability/spikes
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"  # simpler constraint type
     residual-policy: "Never"
-    damping-multiplier: 100000    # Standard damping from working configs
+    damping-multiplier: 500000     # INCREASED from 100000 for more damping
 
   ## Nerve rod - 1D rod following ellipsoid surface  
   -
