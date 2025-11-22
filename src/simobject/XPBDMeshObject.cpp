@@ -283,8 +283,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     // Skip printing if this object has no adhesion constraints
     if (adhesion_projectors.empty()) return;
     
-    // Count active (valid) constraints every 9000 calls
-    if (call_count % 9000 == 0) {
+    // Count active (valid) constraints every 3000 calls
+    if (call_count % 3000 == 0) {
         int active_count = 0;
         Real min_distance = 1e6;
         Real max_distance = 0.0;
@@ -812,12 +812,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
         auto projection_us = std::chrono::duration_cast<std::chrono::microseconds>(end_projection - start_projection).count();
         auto total_us = std::chrono::duration_cast<std::chrono::microseconds>(end_total - start_total).count();
         
-        std::cout << "[PERFORMANCE frame " << frame_count << "] "
-                  << "reset=" << reset_us << "us (" << num_adhesion_constraints << " constraints), "
-                  << "inertia=" << inertia_us << "us, "
-                  << "projection=" << projection_us << "us, "
-                  << "total=" << total_us << "us ("
-                  << (projection_us * 100.0 / total_us) << "% in projection)\n";
+        // std::cout << "[PERFORMANCE frame " << frame_count << "] "
+        //           << "reset=" << reset_us << "us (" << num_adhesion_constraints << " constraints), "
+        //           << "inertia=" << inertia_us << "us, "
+        //           << "projection=" << projection_us << "us, "
+        //           << "total=" << total_us << "us ("
+        //           << (projection_us * 100.0 / total_us) << "% in projection)\n";
     }
 
     // for (int i = 0; i < tetMesh()->numElements(); i++)
