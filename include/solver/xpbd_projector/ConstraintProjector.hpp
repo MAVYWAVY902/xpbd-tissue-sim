@@ -6,10 +6,16 @@
 #include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
 
 #include "common/TypeList.hpp"
+#include <typeinfo>
+#include <string>
+#include <cmath>
 
 #ifdef HAVE_CUDA
 #include "gpu/projector/GPUConstraintProjector.cuh"
 #endif
+
+// Forward declaration for debugging
+namespace Solver { class NerveTumorAdhesionConstraint; }
 
 namespace Solver
 {
@@ -154,6 +160,34 @@ class ConstraintProjector
         // compute lambda update
         Real dlam = RHS / LHS;
         _lambda += dlam;
+
+        // DEBUG: Print adhesion constraint projection details
+        // Use type name comparison instead of std::is_same to avoid needing full definition
+        if (C > 1e-10 && std::string(typeid(Constraint).name()).find("Adhesion") != std::string::npos) {
+            static int projection_count = 0;
+            projection_count++;
+            if (projection_count <= 20 || projection_count % 100 == 0) {
+                Real total_update_norm = 0;
+                Real max_inv_mass = 0;
+                Real min_inv_mass = 1e10;
+                for (int i = 0; i < Constraint::NUM_POSITIONS; i++) {
+                    Real update_x = positions[i].inv_mass * _delC[3*i] * dlam;
+                    Real update_y = positions[i].inv_mass * _delC[3*i+1] * dlam;
+                    Real update_z = positions[i].inv_mass * _delC[3*i+2] * dlam;
+                    total_update_norm += update_x*update_x + update_y*update_y + update_z*update_z;
+                    max_inv_mass = std::max(max_inv_mass, positions[i].inv_mass);
+                    min_inv_mass = std::min(min_inv_mass, positions[i].inv_mass);
+                }
+                total_update_norm = std::sqrt(total_update_norm);
+                Real grad_norm = std::sqrt(_delC[0]*_delC[0] + _delC[1]*_delC[1] + _delC[2]*_delC[2]);
+                std::cout << "[ADHESION PROJECTION #" << projection_count << "] "
+                          << "C=" << C << " | dlam=" << dlam << " | _lambda=" << _lambda 
+                          << " | alpha=" << _constraint->alpha()
+                          << "\n  | grad_norm=" << grad_norm
+                          << " | inv_mass_range=[" << min_inv_mass << ", " << max_inv_mass << "]"
+                          << " | total_update=" << total_update_norm << "m\n";
+            }
+        }
 
         // compute position updates
         for (int i = 0; i < Constraint::NUM_POSITIONS; i++)

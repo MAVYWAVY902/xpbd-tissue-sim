@@ -78,6 +78,7 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
     _xs_cached = xs_current;
     _n_cached = normal;
     // _bary_cached stays unchanged - we reuse the initial barycentric coords
+    _cache_valid = true;  // ✅ CRITICAL FIX: Mark cache as valid after updating!
 
     // ✅ FIXED: Single-sided adhesion constraint (only attractive, no repulsion)
     // C = max(0, separation - d_0)
@@ -104,6 +105,21 @@ void NerveTumorAdhesionConstraint::evaluate(Real* C) const
                   << " C=" << *C << "\n";
     }
     #endif
+    
+    // ALWAYS-ON DEBUG: Print when constraint is active (C > 0)
+    static int active_count = 0;
+    if (*C > 0) {
+        active_count++;
+        if (active_count <= 20 || active_count % 100 == 0) {
+            std::cout << "[ADHESION ACTIVE #" << active_count << "] "
+                      << "nerve_v=" << _positions[0].index 
+                      << " tri=[" << _positions[1].index << "," << _positions[2].index << "," << _positions[3].index << "]"
+                      << " | sep=" << separation_distance << "m"
+                      << " | rest=" << _rest_gap << "m"
+                      << " | C=" << *C << "m"
+                      << " | alpha=" << this->alpha() << "\n";
+        }
+    }
 }
 
 void NerveTumorAdhesionConstraint::gradient(Real* grad) const
