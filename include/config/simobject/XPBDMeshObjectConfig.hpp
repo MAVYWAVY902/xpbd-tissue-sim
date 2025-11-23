@@ -70,6 +70,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         _extractParameterWithOptions("solver-type", node, _solve_type, SOLVER_TYPE_OPTIONS());
         _extractParameterWithOptions("constraint-type", node, _constraint_type, CONSTRAINT_TYPE_OPTIONS());
         _extractParameterWithOptions("residual-policy", node, _residual_policy, RESIDUAL_POLICY_OPTIONS());
+    // optional: list of vertex indices to fix (0-based)
+    _extractParameter("fixed-vertices", node, _fixed_vertices);
         
     }
 
@@ -112,6 +114,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
     std::vector<std::string> materials() const { return _materials.value; }
     std::optional<std::string> elementClassesFilename() const { return _element_classes_filename.value; }
+    std::vector<int> fixedVertices() const { return _fixed_vertices.value; }
 
     protected:
     // Parameters
@@ -124,6 +127,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
     ConfigParameter<std::vector<std::string>> _materials = ConfigParameter<std::vector<std::string>>({});
     ConfigParameter<std::optional<std::string>> _element_classes_filename;
+    ConfigParameter<std::vector<int>> _fixed_vertices = ConfigParameter<std::vector<int>>({});
 };
 
 } // namespace Config

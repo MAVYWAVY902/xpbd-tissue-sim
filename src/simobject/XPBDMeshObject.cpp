@@ -89,6 +89,9 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
         _damping_multiplier = config->dampingMultiplier();
         _adjust_b_to_material = config->adjustDampingToMaterial();
     }
+
+    // capture any fixed-vertices specified in the config (0-based indices)
+    _initial_fixed_vertices = config->fixedVertices();
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -165,6 +168,25 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
     _vertex_velocities.colwise() = _initial_velocity;
 
     _calculatePerVertexQuantities();
+    
+    // Apply any fixed vertices that were specified in the YAML config
+    // MUST be after _calculatePerVertexQuantities() which allocates _is_fixed_vertex
+    if (!_initial_fixed_vertices.empty())
+    {
+        for (const auto& v : _initial_fixed_vertices)
+        {
+            if (v >= 0 && v < _mesh->numVertices())
+            {
+                this->fixVertex(v);
+                std::cout << "[XPBDMeshObject] Fixed vertex " << v << " from YAML config" << std::endl;
+            }
+            else
+            {
+                std::cerr << "[XPBDMeshObject] Warning: fixed-vertex index " << v << " out of range (0.." << _mesh->numVertices()-1 << ")" << std::endl;
+            }
+        }
+    }
+    
     _createElasticConstraints();     // create constraints and add ConstraintProjectors to the solver object
 }
 

@@ -42,6 +42,8 @@ collision-rate: 1000
 fps: 30                    # Smooth visualization
 end-time: 600               # 10 seconds test
 
+fix-min-z: true   # Fix the start (z=0.0)
+fix-max-z: true   # Fix the end (z=1.0)
 
 enable-mouse-interaction: true
 input-device: "Mouse"
@@ -119,7 +121,7 @@ objects:
     collisions: false  
     
     ## Ensure nerve is NOT fixed - all vertices free to move
-    fixed-vertices: []  # Empty list = no fixed vertices
+    fixed-vertices: [0, 300]  # Empty list = no fixed vertices
 
     ## XPBD solver settings
     num-solver-iters: 40              # INCREASED: More iterations for constraint convergence

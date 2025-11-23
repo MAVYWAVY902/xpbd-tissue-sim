@@ -253,6 +253,8 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     typename SolverType::projector_reference_container_type _gatherProjectorsForLocalCollisionIterations();
 
     protected:
+    // fixed vertices specified in config (applied during setup)
+    std::vector<int> _initial_fixed_vertices;
     /** The specific constraint configuration used to define internal constraints for the XPBD mesh. Set by the Config object
      * TODO: is this necessary? Should XPBDMeshObjectConstraintConfiguration be a struct that can create the elastic constraints for the mesh?
      */
