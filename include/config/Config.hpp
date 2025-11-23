@@ -91,6 +91,8 @@ class Config
         _extractParameter("nerve-bending-enable", node, _nerve_bending_enable);
         _extractParameter("nerve-mesh-file", node, _nerve_mesh_file);
         _extractParameter("nerve-physical-group", node, _nerve_physical_group);
+        _extractParameter("nerve-stretch-alpha", node, _nerve_stretch_alpha);
+        _extractParameter("nerve-bending-alpha", node, _nerve_bending_alpha);
         
         // load constraint-type-specific nerve control parameters (optional)
         _extractParameter("stable-neohookean-nerve-stretch-enable", node, _stable_neohookean_nerve_stretch_enable);
@@ -130,6 +132,8 @@ class Config
     bool nerveBendingEnable() const { return _nerve_bending_enable.value.value_or(true); }  // default true
     std::string nerveMeshFile() const { return _nerve_mesh_file.value.value_or(""); }  // default empty
     std::string nervePhysicalGroup() const { return _nerve_physical_group.value.value_or("nerve_edge"); }  // default "nerve_edge"
+    Real nerveStretchAlpha() const { return _nerve_stretch_alpha.value.value_or(1e-9); }  // default 1e-9 (stiff)
+    Real nerveBendingAlpha() const { return _nerve_bending_alpha.value.value_or(1e-9); }  // default 1e-9 (stiff)
     
     // Constraint-type-specific nerve control getters
     bool stableNeohookeanNerveStretchEnable() const { return _stable_neohookean_nerve_stretch_enable.value.value_or(true); }  // default true
@@ -496,6 +500,8 @@ class Config
     ConfigParameter<std::optional<bool>> _nerve_bending_enable = ConfigParameter<std::optional<bool>>(true);
     ConfigParameter<std::optional<std::string>> _nerve_mesh_file = ConfigParameter<std::optional<std::string>>("");
     ConfigParameter<std::optional<std::string>> _nerve_physical_group = ConfigParameter<std::optional<std::string>>("nerve_edge");
+    ConfigParameter<std::optional<Real>> _nerve_stretch_alpha = ConfigParameter<std::optional<Real>>(1e-9);  // compliance for stretch
+    ConfigParameter<std::optional<Real>> _nerve_bending_alpha = ConfigParameter<std::optional<Real>>(1e-9);  // compliance for bending
     
     /** Constraint-type-specific nerve control parameters */
     ConfigParameter<std::optional<bool>> _stable_neohookean_nerve_stretch_enable = ConfigParameter<std::optional<bool>>(true);

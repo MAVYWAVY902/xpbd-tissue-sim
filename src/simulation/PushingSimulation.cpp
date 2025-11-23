@@ -219,9 +219,9 @@ void PushingSimulation::_applyPushingForces()
     int vertices_contacted = 0;
     int vertices_pushed = 0;
 
-    printf("DEBUG: === PUSHING FRAME START ===\n");
-    printf("DEBUG: Tool center at (%.3f, %.3f, %.3f), radius: %.3f\n", 
-           tool_center.x(), tool_center.y(), tool_center.z(), _tool_radius);
+    // printf("DEBUG: === PUSHING FRAME START ===\n");
+    // printf("DEBUG: Tool center at (%.3f, %.3f, %.3f), radius: %.3f\n", 
+    //        tool_center.x(), tool_center.y(), tool_center.z(), _tool_radius);
 
     // IMPORTANT: Clear attachment constraints - we don't want any for pushing!
     for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
@@ -236,7 +236,7 @@ void PushingSimulation::_applyPushingForces()
     // Process XPBDMeshObject_Base objects
     for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
     {
-        printf("DEBUG: Processing XPBDMeshObject with %d vertices\n", xpbd_mesh_obj->mesh()->numVertices());
+        // printf("DEBUG: Processing XPBDMeshObject with %d vertices\n", xpbd_mesh_obj->mesh()->numVertices());
         
         for (int v = 0; v < xpbd_mesh_obj->mesh()->numVertices(); ++v)
         {
@@ -361,8 +361,8 @@ void PushingSimulation::_applyPushingForces()
         }
     }
 
-    printf("DEBUG: Frame summary - Vertices contacted: %d, Vertices pushed: %d\n", vertices_contacted, vertices_pushed);
-    printf("DEBUG: === PUSHING FRAME END ===\n\n");
+    // printf("DEBUG: Frame summary - Vertices contacted: %d, Vertices pushed: %d\n", vertices_contacted, vertices_pushed);
+    // printf("DEBUG: === PUSHING FRAME END ===\n\n");
 }
 
 Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec3r& tool_center, Real tool_radius)

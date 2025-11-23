@@ -10,7 +10,7 @@ sim-mode: "Visualization"     # Real-time simulation for interactive testing
 enable-mouse-interaction: true
 input-device: "Mouse" 
 
-time-step: 5e-3   # Small time step for stability with nerve constraints
+time-step: 1e-3   # Smaller timestep for hard constraints (DisMech typically uses ~1ms)
 collision-rate: 1000
 fps: 30
 end-time: 10000   # Long simulation for testing
@@ -24,8 +24,19 @@ nerve-bending-enable: true
 nerve-mesh-file: "../resource/rod/linear_rod.msh"
 nerve-physical-group: "nerve_edge"
 
-nerve-stretch-alpha: 1e-9   # Stretch constraint strength
-nerve-bending-alpha: 1e-9   # Bending constraint strength
+## CRITICAL: Alpha values for nerve constraint stiffness
+## In XPBD: SMALLER alpha = STIFFER constraint (inverse relationship!)
+## Alpha = compliance parameter (strain per unit force)
+##
+## Recommended values for nerve-like behavior:
+## - Very stiff nerve (almost rigid): 1e-12 to 1e-11
+## - Stiff nerve (realistic):         1e-11 to 1e-10
+## - Moderate stiffness:               1e-10 to 1e-9
+## - Soft (current config):            1e-9  to 1e-8
+##
+## For realistic nerve that resists stretching/bending but still deforms:
+nerve-stretch-alpha: 1e-11   # Much stiffer stretch (was 1e-9, 100x softer)
+nerve-bending-alpha: 1e-10   # Stiff bending (was 1e-9, 10x softer)
 nerve-verbose: true
 
 ## PushingSimulation-specific parameters for interactive testing
@@ -36,8 +47,8 @@ max-push-force: 15.0     # Reasonable force for nerve constraint testing
 materials:
   -
     name: "Soft Tissue"
-    density: 10000
-    E: 1e6
+    density: 100
+    E: 5e7
     nu: 0.45
     mu-s: 0.0
     mu-k: 0.0
@@ -50,9 +61,16 @@ objects:
     filename: "../resource/rod/linear_rod.msh"
     materials: ["Soft Tissue"]
     solver-type: "Gauss-Seidel"
-    constraint-type: "Nerve-Only"   # Pure nerve constraint physics
-    num-solver-iters: 4
-    damping-multiplier: 1000 
+    constraint-type: "Nerve-Only"   # Pure nerve constraint physics (stretch/bend provide elastic restoring force!)
+    
+    ## CRITICAL: More iterations for hard constraints to converge properly
+    num-solver-iters: 40   # DisMech uses 10-50 iterations for stiff rods
+    
+    ## CRITICAL: Damping for critical damping (快速回弹 + 不振荡)
+    ## Too small (< 10000): underdamped → oscillates/bounces
+    ## Just right (10000-100000): critical damping → fast snap-back, stops quickly
+    ## Too large (> 1000000): overdamped → slow, viscous motion
+    damping-multiplier: 1000   # Target critical damping for nerve-like behavior 
 
     # Fix only first vertex - free end for interaction
     fixed-vertices: [0]  # Only fix start (z=1), leave end (z=0) free

@@ -1695,8 +1695,9 @@ void Simulation::setup()
 
                                             const Real rest_len = (V.col(i) - V.col(j)).norm();
                                             // std::cerr << "[nerve] DEBUG: monitor edge (" << i << "," << j << "), V[" << i << "]=" << V.col(i).transpose() << ", V[" << j << "]=" << V.col(j).transpose() << ", rest_len=" << rest_len << "\n";
-                                            // Use small compliance for numerical stability
-                                            Real stretch_alpha = 1e-8;  // Stiffer than bending but still compliant  
+                                            
+                                            // Read stretch alpha from config (smaller alpha = stiffer constraint)
+                                            Real stretch_alpha = _config->nerveStretchAlpha();
                                             xpbd->addNerveStretchConstraint(i, j, rest_len, stretch_alpha);
                                             ++add_ok;
 
@@ -1748,8 +1749,8 @@ void Simulation::setup()
                                         for (const auto& triplet : triplets) {
                                             try {
                                                 // Rest curvature = 0 (straight nerve)
-                                                // Use softer compliance for bending to avoid over-stiffening
-                                                Real bend_alpha = 1e-6;  // Small compliance for stability
+                                                // Read bending alpha from config (smaller alpha = stiffer constraint)
+                                                Real bend_alpha = _config->nerveBendingAlpha();
                                                 xpbd->addNerveBendingConstraint(triplet[0], triplet[1], triplet[2], 
                                                                               /*rest_curvature=*/0.0, bend_alpha);
                                                 ++bend_ok;

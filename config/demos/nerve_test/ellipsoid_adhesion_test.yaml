@@ -7,8 +7,8 @@ description: "Test single-sided adhesion constraints with proper breakage on ell
 # adhesion parameters (STRAIN-BASED MODEL)
 nerve-tumor-adhesion-enable: true                 # Enable adhesion constraint testing
 nerve-tumor-adhesion-distance-window: 0.1         # 10cm detection window (must exceed max initial separation!)
-nerve-tumor-adhesion-alpha: 1e-7                  # ADJUSTED: More reasonable compliance (was 1e-12, too stiff!)
-nerve-tumor-adhesion-break-ratio: 1e9             # VERY HIGH: prevent breaking during testing
+nerve-tumor-adhesion-alpha: 1e-9                  # STRONGER: Stiffer adhesion to overcome mass imbalance (was 1e-7)
+nerve-tumor-adhesion-break-ratio: 1.2             # VERY HIGH: prevent breaking during testing
 
 # OLD PARAMETERS (deprecated, no longer used):
 # nerve-tumor-adhesion-target-gap: 0.05           # UNUSED - each constraint now uses its own d_0
@@ -50,7 +50,7 @@ input-device: "Mouse"
 materials:
   -
     name: "Ellipsoid Tumor"
-    density: 1000    # density [kg/m^3]
+    density: 100    # DRASTICALLY REDUCED: Make tumor very light so adhesion can pull it (was 1000, then 100)
     E: 2e5         # Much softer material to prevent explosion
     nu: 0.45        # Standard soft tissue Poisson's ratio
     mu-s: 0.0       # coefficient of static friction [-]
@@ -117,6 +117,9 @@ objects:
 
     ## physics
     collisions: false  
+    
+    ## Ensure nerve is NOT fixed - all vertices free to move
+    fixed-vertices: []  # Empty list = no fixed vertices
 
     ## XPBD solver settings
     num-solver-iters: 20              # INCREASED: More iterations for constraint convergence
