@@ -36,8 +36,8 @@ nerve-physical-group: "nerve_edge"
 ## - Soft (current config):            1e-9  to 1e-8
 ##
 ## For realistic nerve that resists stretching/bending but still deforms:
-nerve-stretch-alpha: 1e-11   # Much stiffer stretch (was 1e-9, 100x softer)
-nerve-bending-alpha: 1e-10   # Stiff bending (was 1e-9, 10x softer)
+nerve-stretch-alpha: 1e-13   # Much stiffer stretch (was 1e-9, 100x softer)
+nerve-bending-alpha: 1e-12   # Stiff bending (was 1e-9, 10x softer)
 nerve-verbose: true
 
 ## PushingSimulation-specific parameters for interactive testing
@@ -70,7 +70,7 @@ objects:
     ## Too small (< 10000): underdamped → oscillates/bounces
     ## Just right (10000-100000): critical damping → fast snap-back, stops quickly
     ## Too large (> 1000000): overdamped → slow, viscous motion
-    damping-multiplier: 1000   # Target critical damping for nerve-like behavior 
+    damping-multiplier: 10000   # Target critical damping for nerve-like behavior 
 
     # Fix both ends of the rod
     fixed-vertices: [0, 299]  # Fix start (z=1) at vertex 0 and end (z=0) at vertex 299

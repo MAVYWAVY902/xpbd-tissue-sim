@@ -21,8 +21,8 @@ nerve-physical-group: "nerve_edge"                   # Default physical group na
 nerve-stretch-enable: true
 nerve-bending-enable: true
 
-nerve-stretch-alpha: 1e-11   # Stronger nerve stretch (smaller alpha = stiffer)
-nerve-bending-alpha: 1e-9   # Stronger nerve bending (smaller alpha = stiffer)
+nerve-stretch-alpha: 1e-12   # Stronger nerve stretch (smaller alpha = stiffer)
+nerve-bending-alpha: 1e-11   # Stronger nerve bending (smaller alpha = stiffer)
 nerve-verbose: true
 
 
@@ -57,8 +57,8 @@ materials:
     mu-k: 0.0       # coefficient of kinetic friction [-]
   -
     name: "Nerve Rod"
-    density: 1000    # density [kg/m^3] 
-    E: 1e4          # Young's modulus [Pa] - stiffer nerve
+    density: 100    # density [kg/m^3] 
+    E: 5e7          # Young's modulus [Pa] - stiffer nerve
     nu: 0.3         # Poisson's ratio [-]
     mu-s: 0.0       # coefficient of static friction [-]
     mu-k: 0.0       # coefficient of kinetic friction [-]
@@ -122,9 +122,9 @@ objects:
     fixed-vertices: []  # Empty list = no fixed vertices
 
     ## XPBD solver settings
-    num-solver-iters: 20              # INCREASED: More iterations for constraint convergence
+    num-solver-iters: 40              # INCREASED: More iterations for constraint convergence
     solver-type: "Gauss-Seidel"
     constraint-type: "Nerve-Only"  # nerve constraints only
     residual-policy: "Never"
-    damping-multiplier: 100000
+    damping-multiplier: 10000
     

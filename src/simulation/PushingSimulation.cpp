@@ -337,7 +337,7 @@ void PushingSimulation::_applyPushingForces()
             if (distance <= _tool_radius * 1.2) // Slightly larger radius for debug
             {
                 vertices_contacted++;
-                printf("DEBUG: FO Vertex %d at distance %.4f (tool_radius=%.4f)\n", v, distance, _tool_radius);
+                // printf("DEBUG: FO Vertex %d at distance %.4f (tool_radius=%.4f)\n", v, distance, _tool_radius);
             }
             
             // Apply pushing if vertex is within tool radius (PENETRATION)
