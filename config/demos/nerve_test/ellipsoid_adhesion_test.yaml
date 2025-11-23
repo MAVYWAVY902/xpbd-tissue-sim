@@ -10,10 +10,6 @@ nerve-tumor-adhesion-distance-window: 0.1         # 10cm detection window (must 
 nerve-tumor-adhesion-alpha: 1e-9                  # STRONGER: Stiffer adhesion to overcome mass imbalance (was 1e-7)
 nerve-tumor-adhesion-break-ratio: 1.2             # VERY HIGH: prevent breaking during testing
 
-# OLD PARAMETERS (deprecated, no longer used):
-# nerve-tumor-adhesion-target-gap: 0.05           # UNUSED - each constraint now uses its own d_0
-# nerve-tumor-adhesion-break-distance: 0.37       # UNUSED - replaced by break-ratio 
-
 # nerve configuration
 nerve-mesh-file: "../resource/rod/linear_rod.msh"  # Nerve mesh for constraint setup
 nerve-physical-group: "nerve_edge"                   # Default physical group name
