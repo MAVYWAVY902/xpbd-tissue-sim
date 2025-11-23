@@ -58,6 +58,7 @@ private:
     Real _push_stiffness;                 ///< stiffness coefficient for pushing forces
     Real _max_push_force;                 ///< maximum force that can be applied
     bool _fix_min_z;                      ///< whether to fix vertices at minimum z coordinate
+    bool _fix_max_z;                      ///< whether to fix vertices at maximum z coordinate
     bool _pushing_enabled;                ///< whether pushing is currently enabled
     
     std::map<SimulationInput::Key, int> _keys_held;  ///< map of currently held keys

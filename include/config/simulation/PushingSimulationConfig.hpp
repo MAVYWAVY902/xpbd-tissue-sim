@@ -24,18 +24,23 @@ public:
             
         if (config_node["fix-min-z"])
             _fix_min_z = config_node["fix-min-z"].as<bool>();
+            
+        if (config_node["fix-max-z"])
+            _fix_max_z = config_node["fix-max-z"].as<bool>();
     }
 
     Real toolRadius() const { return _tool_radius; }
     Real pushStiffness() const { return _push_stiffness; }
     Real maxPushForce() const { return _max_push_force; }
     bool fixMinZ() const { return _fix_min_z; }
+    bool fixMaxZ() const { return _fix_max_z; }
 
 private:
     Real _tool_radius = 0.2;        ///< default tool radius [m]
     Real _push_stiffness = 1000.0;  ///< default push stiffness [N/m]
     Real _max_push_force = 50.0;    ///< default max push force [N]
     bool _fix_min_z = true;         ///< default: fix bottom vertices
+    bool _fix_max_z = false;        ///< default: don't fix top vertices
 };
 
 } // namespace Config

@@ -11,6 +11,7 @@ PushingSimulation::PushingSimulation(const Config::PushingSimulationConfig* conf
     _push_stiffness = config->pushStiffness();
     _max_push_force = config->maxPushForce();
     _fix_min_z = config->fixMinZ();
+    _fix_max_z = config->fixMaxZ();
 
     // Pre-allocate space for push targets to guarantee pointer stability
     _push_targets.reserve(kMaxPushedVertices);
@@ -54,6 +55,29 @@ void PushingSimulation::setup()
         
         fix_bottom_vertices(xpbd_mesh_objs);
         fix_bottom_vertices(fo_xpbd_mesh_objs);
+    }
+    
+    if (_fix_max_z)
+    {
+        // Fix top vertices for both types of XPBD mesh objects
+        std::vector<std::unique_ptr<Sim::XPBDMeshObject_Base>>& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
+        std::vector<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>& fo_xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+        
+        auto fix_top_vertices = [&](auto& mesh_objs) {
+            for (auto& obj : mesh_objs)
+            {
+                // get max z coordinate of the object's mesh
+                Vec3r max_bbox_point = obj->mesh()->boundingBox().max;
+                std::vector<int> vertices_to_fix = obj->mesh()->getVerticesWithZ(max_bbox_point[2]);
+                for (const auto& v : vertices_to_fix)
+                {
+                    obj->fixVertex(v);
+                }
+            }
+        };
+        
+        fix_top_vertices(xpbd_mesh_objs);
+        fix_top_vertices(fo_xpbd_mesh_objs);
     }
 
     // create a visual representation of the tool tip

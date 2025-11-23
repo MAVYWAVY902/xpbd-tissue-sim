@@ -15,7 +15,8 @@ collision-rate: 1000
 fps: 30
 end-time: 10000   # Long simulation for testing
 
-fix-max-z: false  # OFF until AABB-from-vertices is implemented
+fix-min-z: true   # Fix the start (z=0.0)
+fix-max-z: true   # Fix the end (z=1.0)
 
 ## Nerve constraint configuration
 nerve-enable: true
@@ -66,14 +67,13 @@ objects:
     ## CRITICAL: More iterations for hard constraints to converge properly
     num-solver-iters: 40   # DisMech uses 10-50 iterations for stiff rods
     
-    ## CRITICAL: Damping for critical damping (快速回弹 + 不振荡)
     ## Too small (< 10000): underdamped → oscillates/bounces
     ## Just right (10000-100000): critical damping → fast snap-back, stops quickly
     ## Too large (> 1000000): overdamped → slow, viscous motion
     damping-multiplier: 1000   # Target critical damping for nerve-like behavior 
 
-    # Fix only first vertex - free end for interaction
-    fixed-vertices: [0]  # Only fix start (z=1), leave end (z=0) free
+    # Fix both ends of the rod
+    fixed-vertices: [0, 299]  # Fix start (z=1) at vertex 0 and end (z=0) at vertex 299
 
     # Visualization settings
     draw_points: true
