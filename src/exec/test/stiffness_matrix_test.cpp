@@ -39,7 +39,7 @@ int main()
         filename, 1, std::nullopt,
         false, true, true, Vec4r(1,1,1,1),
         materials, std::nullopt,
-        false, 10, 5, XPBDObjectSolverTypeEnum::GAUSS_SEIDEL,
+        false, false, 10, 5, XPBDObjectSolverTypeEnum::GAUSS_SEIDEL,
         XPBDMeshObjectConstraintConfigurationEnum::STABLE_NEOHOOKEAN_COMBINED,
         XPBDSolverResidualPolicyEnum::NEVER,
         100000, false,

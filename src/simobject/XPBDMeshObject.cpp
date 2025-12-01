@@ -14,6 +14,7 @@
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
 #include "solver/constraint/DeformableDeformableCollisionConstraint.hpp"
+#include "solver/constraint/InterObjectDeformableCollisionConstraint.hpp"
 #include "solver/constraint/HydrostaticConstraint.hpp"
 #include "solver/constraint/DeviatoricConstraint.hpp"
 #include "solver/constraint/NerveStretchConstraint.hpp" 
@@ -76,6 +77,9 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
     
     // constraint specifications
     _constraint_type = config->constraintType();
+
+    // inter-object collision flag
+    _inter_object_collisions = config->interObjectCollisions();
 
     // local collision iterations
     _num_local_collision_iters = config->numLocalCollisionIters();
@@ -262,20 +266,51 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addRigi
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::InterObjectDeformableCollisionConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addInterObjectCollisionConstraint(
+    int vertex_index,
+    int other_face_v1, Real* other_v1_ptr, Real other_m1,
+    int other_face_v2, Real* other_v2_ptr, Real other_m2,
+    int other_face_v3, Real* other_v3_ptr, Real other_m3)
+{
+    // Get the vertex information from THIS object
+    Real* vertex_ptr = _mesh->vertexPointer(vertex_index);
+    Real vertex_mass = vertexConstraintInertia(vertex_index);
+
+    // Create the inter-object collision constraint
+    // Constraint layout: (vertex from this object, face vertices from other object)
+    std::vector<Solver::InterObjectDeformableCollisionConstraint>& constraint_vec = 
+        _constraints.template get<Solver::InterObjectDeformableCollisionConstraint>();
+    
+    constraint_vec.emplace_back(
+        vertex_index, vertex_ptr, vertex_mass,           // Vertex from THIS object
+        other_face_v1, other_v1_ptr, other_m1,           // Face vertex 1 from OTHER object
+        other_face_v2, other_v2_ptr, other_m2,           // Face vertex 2 from OTHER object
+        other_face_v3, other_v3_ptr, other_m3            // Face vertex 3 from OTHER object
+    );
+
+    using ConstraintRefType = Solver::ConstraintReference<Solver::InterObjectDeformableCollisionConstraint>;
+    return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::clearCollisionConstraints()
 {
     // set any collision constraint projectors in the solver invalid
     // NOTE: because the collision constraint
     using StaticCollisionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
     using DeformableCollisionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::DeformableDeformableCollisionConstraint>;
+    using InterObjectCollisionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterObjectDeformableCollisionConstraint>;
     using RigidCollisionConstraintType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>;
     _solver.template clearProjectorsOfType<StaticCollisionConstraintType>();
     _solver.template clearProjectorsOfType<DeformableCollisionConstraintType>();
+    _solver.template clearProjectorsOfType<InterObjectCollisionConstraintType>();
     _solver.template clearProjectorsOfType<RigidCollisionConstraintType>();
 
     // clear the collision constraints lists
     _constraints.template clear<Solver::StaticDeformableCollisionConstraint>();
     _constraints.template clear<Solver::DeformableDeformableCollisionConstraint>();
+    _constraints.template clear<Solver::InterObjectDeformableCollisionConstraint>();
     _constraints.template clear<Solver::RigidDeformableCollisionConstraint>();
 
 

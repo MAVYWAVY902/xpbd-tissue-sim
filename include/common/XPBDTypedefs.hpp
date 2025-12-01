@@ -11,6 +11,7 @@
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
 #include "solver/constraint/DeformableDeformableCollisionConstraint.hpp"
+#include "solver/constraint/InterObjectDeformableCollisionConstraint.hpp"
 #include "solver/constraint/AttachmentConstraint.hpp"
 #include "solver/constraint/NerveStretchConstraint.hpp"
 #include "solver/constraint/NerveBendingConstraint.hpp"
@@ -50,6 +51,7 @@ struct XPBDMeshObjectConstraintConfigurations
     using DevHydProjector = Solver::CombinedConstraintProjector<IsFirstOrder, Solver::DeviatoricConstraint, Solver::HydrostaticConstraint>;
     using StatCollProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
     using DefCollProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::DeformableDeformableCollisionConstraint>;
+    using InterObjCollProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::InterObjectDeformableCollisionConstraint>;
     using RigiCollProjector = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>;
     using AttProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::AttachmentConstraint>;
     using NerveStretchProjector = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveStretchConstraint>;
@@ -59,9 +61,9 @@ struct XPBDMeshObjectConstraintConfigurations
 
     // public typedefs represent XPBDMeshObject constraint configurations
     public:
-    using StableNeohookean = XPBDMeshObjectConstraintConfiguration<DevProjector, HydProjector, StatCollProjector, DefCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector, NerveTumorAdhesionProjector>;
-    using StableNeohookeanCombined = XPBDMeshObjectConstraintConfiguration<DevHydProjector, StatCollProjector, DefCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector, NerveTumorAdhesionProjector>;
-    using NerveOnly = XPBDMeshObjectConstraintConfiguration<StatCollProjector, DefCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector, NerveTumorAdhesionProjector>;
+    using StableNeohookean = XPBDMeshObjectConstraintConfiguration<DevProjector, HydProjector, StatCollProjector, DefCollProjector, InterObjCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector, NerveTumorAdhesionProjector>;
+    using StableNeohookeanCombined = XPBDMeshObjectConstraintConfiguration<DevHydProjector, StatCollProjector, DefCollProjector, InterObjCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector, NerveTumorAdhesionProjector>;
+    using NerveOnly = XPBDMeshObjectConstraintConfiguration<StatCollProjector, DefCollProjector, InterObjCollProjector, RigiCollProjector, AttProjector, NerveStretchProjector, NerveBendingProjector, NerveTumorAdhesionProjector>;
 
     using type_list = TypeList<StableNeohookean, StableNeohookeanCombined, NerveOnly>;
     using variant_type = std::variant<StableNeohookean, StableNeohookeanCombined, NerveOnly>;

@@ -131,6 +131,21 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
         int face_ind, const Real u, const Real v, const Real w) override;
 
+    /** Adds a collision constraint between a vertex on this object and a face on another deformable object.
+     * This is for INTER-OBJECT deformable-deformable collision (separate from self-collision).
+     * 
+     * @param vertex_index : the index of the vertex on THIS object that is colliding
+     * @param other_face_v1, other_face_v2, other_face_v3 : indices of the triangle vertices on the OTHER object
+     * @param other_v1_ptr, other_v2_ptr, other_v3_ptr : pointers to the triangle vertex positions on the OTHER object
+     * @param other_m1, other_m2, other_m3 : inverse masses of the triangle vertices on the OTHER object
+     * @returns a reference to the constraint projector that was added for the inter-object collision constraint
+     */
+    virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::InterObjectDeformableCollisionConstraint>>
+    addInterObjectCollisionConstraint(int vertex_index,
+                                      int other_face_v1, Real* other_v1_ptr, Real other_m1,
+                                      int other_face_v2, Real* other_v2_ptr, Real other_m2,
+                                      int other_face_v3, Real* other_v3_ptr, Real other_m3);
+
     /** Clears all collision constraints that are on this object. */
     virtual void clearCollisionConstraints() override;
 
@@ -176,6 +191,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
 
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() override;
+
+    /** Checks if inter-object collision detection is enabled for this object. */
+    virtual bool interObjectCollisionsEnabled() const override { return _inter_object_collisions; }
 
     /** === Querying the solver === */
 
@@ -259,6 +277,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      * TODO: is this necessary? Should XPBDMeshObjectConstraintConfiguration be a struct that can create the elastic constraints for the mesh?
      */
     XPBDMeshObjectConstraintConfigurationEnum _constraint_type;
+
+    /** Flag indicating if inter-object collision detection is enabled for this object */
+    bool _inter_object_collisions = false;  // default to false
 
     /** The XPBD solver. Responsible for iterating through constraints and computing the XPBD positional updates.
      * The XPBD projection is implemented in ConstraintProjector. The solver is just responsible for iterating/aggregating and 

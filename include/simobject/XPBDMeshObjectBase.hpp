@@ -12,6 +12,7 @@
 #include "solver/xpbd_projector/ConstraintProjectorReference.hpp"
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
+#include "solver/constraint/InterObjectDeformableCollisionConstraint.hpp"
 #include "solver/constraint/AttachmentConstraint.hpp"
 
 #include "geometry/DeformableMeshSDF.hpp"
@@ -162,6 +163,24 @@ public:
     virtual Solver::ConstraintProjectorReference<Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>>
     addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
         int face_ind, const Real u, const Real v, const Real w) = 0;
+
+    /** Adds a collision constraint between a vertex on this object and a face on another deformable object.
+     * This is for INTER-OBJECT deformable-deformable collision (separate from self-collision).
+     * 
+     * @param vertex_index : the index of the vertex on THIS object that is colliding
+     * @param other_face_v1, other_face_v2, other_face_v3 : indices of the triangle vertices on the OTHER object
+     * @param other_v1_ptr, other_v2_ptr, other_v3_ptr : pointers to the triangle vertex positions on the OTHER object
+     * @param other_m1, other_m2, other_m3 : inverse masses of the triangle vertices on the OTHER object
+     * @returns a reference to the constraint projector that was added for the inter-object collision constraint
+     */
+    virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::InterObjectDeformableCollisionConstraint>>
+    addInterObjectCollisionConstraint(int vertex_index,
+                                      int other_face_v1, Real* other_v1_ptr, Real other_m1,
+                                      int other_face_v2, Real* other_v2_ptr, Real other_m2,
+                                      int other_face_v3, Real* other_v3_ptr, Real other_m3) = 0;
+
+    /** Checks if inter-object collision detection is enabled for this object. */
+    virtual bool interObjectCollisionsEnabled() const = 0;
 
     /** Clears all collision constraints that are on this object. */
     virtual void clearCollisionConstraints() = 0;

@@ -65,6 +65,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
         // extract parameters
         _extractParameter("self-collisions", node, _self_collisions);
+        _extractParameter("inter-object-collisions", node, _inter_object_collisions);
         _extractParameter("num-solver-iters", node, _num_solver_iters);
         _extractParameter("num-local-collision-iters", node, _num_local_collision_iters);
         _extractParameterWithOptions("solver-type", node, _solve_type, SOLVER_TYPE_OPTIONS());
@@ -83,7 +84,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
                                     const std::vector<std::string>& mat_names, const std::optional<std::string>& element_classes_filename,
 
-                                    bool self_collisions, int num_solver_iters, int num_local_collision_iters,
+                                    bool self_collisions, bool inter_object_collisions, int num_solver_iters, int num_local_collision_iters,
                                     XPBDObjectSolverTypeEnum solver_type, XPBDMeshObjectConstraintConfigurationEnum constraint_type,                   // XPBDMeshObject params
                                     XPBDSolverResidualPolicyEnum residual_policy,
                                 
@@ -95,6 +96,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         _element_classes_filename.value = element_classes_filename;
 
         _self_collisions.value = self_collisions;
+        _inter_object_collisions.value = inter_object_collisions;
         _num_solver_iters.value = num_solver_iters;
         _num_local_collision_iters.value = num_local_collision_iters;
         _solve_type.value = solver_type;
@@ -106,6 +108,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
 
     // Getters
     bool selfCollisions() const { return _self_collisions.value; }
+    bool interObjectCollisions() const { return _inter_object_collisions.value; }
     int numSolverIters() const { return _num_solver_iters.value; }
     int numLocalCollisionIters() const { return _num_local_collision_iters.value; }
     XPBDObjectSolverTypeEnum solverType() const { return _solve_type.value; }
@@ -119,6 +122,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     protected:
     // Parameters
     ConfigParameter<bool> _self_collisions = ConfigParameter<bool>(false);
+    ConfigParameter<bool> _inter_object_collisions = ConfigParameter<bool>(false);
     ConfigParameter<int> _num_solver_iters = ConfigParameter<int>(1);
     ConfigParameter<int> _num_local_collision_iters = ConfigParameter<int>(0);
     ConfigParameter<XPBDObjectSolverTypeEnum> _solve_type = ConfigParameter<XPBDObjectSolverTypeEnum>(XPBDObjectSolverTypeEnum::GAUSS_SEIDEL);

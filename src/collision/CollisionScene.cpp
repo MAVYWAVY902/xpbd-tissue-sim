@@ -111,9 +111,161 @@ void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPB
 }
 
 template <bool IsFirstOrder>
-void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* /*xpbd_mesh_obj1*/, Sim::XPBDMeshObject_Base_<IsFirstOrder>* /*xpbd_mesh_obj2*/)
+void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj2)
 {
-    // deformable-deformable collision not supported
+    // Check if inter-object collision detection is enabled for BOTH objects
+    if (!xpbd_mesh_obj1->interObjectCollisionsEnabled() || !xpbd_mesh_obj2->interObjectCollisionsEnabled())
+    {
+        return; // Skip collision detection if either object has it disabled
+    }
+
+    // Inter-object deformable-deformable collision detection
+    // Strategy: Check vertices of obj1 against faces of obj2, and vice versa
+    
+    const Geometry::Mesh* mesh1 = xpbd_mesh_obj1->mesh();
+    const Geometry::Mesh* mesh2 = xpbd_mesh_obj2->mesh();
+    
+    const Geometry::Mesh::FacesMat& faces2 = mesh2->faces();
+    
+    // Part 1: Check vertices of object1 against faces of object2
+    for (int v_idx = 0; v_idx < mesh1->numVertices(); v_idx++)
+    {
+        // Only check surface vertices for efficiency
+        if (!mesh1->vertexOnSurface(v_idx))
+            continue;
+            
+        const Vec3r& vertex1 = mesh1->vertex(v_idx);
+        
+        // Check this vertex against all faces of object2
+        for (int face_idx = 0; face_idx < faces2.cols(); face_idx++)
+        {
+            const Eigen::Vector3i& face = faces2.col(face_idx);
+            const Vec3r& p1 = mesh2->vertex(face[0]);
+            const Vec3r& p2 = mesh2->vertex(face[1]);
+            const Vec3r& p3 = mesh2->vertex(face[2]);
+            
+            // Compute triangle normal
+            const Vec3r edge1 = p2 - p1;
+            const Vec3r edge2 = p3 - p1;
+            const Vec3r normal = edge1.cross(edge2);
+            const Real normal_length = normal.norm();
+            
+            if (normal_length < 1e-10)
+                continue; // Degenerate triangle
+                
+            const Vec3r normal_normalized = normal / normal_length;
+            
+            // Compute signed distance from vertex to triangle plane
+            const Vec3r to_vertex = vertex1 - p1;
+            const Real signed_distance = to_vertex.dot(normal_normalized);
+            
+            // Collision threshold - vertex must be very close to the plane
+            const Real collision_threshold = 1e-3; // 1mm
+            
+            if (std::abs(signed_distance) > collision_threshold)
+                continue;
+            
+            // Project vertex onto triangle plane
+            const Vec3r projected_point = vertex1 - signed_distance * normal_normalized;
+            
+            // Compute barycentric coordinates to check if point is inside triangle
+            const auto [u, v, w] = GeometryUtils::barycentricCoords(projected_point, p1, p2, p3);
+            
+            // Check if point is inside triangle (all barycentric coords should be >= 0 and sum to 1)
+            const Real bary_epsilon = -0.1; // Allow slight outside for robustness
+            if (u >= bary_epsilon && v >= bary_epsilon && w >= bary_epsilon)
+            {
+                // Collision detected! Create inter-object collision constraint
+                // Get pointers and masses from object2's face vertices
+                Real* p1_ptr = mesh2->vertexPointer(face[0]);
+                Real* p2_ptr = mesh2->vertexPointer(face[1]);
+                Real* p3_ptr = mesh2->vertexPointer(face[2]);
+                
+                Real m1 = xpbd_mesh_obj2->vertexConstraintInertia(face[0]);
+                Real m2 = xpbd_mesh_obj2->vertexConstraintInertia(face[1]);
+                Real m3 = xpbd_mesh_obj2->vertexConstraintInertia(face[2]);
+                
+                // Add constraint: vertex from obj1 colliding with face from obj2
+                xpbd_mesh_obj1->addInterObjectCollisionConstraint(
+                    v_idx,                          // Vertex index from THIS object (obj1)
+                    face[0], p1_ptr, m1,           // Face vertex 1 from OTHER object (obj2)
+                    face[1], p2_ptr, m2,           // Face vertex 2 from OTHER object (obj2)
+                    face[2], p3_ptr, m3            // Face vertex 3 from OTHER object (obj2)
+                );
+            }
+        }
+    }
+    
+    // Part 2: Check vertices of object2 against faces of object1 (symmetric)
+    const Geometry::Mesh::FacesMat& faces1 = mesh1->faces();
+    
+    for (int v_idx = 0; v_idx < mesh2->numVertices(); v_idx++)
+    {
+        // Only check surface vertices for efficiency
+        if (!mesh2->vertexOnSurface(v_idx))
+            continue;
+            
+        const Vec3r& vertex2 = mesh2->vertex(v_idx);
+        
+        // Check this vertex against all faces of object1
+        for (int face_idx = 0; face_idx < faces1.cols(); face_idx++)
+        {
+            const Eigen::Vector3i& face = faces1.col(face_idx);
+            const Vec3r& p1 = mesh1->vertex(face[0]);
+            const Vec3r& p2 = mesh1->vertex(face[1]);
+            const Vec3r& p3 = mesh1->vertex(face[2]);
+            
+            // Compute triangle normal
+            const Vec3r edge1 = p2 - p1;
+            const Vec3r edge2 = p3 - p1;
+            const Vec3r normal = edge1.cross(edge2);
+            const Real normal_length = normal.norm();
+            
+            if (normal_length < 1e-10)
+                continue; // Degenerate triangle
+                
+            const Vec3r normal_normalized = normal / normal_length;
+            
+            // Compute signed distance from vertex to triangle plane
+            const Vec3r to_vertex = vertex2 - p1;
+            const Real signed_distance = to_vertex.dot(normal_normalized);
+            
+            // Collision threshold
+            const Real collision_threshold = 1e-3; // 1mm
+            
+            if (std::abs(signed_distance) > collision_threshold)
+                continue;
+            
+            // Project vertex onto triangle plane
+            const Vec3r projected_point = vertex2 - signed_distance * normal_normalized;
+            
+            // Compute barycentric coordinates
+            const auto [u, v, w] = GeometryUtils::barycentricCoords(projected_point, p1, p2, p3);
+            
+            // Check if point is inside triangle
+            const Real bary_epsilon = -0.1;
+            if (u >= bary_epsilon && v >= bary_epsilon && w >= bary_epsilon)
+            {
+                // Collision detected! Create inter-object collision constraint
+                // Get pointers and masses from object1's face vertices
+                Real* p1_ptr = mesh1->vertexPointer(face[0]);
+                Real* p2_ptr = mesh1->vertexPointer(face[1]);
+                Real* p3_ptr = mesh1->vertexPointer(face[2]);
+                
+                Real m1 = xpbd_mesh_obj1->vertexConstraintInertia(face[0]);
+                Real m2 = xpbd_mesh_obj1->vertexConstraintInertia(face[1]);
+                Real m3 = xpbd_mesh_obj1->vertexConstraintInertia(face[2]);
+                
+                // Add constraint: vertex from obj2 colliding with face from obj1
+                xpbd_mesh_obj2->addInterObjectCollisionConstraint(
+                    v_idx,                          // Vertex index from THIS object (obj2)
+                    face[0], p1_ptr, m1,           // Face vertex 1 from OTHER object (obj1)
+                    face[1], p2_ptr, m2,           // Face vertex 2 from OTHER object (obj1)
+                    face[2], p3_ptr, m3            // Face vertex 3 from OTHER object (obj1)
+                );
+            }
+        }
+    }
 }
 
 template <bool IsFirstOrder>

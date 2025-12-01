@@ -48,9 +48,9 @@ objects:
 
     ## filename to load from (.msh is GMSH's volumetric mesh format, but if .obj or .stl is provided, will automatically turn surface mesh to volume mesh)
     # filename: "../resource/general/stanford_bunny_lowpoly.msh"
-    # filename: "../resource/cube/cube8.msh"
+    filename: "../resource/cube/cube8.msh"
     # filename: "../resource/general/single.msh"
-    filename: "../resource/cube/cube8_nerve_y.msh"
+    # filename: "../resource/cube/cube8_nerve_y.msh"
     # filename: "../resource/cube/cube16.msh"
     # filename: "../resource/beam/10x1x1_subdivided16_beam.msh"
     # filename: "../resource/tissue/Prostate.msh"
