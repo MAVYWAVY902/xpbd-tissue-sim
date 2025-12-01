@@ -96,8 +96,8 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config, b
             }
         });
         
-        // Set a much larger point size to make adhesion markers clearly visible
-        points_drawable->set_point_size(15.0f);
+        // Set a point size for rod vertices (green vertices)
+        points_drawable->set_point_size(5.0f);
     }
 
     if (config.drawEdges() || force_draw_edges)
