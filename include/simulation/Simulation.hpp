@@ -166,19 +166,29 @@ class Simulation
             if constexpr (std::is_convertible_v<ConfigType*, Config::XPBDMeshObjectConfig*>)
             {
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
+                {
+                    std::cout << "[sim] DEBUG: About to add object '" << obj_config->name() << "' to COLLISION scene (self-collision=" << obj_config->selfCollisions() << ")...\n" << std::flush;
                     _collision_scene->addObject(new_obj.get(), obj_config->selfCollisions());
+                    std::cout << "[sim] DEBUG: Successfully added '" << obj_config->name() << "' to collision scene!\n" << std::flush;
+                }
             }
             else
             {
                 // add the new object to the collision scene if collisions are enabled
                 if (obj_config->collisions() && !obj_config->graphicsOnly())
+                {
+                    std::cout << "[sim] DEBUG: About to add object '" << obj_config->name() << "' to COLLISION scene...\n" << std::flush;
                     _collision_scene->addObject(new_obj.get());
+                    std::cout << "[sim] DEBUG: Successfully added '" << obj_config->name() << "' to collision scene!\n" << std::flush;
+                }
             }
             
             // add the new object to the graphics scene to be visualized
             if (_graphics_scene)
             {
+                std::cout << "[sim] DEBUG: About to add object '" << obj_config->name() << "' to graphics scene...\n" << std::flush;
                 _graphics_scene->addObject(new_obj.get(), obj_config->renderConfig());
+                std::cout << "[sim] DEBUG: Successfully added '" << obj_config->name() << "' to graphics scene!\n" << std::flush;
             }
 
             // if we get to here, we have successfully created a new MeshObject of some kind

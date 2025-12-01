@@ -52,9 +52,12 @@ void GraspingSimulation::setup()
     
 
     // create an object to show where grasping is
+    std::cout << "[grasping] DEBUG: About to create cursor object...\n";
     Config::RigidSphereConfig cursor_config("cursor", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
         1.0, _grasp_radius, false, true, false, Config::ObjectRenderConfig());
+    std::cout << "[grasping] DEBUG: Calling _addObjectFromConfig for cursor...\n";
     _cursor = _addObjectFromConfig(&cursor_config);
+    std::cout << "[grasping] DEBUG: Cursor created successfully!\n";
     assert(_cursor);
 }
 

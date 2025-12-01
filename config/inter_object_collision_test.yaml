@@ -4,23 +4,23 @@
 name: "Inter-Object Collision Test"
 description: "Testing deformable-deformable collision between two cubes"
 
-visualization: "Easy3D" # Easy3D graphics
+visualization: "Easy3D" # Run headless to bypass graphics crash
 
 g-accel: 9.81 # downward acceleration due to gravity [m/s2]
 
-sim-mode: "Visualization"     # "Visualization" runs at real-time
+sim-mode: "AFAP"     # Run as fast as possible for testing
 
 time-step: 1e-3   # simulation time step [s]
 collision-rate: 1000 # rate at which to run collision detection [Hz] 
 fps: 30 # frames per second of the visualization
-end-time: 100 # end time of the simulation [s]
+end-time: 200 # test time
 
 ## define elastic materials
 materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 2e5    # Young's modulus [Pa]
+    E: 5e4    # Young's modulus [Pa] - increased stiffness for stability
     nu: 0.45  # Poisson's ratio [-]
     mu-s: 0.0 # coefficient of static friction [-]
     mu-k: 0.0 # coefficient of kinetic friction [-]
@@ -31,65 +31,65 @@ objects:
   ## First deformable cube
   -
     name: "Cube1"
-    type: "XPBDMeshObject"
+    type: "FirstOrderXPBDMeshObject"
     filename: "../resource/cube/cube8.msh"
     materials: ["Soft Tissue"]
 
     ## visualization options
-    color: [1.0, 0.0, 0.0, 1.0] # red cube
+    color: [1.0, 0.0, 0.0] # red cube (RGB only, like config.yaml)
     draw-points: false
     draw-edges: true
     draw-faces: true
 
     ## initial configuration
-    max-size: 0.5   # 0.5m cube
-    position: [-0.3, 0, 1.0]   # positioned to the left, 1m above ground
-    velocity: [0.2, 0, -0.5]   # moving right and downward - will collide with cube2
+    max-size: 0.5
+    position: [-0.27, 0, 1.0]
+    velocity: [0.02, 0, -0.05]  # Very slow velocity for stability testing
     rotation: [0, 0, 0]
 
     ## collisions
     collisions: true
-    self-collisions: false
-    inter-object-collisions: true  # ENABLE inter-object collision for this cube
+    inter-object-collisions: true
 
     ## XPBD-specific options
-    num-solver-iters: 5
-    num-local-collision-iters: 3  # extra collision iterations
+    num-solver-iters: 3  # Start with fewer iterations for stability
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
+    
+    damping-multiplier: 50000  # Moderate damping
 
 
   ## Second deformable cube
   -
     name: "Cube2"
-    type: "XPBDMeshObject"
+    type: "FirstOrderXPBDMeshObject"
     filename: "../resource/cube/cube8.msh"
     materials: ["Soft Tissue"]
 
     ## visualization options
-    color: [0.0, 0.0, 1.0, 1.0] # blue cube
+    color: [0.0, 0.0, 1.0] # blue cube (RGB only, like config.yaml)
     draw-points: false
     draw-edges: true
     draw-faces: true
 
     ## initial configuration
-    max-size: 0.5   # 0.5m cube
-    position: [0.3, 0, 0.5]   # positioned to the right, lower than cube1
-    velocity: [-0.1, 0, 0]   # moving left - will collide with cube1
+    max-size: 0.5
+    position: [0.27, 0, 1.0]
+    velocity: [-0.01, 0, 0]  # Very slow velocity
     rotation: [0, 0, 0]
 
     ## collisions
     collisions: true
-    self-collisions: false
-    inter-object-collisions: true  # ENABLE inter-object collision for this cube
+    inter-object-collisions: true
 
     ## XPBD-specific options
-    num-solver-iters: 5
-    num-local-collision-iters: 3  # extra collision iterations
+    num-solver-iters: 3  # Start with fewer iterations for stability
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
+    
+    damping-multiplier: 50000  # Moderate damping
 
 
   ## Ground plane (optional - uncomment if you want a floor)

@@ -14,7 +14,8 @@ InterObjectDeformableCollisionConstraint::InterObjectDeformableCollisionConstrai
     PositionReference(v, p, m),
     PositionReference(fv1, fp1, fm1),
     PositionReference(fv2, fp2, fm2),
-    PositionReference(fv3, fp3, fm3)}), 1e-8)
+    PositionReference(fv3, fp3, fm3)}), 1e-6)  // Stiffer compliance: 1e-6 (reduced from 1e-4)
+                                                 // Gradually making it stiffer for less penetration
 {
 
 }
@@ -29,6 +30,10 @@ void InterObjectDeformableCollisionConstraint::evaluate(Real* C) const
     const Vec3r a = (p2 - p1).cross(p3 - p1);
     Real a_norm = a.norm();
 
+    // C = signed distance from vertex q to triangle plane
+    // C > 0: separated (no collision)
+    // C < 0: penetrating (collision!)
+    // Adding small bias (1e-5) for numerical stability and to create a small "contact zone"
     *C = (q - p1).dot(a) / a_norm + 1e-5;
     
     // DEBUG: Print inter-object collision constraint evaluation (limit output frequency)

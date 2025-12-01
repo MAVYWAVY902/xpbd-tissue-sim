@@ -1262,9 +1262,10 @@ void Simulation::setup()
 
     // ==================== Read Physical Line("nerve_edge") from .msh and add NerveStretchConstraint ====================
     {
-        std::cout << "[DEBUG] *** ENTERING NERVE SECTION ***\n";
+        std::cout << "[DEBUG] *** ENTERING NERVE SECTION *** (line 1263)\n" << std::flush;
         
         // Read nerve configuration from YAML config instead of environment variables
+        std::cout << "[DEBUG] About to read nerve config from YAML...\n" << std::flush;
         const bool nerve_enabled = _config->nerveEnable();
         const bool nerve_stretch_enabled = _config->nerveStretchEnable();
         const bool nerve_bending_enabled = _config->nerveBendingEnable();

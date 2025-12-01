@@ -19,6 +19,10 @@ EmbreeScene::EmbreeScene()
 
     _ray_scene = rtcNewScene(_device);
     rtcSetSceneFlags(_ray_scene, RTC_SCENE_FLAG_DYNAMIC);
+    
+    // Reserve space to prevent vector reallocation which invalidates pointers stored in Embree callbacks
+    _embree_tet_mesh_geoms.reserve(10);  // Reserve space for up to 10 deformable objects
+    _embree_mesh_geoms.reserve(10);      // Reserve space for up to 10 rigid objects
 }
 
 EmbreeScene::~EmbreeScene()

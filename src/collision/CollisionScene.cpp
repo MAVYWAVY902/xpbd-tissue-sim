@@ -159,7 +159,7 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             const Vec3r to_vertex = vertex1 - p1;
             const Real signed_distance = to_vertex.dot(normal_normalized);
             
-            // Collision threshold - vertex must be very close to the plane
+            // Simple collision threshold - vertex must be close to the plane
             const Real collision_threshold = 1e-3; // 1mm
             
             if (std::abs(signed_distance) > collision_threshold)
@@ -230,7 +230,7 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             const Vec3r to_vertex = vertex2 - p1;
             const Real signed_distance = to_vertex.dot(normal_normalized);
             
-            // Collision threshold
+            // Simple collision threshold
             const Real collision_threshold = 1e-3; // 1mm
             
             if (std::abs(signed_distance) > collision_threshold)

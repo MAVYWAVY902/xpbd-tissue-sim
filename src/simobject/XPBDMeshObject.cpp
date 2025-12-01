@@ -55,8 +55,17 @@ XPBDMeshObject_Base_<IsFirstOrder>::XPBDMeshObject_Base_(const Simulation* sim, 
 template<bool IsFirstOrder>
 void XPBDMeshObject_Base_<IsFirstOrder>::createSDF()
 {
+    std::cout << "[sdf] DEBUG: createSDF() called for '" << this->name() << "'\n" << std::flush;
     if (!_sdf.has_value())
+    {
+        std::cout << "[sdf] DEBUG: Creating SDF (emplace)...\n" << std::flush;
         _sdf.emplace(this, _sim->embreeScene());
+        std::cout << "[sdf] DEBUG: SDF created successfully!\n" << std::flush;
+    }
+    else
+    {
+        std::cout << "[sdf] DEBUG: SDF already exists, skipping\n" << std::flush;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -80,6 +89,8 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
 
     // inter-object collision flag
     _inter_object_collisions = config->interObjectCollisions();
+    std::cout << "[xpbd] DEBUG: Object '" << config->name() << "' inter-object-collisions = " 
+              << (_inter_object_collisions ? "true" : "false") << "\n";
 
     // local collision iterations
     _num_local_collision_iters = config->numLocalCollisionIters();
@@ -113,7 +124,11 @@ Geometry::AABB XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintType
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::setup()
 {
+    std::cout << "[setup] DEBUG: Entering setup() for object '" << this->name() << "'\n";
+    
     loadAndConfigureMesh();
+    
+    std::cout << "[setup] DEBUG: After loadAndConfigureMesh() for '" << this->name() << "'\n";
 
     // add the class property to the element mesh, with default value 0
     tetMesh()->template addElementProperty<int>("class", 0);

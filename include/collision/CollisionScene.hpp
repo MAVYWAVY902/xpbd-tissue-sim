@@ -112,7 +112,9 @@ class CollisionScene
         _objects.template push_back<Sim::XPBDMeshObject_Base_<IsFirstOrder>*>(xpbd_obj);
 
         // add to EmbreeScene since collisions are enabled
+        std::cout << "[collision] DEBUG: About to add '" << xpbd_obj->name() << "' to Embree scene...\n" << std::flush;
         _embree_scene->addObject( (Sim::TetMeshObject*)xpbd_obj );  // explicitly cast to TetMeshObject* so the correct overload of addObject() is called
+        std::cout << "[collision] DEBUG: Successfully added '" << xpbd_obj->name() << "' to Embree scene!\n" << std::flush;
 
         if (self_collisions)
             _self_collision_objects.emplace_back(xpbd_obj);
