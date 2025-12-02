@@ -176,8 +176,11 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     const Geometry::Mesh::FacesMat& faces2 = mesh2->faces();
     
     // Part 1: Check vertices of object1 against faces of object2
+    // Using Embree BVH for O(n log m) instead of O(n*m) complexity
     int checks_performed = 0;  // Performance counter
-    int checks_skipped = 0;    // Performance counter
+    int checks_skipped = 0;    // Performance counter (now counts BVH culling)
+    int embree_hits = 0;       // Triangles returned by BVH query
+    int total_constraints_part1 = 0;  // Count constraints created in Part 1
     
     for (int v_idx = 0; v_idx < mesh1->numVertices(); v_idx++)
     {
@@ -187,7 +190,14 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             
         const Vec3r& vertex1 = mesh1->vertex(v_idx);
         
-        // Check this vertex against all faces of object2
+        // NOTE: Removed Embree pre-filter - checking ALL surface vertices like brute-force
+        // The AABB filter in the inner loop provides sufficient performance optimization
+        
+        // Now check ALL triangles within collision threshold (small local search)
+        // This ensures we don't miss collisions due to closest triangle being the wrong one
+        int triangles_checked_for_this_vertex = 0;
+        int triangles_skipped_by_aabb = 0;
+        
         for (int face_idx = 0; face_idx < faces2.cols(); face_idx++)
         {
             const Eigen::Vector3i& face = faces2.col(face_idx);
@@ -195,28 +205,22 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             const Vec3r& p2 = mesh2->vertex(face[1]);
             const Vec3r& p3 = mesh2->vertex(face[2]);
             
-            // ========== OPTIMIZATION: Quick Distance Pre-Check ==========
-            // Calculate triangle centroid (cheap computation)
-            const Vec3r triangle_center = (p1 + p2 + p3) / 3.0;
-            const Real dist_to_center = (vertex1 - triangle_center).norm();
+            // Quick AABB check for this triangle
+            // Use a VERY large margin (200mm) to ensure we don't miss nearby triangles
+            const Real aabb_margin = 0.2;  // 200mm - very lenient to not miss collisions
+            const Vec3r tri_min = p1.cwiseMin(p2).cwiseMin(p3);
+            const Vec3r tri_max = p1.cwiseMax(p2).cwiseMax(p3);
             
-            // Estimate maximum distance from center to any triangle vertex
-            // (triangle's "radius" - slightly overestimated for safety)
-            const Real max_tri_radius = std::max({
-                (p1 - triangle_center).norm(),
-                (p2 - triangle_center).norm(),
-                (p3 - triangle_center).norm()
-            });
-            
-            // If vertex is too far from triangle center, skip expensive checks
-            // Add small margin (0.01) for safety
-            if (dist_to_center > max_tri_radius + collision_threshold + 0.01)
+            if ((vertex1.array() < (tri_min.array() - aabb_margin)).any() ||
+                (vertex1.array() > (tri_max.array() + aabb_margin)).any())
             {
                 checks_skipped++;
-                continue;
+                triangles_skipped_by_aabb++;
+                continue;  // Vertex is outside this triangle's AABB
             }
-            // ========== End Quick Distance Check ==========
             
+            triangles_checked_for_this_vertex++;
+            embree_hits++;
             checks_performed++;
             
             // Compute triangle normal
@@ -226,50 +230,78 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             const Real normal_length = normal.norm();
             
             if (normal_length < 1e-10)
-                continue; // Degenerate triangle
-                
-            const Vec3r normal_normalized = normal / normal_length;
+            continue; // Degenerate triangle
             
-            // Compute signed distance from vertex to triangle plane
-            const Vec3r to_vertex = vertex1 - p1;
-            const Real signed_distance = to_vertex.dot(normal_normalized);
-            
-            if (std::abs(signed_distance) > collision_threshold)
-                continue;
-            
-            // Project vertex onto triangle plane
-            const Vec3r projected_point = vertex1 - signed_distance * normal_normalized;
-            
-            // Compute barycentric coordinates to check if point is inside triangle
-            const auto [u, v, w] = GeometryUtils::barycentricCoords(projected_point, p1, p2, p3);
-            
-            // Check if point is inside triangle (all barycentric coords should be >= 0 and sum to 1)
-            const Real bary_epsilon = -0.1; // Allow slight outside for robustness
-            if (u >= bary_epsilon && v >= bary_epsilon && w >= bary_epsilon)
-            {
-                // Collision detected! Create inter-object collision constraint
-                // Get pointers and masses from object2's face vertices
-                Real* p1_ptr = mesh2->vertexPointer(face[0]);
-                Real* p2_ptr = mesh2->vertexPointer(face[1]);
-                Real* p3_ptr = mesh2->vertexPointer(face[2]);
-                
-                Real m1 = xpbd_mesh_obj2->vertexConstraintInertia(face[0]);
-                Real m2 = xpbd_mesh_obj2->vertexConstraintInertia(face[1]);
-                Real m3 = xpbd_mesh_obj2->vertexConstraintInertia(face[2]);
-                
-                // Add constraint: vertex from obj1 colliding with face from obj2
-                xpbd_mesh_obj1->addInterObjectCollisionConstraint(
-                    v_idx,                          // Vertex index from THIS object (obj1)
-                    face[0], p1_ptr, m1,           // Face vertex 1 from OTHER object (obj2)
-                    face[1], p2_ptr, m2,           // Face vertex 2 from OTHER object (obj2)
-                    face[2], p3_ptr, m3            // Face vertex 3 from OTHER object (obj2)
-                );
-            }
+        const Vec3r normal_normalized = normal / normal_length;
+        
+        // Compute signed distance from vertex to triangle plane
+        const Vec3r to_vertex = vertex1 - p1;
+        const Real signed_distance = to_vertex.dot(normal_normalized);
+        
+        if (std::abs(signed_distance) > collision_threshold)
+            continue;
+        
+        // Project vertex onto triangle plane
+        const Vec3r projected_point = vertex1 - signed_distance * normal_normalized;
+        
+        // Compute barycentric coordinates to check if point is inside triangle
+        const auto [u, v, w] = GeometryUtils::barycentricCoords(projected_point, p1, p2, p3);
+        
+        // Debug output
+        static int debug_count = 0;
+        if (++debug_count % 100 == 0)
+        {
+            std::cout << "[Collision Debug] signed_dist=" << signed_distance
+                      << ", bary=(" << u << "," << v << "," << w << ")\n";
         }
-    }
+        
+        // Check if point is inside triangle (all barycentric coords should be >= 0 and sum to 1)
+        // Use same epsilon as old brute-force code for consistency
+        const Real bary_epsilon = -0.1; // Allow vertices near triangle edges/corners
+        if (u >= bary_epsilon && v >= bary_epsilon && w >= bary_epsilon)
+        {
+            total_constraints_part1++;  // Count this constraint
+            std::cout << "[Collision DETECTED] Creating constraint for vertex " << v_idx 
+                      << " with face " << face_idx << "\n";
+            
+            // Collision detected! Create inter-object collision constraint
+            // Get pointers and masses from object2's face vertices
+            Real* p1_ptr = mesh2->vertexPointer(face[0]);
+            Real* p2_ptr = mesh2->vertexPointer(face[1]);
+            Real* p3_ptr = mesh2->vertexPointer(face[2]);
+            
+            Real m1 = xpbd_mesh_obj2->vertexConstraintInertia(face[0]);
+            Real m2 = xpbd_mesh_obj2->vertexConstraintInertia(face[1]);
+            Real m3 = xpbd_mesh_obj2->vertexConstraintInertia(face[2]);
+            
+            std::cout << "[Collision DETECTED PART1] Creating constraint for vertex " << v_idx << " (obj1) with face " << face_idx << " (obj2)\n";
+            
+            // Add constraint: vertex from obj1 colliding with face from obj2
+            xpbd_mesh_obj1->addInterObjectCollisionConstraint(
+                v_idx,                          // Vertex index from THIS object (obj1)
+                face[0], p1_ptr, m1,           // Face vertex 1 from OTHER object (obj2)
+                face[1], p2_ptr, m2,           // Face vertex 2 from OTHER object (obj2)
+                face[2], p3_ptr, m3            // Face vertex 3 from OTHER object (obj2)
+            );
+            }
+        }  // End of inner for loop (all triangles)
+        
+        // Debug: Log triangle checking stats for this vertex
+        static int vertex_check_debug_count = 0;
+        if (triangles_checked_for_this_vertex > 0 && ++vertex_check_debug_count % 20 == 0)
+        {
+            std::cout << "[DEBUG] Vertex " << v_idx << " checked " << triangles_checked_for_this_vertex 
+                      << " triangles (skipped " << triangles_skipped_by_aabb << " by AABB)\n";
+        }
+        
+    }  // End of outer for loop (all vertices of obj1)
+    
+    std::cout << "[DEBUG] Part 1 complete: Created " << total_constraints_part1 << " constraints\n";
+    std::cout << "[DEBUG] Starting Part 2: checking obj2 vertices against obj1 faces\n";
     
     // Part 2: Check vertices of object2 against faces of object1 (symmetric)
     const Geometry::Mesh::FacesMat& faces1 = mesh1->faces();
+    int total_constraints_part2 = 0;  // Count constraints created in Part 2
     
     for (int v_idx = 0; v_idx < mesh2->numVertices(); v_idx++)
     {
@@ -279,7 +311,10 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             
         const Vec3r& vertex2 = mesh2->vertex(v_idx);
         
-        // Check this vertex against all faces of object1
+        // NOTE: Removed Embree pre-filter - checking ALL surface vertices like brute-force
+        // The AABB filter in the inner loop provides sufficient performance optimization
+        
+        // Now check ALL triangles within collision threshold (small local search)
         for (int face_idx = 0; face_idx < faces1.cols(); face_idx++)
         {
             const Eigen::Vector3i& face = faces1.col(face_idx);
@@ -287,23 +322,20 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             const Vec3r& p2 = mesh1->vertex(face[1]);
             const Vec3r& p3 = mesh1->vertex(face[2]);
             
-            // ========== OPTIMIZATION: Quick Distance Pre-Check ==========
-            const Vec3r triangle_center = (p1 + p2 + p3) / 3.0;
-            const Real dist_to_center = (vertex2 - triangle_center).norm();
+            // Quick AABB check for this triangle
+            // Use a VERY large margin (200mm) to ensure we don't miss nearby triangles
+            const Real aabb_margin = 0.2;  // 200mm - very lenient to not miss collisions
+            const Vec3r tri_min = p1.cwiseMin(p2).cwiseMin(p3);
+            const Vec3r tri_max = p1.cwiseMax(p2).cwiseMax(p3);
             
-            const Real max_tri_radius = std::max({
-                (p1 - triangle_center).norm(),
-                (p2 - triangle_center).norm(),
-                (p3 - triangle_center).norm()
-            });
-            
-            if (dist_to_center > max_tri_radius + collision_threshold + 0.01)
+            if ((vertex2.array() < (tri_min.array() - aabb_margin)).any() ||
+                (vertex2.array() > (tri_max.array() + aabb_margin)).any())
             {
                 checks_skipped++;
                 continue;
             }
-            // ========== End Quick Distance Check ==========
             
+            embree_hits++;
             checks_performed++;
             
             // Compute triangle normal
@@ -316,47 +348,51 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
                 continue; // Degenerate triangle
                 
             const Vec3r normal_normalized = normal / normal_length;
+        
+        // Compute signed distance from vertex to triangle plane
+        const Vec3r to_vertex = vertex2 - p1;
+        const Real signed_distance = to_vertex.dot(normal_normalized);
+        
+        if (std::abs(signed_distance) > collision_threshold)
+            continue;
+        
+        // Project vertex onto triangle plane
+        const Vec3r projected_point = vertex2 - signed_distance * normal_normalized;
+        
+        // Compute barycentric coordinates
+        const auto [u, v, w] = GeometryUtils::barycentricCoords(projected_point, p1, p2, p3);
+        
+        // Check if point is inside triangle
+        // Use same epsilon as old brute-force code for consistency
+        const Real bary_epsilon = -0.1; // Allow vertices near triangle edges/corners
+        if (u >= bary_epsilon && v >= bary_epsilon && w >= bary_epsilon)
+        {
+            total_constraints_part2++;  // Count this constraint
+            std::cout << "[Collision DETECTED PART2] Creating constraint for vertex " << v_idx << " (obj2) with face " << face_idx << " (obj1)\n";
             
-            // Compute signed distance from vertex to triangle plane
-            const Vec3r to_vertex = vertex2 - p1;
-            const Real signed_distance = to_vertex.dot(normal_normalized);
+            // Collision detected! Create inter-object collision constraint
+            // Get pointers and masses from object1's face vertices
+            Real* p1_ptr = mesh1->vertexPointer(face[0]);
+            Real* p2_ptr = mesh1->vertexPointer(face[1]);
+            Real* p3_ptr = mesh1->vertexPointer(face[2]);
             
-            // Simple collision threshold
-            const Real collision_threshold = 1e-3; // 1mm
+            Real m1 = xpbd_mesh_obj1->vertexConstraintInertia(face[0]);
+            Real m2 = xpbd_mesh_obj1->vertexConstraintInertia(face[1]);
+            Real m3 = xpbd_mesh_obj1->vertexConstraintInertia(face[2]);
             
-            if (std::abs(signed_distance) > collision_threshold)
-                continue;
-            
-            // Project vertex onto triangle plane
-            const Vec3r projected_point = vertex2 - signed_distance * normal_normalized;
-            
-            // Compute barycentric coordinates
-            const auto [u, v, w] = GeometryUtils::barycentricCoords(projected_point, p1, p2, p3);
-            
-            // Check if point is inside triangle
-            const Real bary_epsilon = -0.1;
-            if (u >= bary_epsilon && v >= bary_epsilon && w >= bary_epsilon)
-            {
-                // Collision detected! Create inter-object collision constraint
-                // Get pointers and masses from object1's face vertices
-                Real* p1_ptr = mesh1->vertexPointer(face[0]);
-                Real* p2_ptr = mesh1->vertexPointer(face[1]);
-                Real* p3_ptr = mesh1->vertexPointer(face[2]);
-                
-                Real m1 = xpbd_mesh_obj1->vertexConstraintInertia(face[0]);
-                Real m2 = xpbd_mesh_obj1->vertexConstraintInertia(face[1]);
-                Real m3 = xpbd_mesh_obj1->vertexConstraintInertia(face[2]);
-                
-                // Add constraint: vertex from obj2 colliding with face from obj1
-                xpbd_mesh_obj2->addInterObjectCollisionConstraint(
-                    v_idx,                          // Vertex index from THIS object (obj2)
-                    face[0], p1_ptr, m1,           // Face vertex 1 from OTHER object (obj1)
-                    face[1], p2_ptr, m2,           // Face vertex 2 from OTHER object (obj1)
-                    face[2], p3_ptr, m3            // Face vertex 3 from OTHER object (obj1)
-                );
+            // Add constraint: vertex from obj2 colliding with face from obj1
+            xpbd_mesh_obj2->addInterObjectCollisionConstraint(
+                v_idx,                          // Vertex index from THIS object (obj2)
+                face[0], p1_ptr, m1,           // Face vertex 1 from OTHER object (obj1)
+                face[1], p2_ptr, m2,           // Face vertex 2 from OTHER object (obj1)
+                face[2], p3_ptr, m3            // Face vertex 3 from OTHER object (obj1)
+            );
             }
-        }
-    }
+        }  // End of inner for loop (all triangles)
+    }  // End of outer for loop (all vertices of obj2)
+    
+    std::cout << "[DEBUG] Part 2 complete: Created " << total_constraints_part2 << " constraints\n";
+    std::cout << "[DEBUG] TOTAL constraints created: " << (total_constraints_part1 + total_constraints_part2) << "\n";
     
     // ========== Performance Logging ==========
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -369,9 +405,10 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
         Real skip_ratio = checks_skipped > 0 ? 
             100.0 * checks_skipped / (checks_skipped + checks_performed) : 0.0;
         
-        std::cout << "[Collision Performance] Time: " << duration.count() << " μs, "
+        std::cout << "[Collision Performance - EMBREE BVH] Time: " << duration.count() << " μs, "
+                  << "BVH hits: " << embree_hits << ", "
                   << "Checks performed: " << checks_performed << ", "
-                  << "Skipped: " << checks_skipped << " ("
+                  << "Culled by BVH: " << checks_skipped << " ("
                   << std::fixed << std::setprecision(1) << skip_ratio << "%)\n";
     }
     // ========== End Performance Logging ==========

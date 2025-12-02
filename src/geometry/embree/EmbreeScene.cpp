@@ -370,6 +370,40 @@ std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, Real
     return point_query_data.result;
 }
 
+std::set<EmbreeHit> EmbreeScene::interObjectCollisionQuery(const Vec3r& point, const Sim::TetMeshObject* target_obj, Real search_radius) const
+{
+    // Get the geometry for the target object
+    const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(target_obj);
+    
+    // Set up the query data
+    EmbreeInterObjectCollisionQueryUserData query_data;
+    query_data.obj_ptr = target_obj;
+    query_data.geom = geom;
+    query_data.search_radius = search_radius;
+    
+    // Convert query point to float array
+    float p[3];
+    p[0] = point[0]; 
+    p[1] = point[1]; 
+    p[2] = point[2];
+    query_data.point = p;
+
+    // Set up the Embree point query with search radius
+    RTCPointQuery query;
+    query.x = p[0];
+    query.y = p[1];
+    query.z = p[2];
+    query.radius = search_radius;  // Search within this radius
+
+    // Execute the query on the global ray scene (which contains all objects' surface triangles)
+    // The callback will filter to only process triangles from the target object
+    RTCPointQueryContext context;
+    rtcInitPointQueryContext(&context);
+    rtcPointQuery(_ray_scene, &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangleInterObject, &query_data);
+
+    return query_data.result;
+}
+
 std::set<EmbreeHit> EmbreeScene::tetMeshSelfCollisionQuery(int vertex_index, const Sim::TetMeshObject* obj_ptr) const
 {
     const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(obj_ptr);

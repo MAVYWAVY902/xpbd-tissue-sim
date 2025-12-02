@@ -134,6 +134,17 @@ class EmbreeScene
      */
     std::set<EmbreeHit> tetMeshSelfCollisionQuery(int vertex_index, const Sim::TetMeshObject* obj_ptr) const;
 
+    /** Returns all the surface triangles in a tetrahedral mesh that are close to the specified point.
+     * Used for inter-object collision detection between two deformable meshes.
+     * This uses Embree's BVH spatial acceleration to quickly find nearby triangles.
+     * 
+     * @param point : the query point (vertex from another object)
+     * @param target_obj : a pointer to the TetMeshObject to query against
+     * @param search_radius : the maximum distance to search for nearby triangles
+     * @returns the set of surface triangles near the query point (can be empty)
+     */
+    std::set<EmbreeHit> interObjectCollisionQuery(const Vec3r& point, const Sim::TetMeshObject* target_obj, Real search_radius = 1e-3) const;
+
     private:
     EmbreeHit _closestPointQuery(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const;
     EmbreeHit _closestPointQueryUndeformed(const Vec3r& point, const Sim::MeshObject* obj_ptr, const EmbreeMeshGeometry* geom) const;

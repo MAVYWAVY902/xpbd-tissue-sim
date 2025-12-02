@@ -200,6 +200,96 @@ bool EmbreeMeshGeometry::pointQueryFuncTriangle(RTCPointQueryFunctionArguments *
     return false;
 }
 
+bool EmbreeMeshGeometry::pointQueryFuncTriangleInterObject(RTCPointQueryFunctionArguments *args)
+{
+    // Safety check: validate args and userPtr
+    if (!args || !args->userPtr)
+        return false;
+    
+    // Get user data containing the query parameters
+    EmbreeInterObjectCollisionQueryUserData *userData = static_cast<EmbreeInterObjectCollisionQueryUserData *>(args->userPtr);
+    
+    // Safety check: validate userData fields
+    if (!userData->geom || !userData->point)
+        return false;
+    
+    // Get the target geometry we're searching for (from our query user data)
+    const EmbreeTetMeshGeometry *geom = userData->geom;
+
+    // IMPORTANT: Only consider triangles from the target geometry
+    // args->geomID is the ID of the geometry that Embree found in the BVH traversal
+    // We only want hits from the target object, not from other objects in the scene
+    if (args->geomID != geom->meshGeomID())
+        return false;
+
+    // Safety check: validate primID is within bounds
+    // Each TetMeshObject has a surface mesh - check primitive index is valid
+    if (args->primID < 0)
+        return false;
+    
+    // Now safe to access geometry data since we confirmed geomID matches
+    const int *indices = geom->faceIndices() + 3 * args->primID;
+    const float *v1 = geom->vertices() + 3 * indices[0];
+    const float *v2 = geom->vertices() + 3 * indices[1];
+    const float *v3 = geom->vertices() + 3 * indices[2];
+
+    const float *point = userData->point;
+    
+    // Calculate point-to-triangle distance WITHOUT using Eigen::Map to avoid alignment issues
+    // Use simple vector math with raw floats
+    
+    // Vector from v1 to point
+    float v1p[3] = {point[0] - v1[0], point[1] - v1[1], point[2] - v1[2]};
+    
+    // Triangle edges
+    float edge1[3] = {v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]};
+    float edge2[3] = {v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2]};
+    
+    // Triangle normal (edge1 × edge2)
+    float normal[3] = {
+        edge1[1] * edge2[2] - edge1[2] * edge2[1],
+        edge1[2] * edge2[0] - edge1[0] * edge2[2],
+        edge1[0] * edge2[1] - edge1[1] * edge2[0]
+    };
+    
+    float normal_len = std::sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2]);
+    if (normal_len < 1e-10f)
+        return false; // Degenerate triangle
+    
+    // Normalize
+    normal[0] /= normal_len;
+    normal[1] /= normal_len;
+    normal[2] /= normal_len;
+    
+    // Distance from point to triangle plane
+    float plane_dist = std::abs(v1p[0]*normal[0] + v1p[1]*normal[1] + v1p[2]*normal[2]);
+    
+    // Quick rejection: if distance to plane is already beyond search radius, skip
+    if (plane_dist > userData->search_radius)
+        return false;
+    
+    // For a more accurate check, we should project to triangle and check barycentric coords,
+    // but for BVH culling purposes, plane distance is a good conservative estimate.
+    // The actual geometric validation will happen in the collision detection code.
+    const float d = plane_dist;
+
+    // Add all triangles within search radius (not just the closest one)
+    if (d <= userData->search_radius)
+    {
+        EmbreeHit hit;
+        hit.obj = reinterpret_cast<const Sim::MeshObject*>(userData->obj_ptr);
+        hit.prim_index = args->primID;
+        // For BVH queries, we don't need exact hit point - just the primitive index
+        // The collision detection code will recalculate the exact geometry
+        hit.hit_point[0] = 0.0;
+        hit.hit_point[1] = 0.0;
+        hit.hit_point[2] = 0.0;
+        userData->result.insert(hit);
+    }
+
+    return false; // Continue traversal to find all triangles within radius
+}
+
 bool EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices(RTCPointQueryFunctionArguments *args)
 {
     // Get user data containing the query point and results vector

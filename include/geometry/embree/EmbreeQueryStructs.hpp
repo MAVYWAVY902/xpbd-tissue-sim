@@ -55,6 +55,17 @@ struct EmbreeClosestPointQueryUserData
     const float* point;
 };
 
+/** User-defined Embree point query data for inter-object collision queries.
+ * Returns all triangles within a specified radius of the query point. */
+struct EmbreeInterObjectCollisionQueryUserData
+{
+    const Sim::TetMeshObject* obj_ptr;  // pointer to target object being queried
+    const EmbreeTetMeshGeometry* geom;  // the geometry being queried
+    std::set<EmbreeHit> result;          // all triangles within search radius
+    const float* point;                  // the query point (vertex from another object)
+    float search_radius;                 // maximum distance to search
+};
+
 } // namespace Geometry
 
 #endif // __EMBREE_QUERY_STRUCTS_HPP

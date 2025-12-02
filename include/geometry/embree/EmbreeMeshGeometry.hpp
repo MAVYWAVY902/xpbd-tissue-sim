@@ -49,6 +49,10 @@ class EmbreeMeshGeometry
     static void intersectFuncTriangleInitialVertices(const RTCIntersectFunctionNArguments *args);
     static bool pointQueryFuncTriangleInitialVertices(RTCPointQueryFunctionArguments *args);
 
+    /** Point query function for inter-object collision detection.
+     * Returns all triangles within search radius of the query point. */
+    static bool pointQueryFuncTriangleInterObject(RTCPointQueryFunctionArguments *args);
+
     protected:
 
     static void _closestPointTriangle(const float p_in[3], const float v0[3], const float v1[3], const float v2[3], float p_out[3]);

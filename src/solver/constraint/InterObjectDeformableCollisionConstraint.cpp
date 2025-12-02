@@ -14,8 +14,7 @@ InterObjectDeformableCollisionConstraint::InterObjectDeformableCollisionConstrai
     PositionReference(v, p, m),
     PositionReference(fv1, fp1, fm1),
     PositionReference(fv2, fp2, fm2),
-    PositionReference(fv3, fp3, fm3)}), 1e-6)  // Stiffer compliance: 1e-6 (reduced from 1e-4)
-                                                 // Gradually making it stiffer for less penetration
+    PositionReference(fv3, fp3, fm3)}), 1e-8)  // Match compliance with DeformableDeformableCollisionConstraint
 {
 
 }
