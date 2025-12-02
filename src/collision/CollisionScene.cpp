@@ -14,6 +14,10 @@
 #include "geometry/VirtuosoArmSDF.hpp"
 #include "utils/GeometryUtils.hpp"
 
+#include <chrono>   // For performance monitoring
+#include <iostream> // For debug output
+#include <iomanip>  // For std::setprecision
+
 #ifdef HAVE_CUDA
 #include "gpu/resource/GPUResource.hpp"
 #include "gpu/resource/MeshGPUResource.hpp"
@@ -113,6 +117,9 @@ void CollisionScene::_collideObjectPair(Sim::VirtuosoArm* virtuoso_arm, Sim::XPB
 template <bool IsFirstOrder>
 void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj1, Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj2)
 {
+    // Performance monitoring (optional - can remove after testing)
+    auto start_time = std::chrono::high_resolution_clock::now();
+    
     // Check if inter-object collision detection is enabled for BOTH objects
     if (!xpbd_mesh_obj1->interObjectCollisionsEnabled() || !xpbd_mesh_obj2->interObjectCollisionsEnabled())
     {
@@ -125,9 +132,53 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     const Geometry::Mesh* mesh1 = xpbd_mesh_obj1->mesh();
     const Geometry::Mesh* mesh2 = xpbd_mesh_obj2->mesh();
     
+    // ========== OPTIMIZATION: AABB Broad-Phase Culling ==========
+    // Compute axis-aligned bounding boxes for both meshes
+    const Geometry::Mesh::VerticesMat& verts1 = mesh1->vertices();
+    const Geometry::Mesh::VerticesMat& verts2 = mesh2->vertices();
+    
+    Vec3r bbox1_min = verts1.rowwise().minCoeff();
+    Vec3r bbox1_max = verts1.rowwise().maxCoeff();
+    Vec3r bbox2_min = verts2.rowwise().minCoeff();
+    Vec3r bbox2_max = verts2.rowwise().maxCoeff();
+    
+    // Add safety margin equal to collision threshold
+    const Real collision_threshold = 1e-3; // 1mm
+    const Real margin = collision_threshold;
+    
+    // Check if bounding boxes overlap on all three axes
+    bool overlap_x = (bbox1_min[0] - margin) <= bbox2_max[0] && 
+                     (bbox1_max[0] + margin) >= bbox2_min[0];
+    bool overlap_y = (bbox1_min[1] - margin) <= bbox2_max[1] && 
+                     (bbox1_max[1] + margin) >= bbox2_min[1];
+    bool overlap_z = (bbox1_min[2] - margin) <= bbox2_max[2] && 
+                     (bbox1_max[2] + margin) >= bbox2_min[2];
+    
+    if (!overlap_x || !overlap_y || !overlap_z)
+    {
+        // Bounding boxes don't overlap - objects are far apart!
+        // Skip all expensive vertex-face checks
+        
+        // Performance logging (print every 1000th call to avoid spam)
+        static int skip_count = 0;
+        if (++skip_count % 1000 == 0)
+        {
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+            std::cout << "[AABB Culling] Objects separated - skipped collision check in " 
+                      << duration.count() << " μs (count: " << skip_count << ")\n";
+        }
+        
+        return;
+    }
+    // ========== End AABB Culling ==========
+    
     const Geometry::Mesh::FacesMat& faces2 = mesh2->faces();
     
     // Part 1: Check vertices of object1 against faces of object2
+    int checks_performed = 0;  // Performance counter
+    int checks_skipped = 0;    // Performance counter
+    
     for (int v_idx = 0; v_idx < mesh1->numVertices(); v_idx++)
     {
         // Only check surface vertices for efficiency
@@ -144,6 +195,30 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             const Vec3r& p2 = mesh2->vertex(face[1]);
             const Vec3r& p3 = mesh2->vertex(face[2]);
             
+            // ========== OPTIMIZATION: Quick Distance Pre-Check ==========
+            // Calculate triangle centroid (cheap computation)
+            const Vec3r triangle_center = (p1 + p2 + p3) / 3.0;
+            const Real dist_to_center = (vertex1 - triangle_center).norm();
+            
+            // Estimate maximum distance from center to any triangle vertex
+            // (triangle's "radius" - slightly overestimated for safety)
+            const Real max_tri_radius = std::max({
+                (p1 - triangle_center).norm(),
+                (p2 - triangle_center).norm(),
+                (p3 - triangle_center).norm()
+            });
+            
+            // If vertex is too far from triangle center, skip expensive checks
+            // Add small margin (0.01) for safety
+            if (dist_to_center > max_tri_radius + collision_threshold + 0.01)
+            {
+                checks_skipped++;
+                continue;
+            }
+            // ========== End Quick Distance Check ==========
+            
+            checks_performed++;
+            
             // Compute triangle normal
             const Vec3r edge1 = p2 - p1;
             const Vec3r edge2 = p3 - p1;
@@ -158,9 +233,6 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             // Compute signed distance from vertex to triangle plane
             const Vec3r to_vertex = vertex1 - p1;
             const Real signed_distance = to_vertex.dot(normal_normalized);
-            
-            // Simple collision threshold - vertex must be close to the plane
-            const Real collision_threshold = 1e-3; // 1mm
             
             if (std::abs(signed_distance) > collision_threshold)
                 continue;
@@ -215,6 +287,25 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             const Vec3r& p2 = mesh1->vertex(face[1]);
             const Vec3r& p3 = mesh1->vertex(face[2]);
             
+            // ========== OPTIMIZATION: Quick Distance Pre-Check ==========
+            const Vec3r triangle_center = (p1 + p2 + p3) / 3.0;
+            const Real dist_to_center = (vertex2 - triangle_center).norm();
+            
+            const Real max_tri_radius = std::max({
+                (p1 - triangle_center).norm(),
+                (p2 - triangle_center).norm(),
+                (p3 - triangle_center).norm()
+            });
+            
+            if (dist_to_center > max_tri_radius + collision_threshold + 0.01)
+            {
+                checks_skipped++;
+                continue;
+            }
+            // ========== End Quick Distance Check ==========
+            
+            checks_performed++;
+            
             // Compute triangle normal
             const Vec3r edge1 = p2 - p1;
             const Vec3r edge2 = p3 - p1;
@@ -266,6 +357,24 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             }
         }
     }
+    
+    // ========== Performance Logging ==========
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    
+    // Print performance stats every 1000th collision check
+    static int collision_count = 0;
+    if (++collision_count % 1000 == 0)
+    {
+        Real skip_ratio = checks_skipped > 0 ? 
+            100.0 * checks_skipped / (checks_skipped + checks_performed) : 0.0;
+        
+        std::cout << "[Collision Performance] Time: " << duration.count() << " μs, "
+                  << "Checks performed: " << checks_performed << ", "
+                  << "Skipped: " << checks_skipped << " ("
+                  << std::fixed << std::setprecision(1) << skip_ratio << "%)\n";
+    }
+    // ========== End Performance Logging ==========
 }
 
 template <bool IsFirstOrder>
