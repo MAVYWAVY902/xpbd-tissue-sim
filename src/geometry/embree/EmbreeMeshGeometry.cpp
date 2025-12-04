@@ -58,11 +58,55 @@ void EmbreeMeshGeometry::copyVertices()
 
 void EmbreeMeshGeometry::boundsFuncTriangle(const struct RTCBoundsFunctionArguments *args)
 {
+    // Safety check
+    if (!args || !args->geometryUserPtr)
+    {
+        std::cerr << "[FATAL] boundsFuncTriangle: null args or geometryUserPtr!" << std::endl;
+        return;
+    }
+    
     const EmbreeMeshGeometry *geom = static_cast<const EmbreeMeshGeometry *>(args->geometryUserPtr);
+    
+    // Validate geometry
+    if (!geom->mesh())
+    {
+        std::cerr << "[FATAL] boundsFuncTriangle: geometry has null mesh!" << std::endl;
+        return;
+    }
+    
+    // Bounds check primID
+    if (args->primID < 0 || args->primID >= geom->mesh()->numFaces())
+    {
+        std::cerr << "[FATAL] boundsFuncTriangle: invalid primID=" << args->primID 
+                  << " (numFaces=" << geom->mesh()->numFaces() << ")" << std::endl;
+        return;
+    }
+    
     const int *indices = geom->faceIndices() + 3 * args->primID;
-    const float *v1 = geom->vertices() + 3 * indices[0];
-    const float *v2 = geom->vertices() + 3 * indices[1];
-    const float *v3 = geom->vertices() + 3 * indices[2];
+    
+    // CRITICAL: Validate vertex indices before accessing vertex buffer
+    const int numVertices = geom->mesh()->numVertices();
+    if (indices[0] < 0 || indices[0] >= numVertices ||
+        indices[1] < 0 || indices[1] >= numVertices ||
+        indices[2] < 0 || indices[2] >= numVertices)
+    {
+        std::cerr << "[FATAL] boundsFuncTriangle: invalid vertex indices ["
+                  << indices[0] << ", " << indices[1] << ", " << indices[2] 
+                  << "] for primID=" << args->primID 
+                  << " (numVertices=" << numVertices << ")" << std::endl;
+        return;
+    }
+    
+    const float *verts = geom->vertices();
+    if (!verts)
+    {
+        std::cerr << "[FATAL] boundsFuncTriangle: null vertices pointer!" << std::endl;
+        return;
+    }
+    
+    const float *v1 = verts + 3 * indices[0];
+    const float *v2 = verts + 3 * indices[1];
+    const float *v3 = verts + 3 * indices[2];
 
     RTCBounds* bounds = args->bounds_o;
     bounds->lower_x = std::min({v1[0], v2[0], v3[0]});
@@ -183,7 +227,11 @@ bool EmbreeMeshGeometry::pointQueryFuncTriangle(RTCPointQueryFunctionArguments *
     float closest_point[3]; closest_point[0] = 0; closest_point[1] = 0; closest_point[2] = 0;
 
     _closestPointTriangle(point, v1, v2, v3, closest_point);
-    const float d = (Eigen::Map<const Eigen::Vector3f>(point) - Eigen::Map<const Eigen::Vector3f>(closest_point)).norm();
+    // Calculate distance using raw float arithmetic to avoid Eigen alignment issues
+    const float dx = point[0] - closest_point[0];
+    const float dy = point[1] - closest_point[1];
+    const float dz = point[2] - closest_point[2];
+    const float d = std::sqrt(dx*dx + dy*dy + dz*dz);
 
     if (d < args->query->radius)
     {
@@ -204,34 +252,85 @@ bool EmbreeMeshGeometry::pointQueryFuncTriangleInterObject(RTCPointQueryFunction
 {
     // Safety check: validate args and userPtr
     if (!args || !args->userPtr)
+    {
+        std::cerr << "[ERROR] pointQueryFuncTriangleInterObject: null args or userPtr" << std::endl;
         return false;
+    }
     
     // Get user data containing the query parameters
     EmbreeInterObjectCollisionQueryUserData *userData = static_cast<EmbreeInterObjectCollisionQueryUserData *>(args->userPtr);
     
     // Safety check: validate userData fields
-    if (!userData->geom || !userData->point)
+    if (!userData->geom || !userData->point || !userData->scene)
+    {
+        std::cerr << "[ERROR] pointQueryFuncTriangleInterObject: invalid userData fields - "
+                  << "geom=" << (void*)userData->geom 
+                  << " point=" << (void*)userData->point 
+                  << " scene=" << (void*)userData->scene << std::endl;
         return false;
+    }
     
     // Get the target geometry we're searching for (from our query user data)
-    const EmbreeTetMeshGeometry *geom = userData->geom;
-
-    // IMPORTANT: Only consider triangles from the target geometry
-    // args->geomID is the ID of the geometry that Embree found in the BVH traversal
-    // We only want hits from the target object, not from other objects in the scene
-    if (args->geomID != geom->meshGeomID())
+    const EmbreeTetMeshGeometry *target_geom = userData->geom;
+    
+    // Validate that target_geom has valid mesh pointer
+    if (!target_geom->mesh())
+    {
+        std::cerr << "[ERROR] pointQueryFuncTriangleInterObject: target_geom has null mesh pointer" << std::endl;
         return false;
+    }
+
+    // IMPORTANT: In the dedicated mesh scene, there's only one geometry with geomID=0
+    // So we can skip the geomID check and use target_geom directly
+    const EmbreeMeshGeometry *geom = target_geom;
 
     // Safety check: validate primID is within bounds
     // Each TetMeshObject has a surface mesh - check primitive index is valid
     if (args->primID < 0)
+    {
+        std::cerr << "[ERROR] pointQueryFuncTriangleInterObject: negative primID=" << args->primID << std::endl;
         return false;
+    }
     
-    // Now safe to access geometry data since we confirmed geomID matches
-    const int *indices = geom->faceIndices() + 3 * args->primID;
-    const float *v1 = geom->vertices() + 3 * indices[0];
-    const float *v2 = geom->vertices() + 3 * indices[1];
-    const float *v3 = geom->vertices() + 3 * indices[2];
+    // BOUNDS CHECK: Ensure primID is within valid range
+    const int num_faces = geom->mesh()->numFaces();
+    if (args->primID >= num_faces)
+    {
+        std::cerr << "[ERROR] primID " << args->primID << " >= numFaces " << num_faces << std::endl;
+        return false;
+    }
+    
+    // Validate faceIndices pointer
+    const int *indices = geom->faceIndices();
+    if (!indices)
+    {
+        std::cerr << "[ERROR] pointQueryFuncTriangleInterObject: null faceIndices pointer" << std::endl;
+        return false;
+    }
+    indices += 3 * args->primID;
+    
+    // BOUNDS CHECK: Ensure vertex indices are valid
+    const int num_vertices = geom->mesh()->numVertices();
+    if (indices[0] < 0 || indices[0] >= num_vertices ||
+        indices[1] < 0 || indices[1] >= num_vertices ||
+        indices[2] < 0 || indices[2] >= num_vertices)
+    {
+        std::cerr << "[ERROR] Invalid vertex indices [" << indices[0] << ", " << indices[1] << ", " << indices[2] 
+                  << "] for primID " << args->primID << " (numVertices=" << num_vertices << ")" << std::endl;
+        return false;
+    }
+    
+    // Validate vertices pointer
+    const float *verts = geom->vertices();
+    if (!verts)
+    {
+        std::cerr << "[ERROR] pointQueryFuncTriangleInterObject: null vertices pointer" << std::endl;
+        return false;
+    }
+    
+    const float *v1 = verts + 3 * indices[0];
+    const float *v2 = verts + 3 * indices[1];
+    const float *v3 = verts + 3 * indices[2];
 
     const float *point = userData->point;
     
@@ -313,7 +412,11 @@ bool EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices(RTCPointQueryFunc
     float closest_point[3]; closest_point[0] = 0; closest_point[1] = 0; closest_point[2] = 0;
 
     _closestPointTriangle(point, v1, v2, v3, closest_point);
-    const float d = (Eigen::Map<const Eigen::Vector3f>(point) - Eigen::Map<const Eigen::Vector3f>(closest_point)).norm();
+    // Calculate distance using raw float arithmetic to avoid Eigen alignment issues
+    const float dx = point[0] - closest_point[0];
+    const float dy = point[1] - closest_point[1];
+    const float dz = point[2] - closest_point[2];
+    const float d = std::sqrt(dx*dx + dy*dy + dz*dz);
 
     if (d < args->query->radius)
     {
@@ -333,11 +436,18 @@ bool EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices(RTCPointQueryFunc
 // adapted from: https://github.com/RenderKit/embree/blob/master/tutorials/common/math/closest_point.h
 void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_[3], const float b_[3], const float c_[3], float out_[3])
 {
-    Eigen::Map<const Eigen::Vector3f> p(p_);
-    Eigen::Map<const Eigen::Vector3f> a(a_);
-    Eigen::Map<const Eigen::Vector3f> b(b_);
-    Eigen::Map<const Eigen::Vector3f> c(c_);
-    Eigen::Map<Eigen::Vector3f> out(out_);
+    // Copy to aligned arrays to avoid Eigen alignment issues with Embree float pointers
+    alignas(16) float p_aligned[3] = {p_[0], p_[1], p_[2]};
+    alignas(16) float a_aligned[3] = {a_[0], a_[1], a_[2]};
+    alignas(16) float b_aligned[3] = {b_[0], b_[1], b_[2]};
+    alignas(16) float c_aligned[3] = {c_[0], c_[1], c_[2]};
+    alignas(16) float out_aligned[3];
+    
+    Eigen::Map<const Eigen::Vector3f> p(p_aligned);
+    Eigen::Map<const Eigen::Vector3f> a(a_aligned);
+    Eigen::Map<const Eigen::Vector3f> b(b_aligned);
+    Eigen::Map<const Eigen::Vector3f> c(c_aligned);
+    Eigen::Map<Eigen::Vector3f> out(out_aligned);
 
     const Eigen::Vector3f ab = b - a;
     const Eigen::Vector3f ac = c - a;
@@ -348,6 +458,7 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     if (d1 <= 0.f && d2 <= 0.f)
     {
         out = a;
+        out_[0] = out_aligned[0]; out_[1] = out_aligned[1]; out_[2] = out_aligned[2];
         return;
     }
 
@@ -357,6 +468,7 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     if (d3 >= 0.f && d4 <= d3)
     {
         out = b;
+        out_[0] = out_aligned[0]; out_[1] = out_aligned[1]; out_[2] = out_aligned[2];
         return;
     }
 
@@ -366,6 +478,7 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     if (d6 >= 0.f && d5 <= d6)
     {
         out = c;
+        out_[0] = out_aligned[0]; out_[1] = out_aligned[1]; out_[2] = out_aligned[2];
         return;
     }
 
@@ -374,6 +487,7 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     {
         const float v = d1 / (d1 - d3);
         out = a + v * ab;
+        out_[0] = out_aligned[0]; out_[1] = out_aligned[1]; out_[2] = out_aligned[2];
         return;
     }
     
@@ -382,6 +496,7 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     {
         const float v = d2 / (d2 - d6);
         out = a + v * ac;
+        out_[0] = out_aligned[0]; out_[1] = out_aligned[1]; out_[2] = out_aligned[2];
         return;
     }
     
@@ -390,6 +505,7 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     {
         const float v = (d4 - d3) / ((d4 - d3) + (d5 - d6));
         out = b + v * (c - b);
+        out_[0] = out_aligned[0]; out_[1] = out_aligned[1]; out_[2] = out_aligned[2];
         return;
     }
 
@@ -397,7 +513,11 @@ void EmbreeMeshGeometry::_closestPointTriangle(const float p_[3], const float a_
     const float v = vb * denom;
     const float w = vc * denom;
     out = a + v * ab + w * ac;
-    // out_[0] = out[0]; out_[1] = out[1]; out_[2] = out[2];
+    
+    // Copy result back to output array
+    out_[0] = out_aligned[0];
+    out_[1] = out_aligned[1];
+    out_[2] = out_aligned[2];
     return;
 }
 
@@ -409,9 +529,14 @@ bool EmbreeMeshGeometry::_rayTriangleIntersect(RTCRay* ray, RTCHit* hit,
     const Eigen::Vector3f ray_origin(ray->org_x, ray->org_y, ray->org_z);
     const Eigen::Vector3f ray_dir(ray->dir_x, ray->dir_y, ray->dir_z);
 
-    Eigen::Map<const Eigen::Vector3f> a(a_);
-    Eigen::Map<const Eigen::Vector3f> b(b_);
-    Eigen::Map<const Eigen::Vector3f> c(c_);
+    // Copy to aligned arrays to avoid Eigen alignment issues with Embree float pointers
+    alignas(16) float a_aligned[3] = {a_[0], a_[1], a_[2]};
+    alignas(16) float b_aligned[3] = {b_[0], b_[1], b_[2]};
+    alignas(16) float c_aligned[3] = {c_[0], c_[1], c_[2]};
+    
+    Eigen::Map<const Eigen::Vector3f> a(a_aligned);
+    Eigen::Map<const Eigen::Vector3f> b(b_aligned);
+    Eigen::Map<const Eigen::Vector3f> c(c_aligned);
 
     constexpr float epsilon = std::numeric_limits<float>::epsilon();
 

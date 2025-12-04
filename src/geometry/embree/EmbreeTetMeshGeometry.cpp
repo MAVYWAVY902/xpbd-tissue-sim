@@ -7,7 +7,7 @@ namespace Geometry
 {
 
 EmbreeTetMeshGeometry::EmbreeTetMeshGeometry(const Geometry::TetMesh* tet_mesh)
-    : EmbreeMeshGeometry(tet_mesh), _tet_mesh(tet_mesh), _tet_scene(nullptr)
+    : EmbreeMeshGeometry(tet_mesh), _tet_mesh(tet_mesh), _tet_scene(nullptr), _mesh_scene(nullptr)
 {
 }
 
@@ -15,6 +15,8 @@ EmbreeTetMeshGeometry::~EmbreeTetMeshGeometry()
 {
     if (_tet_scene)
         rtcReleaseScene(_tet_scene);
+    if (_mesh_scene)
+        rtcReleaseScene(_mesh_scene);
 }
 
 bool EmbreeTetMeshGeometry::isPointInTetrahedron(const float p[3], const float *v0, const float *v1, const float *v2, const float *v3)

@@ -12,6 +12,7 @@
 
 #include "simobject/MeshObject.hpp"
 
+#include <deque>
 #include <map>
 #include <set>
 
@@ -161,9 +162,15 @@ class EmbreeScene
     /** maps Embree geomID back to object pointers */
     std::map<unsigned, const Sim::MeshObject*> _geomID_to_mesh_obj;
 
-    /** Stores all the Embree user geometries */
-    std::vector<EmbreeMeshGeometry> _embree_mesh_geoms;
-    std::vector<EmbreeTetMeshGeometry> _embree_tet_mesh_geoms;
+    /** Stores all the Embree user geometries 
+     * Using std::deque instead of std::vector because deque guarantees that 
+     * references/pointers to elements remain valid when adding new elements.
+     * This is critical because we store pointers to these geometries in Embree
+     * callbacks via rtcSetGeometryUserData(), and vector reallocation would 
+     * invalidate those pointers causing segfaults.
+     */
+    std::deque<EmbreeMeshGeometry> _embree_mesh_geoms;
+    std::deque<EmbreeTetMeshGeometry> _embree_tet_mesh_geoms;
 
 };
 

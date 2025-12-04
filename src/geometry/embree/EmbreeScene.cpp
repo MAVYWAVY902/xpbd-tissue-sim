@@ -20,9 +20,8 @@ EmbreeScene::EmbreeScene()
     _ray_scene = rtcNewScene(_device);
     rtcSetSceneFlags(_ray_scene, RTC_SCENE_FLAG_DYNAMIC);
     
-    // Reserve space to prevent vector reallocation which invalidates pointers stored in Embree callbacks
-    _embree_tet_mesh_geoms.reserve(10);  // Reserve space for up to 10 deformable objects
-    _embree_mesh_geoms.reserve(10);      // Reserve space for up to 10 rigid objects
+    // Note: Using std::deque for geometry storage to ensure pointer stability
+    // deque does not invalidate pointers/references when adding elements (unlike vector)
 }
 
 EmbreeScene::~EmbreeScene()
@@ -72,13 +71,13 @@ void EmbreeScene::addObject(const Sim::MeshObject* obj_ptr)
     rtcSetGeometryUserPrimitiveCount(rtc_undeformed_geom, obj_ptr->mesh()->numFaces());
     rtcSetGeometryUserData(rtc_undeformed_geom, &geom);
 
-    // set custom callbacks
-    rtcSetGeometryBoundsFunction(rtc_geom, EmbreeMeshGeometry::boundsFuncTriangle, &geom);
+    // set custom callbacks - use nullptr for userPtr since callbacks use args->geometryUserPtr instead
+    rtcSetGeometryBoundsFunction(rtc_geom, EmbreeMeshGeometry::boundsFuncTriangle, nullptr);
     rtcSetGeometryIntersectFunction(rtc_geom, EmbreeMeshGeometry::intersectFuncTriangle);
     rtcSetGeometryPointQueryFunction(rtc_geom, EmbreeMeshGeometry::pointQueryFuncTriangle);
 
-    // set custom callbacks
-    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangleInitialVertices, &geom);
+    // set custom callbacks - use nullptr for userPtr since callbacks use args->geometryUserPtr instead
+    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangleInitialVertices, nullptr);
     rtcSetGeometryIntersectFunction(rtc_undeformed_geom, EmbreeMeshGeometry::intersectFuncTriangleInitialVertices);
     rtcSetGeometryPointQueryFunction(rtc_undeformed_geom, EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices);
 
@@ -113,12 +112,31 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     rtcSetSceneFlags(tet_mesh_scene, RTC_SCENE_FLAG_DYNAMIC);
     geom.setTetScene(tet_mesh_scene);
     
+    // create a new scene for the surface mesh exclusively for inter-object collision queries
+    RTCScene mesh_scene = rtcNewScene(_device);
+    rtcSetSceneFlags(mesh_scene, RTC_SCENE_FLAG_DYNAMIC);
+    geom.setMeshScene(mesh_scene);
 
     // create Embree user geometry from newly created EmbreeTetMeshGeometry struct
-    // we create 2 Embree geometries - one for the volumetric representation and one for the surface of the mesh
+    // we create 3 Embree geometries:
+    // 1. Surface mesh in global _ray_scene (for raycasting)
+    // 2. Tetrahedral mesh in tet_mesh_scene (for point-in-tet queries)
+    // 3. Surface mesh in dedicated mesh_scene (for inter-object collision queries)
     RTCGeometry rtc_mesh_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
     geom.setMeshGeomID( rtcAttachGeometry(_ray_scene, rtc_mesh_geom) );
     _geomID_to_mesh_obj[geom.meshGeomID()] = obj_ptr;
+    
+    // Add surface mesh geometry to the dedicated mesh scene for inter-object queries
+    RTCGeometry rtc_mesh_geom_dedicated = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
+    rtcAttachGeometry(mesh_scene, rtc_mesh_geom_dedicated);
+    
+    // setup dedicated mesh geometry for inter-object queries
+    rtcSetGeometryBuildQuality(rtc_mesh_geom_dedicated, RTC_BUILD_QUALITY_REFIT);
+    rtcSetGeometryUserPrimitiveCount(rtc_mesh_geom_dedicated, obj_ptr->mesh()->numFaces());
+    rtcSetGeometryUserData(rtc_mesh_geom_dedicated, &geom);
+    rtcSetGeometryBoundsFunction(rtc_mesh_geom_dedicated, EmbreeMeshGeometry::boundsFuncTriangle, nullptr);
+    rtcSetGeometryIntersectFunction(rtc_mesh_geom_dedicated, EmbreeMeshGeometry::intersectFuncTriangle);
+    rtcSetGeometryPointQueryFunction(rtc_mesh_geom_dedicated, EmbreeMeshGeometry::pointQueryFuncTriangleInterObject);
 
     RTCGeometry rtc_tet_mesh_geom = rtcNewGeometry(_device, RTC_GEOMETRY_TYPE_USER);
     geom.setTetMeshGeomID( rtcAttachGeometry(tet_mesh_scene, rtc_tet_mesh_geom) );
@@ -145,23 +163,26 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     rtcSetGeometryUserPrimitiveCount(rtc_undeformed_geom, obj_ptr->mesh()->numFaces());
     rtcSetGeometryUserData(rtc_undeformed_geom, &geom);
 
-    // set custom callbacks
-    rtcSetGeometryBoundsFunction(rtc_mesh_geom, EmbreeMeshGeometry::boundsFuncTriangle, &geom);
+    // set custom callbacks - use nullptr for userPtr since callbacks use args->geometryUserPtr instead
+    rtcSetGeometryBoundsFunction(rtc_mesh_geom, EmbreeMeshGeometry::boundsFuncTriangle, nullptr);
     rtcSetGeometryIntersectFunction(rtc_mesh_geom, EmbreeMeshGeometry::intersectFuncTriangle);
     rtcSetGeometryPointQueryFunction(rtc_mesh_geom, EmbreeMeshGeometry::pointQueryFuncTriangle);
 
-    rtcSetGeometryBoundsFunction(rtc_tet_mesh_geom, EmbreeTetMeshGeometry::boundsFuncTetrahedra, &geom);
+    rtcSetGeometryBoundsFunction(rtc_tet_mesh_geom, EmbreeTetMeshGeometry::boundsFuncTetrahedra, nullptr);
     rtcSetGeometryIntersectFunction(rtc_tet_mesh_geom, EmbreeTetMeshGeometry::intersectFuncTetrahedra);
     rtcSetGeometryPointQueryFunction(rtc_tet_mesh_geom, EmbreeTetMeshGeometry::pointQueryFuncTetrahedra);
 
-    // set custom callbacks
-    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangleInitialVertices, &geom);
+    // set custom callbacks - use nullptr for userPtr since callbacks use args->geometryUserPtr instead
+    rtcSetGeometryBoundsFunction(rtc_undeformed_geom, EmbreeMeshGeometry::boundsFuncTriangleInitialVertices, nullptr);
     rtcSetGeometryIntersectFunction(rtc_undeformed_geom, EmbreeMeshGeometry::intersectFuncTriangleInitialVertices);
     rtcSetGeometryPointQueryFunction(rtc_undeformed_geom, EmbreeMeshGeometry::pointQueryFuncTriangleInitialVertices);
 
     // commit geometry to scene
     rtcCommitGeometry(rtc_mesh_geom);
     rtcCommitScene(_ray_scene);     // this will build initial BVH
+
+    rtcCommitGeometry(rtc_mesh_geom_dedicated);
+    rtcCommitScene(mesh_scene);
 
     rtcCommitGeometry(rtc_tet_mesh_geom);
     rtcCommitScene(tet_mesh_scene);
@@ -170,6 +191,7 @@ void EmbreeScene::addObject(const Sim::TetMeshObject* obj_ptr)
     rtcCommitScene(undeformed_mesh_scene);
 
     rtcReleaseGeometry(rtc_mesh_geom);
+    rtcReleaseGeometry(rtc_mesh_geom_dedicated);
     rtcReleaseGeometry(rtc_tet_mesh_geom);
     rtcReleaseGeometry(rtc_undeformed_geom);
 }
@@ -189,9 +211,15 @@ void EmbreeScene::update()
         geom.copyVertices();
         RTCGeometry rtc_mesh_geom = rtcGetGeometry(_ray_scene, geom.meshGeomID());
         rtcCommitGeometry(rtc_mesh_geom);
+        
+        // Update dedicated mesh scene geometry
+        RTCGeometry rtc_mesh_geom_dedicated = rtcGetGeometry(geom.meshScene(), 0);  // geomID is always 0 in dedicated scene
+        rtcCommitGeometry(rtc_mesh_geom_dedicated);
+        
         RTCGeometry rtc_tet_mesh_geom = rtcGetGeometry(geom.tetScene(), geom.tetMeshGeomID());
         rtcCommitGeometry(rtc_tet_mesh_geom);
 
+        rtcCommitScene(geom.meshScene());
         rtcCommitScene(geom.tetScene());
     }
 
@@ -207,6 +235,11 @@ void EmbreeScene::updateObject(const Sim::TetMeshObject* tet_mesh_obj)
 {
     EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom[tet_mesh_obj];
     geom->copyVertices(); 
+
+    // Update dedicated mesh scene geometry
+    RTCGeometry rtc_mesh_geom_dedicated = rtcGetGeometry(geom->meshScene(), 0);  // geomID is always 0 in dedicated scene
+    rtcCommitGeometry(rtc_mesh_geom_dedicated);
+    rtcCommitScene(geom->meshScene());
 
     RTCGeometry rtc_tet_mesh_geom = rtcGetGeometry(geom->tetScene(), geom->tetMeshGeomID());
     rtcCommitGeometry(rtc_tet_mesh_geom);
@@ -372,14 +405,32 @@ std::set<EmbreeHit> EmbreeScene::pointInTetrahedraQuery(const Vec3r& point, Real
 
 std::set<EmbreeHit> EmbreeScene::interObjectCollisionQuery(const Vec3r& point, const Sim::TetMeshObject* target_obj, Real search_radius) const
 {
+    // std::cout << "[DEBUG] interObjectCollisionQuery called for point [" 
+    //           << point[0] << ", " << point[1] << ", " << point[2] 
+    //           << "] with radius " << search_radius << std::endl;
+    
     // Get the geometry for the target object
-    const EmbreeTetMeshGeometry* geom = _tet_mesh_to_embree_geom.at(target_obj);
+    auto it = _tet_mesh_to_embree_geom.find(target_obj);
+    if (it == _tet_mesh_to_embree_geom.end())
+    {
+        std::cerr << "[ERROR] Target object not found in geometry map!" << std::endl;
+        return std::set<EmbreeHit>();
+    }
+    
+    const EmbreeTetMeshGeometry* geom = it->second;
+    
+    if (!geom || !geom->mesh())
+    {
+        std::cerr << "[ERROR] Invalid geometry in interObjectCollisionQuery!" << std::endl;
+        return std::set<EmbreeHit>();
+    }
     
     // Set up the query data
     EmbreeInterObjectCollisionQueryUserData query_data;
     query_data.obj_ptr = target_obj;
     query_data.geom = geom;
     query_data.search_radius = search_radius;
+    query_data.scene = geom->meshScene();  // Use the dedicated mesh scene for this object only
     
     // Convert query point to float array
     float p[3];
@@ -395,12 +446,12 @@ std::set<EmbreeHit> EmbreeScene::interObjectCollisionQuery(const Vec3r& point, c
     query.z = p[2];
     query.radius = search_radius;  // Search within this radius
 
-    // Execute the query on the global ray scene (which contains all objects' surface triangles)
-    // The callback will filter to only process triangles from the target object
+    // Execute the query on the dedicated mesh scene (which contains ONLY this target object's surface triangles)
+    // This prevents geometry pointer confusion when Embree traverses the BVH
     RTCPointQueryContext context;
     rtcInitPointQueryContext(&context);
-    rtcPointQuery(_ray_scene, &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangleInterObject, &query_data);
-
+    rtcPointQuery(geom->meshScene(), &query, &context, EmbreeMeshGeometry::pointQueryFuncTriangleInterObject, &query_data);
+    
     return query_data.result;
 }
 

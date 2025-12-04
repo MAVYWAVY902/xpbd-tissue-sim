@@ -64,6 +64,7 @@ struct EmbreeInterObjectCollisionQueryUserData
     std::set<EmbreeHit> result;          // all triangles within search radius
     const float* point;                  // the query point (vertex from another object)
     float search_radius;                 // maximum distance to search
+    RTCScene scene;                      // the Embree scene (needed to retrieve geometry user data)
 };
 
 } // namespace Geometry

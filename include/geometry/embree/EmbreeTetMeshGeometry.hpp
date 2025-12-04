@@ -23,6 +23,9 @@ class EmbreeTetMeshGeometry : public EmbreeMeshGeometry
     RTCScene tetScene() const { return _tet_scene; }
     void setTetScene(RTCScene scene) { _tet_scene = scene; }
 
+    RTCScene meshScene() const { return _mesh_scene; }
+    void setMeshScene(RTCScene scene) { _mesh_scene = scene; }
+
     /** Returns a pointer to element indices (4 consecutive indices make up an element) */
     const int* elementIndices() const { return _tet_mesh->elements().data(); }
 
@@ -37,6 +40,7 @@ class EmbreeTetMeshGeometry : public EmbreeMeshGeometry
     unsigned _tet_mesh_geom_id;                        // Embree geometry ID in the scene
 
     RTCScene _tet_scene;    // Embree scene specifically for this tet mesh - used for point-in-tetrahedron queries
+    RTCScene _mesh_scene;   // Embree scene specifically for this object's surface mesh - used for inter-object collision queries
 };
 
 } // namespace Geometry
