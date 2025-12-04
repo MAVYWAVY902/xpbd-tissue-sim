@@ -303,21 +303,21 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
         
         // Debug: Log triangle checking stats occasionally
         static int vertex_check_debug_count = 0;
-        if (triangles_checked_for_this_vertex > 0 && ++vertex_check_debug_count % 200 == 0)
-        {
-            std::cout << "[DEBUG] Vertex " << v_idx << " checked " << triangles_checked_for_this_vertex 
-                      << " triangles (Embree BVH returned " << nearby_triangles.size() 
-                      << " out of " << faces2.cols() << " total)\n";
-        }
+        // if (triangles_checked_for_this_vertex > 0 && ++vertex_check_debug_count % 200 == 0)
+        // {
+        //     std::cout << "[DEBUG] Vertex " << v_idx << " checked " << triangles_checked_for_this_vertex 
+        //               << " triangles (Embree BVH returned " << nearby_triangles.size() 
+        //               << " out of " << faces2.cols() << " total)\n";
+        // }
         
     }  // End of outer for loop (all vertices of obj1)
     
     // Summary output (only print occasionally to reduce spam)
     static int summary_count = 0;
-    if (++summary_count % 100 == 0)
-    {
-        std::cout << "[DEBUG] Part 1 complete: Created " << total_constraints_part1 << " constraints\n";
-    }
+    // if (++summary_count % 100 == 0)
+    // {
+    //     std::cout << "[DEBUG] Part 1 complete: Created " << total_constraints_part1 << " constraints\n";
+    // }
     
     // Part 2: Check vertices of object2 against faces of object1 (symmetric)
     const Geometry::Mesh::FacesMat& faces1 = mesh1->faces();
@@ -423,11 +423,11 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     
     // Summary output (only print occasionally to reduce spam)
     static int summary_count2 = 0;
-    if (++summary_count2 % 100 == 0)
-    {
-        std::cout << "[DEBUG] Part 2 complete: Created " << total_constraints_part2 << " constraints\n";
-        std::cout << "[DEBUG] TOTAL constraints created: " << (total_constraints_part1 + total_constraints_part2) << "\n";
-    }
+    // if (++summary_count2 % 100 == 0)
+    // {
+    //     std::cout << "[DEBUG] Part 2 complete: Created " << total_constraints_part2 << " constraints\n";
+    //     std::cout << "[DEBUG] TOTAL constraints created: " << (total_constraints_part1 + total_constraints_part2) << "\n";
+    // }
     
     // ========== Performance Logging ==========
     auto end_time = std::chrono::high_resolution_clock::now();

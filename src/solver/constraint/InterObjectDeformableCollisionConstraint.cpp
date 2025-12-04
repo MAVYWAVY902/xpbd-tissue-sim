@@ -14,7 +14,7 @@ InterObjectDeformableCollisionConstraint::InterObjectDeformableCollisionConstrai
     PositionReference(v, p, m),
     PositionReference(fv1, fp1, fm1),
     PositionReference(fv2, fp2, fm2),
-    PositionReference(fv3, fp3, fm3)}), 1e-8)  // Match compliance with DeformableDeformableCollisionConstraint
+    PositionReference(fv3, fp3, fm3)}), 1e-15)  // Much smaller compliance = stiffer/harder constraint (reduced from 1e-8)
 {
 
 }
@@ -37,12 +37,12 @@ void InterObjectDeformableCollisionConstraint::evaluate(Real* C) const
     
     // DEBUG: Print inter-object collision constraint evaluation (limit output frequency)
     static int collision_debug_count = 0;
-    if (collision_debug_count++ % 900 == 0) {  // Print every 900 evaluations
-        std::cout << "[INTER-OBJECT collision DEBUG] Deformable-deformable eval #" << collision_debug_count
-                  << ": point=(" << q.transpose() << ")"
-                  << " triangle_center=(" << ((p1 + p2 + p3) / 3.0).transpose() << ")"
-                  << " C=" << *C << " (C>0 means separated, C<=0 means penetration)\n";
-    }
+    // if (collision_debug_count++ % 900 == 0) {  // Print every 900 evaluations
+    //     std::cout << "[INTER-OBJECT collision DEBUG] Deformable-deformable eval #" << collision_debug_count
+    //               << ": point=(" << q.transpose() << ")"
+    //               << " triangle_center=(" << ((p1 + p2 + p3) / 3.0).transpose() << ")"
+    //               << " C=" << *C << " (C>0 means separated, C<=0 means penetration)\n";
+    // }
 }
 
 void InterObjectDeformableCollisionConstraint::gradient(Real* delC) const
