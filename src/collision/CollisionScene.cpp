@@ -150,7 +150,7 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     Vec3r bbox2_max = verts2.rowwise().maxCoeff();
     
     // Add safety margin equal to collision threshold
-    const Real collision_threshold = 1e-3; // 1mm - tighter for fewer false positives
+    const Real collision_threshold = 3e-3; // 3mm - increased to detect collisions earlier and prevent penetration
     const Real margin = collision_threshold;
     
     // Check if bounding boxes overlap on all three axes
@@ -230,7 +230,7 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     // ========== End Algorithm Selection ==========
     
     // Constants used by both brute force and Embree paths
-    const Real embree_search_radius = 0.2;  // 200mm - generous to not miss collisions (only for BVH)
+    const Real embree_search_radius = 0.02;  // 20mm - 2cm search radius (reduced from 0.2m to avoid false positives)
     const Real bary_epsilon = -0.01; // Only 1% tolerance - much tighter than -0.1
     
     // ========== PART 1: Vertices of obj1 vs Faces of obj2 ==========
@@ -546,7 +546,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
                       << "BVH hits: " << embree_hits << ", "
                       << "Checks performed: " << checks_performed << ", "
                       << "Culled by BVH: " << checks_skipped << " ("
-                      << std::fixed << std::setprecision(1) << skip_ratio << "%)\n";
+                      << std::fixed << std::setprecision(1) << skip_ratio << "%), "
+                      << "Constraints created: " << (total_constraints_part1 + total_constraints_part2) << "\n";
         }
     }
     // ========== End Performance Logging ==========
