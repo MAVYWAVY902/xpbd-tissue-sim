@@ -87,6 +87,7 @@ class SimulationConfig : public Config
         _extractParameter("description", node, _description);
         _extractParameter("fps", node, _fps);
         _extractParameter("collision-rate", node, _collision_rate);
+        _extractParameter("collision-algorithm", node, _collision_algorithm);
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -172,6 +173,7 @@ class SimulationConfig : public Config
     std::string description() const { return _description.value; }
     Real fps() const { return _fps.value; }
     Real collisionRate() const { return _collision_rate.value; }
+    std::string collisionAlgorithm() const { return _collision_algorithm.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const ConfigVectorType& objectConfigs() const { return _object_configs; }
@@ -193,6 +195,7 @@ class SimulationConfig : public Config
     ConfigParameter<Real> _g_accel = ConfigParameter<Real>(9.81);
     ConfigParameter<Real> _fps = ConfigParameter<Real>(30.0);
     ConfigParameter<Real> _collision_rate = ConfigParameter<Real>(100);
+    ConfigParameter<std::string> _collision_algorithm = ConfigParameter<std::string>("auto");
 
     /** List of object configs for each object in the Simulation */
     ConfigVectorType _object_configs;

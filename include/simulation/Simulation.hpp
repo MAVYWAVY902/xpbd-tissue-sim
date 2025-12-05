@@ -84,6 +84,8 @@ class Simulation
         Real dt() const { return _time_step; }
         
         Real gAccel() const { return _g_accel; }
+        
+        const Config::SimulationConfig* config() const { return _config; }
 
         const Graphics::GraphicsScene* graphicsScene() const { return _graphics_scene.get(); }
         const Geometry::EmbreeScene* embreeScene() const { return _embree_scene.get(); }

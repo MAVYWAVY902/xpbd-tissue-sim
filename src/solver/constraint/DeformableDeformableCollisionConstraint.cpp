@@ -55,7 +55,7 @@ void DeformableDeformableCollisionConstraint::gradient(Real* delC) const
     const Mat3r I_aaT = Mat3r::Identity()/a_norm - a*a.transpose() / (a_norm * a_norm * a_norm);
     const Vec3r gp1 = -a.transpose()/a_norm + (q-p1).transpose() * I_aaT * MathUtils::Skew3(p3 - p2);
     const Vec3r gp2 = (q-p1).transpose() * I_aaT * MathUtils::Skew3(p1 - p3);
-    const Vec3r gp3 = (q-p2).transpose() * I_aaT * MathUtils::Skew3(p2 - p1);
+    const Vec3r gp3 = (q-p1).transpose() * I_aaT * MathUtils::Skew3(p2 - p1);
 
     delC[0] = gq[0];
     delC[1] = gq[1];

@@ -11,7 +11,9 @@ g-accel: 9.81 # downward acceleration due to gravity [m/s2]
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
 time-step: 1e-3   # simulation time step [s]
-collision-rate: 1000 # rate at which to run collision detection [Hz] 
+collision-rate: 1000 # rate at which to run collision detection [Hz]
+collision-algorithm: "brute-force"  # Options: "auto", "brute-force", "embree" 
+                             # auto: use brute-force for <2000 faces, embree for >=2000 faces
 fps: 30 # frames per second of the visualization
 end-time: 200 # test time
 
@@ -86,6 +88,9 @@ objects:
     ## XPBD-specific options
     num-solver-iters: 3  # Start with fewer iterations for stability
     solver-type: "Gauss-Seidel"
+    # solver-type: "Jacobi"
+
+    
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
