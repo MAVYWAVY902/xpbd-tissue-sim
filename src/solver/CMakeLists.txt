@@ -47,6 +47,7 @@ set(SOLVER_SOURCES
     ${SOLVER_SRC_DIR}/constraint/NerveStretchConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/NerveBendingConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/NerveTumorAdhesionConstraint.cpp
+    ${SOLVER_SRC_DIR}/constraint/InterDeformDeformAdhesionConstraint.cpp
 
 )
 

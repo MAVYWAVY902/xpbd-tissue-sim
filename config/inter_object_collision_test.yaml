@@ -12,7 +12,7 @@ sim-mode: "AFAP"     # Run as fast as possible for testing
 
 time-step: 1e-3   # simulation time step [s]
 collision-rate: 1000 # rate at which to run collision detection [Hz]
-collision-algorithm: "brute-force"  # Options: "auto", "brute-force", "embree" 
+collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
                              # auto: use brute-force for <2000 faces, embree for >=2000 faces
 fps: 30 # frames per second of the visualization
 end-time: 200 # test time

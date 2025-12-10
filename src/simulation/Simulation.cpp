@@ -2187,7 +2187,7 @@ void Simulation::setup()
                     std::cout << "[adhesion] Nerve-tumor adhesion disabled\n";
                 }
                 
-                // ==================== END ADHESION CONSTRAINTS ====================
+                // ==================== END NERVE-TUMOR ADHESION CONSTRAINTS ====================
 
                 // clear the temporary model
                 gmsh::clear();
@@ -2199,6 +2199,201 @@ void Simulation::setup()
         }
     }
     // ================== END ==================
+
+    // ==================== INTER-DEFORM ADHESION CONSTRAINTS ====================
+    // This section runs independently of nerve constraints
+    std::cout << "[inter-deform adhesion DEBUG] Checking if inter-deform adhesion is enabled...\n";
+    
+    auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+    
+    if (_config->interDeformAdhesionEnable()) {
+        std::cout << "[inter-deform adhesion] *** INTER-DEFORM ADHESION ENABLED *** Creating constraints...\n";
+        
+        // Get adhesion parameters from config
+        const Real rest_gap = _config->interDeformAdhesionRestGap();
+        const Real break_ratio = _config->interDeformAdhesionBreakRatio();
+        const Real alpha = _config->interDeformAdhesionAlpha();
+        const Real bond_distance = _config->interDeformAdhesionBondDistance();
+        
+        std::cout << "[inter-deform adhesion] Parameters: rest_gap=" << rest_gap 
+                  << ", break_ratio=" << break_ratio << ", alpha=" << alpha 
+                  << ", bond_distance=" << bond_distance << "\n";
+        
+        // Find objects named "Cube1" and "Cube2"
+        FirstOrderXPBDMeshObject_Base* cube1_ptr = nullptr;
+        FirstOrderXPBDMeshObject_Base* cube2_ptr = nullptr;
+        
+        for (auto& fo_uptr : fo_xpbd_objs) {
+            FirstOrderXPBDMeshObject_Base* fo_base_ptr = fo_uptr.get();
+            if (!fo_base_ptr) continue;
+            
+            std::cout << "[inter-deform adhesion] Found object: " << fo_base_ptr->name() << "\n";
+            
+            if (fo_base_ptr->name() == "Cube1") {
+                cube1_ptr = fo_base_ptr;
+                std::cout << "[inter-deform adhesion] ✅ Found Cube1\n";
+            } else if (fo_base_ptr->name() == "Cube2") {
+                cube2_ptr = fo_base_ptr;
+                std::cout << "[inter-deform adhesion] ✅ Found Cube2\n";
+            }
+        }
+        
+        if (cube1_ptr && cube2_ptr) {
+            const auto* cube1_mesh = cube1_ptr->mesh();
+            const auto* cube2_mesh = cube2_ptr->mesh();
+            const int cube1_nv = cube1_mesh->numVertices();
+            const int cube2_nf = cube2_mesh->numFaces();
+            
+            std::cout << "[inter-deform adhesion] Cube1: " << cube1_nv << " vertices\n";
+            std::cout << "[inter-deform adhesion] Cube2: " << cube2_nf << " faces\n";
+            
+            int constraints_added = 0;
+            int vertices_checked = 0;
+            int vertices_within_range = 0;
+            Real min_distance_found = std::numeric_limits<Real>::max();
+            Real max_distance_found = 0.0;
+            
+            // Helper lambda to attempt casting and adding constraints
+            auto try_add_inter_deform = [&](auto* typed_cube2_ptr) -> bool {
+                if (!typed_cube2_ptr) return false;
+                
+                std::cout << "[inter-deform adhesion] Successfully cast Cube2 to typed pointer\n";
+                
+                // For each vertex in Cube1, find closest face in Cube2
+                for (int v = 0; v < cube1_nv; ++v) {
+                    vertices_checked++;
+                    const Vec3r cube1_vertex = cube1_mesh->vertex(v);
+                    
+                    Real closest_distance = std::numeric_limits<Real>::max();
+                    int closest_face = -1;
+                    int closest_v1 = -1, closest_v2 = -1, closest_v3 = -1;
+                    
+                    // Find closest triangle in Cube2
+                    for (int f = 0; f < cube2_nf; ++f) {
+                        const auto face = cube2_mesh->face(f);
+                        const int v1 = face[0], v2 = face[1], v3 = face[2];
+                        
+                        const Vec3r tri_p1 = cube2_mesh->vertex(v1);
+                        const Vec3r tri_p2 = cube2_mesh->vertex(v2);
+                        const Vec3r tri_p3 = cube2_mesh->vertex(v3);
+                        
+                        // Compute point-to-triangle distance
+                        Vec3r closest_point, normal, bary_coords;
+                        Real distance = computePointTriangleDistance(cube1_vertex, tri_p1, tri_p2, tri_p3,
+                                                                    closest_point, normal, bary_coords);
+                        
+                        // Track closest triangle
+                        if (distance < closest_distance) {
+                            closest_distance = distance;
+                            if (distance <= bond_distance) {
+                                closest_face = f;
+                                closest_v1 = v1;
+                                closest_v2 = v2;
+                                closest_v3 = v3;
+                            }
+                        }
+                    }
+                    
+                    // Track statistics
+                    if (closest_distance < std::numeric_limits<Real>::max()) {
+                        min_distance_found = std::min(min_distance_found, closest_distance);
+                        max_distance_found = std::max(max_distance_found, closest_distance);
+                        
+                        if (closest_distance <= bond_distance) {
+                            vertices_within_range++;
+                        }
+                    }
+                    
+                    // Create constraint if a close triangle was found
+                    if (closest_face >= 0) {
+                        try {
+                            typed_cube2_ptr->addInterDeformDeformAdhesionConstraint(
+                                cube1_ptr, v, closest_v1, closest_v2, closest_v3, rest_gap, break_ratio, alpha
+                            );
+                            
+                            ++constraints_added;
+                            if (constraints_added <= 10) {
+                                std::cout << "[inter-deform adhesion] Added constraint: Cube1_v" << v 
+                                          << " -> Cube2_face[" << closest_v1 << "," << closest_v2 << "," << closest_v3 
+                                          << "] distance=" << closest_distance << "m\n";
+                            }
+                        } catch (const std::exception& e) {
+                            std::cout << "[inter-deform adhesion] Failed to add constraint: " << e.what() << "\n";
+                        }
+                    }
+                }
+                
+                return constraints_added > 0;
+            };
+            
+            // Try different constraint configurations for Cube2
+            bool handled = false;
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol1 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                using Cube2Type1 = XPBDMeshObject_<true, Sol1::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                if (!handled) handled = try_add_inter_deform(dynamic_cast<Cube2Type1*>(cube2_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol2 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                using Cube2Type2 = XPBDMeshObject_<true, Sol2::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                if (!handled) handled = try_add_inter_deform(dynamic_cast<Cube2Type2*>(cube2_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                using Cube2Type3 = XPBDMeshObject_<true, Sol3::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                if (!handled) handled = try_add_inter_deform(dynamic_cast<Cube2Type3*>(cube2_ptr));
+            }
+            
+            // Summary
+            if (constraints_added > 0) {
+                std::cout << "[inter-deform adhesion] =========================\n";
+                std::cout << "[inter-deform adhesion] ✅ SUCCESSFULLY CREATED ADHESION CONSTRAINTS\n";
+                std::cout << "[inter-deform adhesion] =========================\n";
+                std::cout << "[inter-deform adhesion] Total constraints created: " << constraints_added << "\n";
+                std::cout << "[inter-deform adhesion] Between Cube1 (" << cube1_nv << " vertices) and Cube2 (" << cube2_nf << " faces)\n";
+                std::cout << "[inter-deform adhesion] \n";
+                std::cout << "[inter-deform adhesion] Distance statistics:\n";
+                std::cout << "[inter-deform adhesion]   Vertices checked: " << vertices_checked << "\n";
+                std::cout << "[inter-deform adhesion]   Vertices within bond_distance: " << vertices_within_range << "\n";
+                std::cout << "[inter-deform adhesion]   Min distance found: " << min_distance_found << " m\n";
+                std::cout << "[inter-deform adhesion]   Max distance found: " << max_distance_found << " m\n";
+                std::cout << "[inter-deform adhesion] \n";
+                std::cout << "[inter-deform adhesion] Parameters used:\n";
+                std::cout << "[inter-deform adhesion]   rest_gap = " << rest_gap << " m (constraint rest distance)\n";
+                std::cout << "[inter-deform adhesion]   break_ratio = " << break_ratio << " (breaks at " << (break_ratio-1.0)*100 << "% strain)\n";
+                std::cout << "[inter-deform adhesion]   alpha = " << alpha << " (compliance)\n";
+                std::cout << "[inter-deform adhesion]   bond_distance = " << bond_distance << " m (creation threshold)\n";
+                std::cout << "[inter-deform adhesion] =========================\n";
+            } else {
+                std::cout << "[inter-deform adhesion] ❌ WARNING: NO CONSTRAINTS CREATED\n";
+                std::cout << "[inter-deform adhesion] =========================\n";
+                std::cout << "[inter-deform adhesion] Diagnostic information:\n";
+                std::cout << "[inter-deform adhesion]   Vertices checked: " << vertices_checked << "\n";
+                std::cout << "[inter-deform adhesion]   Vertices within bond_distance: " << vertices_within_range << "\n";
+                std::cout << "[inter-deform adhesion]   Min distance found: " << min_distance_found << " m\n";
+                std::cout << "[inter-deform adhesion]   Max distance found: " << max_distance_found << " m\n";
+                std::cout << "[inter-deform adhesion]   Bond distance threshold: " << bond_distance << " m\n";
+                std::cout << "[inter-deform adhesion] \n";
+                std::cout << "[inter-deform adhesion] Possible reasons:\n";
+                std::cout << "[inter-deform adhesion]   - Objects too far apart (min_distance > bond_distance)\n";
+                std::cout << "[inter-deform adhesion]   - Failed to cast Cube2 to correct XPBD type\n";
+                std::cout << "[inter-deform adhesion]   - Cube1 vertices: " << cube1_nv << ", Cube2 faces: " << cube2_nf << "\n";
+                std::cout << "[inter-deform adhesion] =========================\n";
+            }
+        } else {
+            std::cout << "[inter-deform adhesion] ❌ Could not find Cube1 and/or Cube2 objects\n";
+            std::cout << "[inter-deform adhesion] Available objects:\n";
+            for (auto& fo_uptr : fo_xpbd_objs) {
+                if (fo_uptr) std::cout << "[inter-deform adhesion]   - " << fo_uptr->name() << "\n";
+            }
+        }
+    } else {
+        std::cout << "[inter-deform adhesion] Inter-deform adhesion disabled in config\n";
+    }
+    // ==================== END INTER-DEFORM ADHESION CONSTRAINTS ====================
 
     // logger
     if (_logger)
@@ -2568,6 +2763,56 @@ void Simulation::_timeStep()
 
         auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
         for (auto& obj : fo_xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
+    }
+    
+    // Check and break inter-deform adhesion constraints (uses strain-based breaking, no break_distance param)
+    if (_config->interDeformAdhesionEnable()) {
+        static int break_check_count = 0;
+        static int total_constraints_broken = 0;
+        break_check_count++;
+        
+        // Count active constraints before breaking
+        int active_before = 0;
+        auto& fo_xpbd_mesh_objs_count = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (auto& obj_uptr : fo_xpbd_mesh_objs_count) {
+            auto* obj = obj_uptr.get();
+            if (obj && obj->name() == "Cube2") {
+                // Try to get constraint count (this is a simplified check)
+                active_before += obj->numInterDeformAdhesionConstraints();
+            }
+        }
+        
+        if (break_check_count % 100 == 0) {
+            std::cout << "[inter-deform adhesion] Status at timestep " << break_check_count << ": "
+                      << active_before << " active constraints, "
+                      << total_constraints_broken << " broken so far\n";
+        }
+        
+        // Note: Inter-deform constraints use strain-based breaking (via shouldBreak()), 
+        // not distance-based like nerve-tumor, so we pass 0.0 as dummy parameter
+        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        int broken_this_step = 0;
+        for (auto& obj : xpbd_mesh_objs) {
+            int before = obj->numInterDeformAdhesionConstraints();
+            obj->checkAndBreakAdhesionConstraints(0.0);
+            int after = obj->numInterDeformAdhesionConstraints();
+            broken_this_step += (before - after);
+        }
+
+        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (auto& obj : fo_xpbd_mesh_objs) {
+            int before = obj->numInterDeformAdhesionConstraints();
+            obj->checkAndBreakAdhesionConstraints(0.0);
+            int after = obj->numInterDeformAdhesionConstraints();
+            broken_this_step += (before - after);
+        }
+        
+        total_constraints_broken += broken_this_step;
+        
+        if (broken_this_step > 0) {
+            std::cout << "[inter-deform adhesion] ⚠️  " << broken_this_step 
+                      << " constraint(s) BROKE at timestep " << break_check_count << "\n";
+        }
     }
 
     // —— POST: read again and print error —— //

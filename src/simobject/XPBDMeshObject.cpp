@@ -19,6 +19,7 @@
 #include "solver/constraint/DeviatoricConstraint.hpp"
 #include "solver/constraint/NerveStretchConstraint.hpp" 
 #include "solver/constraint/NerveTumorAdhesionConstraint.hpp"
+#include "solver/constraint/InterDeformDeformAdhesionConstraint.hpp"
 
 #include <chrono> 
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
@@ -334,12 +335,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::clearAdhesionConstraints()
 {
-    // set any adhesion constraint projectors in the solver invalid
-    using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
-    _solver.template clearProjectorsOfType<AdhesionConstraintType>();
-
-    // clear the adhesion constraints list
+    // Clear nerve-tumor adhesion constraints
+    using NerveTumorAdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
+    _solver.template clearProjectorsOfType<NerveTumorAdhesionConstraintType>();
     _constraints.template clear<Solver::NerveTumorAdhesionConstraint>();
+    
+    // Clear inter-deform adhesion constraints
+    using InterDeformAdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
+    _solver.template clearProjectorsOfType<InterDeformAdhesionConstraintType>();
+    _constraints.template clear<Solver::InterDeformDeformAdhesionConstraint>();
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -348,29 +352,36 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     static int call_count = 0;
     call_count++;
 
-    // Get all adhesion constraint projectors
-    using AdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
-    auto& adhesion_projectors = _solver.template getConstraintProjectorsOfType<AdhesionConstraintType>();
+    // Get nerve-tumor adhesion constraint projectors
+    using NerveTumorAdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
+    auto& nerve_tumor_projectors = _solver.template getConstraintProjectorsOfType<NerveTumorAdhesionConstraintType>();
     
-    // Skip printing if this object has no adhesion constraints
-    if (adhesion_projectors.empty()) return;
+    // Get inter-deform adhesion constraint projectors
+    using InterDeformAdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
+    auto& inter_deform_projectors = _solver.template getConstraintProjectorsOfType<InterDeformAdhesionConstraintType>();
     
-    // Count active (valid) constraints every 3000 calls
+    // Skip if no adhesion constraints
+    if (nerve_tumor_projectors.empty() && inter_deform_projectors.empty()) return;
+    
+    // Count active constraints and gather statistics every 3000 calls
     if (call_count % 3000 == 0) {
-        int active_count = 0;
+        int nerve_tumor_active = 0;
+        int inter_deform_active = 0;
         Real min_distance = 1e6;
         Real max_distance = 0.0;
         Real avg_distance = 0.0;
         Real min_ratio = 1e6;
         Real max_ratio = 0.0;
         Real avg_ratio = 0.0;
+        int total_active = 0;
         
-        for (size_t i = 0; i < adhesion_projectors.size(); ++i) {
-            if (adhesion_projectors[i].isValid()) {
-                active_count++;
+        // Count nerve-tumor adhesions
+        for (size_t i = 0; i < nerve_tumor_projectors.size(); ++i) {
+            if (nerve_tumor_projectors[i].isValid()) {
+                nerve_tumor_active++;
+                total_active++;
                 
-                // Get current distance and strain ratio for this constraint
-                const auto& constraint_ref = adhesion_projectors[i].constraint();
+                const auto& constraint_ref = nerve_tumor_projectors[i].constraint();
                 const auto* constraint = &constraint_ref.get();
                 if (constraint) {
                     Real dist = constraint->getCurrentDistance();
@@ -388,112 +399,139 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             }
         }
         
-        if (active_count > 0) {
-            avg_distance /= active_count;
-            avg_ratio /= active_count;
+        // Count inter-deform adhesions
+        for (size_t i = 0; i < inter_deform_projectors.size(); ++i) {
+            if (inter_deform_projectors[i].isValid()) {
+                inter_deform_active++;
+                total_active++;
+                
+                const auto& constraint_ref = inter_deform_projectors[i].constraint();
+                const auto* constraint = &constraint_ref.get();
+                if (constraint) {
+                    Real dist = constraint->getCurrentDistance();
+                    Real rest_gap = constraint->getRestGap();
+                    Real ratio = (rest_gap > 0) ? (dist / rest_gap) : 0.0;
+                    
+                    min_distance = std::min(min_distance, dist);
+                    max_distance = std::max(max_distance, dist);
+                    avg_distance += dist;
+                    
+                    min_ratio = std::min(min_ratio, ratio);
+                    max_ratio = std::max(max_ratio, ratio);
+                    avg_ratio += ratio;
+                }
+            }
         }
         
-        std::cout << "[active adhesion counter] Object: " << this->name() 
-                  << " | Step #" << call_count 
-                  << ": Active constraints = " << active_count 
-                  << " / " << adhesion_projectors.size() << " total"
-                  << "\n  | Distances: min=" << min_distance << "m, max=" << max_distance 
-                  << "m, avg=" << avg_distance << "m"
-                  << "\n  | Strain ratios: min=" << min_ratio << ", max=" << max_ratio 
-                  << ", avg=" << avg_ratio << " (strain-based breaking)\n";
+        if (total_active > 0) {
+            avg_distance /= total_active;
+            avg_ratio /= total_active;
+            
+            std::cout << "[active adhesion counter] Object: " << this->name() 
+                      << " | Step #" << call_count 
+                      << "\n  | Nerve-tumor: " << nerve_tumor_active << " / " << nerve_tumor_projectors.size()
+                      << "\n  | Inter-deform: " << inter_deform_active << " / " << inter_deform_projectors.size()
+                      << "\n  | Total active: " << total_active
+                      << "\n  | Distances: min=" << min_distance << "m, max=" << max_distance 
+                      << "m, avg=" << avg_distance << "m"
+                      << "\n  | Strain ratios: min=" << min_ratio << ", max=" << max_ratio 
+                      << ", avg=" << avg_ratio << " (strain-based breaking)\n";
+        }
     }
     
-    // Iterate through projectors and check if any should break
-    std::vector<int> projectors_to_invalidate;
-    for (size_t i = 0; i < adhesion_projectors.size(); ++i) {
-        auto& projector = adhesion_projectors[i];
-        
-        // Only check valid (active) projectors
+    // Check and break nerve-tumor adhesion constraints
+    std::vector<int> nerve_tumor_to_invalidate;
+    for (size_t i = 0; i < nerve_tumor_projectors.size(); ++i) {
+        auto& projector = nerve_tumor_projectors[i];
         if (!projector.isValid()) continue;
         
-        // Get the constraint from the projector
         const auto& constraint_ref = projector.constraint();
         const auto* constraint = &constraint_ref.get();
-        if (!constraint) continue;
-        
-        // Check if this constraint should break (now uses internal break_ratio, no parameter needed)
-        if (constraint->shouldBreak()) {
-            projectors_to_invalidate.push_back(static_cast<int>(i));
+        if (constraint && constraint->shouldBreak()) {
+            nerve_tumor_to_invalidate.push_back(static_cast<int>(i));
         }
     }
     
-    // Invalidate the projectors that should break (mark as invalid rather than removing)
-    for (int idx : projectors_to_invalidate) {
-        _solver.template setProjectorValidity<AdhesionConstraintType>(idx, false);
+    // Check and break inter-deform adhesion constraints
+    std::vector<int> inter_deform_to_invalidate;
+    for (size_t i = 0; i < inter_deform_projectors.size(); ++i) {
+        auto& projector = inter_deform_projectors[i];
+        if (!projector.isValid()) continue;
         
-        // Update vertex property to reflect broken constraint
-        auto& projector = adhesion_projectors[idx];
+        const auto& constraint_ref = projector.constraint();
+        const auto* constraint = &constraint_ref.get();
+        if (constraint && constraint->shouldBreak()) {
+            inter_deform_to_invalidate.push_back(static_cast<int>(i));
+        }
+    }
+    
+    // Invalidate nerve-tumor adhesion projectors that should break
+    for (int idx : nerve_tumor_to_invalidate) {
+        _solver.template setProjectorValidity<NerveTumorAdhesionConstraintType>(idx, false);
+        
+        // Update visualization properties
+        auto& projector = nerve_tumor_projectors[idx];
         const auto& constraint_ref = projector.constraint();
         const auto* constraint = &constraint_ref.get();
         if (constraint && this->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
-            // Get nerve vertex index from the first position reference (nerve vertex is always first)
-            int nerve_v = constraint->positions()[0].index;
+            int vertex_v = constraint->positions()[0].index;
             auto& adhesion_prop = this->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
             
-            // Check if this vertex has any remaining active constraints
-            bool has_active_constraint = false;
-            for (size_t j = 0; j < adhesion_projectors.size(); ++j) {
-                if (j != static_cast<size_t>(idx) && adhesion_projectors[j].isValid()) {
-                    const auto& other_constraint_ref = adhesion_projectors[j].constraint();
-                    const auto* other_constraint = &other_constraint_ref.get();
-                    // Get nerve vertex index from the first position reference
-                    if (other_constraint && other_constraint->positions()[0].index == nerve_v) {
-                        has_active_constraint = true;
+            // Check if vertex has any remaining active constraints
+            bool has_active = false;
+            for (size_t j = 0; j < nerve_tumor_projectors.size(); ++j) {
+                if (j != static_cast<size_t>(idx) && nerve_tumor_projectors[j].isValid()) {
+                    const auto& other_ref = nerve_tumor_projectors[j].constraint();
+                    if (other_ref.get().positions()[0].index == vertex_v) {
+                        has_active = true;
                         break;
                     }
                 }
             }
             
-            if (!has_active_constraint) {
-                adhesion_prop.set(nerve_v, false);
-                std::cout << "[viz] Removed adhesion marker from vertex " << nerve_v << " (constraint broken)\n";
-                
-                // ALSO UPDATE NERVE MESH PROPERTY: Find nerve objects and clear their adhesion property
-                // This is important because graphics displays nerve mesh property, not tumor mesh property
-                if (_sim) {
-                    // Check FirstOrderXPBDMeshObject_Base objects (most common case for nerve objects)
-                    auto& fo_xpbd_objs = _sim->objects().template get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
-                    for (auto& obj_ptr : fo_xpbd_objs) {
-                        if (obj_ptr && obj_ptr->name().find("Nerve") != std::string::npos) {
-                            auto* nerve_obj = obj_ptr.get();
-                            if (nerve_obj && nerve_obj->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
-                                auto& nerve_adhesion_prop = nerve_obj->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
-                                if (nerve_v < nerve_obj->mesh()->numVertices() && nerve_adhesion_prop.get(nerve_v)) {
-                                    nerve_adhesion_prop.set(nerve_v, false);
-                                    std::cout << "[viz] Also cleared nerve mesh adhesion marker for vertex " << nerve_v << "\n";
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Also check XPBDMeshObject_Base objects (in case nerve is not first-order)
-                    auto& xpbd_objs = _sim->objects().template get<std::unique_ptr<XPBDMeshObject_Base>>();
-                    for (auto& obj_ptr : xpbd_objs) {
-                        if (obj_ptr && obj_ptr->name().find("Nerve") != std::string::npos) {
-                            auto* nerve_obj = obj_ptr.get();
-                            if (nerve_obj && nerve_obj->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
-                                auto& nerve_adhesion_prop = nerve_obj->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
-                                if (nerve_v < nerve_obj->mesh()->numVertices() && nerve_adhesion_prop.get(nerve_v)) {
-                                    nerve_adhesion_prop.set(nerve_v, false);
-                                    std::cout << "[viz] Also cleared nerve mesh adhesion marker for vertex " << nerve_v << " (XPBDMeshObject_Base)\n";
-                                }
-                            }
-                        }
-                    }
-                }
+            if (!has_active) {
+                adhesion_prop.set(vertex_v, false);
+                std::cout << "[viz] Removed nerve-tumor adhesion marker from vertex " << vertex_v << "\n";
             }
         }
     }
     
-    // Optional: print debug information about broken constraints
-    if (!projectors_to_invalidate.empty()) {
-        std::cout << "[adhesion BREAK] Invalidated " << projectors_to_invalidate.size() 
-                  << " adhesion constraints (break_distance=" << break_distance << ")\n";
+    // Invalidate inter-deform adhesion projectors that should break
+    for (int idx : inter_deform_to_invalidate) {
+        _solver.template setProjectorValidity<InterDeformAdhesionConstraintType>(idx, false);
+        
+        // Update visualization properties
+        auto& projector = inter_deform_projectors[idx];
+        const auto& constraint_ref = projector.constraint();
+        const auto* constraint = &constraint_ref.get();
+        if (constraint && this->mesh()->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+            int vertex_v = constraint->positions()[0].index;
+            auto& adhesion_prop = this->mesh()->template getVertexProperty<bool>("has_adhesion_constraint");
+            
+            // Check if vertex has any remaining active constraints
+            bool has_active = false;
+            for (size_t j = 0; j < inter_deform_projectors.size(); ++j) {
+                if (j != static_cast<size_t>(idx) && inter_deform_projectors[j].isValid()) {
+                    const auto& other_ref = inter_deform_projectors[j].constraint();
+                    if (other_ref.get().positions()[0].index == vertex_v) {
+                        has_active = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!has_active) {
+                adhesion_prop.set(vertex_v, false);
+                std::cout << "[viz] Removed inter-deform adhesion marker from vertex " << vertex_v << "\n";
+            }
+        }
+    }
+    
+    // Print summary
+    if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty()) {
+        std::cout << "[adhesion BREAK] Object: " << this->name()
+                  << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
+                  << " + " << inter_deform_to_invalidate.size() << " inter-deform adhesions\n";
     }
 }
 
@@ -627,6 +665,66 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
         _sim->dt(),
         RefType(vec, vec.size() - 1)
     );
+}
+
+
+// NEW: addInterDeformDeformAdhesionConstraint
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<
+    Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
+    ::addInterDeformDeformAdhesionConstraint(XPBDMeshObject_Base_<IsFirstOrder>* other_obj, int vertex_v,
+                                            int tri_v1, int tri_v2, int tri_v3, 
+                                            Real rest_gap, Real break_ratio, Real alpha)
+{
+    // 1. Get vertex position pointer and mass from the OTHER object
+    Real* vertex_p = other_obj->mesh()->vertexPointer(vertex_v);
+    Real vertex_m = other_obj->vertexConstraintInertia(vertex_v);
+    
+    // 2. Get triangle vertex position pointers and masses from THIS object
+    Real* tri_p1 = _mesh->vertexPointer(tri_v1);
+    Real* tri_p2 = _mesh->vertexPointer(tri_v2);
+    Real* tri_p3 = _mesh->vertexPointer(tri_v3);
+    
+    Real tri_m1 = vertexConstraintInertia(tri_v1);
+    Real tri_m2 = vertexConstraintInertia(tri_v2);
+    Real tri_m3 = vertexConstraintInertia(tri_v3);
+
+    // 3. Add to constraints array
+    auto& vec = _constraints.template get<Solver::InterDeformDeformAdhesionConstraint>();
+    vec.emplace_back(
+        vertex_v, vertex_p, vertex_m,
+        tri_v1, tri_p1, tri_m1,
+        tri_v2, tri_p2, tri_m2,
+        tri_v3, tri_p3, tri_m3,
+        rest_gap,
+        break_ratio,
+        alpha
+    );
+
+    // 4. Mark vertex as having adhesion constraint for visualization
+    if (!_mesh->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+        _mesh->template addVertexProperty<bool>("has_adhesion_constraint", false);
+        std::cout << "[viz] Created inter-deform adhesion constraint property for mesh " << _mesh.get() << "\n";
+    }
+    auto& adhesion_prop = _mesh->template getVertexProperty<bool>("has_adhesion_constraint");
+    adhesion_prop.set(vertex_v, true);
+    std::cout << "[viz] Marked vertex " << vertex_v << " as having inter-deform adhesion constraint on mesh " << _mesh.get() << "\n";
+
+    // 5. Tell solver about the new constraint
+    using RefType = Solver::ConstraintReference<Solver::InterDeformDeformAdhesionConstraint>;
+    return _solver.addConstraintProjector(
+        _sim->dt(),
+        RefType(vec, vec.size() - 1)
+    );
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::numInterDeformAdhesionConstraints() const
+{
+    // Get the vector of inter-deform adhesion constraints
+    const auto& vec = _constraints.template get<Solver::InterDeformDeformAdhesionConstraint>();
+    return static_cast<int>(vec.size());
 }
 
 

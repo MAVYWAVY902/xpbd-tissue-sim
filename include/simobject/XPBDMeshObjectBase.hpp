@@ -191,6 +191,9 @@ public:
     /** Checks and removes adhesion constraints that should break based on distance threshold. */
     virtual void checkAndBreakAdhesionConstraints(Real break_distance) = 0;
     
+    /** @returns the number of inter-deform adhesion constraints currently active on this object */
+    virtual int numInterDeformAdhesionConstraints() const = 0;
+    
     /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
      * @param v_ind : the index of the vertex
      * @param attach_pos_ptr : a pointer to the position for the vertex to be attached to

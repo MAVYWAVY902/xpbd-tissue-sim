@@ -1,0 +1,149 @@
+## Inter-Deformable Adhesion Test Configuration
+## Tests adhesion constraint between two deformable objects (cube1 and cube2)
+## This uses the new InterDeformDeformAdhesionConstraint
+
+name: "Inter-Deformable Adhesion Test"
+description: "Testing deformable-deformable adhesion between two cubes with manual constraint setup"
+
+visualization: "Easy3D"
+
+g-accel: 9.81 # downward acceleration due to gravity [m/s2]
+
+sim-mode: "AFAP"     # Run as fast as possible for testing
+
+time-step: 1e-3   # simulation time step [s]
+collision-rate: 1000 # rate at which to run collision detection [Hz]
+collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
+fps: 30 # frames per second of the visualization
+end-time: 200 # test time
+
+## ==================== ADHESION SETTINGS ====================
+# These will need to be read and used in C++ code to create adhesion constraints manually
+inter-deform-adhesion-enable: true
+inter-deform-adhesion-rest-gap: 0.000        # 0mm rest separation = want surfaces touching
+inter-deform-adhesion-break-ratio: 2.0       # Break at 100% stretch (10mm separation)
+inter-deform-adhesion-alpha: 1e-9            # Low compliance = stiff constraint
+inter-deform-adhesion-bond-distance: 0.01    # 10mm: max distance to form bonds initially
+# Note: You'll need to add code in Simulation.cpp to read these and create constraints
+
+## define elastic materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 5e4    # Young's modulus [Pa] - moderate stiffness
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.0 # coefficient of static friction [-]
+    mu-k: 0.0 # coefficient of kinetic friction [-]
+
+## objects in the simulation
+objects:
+
+  ## First deformable cube (LEFT - will be pulled by external force)
+  -
+    name: "Cube1"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8.msh"
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    color: [1.0, 0.0, 0.0] # red cube
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration - positioned close to Cube2
+    max-size: 0.4
+    position: [-0.205, 0, 1.0]  # 22cm to the left, close enough for adhesion
+    velocity: [-0.05, 0, 0]     # Moving slowly left (will pull Cube2 via adhesion)
+    rotation: [0, 0, 0]
+
+    ## collisions
+    collisions: true
+    inter-object-collisions: true  # Enable inter-object collision
+
+    ## XPBD-specific options
+    num-solver-iters: 5  # More iterations for adhesion constraints
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    
+    damping-multiplier: 50000  # Moderate damping
+
+
+  ## Second deformable cube (RIGHT - will be stuck to Cube1 via adhesion)
+  -
+    name: "Cube2"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8.msh"
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    color: [0.0, 0.0, 1.0] # blue cube
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration - positioned close to Cube1
+    max-size: 0.4
+    position: [0.205, 0, 1.0]   # 22cm to the right, close to Cube1
+    velocity: [0, 0, 0]         # Stationary initially (will be pulled by adhesion)
+    rotation: [0, 0, 0]
+
+    ## collisions
+    collisions: true
+    inter-object-collisions: true  # Enable inter-object collision
+
+    ## XPBD-specific options
+    num-solver-iters: 5  # More iterations for adhesion constraints
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    
+    damping-multiplier: 50000  # Moderate damping
+
+
+  # ## Ground plane for reference
+  # -
+  #   name: "ground"
+  #   type: "RigidBox"
+  #   size: [5, 5, 0.1]
+  #   density: 100000
+  #   position: [0, 0, 0.85]  # Just below the cubes
+  #   rotation: [0, 0, 0]
+  #   velocity: [0, 0, 0]
+  #   fixed: true
+  #   collisions: true
+
+
+## ==================== TESTING NOTES ====================
+# 
+# Expected behavior:
+# 1. Cube1 (red) starts moving left with velocity [-0.05, 0, 0]
+# 2. Adhesion constraints between Cube1 and Cube2 should form
+# 3. Cube2 (blue) should be pulled along by Cube1 due to adhesion
+# 4. If Cube1 moves too far/fast, adhesion should break (strain > 1.5x rest_gap)
+# 5. After breaking, Cube2 should stop being pulled
+# 
+# To create adhesion constraints manually, you need to add code in:
+#   src/simulation/Simulation.cpp
+# 
+# Example pseudocode:
+#   if (config.get("inter-deform-adhesion-enable")) {
+#       auto cube1 = findObjectByName("Cube1");
+#       auto cube2 = findObjectByName("Cube2");
+#       
+#       // Find nearby vertex-face pairs between cube1 and cube2
+#       // For testing, manually pick a few vertices/faces
+#       
+#       Real rest_gap = config.get("inter-deform-adhesion-rest-gap");
+#       Real break_ratio = config.get("inter-deform-adhesion-break-ratio");
+#       Real alpha = config.get("inter-deform-adhesion-alpha");
+#       
+#       // Create adhesion: vertex from cube1, face from cube2
+#       cube2->addInterDeformDeformAdhesionConstraint(
+#           cube1, vertex_idx,
+#           tri_v1, tri_v2, tri_v3,
+#           rest_gap, break_ratio, alpha
+#       );
+#   }

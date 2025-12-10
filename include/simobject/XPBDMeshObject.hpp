@@ -155,6 +155,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     /** Checks and removes adhesion constraints that should break based on distance threshold. */
     virtual void checkAndBreakAdhesionConstraints(Real break_distance);
     
+    /** @returns the number of inter-deform adhesion constraints currently active on this object */
+    virtual int numInterDeformAdhesionConstraints() const override;
+    
     /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
      * @param v_ind : the index of the vertex
      * @param attach_pos_ptr : a pointer to the position for the vertex to be attached to
@@ -188,6 +191,21 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
         addNerveTumorAdhesionConstraint(XPBDMeshObject_Base_<IsFirstOrder>* nerve_obj, int nerve_v,
                                        int tri_v1, int tri_v2, int tri_v3, 
                                        Real rest_gap, Real break_ratio, Real alpha = 0.0);
+
+    /** Adds an inter-object deformable adhesion constraint between a vertex from another object and a face from this object.
+     * This is a generalized adhesion constraint that works between any two deformable meshes.
+     * @param other_obj - pointer to the other deformable object containing the vertex
+     * @param vertex_v - vertex index from the OTHER object
+     * @param tri_v1, tri_v2, tri_v3 - triangle vertex indices from THIS object's mesh
+     * @param rest_gap - rest separation distance
+     * @param break_ratio - strain threshold for breaking
+     * @param alpha - compliance parameter
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>>
+        addInterDeformDeformAdhesionConstraint(XPBDMeshObject_Base_<IsFirstOrder>* other_obj, int vertex_v,
+                                              int tri_v1, int tri_v2, int tri_v3, 
+                                              Real rest_gap, Real break_ratio, Real alpha = 0.0);
 
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() override;
