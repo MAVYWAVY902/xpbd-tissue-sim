@@ -13,7 +13,7 @@ sim-mode: "AFAP"     # Run as fast as possible for testing
 
 time-step: 1e-3   # simulation time step [s]
 collision-rate: 1000 # rate at which to run collision detection [Hz]
-collision-algorithm: "brute-force"  # Options: "auto", "brute-force", "embree" 
+collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
 fps: 30 # frames per second of the visualization
 end-time: 200 # test time
 
@@ -63,12 +63,12 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 5  # More iterations for adhesion constraints
+    num-solver-iters: 6  # More iterations for adhesion constraints
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 50000  # Moderate damping
+    damping-multiplier: 70000  # Moderate damping
 
 
   ## Second deformable cube (RIGHT - will be stuck to Cube1 via adhesion)
@@ -95,12 +95,12 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 5  # More iterations for adhesion constraints
+    num-solver-iters: 6  # More iterations for adhesion constraints
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 50000  # Moderate damping
+    damping-multiplier: 70000  # Moderate damping
 
 
   # ## Ground plane for reference
