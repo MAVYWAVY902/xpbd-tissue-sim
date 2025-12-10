@@ -2258,8 +2258,9 @@ void Simulation::setup()
                 if (!typed_cube2_ptr) return false;
                 
                 std::cout << "[inter-deform adhesion] Successfully cast Cube2 to typed pointer\n";
+                std::cout << "[inter-deform adhesion] Using EMBREE BVH for spatial acceleration\n";
                 
-                // For each vertex in Cube1, find closest face in Cube2
+                // For each vertex in Cube1, find closest face in Cube2 using Embree BVH
                 for (int v = 0; v < cube1_nv; ++v) {
                     vertices_checked++;
                     const Vec3r cube1_vertex = cube1_mesh->vertex(v);
@@ -2268,8 +2269,19 @@ void Simulation::setup()
                     int closest_face = -1;
                     int closest_v1 = -1, closest_v2 = -1, closest_v3 = -1;
                     
-                    // Find closest triangle in Cube2
-                    for (int f = 0; f < cube2_nf; ++f) {
+                    // ✅ USE EMBREE BVH: Query nearby triangles within bond_distance
+                    std::set<Geometry::EmbreeHit> nearby_triangles = 
+                        _embree_scene->interObjectCollisionQuery(cube1_vertex, cube2_ptr, bond_distance);
+                    
+                    // Check ONLY the nearby triangles found by Embree (much faster than brute force!)
+                    for (const auto& hit : nearby_triangles) {
+                        const int f = hit.prim_index;
+                        
+                        if (f < 0 || f >= cube2_nf) {
+                            std::cerr << "[ERROR] Invalid face index from Embree: " << f << std::endl;
+                            continue;
+                        }
+                        
                         const auto face = cube2_mesh->face(f);
                         const int v1 = face[0], v2 = face[1], v3 = face[2];
                         
@@ -2282,15 +2294,13 @@ void Simulation::setup()
                         Real distance = computePointTriangleDistance(cube1_vertex, tri_p1, tri_p2, tri_p3,
                                                                     closest_point, normal, bary_coords);
                         
-                        // Track closest triangle
-                        if (distance < closest_distance) {
+                        // Track closest triangle within bond distance
+                        if (distance <= bond_distance && distance < closest_distance) {
                             closest_distance = distance;
-                            if (distance <= bond_distance) {
-                                closest_face = f;
-                                closest_v1 = v1;
-                                closest_v2 = v2;
-                                closest_v3 = v3;
-                            }
+                            closest_face = f;
+                            closest_v1 = v1;
+                            closest_v2 = v2;
+                            closest_v3 = v3;
                         }
                     }
                     
