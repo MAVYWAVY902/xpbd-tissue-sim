@@ -2202,7 +2202,7 @@ void Simulation::setup()
 
     // ==================== INTER-DEFORM ADHESION CONSTRAINTS ====================
     // This section runs independently of nerve constraints
-    std::cout << "[inter-deform adhesion DEBUG] Checking if inter-deform adhesion is enabled...\n";
+    // std::cout << "[inter-deform adhesion DEBUG] Checking if inter-deform adhesion is enabled...\n";
     
     auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
     
