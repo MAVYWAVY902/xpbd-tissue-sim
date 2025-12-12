@@ -222,13 +222,13 @@ void PushingSimulation::_togglePushing()
     
     if (_pushing_enabled)
     {
-        printf("DEBUG: Pushing ENABLED at tool position (%.2f, %.2f, %.2f)\n", 
-               _cursor->position().x(), _cursor->position().y(), _cursor->position().z());
+        // printf("DEBUG: Pushing ENABLED at tool position (%.2f, %.2f, %.2f)\n", 
+        //        _cursor->position().x(), _cursor->position().y(), _cursor->position().z());
         // Note: RigidSphere doesn't have setColor method
     }
     else
     {
-        printf("DEBUG: Pushing DISABLED\n");
+        // printf("DEBUG: Pushing DISABLED\n");
         // Note: RigidSphere doesn't have setColor method
     }
 }
@@ -344,7 +344,7 @@ void PushingSimulation::_applyPushingForces()
             if (distance < _tool_radius)
             {
                 Real penetration = _tool_radius - distance;
-                printf("DEBUG: FO PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
+                // printf("DEBUG: FO PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
                 
                 // Calculate push direction (away from tool center)
                 Vec3r displacement = vertex_pos - tool_center;
@@ -353,7 +353,7 @@ void PushingSimulation::_applyPushingForces()
                 if (displacement.norm() < 1e-6) // Handle zero displacement
                 {
                     push_direction = Vec3r(0, 0, 1); // Push upward if at center
-                    printf("DEBUG: FO Zero displacement - pushing upward\n");
+                    // printf("DEBUG: FO Zero displacement - pushing upward\n");
                 }
                 else
                 {
@@ -366,8 +366,8 @@ void PushingSimulation::_applyPushingForces()
                 
                 Vec3r push_offset = push_direction * push_magnitude;
                 
-                printf("DEBUG: FO Pushing vertex %d by offset (%.6f, %.6f, %.6f), magnitude=%.6f\n", 
-                       v, push_offset.x(), push_offset.y(), push_offset.z(), push_magnitude);
+                // printf("DEBUG: FO Pushing vertex %d by offset (%.6f, %.6f, %.6f), magnitude=%.6f\n", 
+                //        v, push_offset.x(), push_offset.y(), push_offset.z(), push_magnitude);
                 
                 // DIRECT VERTEX DISPLACEMENT - NO ATTACHMENT CONSTRAINTS!
                 Vec3r new_position = vertex_pos + push_offset;
@@ -377,9 +377,9 @@ void PushingSimulation::_applyPushingForces()
                 
                 if (vertices_pushed <= 3) // Detailed debug for first few
                 {
-                    printf("DEBUG: FO Vertex %d: (%.3f,%.3f,%.3f) -> (%.3f,%.3f,%.3f)\n", 
-                           v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(),
-                           new_position.x(), new_position.y(), new_position.z());
+                    // printf("DEBUG: FO Vertex %d: (%.3f,%.3f,%.3f) -> (%.3f,%.3f,%.3f)\n", 
+                    //        v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(),
+                    //        new_position.x(), new_position.y(), new_position.z());
                 }
             }
         }
