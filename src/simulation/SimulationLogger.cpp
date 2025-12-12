@@ -1,5 +1,6 @@
 #include "simulation/SimulationLogger.hpp"
 
+#include <cassert>
 #include <filesystem>
 #include <iostream>
 

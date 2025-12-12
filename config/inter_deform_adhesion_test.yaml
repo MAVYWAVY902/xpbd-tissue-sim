@@ -7,7 +7,7 @@ description: "Testing deformable-deformable adhesion between two cubes with manu
 
 visualization: "Easy3D"
 
-g-accel: 9.81 # downward acceleration due to gravity [m/s2]
+g-accel: 0 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
@@ -20,9 +20,9 @@ end-time: 200 # test time
 ## ==================== ADHESION SETTINGS ====================
 # These will need to be read and used in C++ code to create adhesion constraints manually
 inter-deform-adhesion-enable: true
-inter-deform-adhesion-rest-gap: 0.000        # 0mm rest separation = want surfaces touching
-inter-deform-adhesion-break-ratio: 2.0       # Break at 100% stretch (10mm separation)
-inter-deform-adhesion-alpha: 1e-9            # Low compliance = stiff constraint
+inter-deform-adhesion-rest-gap: 0.00       # -5mm = adhesion pulls surfaces together (negative = attractive force)
+inter-deform-adhesion-break-ratio: 5.0      # Break at 1000% strain (very strong adhesion)
+inter-deform-adhesion-alpha: 1e-9           # Very low compliance = very stiff constraint (stronger pulling force)
 inter-deform-adhesion-bond-distance: 0.01    # 10mm: max distance to form bonds initially
 # Note: You'll need to add code in Simulation.cpp to read these and create constraints
 
@@ -63,7 +63,7 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 6  # More iterations for adhesion constraints
+    num-solver-iters: 8  # More iterations for adhesion constraints
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
@@ -75,7 +75,8 @@ objects:
   -
     name: "Cube2"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/cube/cube8.msh"
+    filename: "../resource/tissue/neuroma_tet.msh"
     materials: ["Soft Tissue"]
 
     ## visualization options
@@ -95,7 +96,7 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 6  # More iterations for adhesion constraints
+    num-solver-iters: 8  # More iterations for adhesion constraints
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"

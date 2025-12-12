@@ -7,6 +7,7 @@
 #include <unordered_map>  //new, for store nerve node tags
 #include "geometry/MeshProperty.hpp"
 
+#include <cassert>
 #include <optional>
 
 #ifdef HAVE_CUDA

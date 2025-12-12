@@ -1,6 +1,7 @@
 #ifndef __DEVIATORIC_CONSTRAINT_HPP
 #define __DEVIATORIC_CONSTRAINT_HPP
 
+#include <cassert>
 #include "solver/constraint/ElementConstraint.hpp"
 #include "simobject/ElasticMaterial.hpp"
 

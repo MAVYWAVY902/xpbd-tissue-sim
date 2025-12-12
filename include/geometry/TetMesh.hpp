@@ -1,6 +1,7 @@
 #ifndef __TET_MESH_HPP
 #define __TET_MESH_HPP
 
+#include <cassert>
 #include "geometry/Mesh.hpp"
 
 namespace Geometry

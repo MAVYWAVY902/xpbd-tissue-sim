@@ -1100,6 +1100,7 @@
 
 #include "utils/MeshUtils.hpp"
 
+#include <cassert>
 #include <iostream>
 #include <fstream>
 #include <sstream>
