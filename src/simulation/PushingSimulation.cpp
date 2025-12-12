@@ -91,7 +91,7 @@ void PushingSimulation::setup()
 
 void PushingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
 {
-    printf("DEBUG: Mouse button event: button=%d, action=%d\n", static_cast<int>(button), static_cast<int>(action));
+    // printf("DEBUG: Mouse button event: button=%d, action=%d\n", static_cast<int>(button), static_cast<int>(action));
 
     // Left mouse button toggles pushing on/off
     if (button == SimulationInput::MouseButton::LEFT && action == SimulationInput::MouseAction::PRESS)
@@ -273,14 +273,14 @@ void PushingSimulation::_applyPushingForces()
             if (distance <= _tool_radius * 1.2) // Slightly larger radius for debug
             {
                 vertices_contacted++;
-                printf("DEBUG: Vertex %d at distance %.4f (tool_radius=%.4f)\n", v, distance, _tool_radius);
+                // printf("DEBUG: Vertex %d at distance %.4f (tool_radius=%.4f)\n", v, distance, _tool_radius);
             }
             
             // Apply pushing if vertex is within tool radius (PENETRATION)
             if (distance < _tool_radius)
             {
                 Real penetration = _tool_radius - distance;
-                printf("DEBUG: PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
+                // printf("DEBUG: PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
                 
                 // Calculate push direction (away from tool center)
                 Vec3r displacement = vertex_pos - tool_center;
@@ -289,7 +289,7 @@ void PushingSimulation::_applyPushingForces()
                 if (displacement.norm() < 1e-6) // Handle zero displacement
                 {
                     push_direction = Vec3r(0, 0, 1); // Push upward if at center
-                    printf("DEBUG: Zero displacement - pushing upward\n");
+                    // printf("DEBUG: Zero displacement - pushing upward\n");
                 }
                 else
                 {
@@ -302,8 +302,8 @@ void PushingSimulation::_applyPushingForces()
                 
                 Vec3r push_offset = push_direction * push_magnitude;
                 
-                printf("DEBUG: Pushing vertex %d by offset (%.6f, %.6f, %.6f), magnitude=%.6f\n", 
-                       v, push_offset.x(), push_offset.y(), push_offset.z(), push_magnitude);
+                // printf("DEBUG: Pushing vertex %d by offset (%.6f, %.6f, %.6f), magnitude=%.6f\n", 
+                //        v, push_offset.x(), push_offset.y(), push_offset.z(), push_magnitude);
                 
                 // DIRECT VERTEX DISPLACEMENT - NO ATTACHMENT CONSTRAINTS!
                 Vec3r new_position = vertex_pos + push_offset;
@@ -311,12 +311,12 @@ void PushingSimulation::_applyPushingForces()
                 
                 vertices_pushed++;
                 
-                if (vertices_pushed <= 3) // Detailed debug for first few
-                {
-                    printf("DEBUG: Vertex %d: (%.3f,%.3f,%.3f) -> (%.3f,%.3f,%.3f)\n", 
-                           v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(),
-                           new_position.x(), new_position.y(), new_position.z());
-                }
+                // if (vertices_pushed <= 3) // Detailed debug for first few
+                // {
+                //     printf("DEBUG: Vertex %d: (%.3f,%.3f,%.3f) -> (%.3f,%.3f,%.3f)\n", 
+                //            v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(),
+                //            new_position.x(), new_position.y(), new_position.z());
+                // }
             }
         }
     }
@@ -324,7 +324,7 @@ void PushingSimulation::_applyPushingForces()
     // Process FirstOrderXPBDMeshObject_Base objects
     for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs)
     {
-        printf("DEBUG: Processing FirstOrderXPBDMeshObject with %d vertices\n", fo_xpbd_mesh_obj->mesh()->numVertices());
+        // printf("DEBUG: Processing FirstOrderXPBDMeshObject with %d vertices\n", fo_xpbd_mesh_obj->mesh()->numVertices());
         
         for (int v = 0; v < fo_xpbd_mesh_obj->mesh()->numVertices(); ++v)
         {

@@ -542,12 +542,12 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             Real skip_ratio = checks_skipped > 0 ? 
                 100.0 * checks_skipped / (checks_skipped + checks_performed) : 0.0;
             
-            std::cout << "[Collision Performance - EMBREE BVH] Time: " << duration.count() << " μs, "
-                      << "BVH hits: " << embree_hits << ", "
-                      << "Checks performed: " << checks_performed << ", "
-                      << "Culled by BVH: " << checks_skipped << " ("
-                      << std::fixed << std::setprecision(1) << skip_ratio << "%), "
-                      << "Constraints created: " << (total_constraints_part1 + total_constraints_part2) << "\n";
+            // std::cout << "[Collision Performance - EMBREE BVH] Time: " << duration.count() << " μs, "
+            //           << "BVH hits: " << embree_hits << ", "
+            //           << "Checks performed: " << checks_performed << ", "
+            //           << "Culled by BVH: " << checks_skipped << " ("
+            //           << std::fixed << std::setprecision(1) << skip_ratio << "%), "
+            //           << "Constraints created: " << (total_constraints_part1 + total_constraints_part2) << "\n";
         }
     }
     // ========== End Performance Logging ==========

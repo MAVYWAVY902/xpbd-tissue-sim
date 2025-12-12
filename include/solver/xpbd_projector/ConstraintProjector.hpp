@@ -180,12 +180,12 @@ class ConstraintProjector
                 }
                 total_update_norm = std::sqrt(total_update_norm);
                 Real grad_norm = std::sqrt(_delC[0]*_delC[0] + _delC[1]*_delC[1] + _delC[2]*_delC[2]);
-                std::cout << "[ADHESION PROJECTION #" << projection_count << "] "
-                          << "C=" << C << " | dlam=" << dlam << " | _lambda=" << _lambda 
-                          << " | alpha=" << _constraint->alpha()
-                          << "\n  | grad_norm=" << grad_norm
-                          << " | inv_mass_range=[" << min_inv_mass << ", " << max_inv_mass << "]"
-                          << " | total_update=" << total_update_norm << "m\n";
+                // std::cout << "[ADHESION PROJECTION #" << projection_count << "] "
+                //           << "C=" << C << " | dlam=" << dlam << " | _lambda=" << _lambda 
+                //           << " | alpha=" << _constraint->alpha()
+                //           << "\n  | grad_norm=" << grad_norm
+                //           << " | inv_mass_range=[" << min_inv_mass << ", " << max_inv_mass << "]"
+                //           << " | total_update=" << total_update_norm << "m\n";
             }
         }
 

@@ -522,17 +522,17 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             
             if (!has_active) {
                 adhesion_prop.set(vertex_v, false);
-                std::cout << "[viz] Removed inter-deform adhesion marker from vertex " << vertex_v << "\n";
+                // std::cout << "[viz] Removed inter-deform adhesion marker from vertex " << vertex_v << "\n";
             }
         }
     }
     
     // Print summary
-    if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty()) {
-        std::cout << "[adhesion BREAK] Object: " << this->name()
-                  << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
-                  << " + " << inter_deform_to_invalidate.size() << " inter-deform adhesions\n";
-    }
+    // if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty()) {
+    //     std::cout << "[adhesion BREAK] Object: " << this->name()
+    //               << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
+    //               << " + " << inter_deform_to_invalidate.size() << " inter-deform adhesions\n";
+    // }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -709,7 +709,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
     }
     auto& adhesion_prop = _mesh->template getVertexProperty<bool>("has_adhesion_constraint");
     adhesion_prop.set(vertex_v, true);
-    std::cout << "[viz] Marked vertex " << vertex_v << " as having inter-deform adhesion constraint on mesh " << _mesh.get() << "\n";
+    // std::cout << "[viz] Marked vertex " << vertex_v << " as having inter-deform adhesion constraint on mesh " << _mesh.get() << "\n";
 
     // 5. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::InterDeformDeformAdhesionConstraint>;

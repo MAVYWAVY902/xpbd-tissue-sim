@@ -2322,11 +2322,11 @@ void Simulation::setup()
                             );
                             
                             ++constraints_added;
-                            if (constraints_added <= 10) {
-                                std::cout << "[inter-deform adhesion] Added constraint: Cube1_v" << v 
-                                          << " -> Cube2_face[" << closest_v1 << "," << closest_v2 << "," << closest_v3 
-                                          << "] distance=" << closest_distance << "m\n";
-                            }
+                            // if (constraints_added <= 10) {
+                            //     std::cout << "[inter-deform adhesion] Added constraint: Cube1_v" << v 
+                            //               << " -> Cube2_face[" << closest_v1 << "," << closest_v2 << "," << closest_v3 
+                            //               << "] distance=" << closest_distance << "m\n";
+                            // }
                         } catch (const std::exception& e) {
                             std::cout << "[inter-deform adhesion] Failed to add constraint: " << e.what() << "\n";
                         }
@@ -2357,42 +2357,42 @@ void Simulation::setup()
                 if (!handled) handled = try_add_inter_deform(dynamic_cast<Cube2Type3*>(cube2_ptr));
             }
             
-            // Summary
-            if (constraints_added > 0) {
-                std::cout << "[inter-deform adhesion] =========================\n";
-                std::cout << "[inter-deform adhesion] ✅ SUCCESSFULLY CREATED ADHESION CONSTRAINTS\n";
-                std::cout << "[inter-deform adhesion] =========================\n";
-                std::cout << "[inter-deform adhesion] Total constraints created: " << constraints_added << "\n";
-                std::cout << "[inter-deform adhesion] Between Cube1 (" << cube1_nv << " vertices) and Cube2 (" << cube2_nf << " faces)\n";
-                std::cout << "[inter-deform adhesion] \n";
-                std::cout << "[inter-deform adhesion] Distance statistics:\n";
-                std::cout << "[inter-deform adhesion]   Vertices checked: " << vertices_checked << "\n";
-                std::cout << "[inter-deform adhesion]   Vertices within bond_distance: " << vertices_within_range << "\n";
-                std::cout << "[inter-deform adhesion]   Min distance found: " << min_distance_found << " m\n";
-                std::cout << "[inter-deform adhesion]   Max distance found: " << max_distance_found << " m\n";
-                std::cout << "[inter-deform adhesion] \n";
-                std::cout << "[inter-deform adhesion] Parameters used:\n";
-                std::cout << "[inter-deform adhesion]   rest_gap = " << rest_gap << " m (constraint rest distance)\n";
-                std::cout << "[inter-deform adhesion]   break_ratio = " << break_ratio << " (breaks at " << (break_ratio-1.0)*100 << "% strain)\n";
-                std::cout << "[inter-deform adhesion]   alpha = " << alpha << " (compliance)\n";
-                std::cout << "[inter-deform adhesion]   bond_distance = " << bond_distance << " m (creation threshold)\n";
-                std::cout << "[inter-deform adhesion] =========================\n";
-            } else {
-                std::cout << "[inter-deform adhesion] ❌ WARNING: NO CONSTRAINTS CREATED\n";
-                std::cout << "[inter-deform adhesion] =========================\n";
-                std::cout << "[inter-deform adhesion] Diagnostic information:\n";
-                std::cout << "[inter-deform adhesion]   Vertices checked: " << vertices_checked << "\n";
-                std::cout << "[inter-deform adhesion]   Vertices within bond_distance: " << vertices_within_range << "\n";
-                std::cout << "[inter-deform adhesion]   Min distance found: " << min_distance_found << " m\n";
-                std::cout << "[inter-deform adhesion]   Max distance found: " << max_distance_found << " m\n";
-                std::cout << "[inter-deform adhesion]   Bond distance threshold: " << bond_distance << " m\n";
-                std::cout << "[inter-deform adhesion] \n";
-                std::cout << "[inter-deform adhesion] Possible reasons:\n";
-                std::cout << "[inter-deform adhesion]   - Objects too far apart (min_distance > bond_distance)\n";
-                std::cout << "[inter-deform adhesion]   - Failed to cast Cube2 to correct XPBD type\n";
-                std::cout << "[inter-deform adhesion]   - Cube1 vertices: " << cube1_nv << ", Cube2 faces: " << cube2_nf << "\n";
-                std::cout << "[inter-deform adhesion] =========================\n";
-            }
+            // // Summary
+            // if (constraints_added > 0) {
+            //     std::cout << "[inter-deform adhesion] =========================\n";
+            //     std::cout << "[inter-deform adhesion] ✅ SUCCESSFULLY CREATED ADHESION CONSTRAINTS\n";
+            //     std::cout << "[inter-deform adhesion] =========================\n";
+            //     std::cout << "[inter-deform adhesion] Total constraints created: " << constraints_added << "\n";
+            //     std::cout << "[inter-deform adhesion] Between Cube1 (" << cube1_nv << " vertices) and Cube2 (" << cube2_nf << " faces)\n";
+            //     std::cout << "[inter-deform adhesion] \n";
+            //     std::cout << "[inter-deform adhesion] Distance statistics:\n";
+            //     std::cout << "[inter-deform adhesion]   Vertices checked: " << vertices_checked << "\n";
+            //     std::cout << "[inter-deform adhesion]   Vertices within bond_distance: " << vertices_within_range << "\n";
+            //     std::cout << "[inter-deform adhesion]   Min distance found: " << min_distance_found << " m\n";
+            //     std::cout << "[inter-deform adhesion]   Max distance found: " << max_distance_found << " m\n";
+            //     std::cout << "[inter-deform adhesion] \n";
+            //     std::cout << "[inter-deform adhesion] Parameters used:\n";
+            //     std::cout << "[inter-deform adhesion]   rest_gap = " << rest_gap << " m (constraint rest distance)\n";
+            //     std::cout << "[inter-deform adhesion]   break_ratio = " << break_ratio << " (breaks at " << (break_ratio-1.0)*100 << "% strain)\n";
+            //     std::cout << "[inter-deform adhesion]   alpha = " << alpha << " (compliance)\n";
+            //     std::cout << "[inter-deform adhesion]   bond_distance = " << bond_distance << " m (creation threshold)\n";
+            //     std::cout << "[inter-deform adhesion] =========================\n";
+            // } else {
+            //     std::cout << "[inter-deform adhesion] ❌ WARNING: NO CONSTRAINTS CREATED\n";
+            //     std::cout << "[inter-deform adhesion] =========================\n";
+            //     std::cout << "[inter-deform adhesion] Diagnostic information:\n";
+            //     std::cout << "[inter-deform adhesion]   Vertices checked: " << vertices_checked << "\n";
+            //     std::cout << "[inter-deform adhesion]   Vertices within bond_distance: " << vertices_within_range << "\n";
+            //     std::cout << "[inter-deform adhesion]   Min distance found: " << min_distance_found << " m\n";
+            //     std::cout << "[inter-deform adhesion]   Max distance found: " << max_distance_found << " m\n";
+            //     std::cout << "[inter-deform adhesion]   Bond distance threshold: " << bond_distance << " m\n";
+            //     std::cout << "[inter-deform adhesion] \n";
+            //     std::cout << "[inter-deform adhesion] Possible reasons:\n";
+            //     std::cout << "[inter-deform adhesion]   - Objects too far apart (min_distance > bond_distance)\n";
+            //     std::cout << "[inter-deform adhesion]   - Failed to cast Cube2 to correct XPBD type\n";
+            //     std::cout << "[inter-deform adhesion]   - Cube1 vertices: " << cube1_nv << ", Cube2 faces: " << cube2_nf << "\n";
+            //     std::cout << "[inter-deform adhesion] =========================\n";
+            // }
         } else {
             std::cout << "[inter-deform adhesion] ❌ Could not find Cube1 and/or Cube2 objects\n";
             std::cout << "[inter-deform adhesion] Available objects:\n";
@@ -2620,12 +2620,12 @@ void Simulation::_timeStep()
         }
 
         static bool warned_pre = false;
-        if (!printed && !warned_pre) {
-            std::cout << "[pre] WARNING: s_edge_initialized=true but couldn't read vertices; "
-                         "template combo at runtime didn't match. Check setup prints."
-                      << std::endl;
-            warned_pre = true;
-        }
+        // if (!printed && !warned_pre) {
+        //     std::cout << "[pre] WARNING: s_edge_initialized=true but couldn't read vertices; "
+        //                  "template combo at runtime didn't match. Check setup prints."
+        //               << std::endl;
+        //     warned_pre = true;
+        // }
     }
 
     // —— PRE: read current curvature of the picked triplet —— //
@@ -2659,11 +2659,11 @@ void Simulation::_timeStep()
             }
             
             // Only print every 3000 steps to avoid flooding the terminal
-            if (s_print_counter % 3000 == 0) {
-                std::cout << "[" << phase << "](" << tag << ") step=" << s_print_counter 
-                          << " triplet(" << s_triplet_i << "," << s_triplet_j << "," << s_triplet_k 
-                          << ") curvature = " << curvature << " (rest = " << s_triplet_rest_curvature << ")\n";
-            }
+            // if (s_print_counter % 3000 == 0) {
+            //     std::cout << "[" << phase << "](" << tag << ") step=" << s_print_counter 
+            //               << " triplet(" << s_triplet_i << "," << s_triplet_j << "," << s_triplet_k 
+            //               << ") curvature = " << curvature << " (rest = " << s_triplet_rest_curvature << ")\n";
+            // }
             return true;
         };
 
@@ -2792,11 +2792,11 @@ void Simulation::_timeStep()
             }
         }
         
-        if (break_check_count % 100 == 0) {
-            std::cout << "[inter-deform adhesion] Status at timestep " << break_check_count << ": "
-                      << active_before << " active constraints, "
-                      << total_constraints_broken << " broken so far\n";
-        }
+        // if (break_check_count % 100 == 0) {
+        //     std::cout << "[inter-deform adhesion] Status at timestep " << break_check_count << ": "
+        //               << active_before << " active constraints, "
+        //               << total_constraints_broken << " broken so far\n";
+        // }
         
         // Note: Inter-deform constraints use strain-based breaking (via shouldBreak()), 
         // not distance-based like nerve-tumor, so we pass 0.0 as dummy parameter
@@ -2819,10 +2819,10 @@ void Simulation::_timeStep()
         
         total_constraints_broken += broken_this_step;
         
-        if (broken_this_step > 0) {
-            std::cout << "[inter-deform adhesion] ⚠️  " << broken_this_step 
-                      << " constraint(s) BROKE at timestep " << break_check_count << "\n";
-        }
+        // if (broken_this_step > 0) {
+        //     std::cout << "[inter-deform adhesion] ⚠️  " << broken_this_step 
+        //               << " constraint(s) BROKE at timestep " << break_check_count << "\n";
+        // }
     }
 
     // —— POST: read again and print error —— //

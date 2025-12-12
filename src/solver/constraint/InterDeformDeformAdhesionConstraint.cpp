@@ -32,8 +32,8 @@ InterDeformDeformAdhesionConstraint::InterDeformDeformAdhesionConstraint(int ver
     
     _cache_valid = true;  // Barycentric coords are now valid
     
-    std::cout << "[inter-deform adhesion INIT] Created constraint: rest_gap=" << _rest_gap 
-              << ", break_ratio=" << _break_ratio << ", alpha=" << alpha << "\n";
+    // std::cout << "[inter-deform adhesion INIT] Created constraint: rest_gap=" << _rest_gap 
+    //           << ", break_ratio=" << _break_ratio << ", alpha=" << alpha << "\n";
 }
 
 void InterDeformDeformAdhesionConstraint::evaluate(Real* C) const
@@ -82,10 +82,10 @@ void InterDeformDeformAdhesionConstraint::evaluate(Real* C) const
     _n_cached = normal;
     // _bary_cached stays unchanged - we reuse the initial barycentric coords
     
-    if (debug) {
-        std::cout << "[inter-deform EVAL #" << eval_count << "] separation=" << separation_distance 
-                  << ", rest_gap=" << _rest_gap << ", C=" << *C << "\n";
-    }
+    // if (debug) {
+    //     std::cout << "[inter-deform EVAL #" << eval_count << "] separation=" << separation_distance 
+    //               << ", rest_gap=" << _rest_gap << ", C=" << *C << "\n";
+    // }
     eval_count++;
     _cache_valid = true;  // ✅ CRITICAL FIX: Mark cache as valid after updating!
 
@@ -119,15 +119,15 @@ void InterDeformDeformAdhesionConstraint::evaluate(Real* C) const
     static int active_count = 0;
     if (*C > 0) {
         active_count++;
-        if (active_count <= 20 || active_count % 100 == 0) {
-            std::cout << "[INTER-DEFORM ADHESION ACTIVE #" << active_count << "] "
-                      << "vertex_v=" << _positions[0].index 
-                      << " tri=[" << _positions[1].index << "," << _positions[2].index << "," << _positions[3].index << "]"
-                      << " | sep=" << separation_distance << "m"
-                      << " | rest=" << _rest_gap << "m"
-                      << " | C=" << *C << "m"
-                      << " | alpha=" << this->alpha() << "\n";
-        }
+        // if (active_count <= 20 || active_count % 100 == 0) {
+        //     std::cout << "[INTER-DEFORM ADHESION ACTIVE #" << active_count << "] "
+        //               << "vertex_v=" << _positions[0].index 
+        //               << " tri=[" << _positions[1].index << "," << _positions[2].index << "," << _positions[3].index << "]"
+        //               << " | sep=" << separation_distance << "m"
+        //               << " | rest=" << _rest_gap << "m"
+        //               << " | C=" << *C << "m"
+        //               << " | alpha=" << this->alpha() << "\n";
+        // }
     }
 }
 
@@ -313,13 +313,13 @@ bool InterDeformDeformAdhesionConstraint::shouldBreak() const
     Real current_ratio = current_distance / _rest_gap;
     
     // If breaking, always print (important events)
-    if (should_break) {
-        std::cout << "[INTER-DEFORM ADHESION BREAKING!] vertex_v=" << vertex_v 
-                  << " tri=[" << tri_v1 << "," << tri_v2 << "," << tri_v3 << "]"
-                  << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
-                  << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
-                  << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
-    }
+    // if (should_break) {
+    //     std::cout << "[INTER-DEFORM ADHESION BREAKING!] vertex_v=" << vertex_v 
+    //               << " tri=[" << tri_v1 << "," << tri_v2 << "," << tri_v3 << "]"
+    //               << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
+    //               << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
+    //               << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
+    // }
     
     // NOTE: Do NOT reset _max_distance_this_step here! 
     // Multiple constraints are checked during the same breaking phase, and resetting
