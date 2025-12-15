@@ -11,19 +11,19 @@ g-accel: 9.81 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 2e-4   # simulation time step [s] - increased for 2x speedup with Jacobi
+time-step: 5e-4   # CRITICAL: Very small timestep for Jacobi stability
 collision-rate: 1000 # rate at which to run collision detection [Hz]
 collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
 fps: 30 # frames per second of the visualization
 end-time: 20 # test time - shorter for quick benchmarking
 
 ## ==================== ADHESION SETTINGS ====================
-# These will need to be read and used in C++ code to create adhesion constraints manually
+# CRITICAL FIXES FOR JACOBI STABILITY:
 inter-deform-adhesion-enable: true
-inter-deform-adhesion-rest-gap: 0.00       # -5mm = adhesion pulls surfaces together (negative = attractive force)
-inter-deform-adhesion-break-ratio: 2.0      # Break at 1000% strain (very strong adhesion)
-inter-deform-adhesion-alpha: 1e-9           # Very low compliance = very stiff constraint (stronger pulling force)
-inter-deform-adhesion-bond-distance: 0.01    # 10mm: max distance to form bonds initially
+inter-deform-adhesion-rest-gap: 0.01        # MUST BE POSITIVE! 10mm rest gap prevents immediate activation
+inter-deform-adhesion-break-ratio: 3.0      # Allow more stretch before breaking
+inter-deform-adhesion-alpha: 1e-4           # MUCH SOFTER (was 1e-6) - Jacobi cannot handle stiff constraints
+inter-deform-adhesion-bond-distance: 0.015   # 15mm: slightly larger to ensure bonding happens
 # Note: You'll need to add code in Simulation.cpp to read these and create constraints
 
 ## define elastic materials
@@ -55,7 +55,7 @@ objects:
     ## initial configuration - positioned close to Cube2
     max-size: 0.4
     position: [-0.205, 0, 1.0]  # 22cm to the left, close enough for adhesion
-    velocity: [-0.05, 0, 0]     # Moving slowly left (will pull Cube2 via adhesion)
+    velocity: [0.0, 0, 0]       # START STATIONARY - let adhesion pull gradually
     rotation: [0, 0, 0]
 
     ## collisions
@@ -63,14 +63,14 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 2  # Reduced for speed with Jacobi parallelization
+    num-solver-iters: 30  # CRITICAL: Jacobi needs many more iterations than Gauss-Seidel
     # solver-type: "Gauss-Seidel"
     solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 100000  # Moderate damping - balance stability and adhesion force
+    damping-multiplier: 500000  # HIGH damping for Jacobi stability
 
 
   ## Second deformable cube (RIGHT - will be stuck to Cube1 via adhesion)
@@ -97,14 +97,14 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 2  # Reduced for speed with Jacobi parallelization
+    num-solver-iters: 30  # CRITICAL: Jacobi needs many more iterations than Gauss-Seidel
     # solver-type: "Gauss-Seidel"
     solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 100000  # Moderate damping - balance stability and adhesion force
+    damping-multiplier: 500000  # HIGH damping for Jacobi stability
 
 
   # ## Ground plane for reference
