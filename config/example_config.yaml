@@ -12,7 +12,7 @@ g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
 # sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
-time-step: 1e-3   # simulation time step [s]
+time-step: 1e-4   # simulation time step [s]
 collision-rate: 1000 # rate at which to run collision detection [Hz] 
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 100 # end time of the simulation [s]
@@ -79,8 +79,8 @@ objects:
     ## XPBD-specific options
     num-solver-iters: 3   # number of solver loop iterations per time step 
     
-    solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (i.e. update mesh after every constraint projection)
-    # solver-type: "Jacobi"       # use Jacobi solver (i.e. update mesh only after going through every constraint projection)
+    # solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (serial)
+    solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
     # solver-type: "Parallel-Jacobi"  # use parallelized Jacobi solver (note: unstable and requires GPU)
 
     constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints with 2x2 block constraint solve for each tet element

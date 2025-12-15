@@ -982,8 +982,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
         auto projection_us = std::chrono::duration_cast<std::chrono::microseconds>(end_projection - start_projection).count();
         auto total_us = std::chrono::duration_cast<std::chrono::microseconds>(end_total - start_total).count();
         
-        // std::cout << "[PERFORMANCE frame " << frame_count << "] "
-        //           << "reset=" << reset_us << "us (" << num_adhesion_constraints << " constraints), "
+        // std::cout << "[PERFORMANCE " << this->name() << " frame " << frame_count << "] "
+        //           << "reset=" << reset_us << "us (" << num_adhesion_constraints << " adhesion), "
         //           << "inertia=" << inertia_us << "us, "
         //           << "projection=" << projection_us << "us, "
         //           << "total=" << total_us << "us ("

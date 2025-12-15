@@ -17,8 +17,16 @@ endif()
 
 
 set(CMAKE_CXX_STANDARD 17)                       # specify C++ standard
-set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra -march=native")  # CPU optimization flags
 set(CMAKE_BUILD_TYPE Release)
+
+# Find OpenMP for CPU parallelization
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP found - parallel Jacobi solver enabled")
+else()
+    message(WARNING "OpenMP not found - solver will run serially")
+endif()
 
 list(APPEND CMAKE_PREFIX_PATH "$ENV{XPBD_SIM_EASY3D_CMAKE_PREFIX_PATH}") # needed in order to find Easy3D
 
@@ -108,7 +116,7 @@ target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::r
 target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils embree)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
 target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Geometry Solver Config)   # link MeshUtils and Solver libraries
-target_link_libraries(Solver Eigen3::Eigen SimObject)         # link SimObject library
+target_link_libraries(Solver PUBLIC Eigen3::Eigen SimObject)         # link SimObject library
 target_link_libraries(MeshUtils gmsh assimp Eigen3::Eigen Geometry) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
 target_link_libraries(GeometryUtils Eigen3::Eigen Geometry)
 

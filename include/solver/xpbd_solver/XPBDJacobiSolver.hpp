@@ -94,11 +94,18 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
             total_rb_updates += ProjectorType::NUM_RIGID_BODIES;
         });
 
-        // apply the position updates
+        // apply the position updates (OpenMP parallelized with atomic operations)
+        #ifdef _OPENMP
+        #pragma omp parallel for schedule(static)
+        #endif
         for (int i = 0; i < total_coord_updates; i++)
         {
-            if (this->_coordinate_updates[i].ptr)
+            if (this->_coordinate_updates[i].ptr) {
+                #ifdef _OPENMP
+                #pragma omp atomic
+                #endif
                 *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
+            }
         }
 
         // apply the rigid body updates

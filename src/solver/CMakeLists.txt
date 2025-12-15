@@ -57,6 +57,11 @@ target_sources(Solver
         ${SOLVER_SOURCES}
 )
 
+# Link OpenMP if available
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(Solver PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 install(TARGETS Solver EXPORT Solver-targets
     RUNTIME DESTINATION bin/${PROJECT_NAME}
     LIBRARY DESTINATION lib/${PROJECT_NAME})
