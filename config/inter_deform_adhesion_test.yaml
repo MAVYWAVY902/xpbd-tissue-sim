@@ -15,7 +15,7 @@ time-step: 2e-4   # simulation time step [s] - increased for 2x speedup with Jac
 collision-rate: 1000 # rate at which to run collision detection [Hz]
 collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
 fps: 30 # frames per second of the visualization
-end-time: 200 # test time
+end-time: 20 # test time - shorter for quick benchmarking
 
 ## ==================== ADHESION SETTINGS ====================
 # These will need to be read and used in C++ code to create adhesion constraints manually
