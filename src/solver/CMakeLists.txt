@@ -57,9 +57,14 @@ target_sources(Solver
         ${SOLVER_SOURCES}
 )
 
-# Link OpenMP if available
+# Link OpenMP ONLY for Jacobi solver (conditionally enabled)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(Solver PUBLIC OpenMP::OpenMP_CXX)
+    # Define ENABLE_JACOBI_OPENMP to activate OpenMP code in XPBDJacobiSolver
+    target_compile_definitions(Solver PUBLIC ENABLE_JACOBI_OPENMP)
+    message(STATUS "Jacobi solver: OpenMP parallelization ENABLED")
+else()
+    message(STATUS "Jacobi solver: OpenMP not found, running serially")
 endif()
 
 install(TARGETS Solver EXPORT Solver-targets

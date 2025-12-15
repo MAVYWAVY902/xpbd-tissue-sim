@@ -3,6 +3,11 @@
 
 #include "solver/xpbd_solver/XPBDSolver.hpp"
 
+#if defined(_OPENMP) && defined(ENABLE_JACOBI_OPENMP)
+#include <omp.h>
+#endif
+#include <iostream>
+
 namespace Solver
 {
 
@@ -18,7 +23,21 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
     /** Same constructor as XPBDSolver */
     explicit XPBDJacobiSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
-    {}
+    {
+        // Print OpenMP status at construction
+        #if defined(_OPENMP) && defined(ENABLE_JACOBI_OPENMP)
+            #pragma omp parallel
+            {
+                #pragma omp single
+                {
+                    std::cout << "[Jacobi Solver] OpenMP ENABLED with " << omp_get_num_threads() 
+                              << " threads (max available: " << omp_get_max_threads() << ")" << std::endl;
+                }
+            }
+        #else
+            std::cout << "[Jacobi Solver] OpenMP DISABLED - running serially" << std::endl;
+        #endif
+    }
 
     void setup()
     {
@@ -94,14 +113,14 @@ class XPBDJacobiSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...
             total_rb_updates += ProjectorType::NUM_RIGID_BODIES;
         });
 
-        // apply the position updates (OpenMP parallelized with atomic operations)
-        #ifdef _OPENMP
+        // apply the position updates (OpenMP parallelized ONLY for Jacobi solver)
+        #if defined(_OPENMP) && defined(ENABLE_JACOBI_OPENMP)
         #pragma omp parallel for schedule(static)
         #endif
         for (int i = 0; i < total_coord_updates; i++)
         {
             if (this->_coordinate_updates[i].ptr) {
-                #ifdef _OPENMP
+                #if defined(_OPENMP) && defined(ENABLE_JACOBI_OPENMP)
                 #pragma omp atomic
                 #endif
                 *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;

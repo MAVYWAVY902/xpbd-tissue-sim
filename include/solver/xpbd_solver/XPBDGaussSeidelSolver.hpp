@@ -2,6 +2,7 @@
 #define __XPBD_GAUSS_SEIDEL_SOLVER_HPP
 
 #include "solver/xpbd_solver/XPBDSolver.hpp"
+#include <iostream>
 
 namespace Solver
 {
@@ -20,6 +21,7 @@ class XPBDGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjecto
     explicit XPBDGaussSeidelSolver(Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj, int num_iter, XPBDSolverResidualPolicyEnum residual_policy)
         : XPBDSolver<IsFirstOrder, ConstraintProjectors...>(obj, num_iter, residual_policy)
     {
+        std::cout << "[Gauss-Seidel Solver] Serial execution (no OpenMP)" << std::endl;
     }
 
     protected:

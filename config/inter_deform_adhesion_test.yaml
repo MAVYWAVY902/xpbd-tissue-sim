@@ -63,7 +63,7 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 5  # Jacobi needs more iterations for coupled adhesion constraints
+    num-solver-iters: 2  # Reduced for speed with Jacobi parallelization
     # solver-type: "Gauss-Seidel"
     solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
 
@@ -97,7 +97,7 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 5  # Jacobi needs more iterations for coupled adhesion constraints
+    num-solver-iters: 2  # Reduced for speed with Jacobi parallelization
     # solver-type: "Gauss-Seidel"
     solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
 

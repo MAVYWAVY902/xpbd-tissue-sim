@@ -97,7 +97,7 @@ objects:
 
   ## examples of other possible objects to add to the simulation
 
-  # rigid box
+  ## rigid box
   - 
     # name: "ramp"
     # type: "RigidBox"
