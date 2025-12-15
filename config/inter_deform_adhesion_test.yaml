@@ -63,14 +63,14 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 2  # Reduced for speed with Jacobi parallelization
+    num-solver-iters: 5  # Jacobi needs more iterations for coupled adhesion constraints
     # solver-type: "Gauss-Seidel"
     solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 200000  # High damping for Jacobi stability
+    damping-multiplier: 100000  # Moderate damping - balance stability and adhesion force
 
 
   ## Second deformable cube (RIGHT - will be stuck to Cube1 via adhesion)
@@ -97,14 +97,14 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 2  # Reduced for speed with Jacobi parallelization
+    num-solver-iters: 5  # Jacobi needs more iterations for coupled adhesion constraints
     # solver-type: "Gauss-Seidel"
     solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 200000  # High damping for Jacobi stability
+    damping-multiplier: 100000  # Moderate damping - balance stability and adhesion force
 
 
   # ## Ground plane for reference
