@@ -47,8 +47,8 @@ objects:
   -
     name: "Cube1"
     type: "FirstOrderXPBDMeshObject"
-    # filename: "../resource/cube/cube8.msh"
-    filename: "../resource/tissue/neuroma_tet.msh"
+    filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/tissue/neuroma_tet.msh"
 
     materials: ["Soft Tissue"]
 
@@ -60,7 +60,7 @@ objects:
 
     ## initial configuration - positioned close to Cube2
     max-size: 0.4
-    position: [0.205, 0.2, 1.0]  # 22cm to the left, close enough for adhesion
+    position: [-0.205, 0.2, 1.0]  # 22cm to the left, close enough for adhesion
     velocity: [0.0, 0, 0]       # START STATIONARY - let adhesion pull gradually
     rotation: [0, 0, 0]
 
