@@ -14,6 +14,11 @@ RigidDeformableCollisionConstraint::RigidDeformableCollisionConstraint(const Geo
     RigidBodyConstraint(std::vector<Sim::RigidObject*>({rigid_obj})),
     _sdf(sdf), _point_on_rigid_body(rigid_obj->globalToBody(rigid_body_point)), _u(u), _v(v), _w(w)
 {
+    // Set compliance for collision constraint to prevent infinite stiffness
+    // Small compliance value (1e-8 to 1e-6) provides regularization and prevents severe penetration
+    // Larger values = softer collision response, smaller = harder (but more stable than alpha=0)
+    _alpha = 1e-7;  // Compliance parameter for collision constraint
+    
     // create the Helper class that will evaluate the rigid body "weight" and the rigid body update when this constraint is projected
     // it is created here because the Helper needs info from the collision itself, such as the normal and the point on the rigid body
     std::unique_ptr<RigidBodyXPBDHelper> helper = std::make_unique<PositionalRigidBodyXPBDHelper>(rigid_obj, -collision_normal, rigid_body_point);

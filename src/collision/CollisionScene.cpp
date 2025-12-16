@@ -608,10 +608,47 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
 template <bool IsFirstOrder>
 void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>* xpbd_mesh_obj, Sim::RigidObject* rigid_obj)
 {
+    // Collision detection diagnostics
+    static int collision_check_count = 0;
+    static int total_collisions_detected = 0;
+    static bool sdf_warning_printed = false;
+    static bool position_info_printed = false;
+    int collisions_this_check = 0;
+    int faces_culled_by_centroid = 0;
+    int faces_checked_detailed = 0;
+    
     // iterate through faces of mesh
     const Geometry::SDF* sdf = rigid_obj->SDF();
+    
+    // Critical check: Does the rigid object have an SDF?
+    if (!sdf && !sdf_warning_printed) {
+        std::cerr << "\n[CRITICAL ERROR] Rigid object '" << rigid_obj->name() 
+                  << "' has NO SDF! Collision detection will FAIL.\n"
+                  << "  -> You need to generate an SDF file for this mesh.\n"
+                  << "  -> Add 'sdf-filename' to the config, or the SDF will be missing.\n\n";
+        sdf_warning_printed = true;
+        return;
+    }
+    
+    // Print rigid body position info (once)
+    if (!position_info_printed) {
+        std::cout << "\n[RIGID BODY INFO] " << rigid_obj->name() << ":\n"
+                  << "  Position: (" << rigid_obj->position().transpose() << ")\n"
+                  << "  Rotation (quat): (" << rigid_obj->orientation().transpose() << ")\n"
+                  << "  Fixed: " << (rigid_obj->isFixed() ? "YES" : "NO") << "\n\n";
+        position_info_printed = true;
+    }
+    
     const Geometry::Mesh* mesh = xpbd_mesh_obj->mesh();
     const Geometry::Mesh::FacesMat& faces = mesh->faces();
+    
+    // Sample a few face centroids to check SDF values
+    Real min_sdf_dist = 1e10;
+    Real max_sdf_dist = -1e10;
+    Vec3r closest_centroid = Vec3r::Zero();
+    Vec3r sample_vertex = mesh->vertex(0);  // Sample first vertex position
+    Vec3r rigid_body_pos = rigid_obj->position();  // Get rigid body position
+    
     for (int i = 0; i < faces.cols(); i++)
     {
         const Eigen::Vector3i& f = faces.col(i);
@@ -619,15 +656,29 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
         const Vec3r& p2 = mesh->vertex(f[1]);
         const Vec3r& p3 = mesh->vertex(f[2]);
 
+        const Vec3r centroid = (p1+p2+p3)/3;
+        const Real centroid_dist = sdf->evaluate(centroid);
+        
+        if (centroid_dist < min_sdf_dist) {
+            min_sdf_dist = centroid_dist;
+            closest_centroid = centroid;
+        }
+        max_sdf_dist = std::max(max_sdf_dist, centroid_dist);
+        
         // check if centroid of face is close
         const Real p1p2 = (p2-p1).squaredNorm();
         const Real p1p3 = (p3-p1).squaredNorm();
         const Real p2p3 = (p3-p2).squaredNorm();
         const Real max_edge = std::max({p1p2, p1p3, p2p3});
-        const Real centroid_dist = sdf->evaluate((p1+p2+p3)/3);
-        if (centroid_dist*centroid_dist > max_edge)
+        
+        // LESS AGGRESSIVE CULLING: Use safety factor to avoid missing collisions
+        const Real safety_factor = 4.0;  // Check faces even if centroid is up to 4x edge length away
+        if (centroid_dist*centroid_dist > safety_factor * max_edge) {
+            faces_culled_by_centroid++;
             continue;
+        }
 
+        faces_checked_detailed++;
         const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
         if (distance <= 1e-4)
@@ -636,6 +687,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
             const Vec3r grad = sdf->gradient(x);
             const Vec3r surface_x = x - grad*distance;
+            
+            collisions_this_check++;
             
             if (rigid_obj->isFixed())
             {
@@ -647,6 +700,28 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             }
             
         }
+    }
+    
+    // Print collision diagnostics (print every 500 checks to avoid spam)
+    collision_check_count++;
+    total_collisions_detected += collisions_this_check;
+    
+    if (collision_check_count % 500 == 0 || collisions_this_check > 0)
+    {
+        Real deform_to_rigid_dist = (sample_vertex - rigid_body_pos).norm();
+        
+        std::cout << "[RIGID-DEFORM COLLISION] Check #" << collision_check_count 
+                  << " | Pair: " << xpbd_mesh_obj->name() << " <-> " << rigid_obj->name()
+                  << "\n  Faces total: " << faces.cols()
+                  << " | Culled: " << faces_culled_by_centroid
+                  << " | Checked: " << faces_checked_detailed
+                  << "\n  SDF range: [" << std::setprecision(6) << min_sdf_dist << ", " << max_sdf_dist << "] meters"
+                  << "\n  Deform sample vertex: (" << std::setprecision(4) << sample_vertex.transpose() << ")"
+                  << "\n  Rigid body position:  (" << rigid_body_pos.transpose() << ")"
+                  << "\n  Direct distance (vertex to rigid center): " << std::setprecision(4) << deform_to_rigid_dist << "m"
+                  << "\n  Closest face centroid: (" << closest_centroid.transpose() << ") SDF_dist=" << min_sdf_dist
+                  << "\n  Collisions: " << collisions_this_check << " | Total: " << total_collisions_detected
+                  << " | Time: " << _sim->time() << "s\n";
     }
 }
 

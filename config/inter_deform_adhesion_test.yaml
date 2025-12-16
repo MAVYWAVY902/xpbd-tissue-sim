@@ -11,19 +11,23 @@ g-accel: 9.81 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 5e-4   # CRITICAL: Very small timestep for Jacobi stability
-collision-rate: 1000 # rate at which to run collision detection [Hz]
+time-step: 1e-3   # OPTIMIZED: Larger timestep since rigid bone is fixed (2x speedup)
+collision-rate: 50  # OPTIMIZED: Reduced since bone doesn't move (2x speedup)
 collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
 fps: 30 # frames per second of the visualization
-end-time: 20 # test time - shorter for quick benchmarking
+end-time: 200 # test time - shorter for quick benchmarking
 
 ## ==================== ADHESION SETTINGS ====================
-# CRITICAL FIXES FOR JACOBI STABILITY:
+# OPTIMIZED FOR FIXED RIGID OBJECT (bone never moves)
 inter-deform-adhesion-enable: true
-inter-deform-adhesion-rest-gap: 0.01        # MUST BE POSITIVE! 10mm rest gap prevents immediate activation
-inter-deform-adhesion-break-ratio: 3.0      # Allow more stretch before breaking
-inter-deform-adhesion-alpha: 1e-4           # MUCH SOFTER (was 1e-6) - Jacobi cannot handle stiff constraints
-inter-deform-adhesion-bond-distance: 0.015   # 15mm: slightly larger to ensure bonding happens
+inter-deform-adhesion-rest-gap: 0.01        # 10mm rest gap
+inter-deform-adhesion-break-ratio: 3.0     # Allow more stretch before breaking
+inter-deform-adhesion-alpha: 1e-6           # Moderate stiffness
+inter-deform-adhesion-bond-distance: 0.02   # 20mm: larger radius since bone is fixed
+
+# CRITICAL OPTIMIZATION: Specify which object is fixed
+# If bone (Cube2) is fixed, set this to true to enable fast path
+inter-deform-adhesion-fixed-triangle-object: true  # Triangle object (bone) is rigid and fixed
 # Note: You'll need to add code in Simulation.cpp to read these and create constraints
 
 ## define elastic materials
@@ -43,7 +47,9 @@ objects:
   -
     name: "Cube1"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
+    # filename: "../resource/cube/cube8.msh"
+    filename: "../resource/tissue/neuroma_tet.msh"
+
     materials: ["Soft Tissue"]
 
     ## visualization options
@@ -54,7 +60,7 @@ objects:
 
     ## initial configuration - positioned close to Cube2
     max-size: 0.4
-    position: [-0.205, 0, 1.0]  # 22cm to the left, close enough for adhesion
+    position: [0.205, 0.2, 1.0]  # 22cm to the left, close enough for adhesion
     velocity: [0.0, 0, 0]       # START STATIONARY - let adhesion pull gradually
     rotation: [0, 0, 0]
 
@@ -63,14 +69,14 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 30  # CRITICAL: Jacobi needs many more iterations than Gauss-Seidel
-    # solver-type: "Gauss-Seidel"
-    solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
+    num-solver-iters: 5  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
+    solver-type: "Gauss-Seidel"  # SWITCH TO GAUSS-SEIDEL FOR SPEED AND STABILITY
+    # solver-type: "Jacobi"       # Jacobi is too slow with 30 iterations
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 500000  # HIGH damping for Jacobi stability
+    damping-multiplier: 60000  # Moderate damping
 
 
   ## Second deformable cube (RIGHT - will be stuck to Cube1 via adhesion)
@@ -97,14 +103,14 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 30  # CRITICAL: Jacobi needs many more iterations than Gauss-Seidel
-    # solver-type: "Gauss-Seidel"
-    solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
+    num-solver-iters: 5  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
+    solver-type: "Gauss-Seidel"  # SWITCH TO GAUSS-SEIDEL FOR SPEED AND STABILITY
+    # solver-type: "Jacobi"       # Jacobi is too slow with 30 iterations
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 500000  # HIGH damping for Jacobi stability
+    damping-multiplier: 60000  # Moderate damping
 
 
   # ## Ground plane for reference

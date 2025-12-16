@@ -9,14 +9,14 @@ g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 
 ## different simulation "modes"
 # sim-mode: "Frame-by-frame"  # "Frame-by-frame" lets you advance the simulation one frame at a time by pressing any key
-sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
-# sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
+# sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
+sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
 time-step: 1e-4   # simulation time step [s]
-collision-rate: 1000 # rate at which to run collision detection [Hz] 
+collision-rate: 100 # rate at which to run collision detection [Hz] 
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 100 # end time of the simulation [s]
-fix-max-z: true           # Fix top vertices to create "ceiling attachment"
+# fix-max-z: true           # Fix top vertices to create "ceiling attachment"
 
 # nerve stretch constraint testing
 # To enable/disable nerve constraints for comparison tests, use environment variables:
@@ -79,8 +79,8 @@ objects:
     ## XPBD-specific options
     num-solver-iters: 3   # number of solver loop iterations per time step 
     
-    # solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (serial)
-    solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
+    solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (serial)
+    # solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
     # solver-type: "Parallel-Jacobi"  # use parallelized Jacobi solver (note: unstable and requires GPU)
 
     constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints with 2x2 block constraint solve for each tet element
@@ -90,25 +90,25 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 200000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 250000   # 'b' from the 1st-Order XPBD paper
   
 
 
 
   ## examples of other possible objects to add to the simulation
 
-  ## rigid box
+  # rigid box
   - 
-    # name: "ramp"
-    # type: "RigidBox"
-    # size: [5, 1, 0.2]
-    # density: 100000
-    # position: [0, 0, 0]
-    # rotation: [0, 0, 0]
-    # velocity: [0, 0, 0]
-    # angular-velocity: [0, 0, 0]
-    # fixed: true
-    # collisions: true
+    name: "ramp"
+    type: "RigidBox"
+    size: [5, 5, 0.1]
+    density: 100000
+    position: [0.1, 1, 0.6]
+    rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    fixed: true
+    collisions: true
 
 
   # # rigid sphere
@@ -117,7 +117,7 @@ objects:
   #   type: "RigidSphere"
   #   radius: 0.5
   #   density: 10000
-  #   position: [0, 0, 0]
+  #   position: [0.7, 0, 0]
   #   velocity: [0, 0, 0]
   #   fixed: true
   #   collisions: true
@@ -156,10 +156,10 @@ objects:
   # - 
   #   name: "tbone_v1"
   #   type: "RigidMeshObject"
-  #   filename: "../resource/bone/tbone_v1.obj"
+  #   filename: "../resource/bone/tbone_800.obj"
   #   density: 100
   #   position: [0, 0, 0]
-  #   rotation: [0, 90, 90]
+  #   rotation: [0, 0, 0]
   #   velocity: [0, 0, 0]
   #   angular-velocity: [0, 0, 0]
   #   max-size: 1
