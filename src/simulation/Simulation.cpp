@@ -1214,6 +1214,17 @@ Simulation::Simulation(const Config::SimulationConfig* config)
         _logger = std::make_unique<SimulationLogger>(filepath.string());
     }
 
+    // initialize the state recorder
+    if (_config->stateRecordingEnable())
+    {
+        _state_recorder = std::make_unique<SimulationStateRecorder>(
+            _config->stateRecordingOutputFolder(),
+            _config->stateRecordingSnapshotInterval()
+        );
+        std::cout << "[Simulation] State recording enabled - snapshots will be saved to: "
+                  << _config->stateRecordingOutputFolder() << std::endl;
+    }
+
     // create materials
     for (const auto& mat_config : config->materialConfigs())
     {
@@ -3131,6 +3142,59 @@ void Simulation::_timeStep()
 
     // —— logging —— //
     if (_logger) _logger->logToFile();
+
+    // —— state recording —— //
+    if (_state_recorder && _state_recorder->shouldRecord(_time))
+    {
+        SimulationStateRecorder::FrameSnapshot snapshot;
+        snapshot.time = _time;
+        snapshot.frame_number = static_cast<int>(_steps_taken);
+        
+        // Collect vertex data from all XPBD mesh objects
+        auto& xpbd_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        for (const auto& obj : xpbd_objs)
+        {
+            const auto* mesh = obj->mesh();
+            if (!mesh) continue;
+            
+            const auto& vertices = mesh->vertices();
+            const int num_verts = mesh->numVertices();
+            
+            // Collect positions
+            for (int i = 0; i < num_verts; ++i)
+            {
+                snapshot.vertex_positions.push_back(vertices.col(i));
+            }
+            
+            // Collect velocities
+            for (int i = 0; i < num_verts; ++i)
+            {
+                snapshot.vertex_velocities.push_back(obj->vertexVelocity(i));
+            }
+        }
+        
+        // Also collect from first-order objects
+        auto& fo_xpbd_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (const auto& obj : fo_xpbd_objs)
+        {
+            const auto* mesh = obj->mesh();
+            if (!mesh) continue;
+            
+            const auto& vertices = mesh->vertices();
+            const int num_verts = mesh->numVertices();
+            
+            for (int i = 0; i < num_verts; ++i)
+            {
+                snapshot.vertex_positions.push_back(vertices.col(i));
+                snapshot.vertex_velocities.push_back(obj->vertexVelocity(i));
+            }
+        }
+        
+        // Note: Adhesion states and deformation data collection
+        // will be added in next step when we add accessor methods
+        
+        _state_recorder->recordSnapshot(_time, static_cast<int>(_steps_taken), snapshot);
+    }
 
     // —— advance time —— //
     _time += _time_step;

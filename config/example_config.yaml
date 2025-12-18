@@ -97,18 +97,18 @@ objects:
 
   ## examples of other possible objects to add to the simulation
 
-  # rigid box
-  - 
-    name: "ramp"
-    type: "RigidBox"
-    size: [5, 5, 0.1]
-    density: 100000
-    position: [0.1, 1, 0.6]
-    rotation: [0, 0, 0]
-    velocity: [0, 0, 0]
-    angular-velocity: [0, 0, 0]
-    fixed: true
-    collisions: true
+  # # rigid box
+  # - 
+  #   name: "ramp"
+  #   type: "RigidBox"
+  #   size: [5, 5, 0.1]
+  #   density: 100000
+  #   position: [0.1, 1, 0.6]
+  #   rotation: [0, 0, 0]
+  #   velocity: [0, 0, 0]
+  #   angular-velocity: [0, 0, 0]
+  #   fixed: true
+  #   collisions: true
 
 
   # # rigid sphere
@@ -152,17 +152,17 @@ objects:
   #   collisions: true
   #   fixed: true
 
-  # # rigid mesh
-  # - 
-  #   name: "tbone_v1"
-  #   type: "RigidMeshObject"
-  #   filename: "../resource/bone/tbone_800.obj"
-  #   density: 100
-  #   position: [0, 0, 0]
-  #   rotation: [0, 0, 0]
-  #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
-  #   max-size: 1
-  #   collisions: true
-  #   fixed: true
+  # rigid mesh
+  - 
+    name: "tbone_v1"
+    type: "RigidMeshObject"
+    filename: "../resource/bone/tbone_800.obj"
+    density: 100
+    position: [0, 0, 0]
+    rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    max-size: 1
+    collisions: true
+    fixed: true
 

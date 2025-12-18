@@ -78,6 +78,11 @@ class SimulationConfig : public Config
         // extract parameters
         _extractParameter("time-step", node, _time_step);
         _extractParameter("end-time", node, _end_time);
+        
+        // Extract state recording parameters
+        _extractParameter("state-recording-enable", node, _state_recording_enable);
+        _extractParameter("state-recording-output-folder", node, _state_recording_output_folder);
+        _extractParameter("state-recording-snapshot-interval", node, _state_recording_snapshot_interval);
         _extractParameterWithOptions("sim-mode", node, _sim_mode, SIM_MODE_OPTIONS());
         _extractParameterWithOptions("visualization", node, _visualization, VISUALIZATION_OPTIONS());
         _extractParameter("enable-mouse-interaction", node, _enable_mouse_interaction);
@@ -182,6 +187,11 @@ class SimulationConfig : public Config
 
     const SimulationRenderConfig& renderConfig() const { return _render_config; }
 
+    // State recording getters
+    bool stateRecordingEnable() const { return _state_recording_enable.value; }
+    std::string stateRecordingOutputFolder() const { return _state_recording_output_folder.value; }
+    Real stateRecordingSnapshotInterval() const { return _state_recording_snapshot_interval.value; }
+
     protected:
     // Parameters
     ConfigParameter<std::string> _description = ConfigParameter<std::string>("");
@@ -196,6 +206,11 @@ class SimulationConfig : public Config
     ConfigParameter<Real> _fps = ConfigParameter<Real>(30.0);
     ConfigParameter<Real> _collision_rate = ConfigParameter<Real>(100);
     ConfigParameter<std::string> _collision_algorithm = ConfigParameter<std::string>("auto");
+
+    // State recording parameters
+    ConfigParameter<bool> _state_recording_enable = ConfigParameter<bool>(false);
+    ConfigParameter<std::string> _state_recording_output_folder = ConfigParameter<std::string>("../output/state_snapshots/");
+    ConfigParameter<Real> _state_recording_snapshot_interval = ConfigParameter<Real>(0.1);
 
     /** List of object configs for each object in the Simulation */
     ConfigVectorType _object_configs;

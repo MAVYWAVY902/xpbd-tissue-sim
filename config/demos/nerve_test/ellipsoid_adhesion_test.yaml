@@ -4,6 +4,11 @@
 name: "Ellipsoid Adhesion Test"
 description: "Test single-sided adhesion constraints with proper breakage on ellipsoid tumor"
 
+## ============ OFFLINE STATE RECORDING ============
+state-recording-enable: true
+state-recording-output-folder: "../output/ellipsoid_adhesion_recording/"
+state-recording-snapshot-interval: 0.1  # Save every 0.1 seconds
+
 # adhesion parameters (STRAIN-BASED MODEL)
 nerve-tumor-adhesion-enable: true                 # Enable adhesion constraint testing
 nerve-tumor-adhesion-distance-window: 0.1         # 10cm detection window (must exceed max initial separation!)

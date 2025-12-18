@@ -4,6 +4,7 @@
 #include <assimp/Importer.hpp>
 
 #include "simulation/SimulationLogger.hpp"
+#include "simulation/SimulationStateRecorder.hpp"
 
 #include "simobject/Object.hpp"
 #include "simobject/XPBDMeshObject.hpp"
@@ -279,6 +280,9 @@ class Simulation
 
         /** Responsible for logging various simulation quantities. */
         std::unique_ptr<SimulationLogger> _logger;
+
+        /** Responsible for recording state snapshots for offline analysis. */
+        std::unique_ptr<SimulationStateRecorder> _state_recorder;
 };
 
 } // namespace Sim

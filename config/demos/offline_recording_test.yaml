@@ -1,0 +1,79 @@
+## Offline State Recording Test Configuration
+## Demonstrates offline analysis functionality
+
+name: "Offline Recording Test"
+description: "Test offline state recording and analysis"
+
+visualization: "Easy3D"
+g-accel: 0.0
+
+## ============ Offline State Recording Config ============
+## New feature! Saves state snapshots for post-simulation analysis
+state-recording-enable: true
+state-recording-output-folder: "../output/offline_test/"
+state-recording-snapshot-interval: 0.1  # Save snapshot every 100ms
+
+## How to use:
+## 1. Run the simulation with the above settings enabled
+## 2. Use scripts/offline_analysis.py to analyze the data
+##
+## Advantages:
+## - Does not affect real-time simulation performance
+## - Can adjust breakage thresholds post-hoc
+## - Generate high-quality heatmaps and visualizations
+## - Support ParaView 3D visualization
+
+## ============ Basic Simulation Settings ============
+sim-mode: "Visualization"
+time-step: 1e-3
+max-time: 5.0  # Run for 5 seconds
+
+## logging
+logging: true
+logging-output-folder: "../output/offline_test/"
+
+## ============ Adhesion Constraint Settings ============
+nerve-tumor-adhesion-enable: true
+nerve-tumor-adhesion-distance-window: 0.1
+nerve-tumor-adhesion-alpha: 1e-9
+nerve-tumor-adhesion-break-ratio: 2.0  # Breakage threshold
+
+## ============ Nerve Configuration ============
+nerve-mesh-file: "../resource/rod/linear_rod.msh"
+nerve-physical-group: "nerve_edge"
+nerve-stretch-enable: true
+nerve-bending-enable: true
+nerve-stretch-alpha: 1e-12
+nerve-bending-alpha: 1e-11
+
+## ============ Object List ============
+object-list:
+  - name: "tumor"
+    type: "XPBDMesh"
+    mesh-file: "../resource/tissue/ellipsoid_tumor_high_res.msh"
+    position: [0, 0, 0]
+    material: "soft_tissue"
+    constraint-type: "combined-neohookean"
+    combined-deviatoric-alpha: 1e-8
+    combined-volumetric-alpha: 1e-8
+    mass-density: 1000
+    
+  - name: "nerve"
+    type: "XPBDMesh"
+    mesh-file: "../resource/rod/linear_rod.msh"
+    position: [0, 0, 0.05]
+    material: "nerve_tissue"
+    mass-density: 1000
+    nerve-enable: true
+
+## ============ Material Definitions ============
+material-list:
+  - name: "soft_tissue"
+    type: "NeoHookean"
+    youngs-modulus: 5000
+    poissons-ratio: 0.45
+    
+  - name: "nerve_tissue"
+    type: "NeoHookean"
+    youngs-modulus: 10000
+    poissons-ratio: 0.3

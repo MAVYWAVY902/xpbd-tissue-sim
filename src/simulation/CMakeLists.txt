@@ -12,10 +12,12 @@ set(SIMULATION_SRC_DIR "./")
 set(SIMULATION_HEADERS
     "${SIMULATION_INCLUDE_DIR}/Simulation.hpp"
     "${SIMULATION_INCLUDE_DIR}/SimulationLogger.hpp"
+    "${SIMULATION_INCLUDE_DIR}/SimulationStateRecorder.hpp"
 )
 set(SIMULATION_SOURCES
     "${SIMULATION_SRC_DIR}/Simulation.cpp"
     "${SIMULATION_SRC_DIR}/SimulationLogger.cpp"
+    "${SIMULATION_SRC_DIR}/SimulationStateRecorder.cpp"
 )
 
 target_sources(Simulation
