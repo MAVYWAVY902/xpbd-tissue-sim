@@ -1,0 +1,66 @@
+## Simple Pushing Test with State Recording Enabled
+
+name: "Pushing with State Recording"
+description: "Interactive pushing test with offline state recording for analysis"
+
+visualization: "Easy3D"
+
+g-accel: 0
+
+sim-mode: "Visualization"
+
+enable-mouse-interaction: true
+input-device: "Mouse" 
+
+time-step: 1e-3
+collision-rate: 1000
+fps: 30
+end-time: 10000
+
+## State Recording Configuration
+state-recording-enable: true
+state-recording-output-folder: "../output/pushing_recording/"
+state-recording-snapshot-interval: 0.1  # Save every 0.1 seconds
+
+## Materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000
+    E: 6e4
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+
+## PushingSimulation parameters
+tool-radius: 0.1
+push-stiffness: 50.0
+max-push-force: 20.0
+fix-min-z: true
+
+## Objects
+objects:
+  -
+    name: "Cube1"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube16.msh"  # Simple cube mesh
+    materials: ["Soft Tissue"]
+    
+    color: [0.8, 0.3, 0.2, 1.0]
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+    
+    max-size: 1
+    position: [0, 0, 1.2]
+    velocity: [0, 0, 0.0]
+    rotation: [0, 0, 0]
+    
+    collisions: true
+    
+    num-solver-iters: 3
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    
+    damping-multiplier: 1000000
