@@ -1,0 +1,383 @@
+# What PushingTest with Recording Generates
+
+## 📊 Output Overview
+
+When you run:
+```bash
+./PushingTest ../config/demos/simple_pushing/pushing_with_recording.yaml
+```
+
+You will generate **2 types of outputs**: C++ simulation outputs and Python analysis outputs.
+
+---
+
+## 🔷 Part 1: C++ Simulation Outputs (Automatic)
+
+These files are created **automatically** when you close the simulation window.
+
+### Output Directory
+```
+/home/yunxin/xpbd-tissue-sim/output/pushing_recording/
+```
+
+### File 1: `state_snapshots.bin` (Binary Data)
+
+**What it contains**:
+- Raw simulation state snapshots in binary format
+- Recorded every 0.1 seconds (based on `state-recording-snapshot-interval`)
+
+**Data structure** (per snapshot):
+```
+Header:
+  - uint32: number_of_snapshots
+
+For each snapshot:
+  - double: time (seconds)
+  - int: frame_number
+  
+  Vertex Data:
+    - uint32: num_vertices
+    - Vec3r[num_vertices]: vertex_positions (x,y,z for each vertex)
+    - Vec3r[num_vertices]: vertex_velocities (vx,vy,vz for each vertex)
+  
+  Adhesion Data (empty for PushingTest):
+    - uint32: num_adhesions (= 0 for pushing test)
+  
+  Deformation Data (empty for PushingTest):
+    - uint32: num_deformations (= 0 for pushing test)
+  
+  Breakage Events (empty for PushingTest):
+    - uint32: num_broken (= 0 for pushing test)
+```
+
+**Expected file size**:
+```
+Example calculation:
+- cube16.msh ≈ 750 vertices
+- Run for 5 seconds at 0.1s interval = 50 snapshots
+- Each snapshot: 16 bytes + 750 * 48 bytes = 36,016 bytes
+- Total: 50 * 36,016 ≈ 1.8 MB
+```
+
+---
+
+### File 2: `summary.txt` (Human-Readable)
+
+**Example content**:
+```txt
+Simulation State Recording Summary
+===================================
+Total snapshots: 50
+Time range: 0.1 - 5.0 seconds
+Snapshot interval: 0.1 seconds
+
+Total adhesion breakages: 0
+```
+
+**What it tells you**:
+- ✅ How many snapshots were recorded
+- ✅ Time range of the simulation
+- ✅ Snapshot frequency
+- ✅ Number of adhesion breakages (0 for PushingTest since no adhesions)
+
+---
+
+## 🔷 Part 2: Python Analysis Outputs (Manual)
+
+These files are created **when you run** the Python analysis script.
+
+### Command
+```bash
+cd /home/yunxin/xpbd-tissue-sim/scripts
+python offline_analysis.py \
+    --input ../output/pushing_recording/state_snapshots.bin \
+    --output ../output/analysis/
+```
+
+### Output Directory
+```
+/home/yunxin/xpbd-tissue-sim/output/analysis/
+```
+
+---
+
+### File 3: `adhesion_breakage_timeline.png`
+
+**What it shows**:
+- Timeline of when adhesions broke during simulation
+- X-axis: simulation time (seconds)
+- Y-axis: breakage event index
+- Red crosses mark each breakage event
+
+**For PushingTest**:
+- ⚠️ Will show "No breakage events found!" because PushingTest has no adhesions
+- This is NORMAL and EXPECTED
+
+---
+
+### File 4: `adhesion_strength_heatmap.png`
+
+**What it shows**:
+- Heatmap of adhesion strength over time
+- Color intensity = stretch distance (how stretched each adhesion is)
+- Shows which adhesions are under most stress
+
+**For PushingTest**:
+- ⚠️ Will be empty or show message "No adhesion data"
+- This is NORMAL - PushingTest doesn't have adhesions
+
+---
+
+### File 5: `deformation_heatmap.png`
+
+**What it shows**:
+- Heatmap of deformation/strain over time
+- Can show volumetric strain, deviatoric strain, or strain energy
+- Color intensity = magnitude of deformation
+
+**For PushingTest**:
+- ⚠️ Will be empty or computed from vertex positions
+- Strain computation from vertex data is currently not fully implemented
+- Future work: compute strains offline from vertex displacements
+
+---
+
+### File 6: `vertex_velocity_heatmap.png`
+
+**What it shows**:
+- Heatmap of vertex velocities over time
+- X-axis: time
+- Y-axis: vertex index
+- Color: velocity magnitude
+
+**For PushingTest**:
+- ✅ This WILL work! Shows which parts of the cube moved during pushing
+- Should see bright colors where you pushed the mesh
+- Should see lower velocities in fixed bottom vertices
+
+**Example visualization**:
+```
+Time (s) →
+0.5  1.0  1.5  2.0  2.5  3.0
+┌─────────────────────────┐
+│ ░░░░██████░░░░░░░░░░░░░ │ Vertex 0 (top, pushed)
+│ ░░░░█████░░░░░░░░░░░░░░ │ Vertex 1
+│ ░░░░████░░░░░░░░░░░░░░░ │ Vertex 2
+│ ░░░░░░░░░░░░░░░░░░░░░░░ │ ...
+│ ░░░░░░░░░░░░░░░░░░░░░░░ │ Vertex 749 (bottom, fixed)
+└─────────────────────────┘
+      ↑ User pushed here
+```
+
+---
+
+### Optional: File 7-N: `vtk_sequence/*.vtu` (ParaView Format)
+
+**Generated only if you run**:
+```bash
+python offline_analysis.py --input ... --output ... --vtk
+```
+
+**What it contains**:
+- One `.vtu` file per snapshot
+- 3D mesh with vertex positions and scalar fields
+- Can be opened in ParaView for 3D visualization
+
+**Files**:
+```
+vtk_sequence/
+├── frame_0000.vtu  (t=0.0s)
+├── frame_0001.vtu  (t=0.1s)
+├── frame_0002.vtu  (t=0.2s)
+├── ...
+└── frame_0049.vtu  (t=4.9s)
+```
+
+**How to use**:
+```bash
+paraview output/analysis/vtk_sequence/frame_0000.vtu
+# Click "Play" button to animate
+# Can color by velocity, displacement, etc.
+```
+
+---
+
+## 📋 Summary Table
+
+| File | Generated By | For PushingTest | Content |
+|------|-------------|-----------------|---------|
+| `state_snapshots.bin` | ✅ C++ Auto | ✅ **YES** (vertex data) | Binary state data |
+| `summary.txt` | ✅ C++ Auto | ✅ **YES** | Text summary |
+| `adhesion_breakage_timeline.png` | Python Manual | ⚠️ Empty (no adhesions) | Breakage events |
+| `adhesion_strength_heatmap.png` | Python Manual | ⚠️ Empty (no adhesions) | Adhesion stress |
+| `deformation_heatmap.png` | Python Manual | ⚠️ Limited | Strain/deformation |
+| `vertex_velocity_heatmap.png` | Python Manual | ✅ **YES** (useful!) | Velocity over time |
+| `vtk_sequence/*.vtu` | Python Manual (--vtk) | ✅ **YES** | 3D ParaView files |
+
+---
+
+## 🎯 What Will Be Most Useful for PushingTest?
+
+### Top 3 Most Useful Outputs:
+
+1. **`vertex_velocity_heatmap.png`** ⭐⭐⭐
+   - Shows where and when you pushed the mesh
+   - Visualizes dynamic response
+   - Easy to interpret
+
+2. **`state_snapshots.bin` + `summary.txt`** ⭐⭐⭐
+   - Confirms recording system works
+   - Raw data for custom analysis
+   - Can verify data integrity
+
+3. **`vtk_sequence/*.vtu`** ⭐⭐
+   - 3D visualization in ParaView
+   - Can rotate and inspect mesh deformation
+   - Professional-quality visualization
+
+### Less Useful for PushingTest:
+
+- ❌ Adhesion heatmaps (no adhesions in this test)
+- ❌ Breakage timeline (no breakages in this test)
+- ⚠️ Deformation heatmap (not fully implemented yet)
+
+---
+
+## 🔍 How to Verify Success
+
+### Step 1: Check C++ outputs exist
+```bash
+ls -lh /home/yunxin/xpbd-tissue-sim/output/pushing_recording/
+# Should show:
+# state_snapshots.bin  (>1MB)
+# summary.txt          (small text file)
+```
+
+### Step 2: Check summary content
+```bash
+cat /home/yunxin/xpbd-tissue-sim/output/pushing_recording/summary.txt
+# Should show reasonable values:
+# Total snapshots: 30-100 (depending on how long you ran)
+# Time range: 0.1 - X.X seconds
+```
+
+### Step 3: Run Python analysis
+```bash
+cd scripts
+python offline_analysis.py \
+    --input ../output/pushing_recording/state_snapshots.bin \
+    --output ../output/analysis/
+    
+# Should print:
+# [OfflineAnalyzer] Loading snapshots from ...
+# [OfflineAnalyzer] Found N snapshots
+# [Analysis] Analyzing vertex velocities...
+# Saved: .../vertex_velocity_heatmap.png
+```
+
+### Step 4: View results
+```bash
+# Open the heatmap
+xdg-open ../output/analysis/vertex_velocity_heatmap.png
+
+# Or check file exists
+ls -lh ../output/analysis/*.png
+```
+
+---
+
+## 💡 Expected Console Output
+
+### During Simulation:
+```
+[Simulation] State recording enabled - snapshots will be saved to: ../output/pushing_recording/
+[StateRecorder] Initialized with output folder: ../output/pushing_recording/, snapshot interval: 0.1s
+[StateRecorder] Recorded snapshot #1 at t=0.10s (frame 10) - 0 adhesions
+[StateRecorder] Recorded snapshot #2 at t=0.20s (frame 20) - 0 adhesions
+[StateRecorder] Recorded snapshot #3 at t=0.30s (frame 30) - 0 adhesions
+...
+[User closes window]
+[StateRecorder] Auto-saving 50 snapshots...
+[StateRecorder] Saved 50 snapshots to: ../output/pushing_recording/state_snapshots.bin
+```
+
+### During Python Analysis:
+```
+============================================================
+  XPBD Tissue Simulation - Offline Analysis Tool
+============================================================
+[OfflineAnalyzer] Loading snapshots from ../output/pushing_recording/state_snapshots.bin...
+[OfflineAnalyzer] Found 50 snapshots
+  Loaded 10/50 snapshots...
+  Loaded 20/50 snapshots...
+  Loaded 30/50 snapshots...
+  Loaded 40/50 snapshots...
+  Loaded 50/50 snapshots...
+[OfflineAnalyzer] Successfully loaded 50 snapshots
+  Time range: 0.100s - 5.000s
+
+[Analysis] Analyzing adhesion breakage events...
+  Total breakage events: 0
+  No breakage events found!
+
+[Analysis] Analyzing adhesion strength heatmap...
+  No adhesion data available
+
+[Analysis] Analyzing deformation heatmap...
+  Deformation data not available (not yet implemented)
+
+[Analysis] Analyzing vertex velocities...
+  Computing velocity magnitudes...
+  Saved: ../output/analysis/vertex_velocity_heatmap.png
+
+============================================================
+  Analysis complete! Check output directory:
+  /home/yunxin/xpbd-tissue-sim/output/analysis
+============================================================
+```
+
+---
+
+## 🚨 Common Issues
+
+### Issue 1: No .bin file created
+**Cause**: Simulation crashed or didn't close properly
+**Solution**: Make sure to close the visualization window cleanly
+
+### Issue 2: .bin file size is 0 or very small
+**Cause**: No snapshots recorded, or recording disabled
+**Solution**: Verify `state-recording-enable: true` in YAML
+
+### Issue 3: Python script can't read .bin file
+**Cause**: Binary format mismatch or corrupted file
+**Solution**: Re-run simulation, check for error messages
+
+### Issue 4: All heatmaps are empty
+**Cause**: PushingTest doesn't have adhesions (NORMAL!)
+**Solution**: Check `vertex_velocity_heatmap.png` instead
+
+---
+
+## 🎓 Next Steps After Successful Test
+
+Once you have successfully generated outputs from PushingTest:
+
+1. ✅ **Verify vertex_velocity_heatmap.png shows reasonable data**
+   - Should see movement where you pushed
+   - Bottom vertices should be mostly stationary (fixed)
+
+2. ✅ **Try VTK export and view in ParaView**
+   ```bash
+   python offline_analysis.py --input ... --output ... --vtk
+   paraview output/analysis/vtk_sequence/frame_0000.vtu
+   ```
+
+3. ✅ **Move to adhesion testing**
+   - Use a config with nerve-tumor adhesions
+   - Will get meaningful adhesion breakage data
+   - Adhesion heatmaps will show actual data
+
+4. ✅ **Implement custom analysis**
+   - Modify `offline_analysis.py` to compute custom metrics
+   - Add strain computation from vertex displacements
+   - Create custom visualizations

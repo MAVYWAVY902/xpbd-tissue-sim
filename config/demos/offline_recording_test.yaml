@@ -50,7 +50,7 @@ nerve-bending-alpha: 1e-11
 object-list:
   - name: "tumor"
     type: "XPBDMesh"
-    mesh-file: "../resource/tissue/ellipsoid_tumor_high_res.msh"
+    mesh-file: "../resource/tissue/ellipsoid_tumor_with_surfaces.msh"  # Fixed: use existing file
     position: [0, 0, 0]
     material: "soft_tissue"
     constraint-type: "combined-neohookean"
