@@ -3212,12 +3212,31 @@ void Simulation::_updateGraphics()
     }
 }
 
-void Simulation::notifyKeyPressed(SimulationInput::Key /* key */, SimulationInput::KeyAction action, int /* modifiers */)
+void Simulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int /* modifiers */)
 {
     if (_sim_mode == Config::SimulationMode::FRAME_BY_FRAME && action == SimulationInput::KeyAction::PRESS)
     {
         _timeStep();
         _updateGraphics();
+    }
+    
+    // Manual save trigger: Press 'P' to save state recording
+    if (key == SimulationInput::Key::P && action == SimulationInput::KeyAction::PRESS)
+    {
+        if (_state_recorder && !_state_recorder->getSnapshots().empty())
+        {
+            std::cout << "\n[Simulation] Manual save triggered by user (P key)\n";
+            _state_recorder->saveToFile();
+            std::cout << "[Simulation] Save complete! Safe to close now.\n\n";
+        }
+        else if (_state_recorder)
+        {
+            std::cout << "\n[Simulation] No snapshots to save yet.\n\n";
+        }
+        else
+        {
+            std::cout << "\n[Simulation] State recording not enabled.\n\n";
+        }
     }
 }
 

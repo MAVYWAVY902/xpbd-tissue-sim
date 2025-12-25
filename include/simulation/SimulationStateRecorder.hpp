@@ -93,6 +93,11 @@ public:
      * @brief Get output file path
      */
     std::string getOutputPath() const { return _output_folder + "/state_snapshots.bin"; }
+    
+    /**
+     * @brief Get reference to recorded snapshots (for checking if empty)
+     */
+    const std::vector<FrameSnapshot>& getSnapshots() const { return _snapshots; }
 
 private:
     std::string _output_folder;

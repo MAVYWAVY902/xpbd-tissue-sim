@@ -93,6 +93,11 @@ class OfflineAnalyzer:
         
         # Read vertex positions
         num_vertices = struct.unpack('I', f.read(4))[0]
+        print(f"  [DEBUG] Reading snapshot: time={time:.3f}, frame={frame_number}, num_vertices={num_vertices}")
+        
+        if num_vertices > 100000:  # Sanity check
+            raise ValueError(f"Invalid num_vertices: {num_vertices}. File may be corrupted or format mismatch.")
+        
         vertex_positions = np.frombuffer(f.read(num_vertices * 24), dtype=np.float64).reshape(-1, 3)
         
         # Read vertex velocities
@@ -100,6 +105,11 @@ class OfflineAnalyzer:
         
         # Read adhesion states
         num_adhesions = struct.unpack('I', f.read(4))[0]
+        print(f"  [DEBUG] num_adhesions={num_adhesions}")
+        
+        if num_adhesions > 100000:  # Sanity check
+            raise ValueError(f"Invalid num_adhesions: {num_adhesions}. File format mismatch.")
+        
         adhesion_states = []
         
         for _ in range(num_adhesions):
@@ -127,6 +137,11 @@ class OfflineAnalyzer:
         
         # Read deformation states
         num_deformations = struct.unpack('I', f.read(4))[0]
+        print(f"  [DEBUG] num_deformations={num_deformations}")
+        
+        if num_deformations > 100000:  # Sanity check
+            raise ValueError(f"Invalid num_deformations: {num_deformations}. File format mismatch.")
+        
         deformation_states = []
         
         for _ in range(num_deformations):
@@ -146,6 +161,11 @@ class OfflineAnalyzer:
         
         # Read broken adhesion IDs
         num_broken = struct.unpack('I', f.read(4))[0]
+        print(f"  [DEBUG] num_broken={num_broken}")
+        
+        if num_broken > 100000:  # Sanity check
+            raise ValueError(f"Invalid num_broken: {num_broken}. File format mismatch.")
+        
         broken_adhesion_ids = []
         if num_broken > 0:
             broken_adhesion_ids = list(struct.unpack(f'{num_broken}i', f.read(num_broken * 4)))
@@ -286,6 +306,67 @@ class OfflineAnalyzer:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"  Saved: {output_path}")
         plt.close()
+    
+    def analyze_vertex_velocities(self, output_dir: Path) -> None:
+        """Analyze and visualize vertex velocities over time"""
+        print("\n[Analysis] Analyzing vertex velocities...")
+        
+        if not self.snapshots:
+            print("  No snapshots available!")
+            return
+        
+        # Collect velocity magnitudes over time
+        num_snapshots = len(self.snapshots)
+        num_vertices = len(self.snapshots[0].vertex_positions)
+        
+        velocity_data = np.zeros((num_snapshots, num_vertices))
+        times = []
+        
+        for i, snapshot in enumerate(self.snapshots):
+            times.append(snapshot.time)
+            for j, vel in enumerate(snapshot.vertex_velocities):
+                velocity_data[i, j] = np.linalg.norm(vel)
+        
+        times = np.array(times)
+        
+        # Plot heatmap
+        fig, ax = plt.subplots(figsize=(14, 8))
+        im = ax.imshow(velocity_data.T, aspect='auto', cmap='viridis', 
+                      interpolation='nearest',
+                      extent=[times[0], times[-1], 0, num_vertices])
+        
+        ax.set_xlabel('Simulation Time (s)', fontsize=12)
+        ax.set_ylabel('Vertex ID', fontsize=12)
+        ax.set_title('Vertex Velocity Magnitude Heatmap', fontsize=14, fontweight='bold')
+        
+        cbar = plt.colorbar(im, ax=ax)
+        cbar.set_label('Velocity Magnitude (m/s)', fontsize=11)
+        
+        output_path = output_dir / 'vertex_velocity_heatmap.png'
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        print(f"  Saved: {output_path}")
+        plt.close()
+        
+        # Also plot max/min/mean velocity over time
+        fig, ax = plt.subplots(figsize=(12, 6))
+        max_vel = np.max(velocity_data, axis=1)
+        min_vel = np.min(velocity_data, axis=1)
+        mean_vel = np.mean(velocity_data, axis=1)
+        
+        ax.plot(times, max_vel, 'r-', label='Max Velocity', linewidth=2)
+        ax.plot(times, mean_vel, 'g-', label='Mean Velocity', linewidth=2)
+        ax.fill_between(times, min_vel, max_vel, alpha=0.2, color='blue', label='Range')
+        
+        ax.set_xlabel('Simulation Time (s)', fontsize=12)
+        ax.set_ylabel('Velocity Magnitude (m/s)', fontsize=12)
+        ax.set_title('Velocity Statistics Over Time', fontsize=14, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        output_path = output_dir / 'velocity_statistics.png'
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        print(f"  Saved: {output_path}")
+        plt.close()
         
     def create_animation(self, output_dir: Path, fps: int = 30) -> None:
         """创建动画（可选）"""
@@ -364,6 +445,7 @@ def main():
     analyzer.analyze_adhesion_breakage(output_dir)
     analyzer.analyze_adhesion_strength_heatmap(output_dir)
     analyzer.analyze_deformation_heatmap(output_dir)
+    analyzer.analyze_vertex_velocities(output_dir)  # Always useful for any simulation!
     
     # Optional: export VTK
     if args.vtk:
