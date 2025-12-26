@@ -1033,6 +1033,7 @@
 #include "solver/constraint/NerveBendingConstraint.hpp"
 #include "utils/MeshUtils.hpp"
 #include "common/XPBDEnumTypes.hpp"
+#include "geometry/TetMesh.hpp"
 
 #include <gmsh.h>
 #include <chrono>
@@ -3150,6 +3151,8 @@ void Simulation::_timeStep()
         snapshot.time = _time;
         snapshot.frame_number = static_cast<int>(_steps_taken);
         
+        int vertex_offset = 0;
+        
         // Collect vertex data from all XPBD mesh objects
         auto& xpbd_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
         for (const auto& obj : xpbd_objs)
@@ -3158,7 +3161,9 @@ void Simulation::_timeStep()
             if (!mesh) continue;
             
             const auto& vertices = mesh->vertices();
+            const auto& faces = mesh->faces();
             const int num_verts = mesh->numVertices();
+            const int num_faces = mesh->numFaces();
             
             // Collect positions
             for (int i = 0; i < num_verts; ++i)
@@ -3171,6 +3176,37 @@ void Simulation::_timeStep()
             {
                 snapshot.vertex_velocities.push_back(obj->vertexVelocity(i));
             }
+            
+            // Collect mesh topology
+            SimulationStateRecorder::MeshTopology topo;
+            topo.vertex_offset = vertex_offset;
+            topo.num_vertices = num_verts;
+            
+            // Get surface triangles
+            for (int i = 0; i < num_faces; ++i)
+            {
+                topo.surface_triangles.push_back(faces.col(i));
+            }
+            
+            // Try to get tetrahedral elements if this is a TetMesh
+            const auto* tet_mesh = dynamic_cast<const Geometry::TetMesh*>(mesh);
+            if (tet_mesh)
+            {
+                topo.has_tets = true;
+                const auto& elements = tet_mesh->elements();
+                const int num_tets = tet_mesh->numElements();
+                for (int i = 0; i < num_tets; ++i)
+                {
+                    topo.tetrahedra.push_back(elements.col(i));
+                }
+            }
+            else
+            {
+                topo.has_tets = false;
+            }
+            
+            snapshot.mesh_topologies.push_back(topo);
+            vertex_offset += num_verts;
         }
         
         // Also collect from first-order objects
@@ -3181,13 +3217,46 @@ void Simulation::_timeStep()
             if (!mesh) continue;
             
             const auto& vertices = mesh->vertices();
+            const auto& faces = mesh->faces();
             const int num_verts = mesh->numVertices();
+            const int num_faces = mesh->numFaces();
             
             for (int i = 0; i < num_verts; ++i)
             {
                 snapshot.vertex_positions.push_back(vertices.col(i));
                 snapshot.vertex_velocities.push_back(obj->vertexVelocity(i));
             }
+            
+            // Collect mesh topology
+            SimulationStateRecorder::MeshTopology topo;
+            topo.vertex_offset = vertex_offset;
+            topo.num_vertices = num_verts;
+            
+            // Get surface triangles
+            for (int i = 0; i < num_faces; ++i)
+            {
+                topo.surface_triangles.push_back(faces.col(i));
+            }
+            
+            // Try to get tetrahedral elements
+            const auto* tet_mesh = dynamic_cast<const Geometry::TetMesh*>(mesh);
+            if (tet_mesh)
+            {
+                topo.has_tets = true;
+                const auto& elements = tet_mesh->elements();
+                const int num_tets = tet_mesh->numElements();
+                for (int i = 0; i < num_tets; ++i)
+                {
+                    topo.tetrahedra.push_back(elements.col(i));
+                }
+            }
+            else
+            {
+                topo.has_tets = false;
+            }
+            
+            snapshot.mesh_topologies.push_back(topo);
+            vertex_offset += num_verts;
         }
         
         // Note: Adhesion states and deformation data collection

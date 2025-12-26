@@ -46,6 +46,15 @@ public:
         Vec3r principal_strains;  // 主应变
     };
 
+    struct MeshTopology
+    {
+        int vertex_offset;  // Starting index of vertices for this mesh
+        int num_vertices;
+        std::vector<Eigen::Vector3i> surface_triangles;  // Surface triangles (for visualization)
+        std::vector<Eigen::Vector4i> tetrahedra;         // Volumetric tetrahedra (if available)
+        bool has_tets;  // Whether this mesh has tetrahedral elements
+    };
+
     struct FrameSnapshot
     {
         Real time;
@@ -54,6 +63,9 @@ public:
         // Vertex data
         std::vector<Vec3r> vertex_positions;
         std::vector<Vec3r> vertex_velocities;
+        
+        // Mesh topology (connectivity information)
+        std::vector<MeshTopology> mesh_topologies;
         
         // Adhesion data
         std::vector<AdhesionState> adhesion_states;

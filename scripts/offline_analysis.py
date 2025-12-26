@@ -50,12 +50,23 @@ class DeformationState:
 
 
 @dataclass
+class MeshTopology:
+    """网格拓扑结构"""
+    vertex_offset: int  # Starting index of vertices for this mesh
+    num_vertices: int
+    surface_triangles: List[Tuple[int, int, int]]  # Surface triangles (for visualization)
+    tetrahedra: List[Tuple[int, int, int, int]]    # Volumetric tetrahedra (if available)
+    has_tets: bool  # Whether this mesh has tetrahedral elements
+
+
+@dataclass
 class FrameSnapshot:
     """单帧快照"""
     time: float
     frame_number: int
     vertex_positions: np.ndarray  # (N, 3)
     vertex_velocities: np.ndarray  # (N, 3)
+    mesh_topologies: List[MeshTopology]  # Mesh connectivity information
     adhesion_states: List[AdhesionState]
     deformation_states: List[DeformationState]
     broken_adhesion_ids: List[int]
@@ -105,6 +116,39 @@ class OfflineAnalyzer:
         
         # Read vertex velocities
         vertex_velocities = np.frombuffer(f.read(num_vertices * 24), dtype=np.float64).reshape(-1, 3)
+        
+        # Read mesh topologies
+        num_meshes = struct.unpack('I', f.read(4))[0]
+        print(f"  [DEBUG] num_meshes={num_meshes}")
+        
+        mesh_topologies = []
+        for _ in range(num_meshes):
+            vertex_offset = struct.unpack('i', f.read(4))[0]
+            num_verts_in_mesh = struct.unpack('i', f.read(4))[0]
+            
+            # Read surface triangles
+            num_triangles = struct.unpack('I', f.read(4))[0]
+            triangles = []
+            for _ in range(num_triangles):
+                tri = struct.unpack('iii', f.read(12))
+                triangles.append(tri)
+            
+            # Read tetrahedra
+            has_tets = struct.unpack('?', f.read(1))[0]
+            num_tets = struct.unpack('I', f.read(4))[0]
+            tetrahedra = []
+            for _ in range(num_tets):
+                tet = struct.unpack('iiii', f.read(16))
+                tetrahedra.append(tet)
+            
+            topo = MeshTopology(
+                vertex_offset=vertex_offset,
+                num_vertices=num_verts_in_mesh,
+                surface_triangles=triangles,
+                tetrahedra=tetrahedra,
+                has_tets=has_tets
+            )
+            mesh_topologies.append(topo)
         
         # Read adhesion states
         num_adhesions = struct.unpack('I', f.read(4))[0]
@@ -178,6 +222,7 @@ class OfflineAnalyzer:
             frame_number=frame_number,
             vertex_positions=vertex_positions,
             vertex_velocities=vertex_velocities,
+            mesh_topologies=mesh_topologies,
             adhesion_states=adhesion_states,
             deformation_states=deformation_states,
             broken_adhesion_ids=broken_adhesion_ids
@@ -520,8 +565,8 @@ class OfflineAnalyzer:
         plt.close()
     
     def export_vtk_sequence(self, output_dir: Path) -> None:
-        """Export VTK sequence with displacement and velocity fields for ParaView"""
-        print("\n[Analysis] Exporting VTK sequence for ParaView...")
+        """Export VTK sequence with complete mesh topology (UNSTRUCTURED_GRID format) for ParaView"""
+        print("\n[Analysis] Exporting VTK sequence with mesh topology for ParaView...")
         
         if not self.snapshots:
             print("  No snapshots to export!")
@@ -554,17 +599,71 @@ class OfflineAnalyzer:
                 f.write("# vtk DataFile Version 3.0\n")
                 f.write(f"XPBD Tissue Simulation - Frame {snapshot.frame_number} at t={snapshot.time:.4f}s\n")
                 f.write("ASCII\n")
-                f.write("DATASET POLYDATA\n")
+                f.write("DATASET UNSTRUCTURED_GRID\n")
                 
-                # Write points (current positions)
+                # Write points (current vertex positions)
                 f.write(f"POINTS {num_points} float\n")
                 for pos in snapshot.vertex_positions:
                     f.write(f"{pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f}\n")
                 
-                # Write point data
+                # Write cells (triangles and/or tetrahedra)
+                # Check if we have mesh topology data
+                if hasattr(snapshot, 'mesh_topologies') and snapshot.mesh_topologies:
+                    # Count total cells
+                    total_cells = 0
+                    total_cell_data_size = 0
+                    
+                    for topo in snapshot.mesh_topologies:
+                        if hasattr(topo, 'has_tets') and topo.has_tets:
+                            # Use tetrahedra for volumetric meshes
+                            total_cells += len(topo.tetrahedra)
+                            total_cell_data_size += len(topo.tetrahedra) * 5  # 4 indices + 1 count
+                        else:
+                            # Use surface triangles for surface-only meshes
+                            total_cells += len(topo.surface_triangles)
+                            total_cell_data_size += len(topo.surface_triangles) * 4  # 3 indices + 1 count
+                    
+                    f.write(f"\nCELLS {total_cells} {total_cell_data_size}\n")
+                    
+                    # Write cell connectivity
+                    for topo in snapshot.mesh_topologies:
+                        offset = topo.vertex_offset
+                        
+                        if hasattr(topo, 'has_tets') and topo.has_tets:
+                            # Write tetrahedra
+                            for tet in topo.tetrahedra:
+                                f.write(f"4 {tet[0]+offset} {tet[1]+offset} {tet[2]+offset} {tet[3]+offset}\n")
+                        else:
+                            # Write surface triangles
+                            for tri in topo.surface_triangles:
+                                f.write(f"3 {tri[0]+offset} {tri[1]+offset} {tri[2]+offset}\n")
+                    
+                    # Write cell types
+                    f.write(f"\nCELL_TYPES {total_cells}\n")
+                    for topo in snapshot.mesh_topologies:
+                        if hasattr(topo, 'has_tets') and topo.has_tets:
+                            # VTK_TETRA = 10
+                            for _ in topo.tetrahedra:
+                                f.write("10\n")
+                        else:
+                            # VTK_TRIANGLE = 5
+                            for _ in topo.surface_triangles:
+                                f.write("5\n")
+                else:
+                    # Fallback: no topology info, just write vertices as VTK_VERTEX cells
+                    print(f"  Warning: No mesh topology found for frame {i}. Exporting vertices only.")
+                    f.write(f"\nCELLS {num_points} {num_points * 2}\n")
+                    for j in range(num_points):
+                        f.write(f"1 {j}\n")
+                    
+                    f.write(f"\nCELL_TYPES {num_points}\n")
+                    for _ in range(num_points):
+                        f.write("1\n")  # VTK_VERTEX = 1
+                
+                # Write point data (scalar/vector fields)
                 f.write(f"\nPOINT_DATA {num_points}\n")
                 
-                # 1. Displacement magnitude (scalar) - THIS IS KEY FOR HEATMAP!
+                # 1. Displacement magnitude (scalar) - KEY FOR HEATMAP!
                 f.write("\nSCALARS displacement_magnitude float 1\n")
                 f.write("LOOKUP_TABLE default\n")
                 for mag in disp_magnitudes:

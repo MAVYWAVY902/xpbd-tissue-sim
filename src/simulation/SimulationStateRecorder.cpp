@@ -110,6 +110,32 @@ void SimulationStateRecorder::_writeBinary(std::ofstream& file, const FrameSnaps
     file.write(reinterpret_cast<const char*>(snapshot.vertex_velocities.data()), 
                num_vertices * sizeof(Vec3r));
     
+    // Write mesh topologies
+    uint32_t num_meshes = snapshot.mesh_topologies.size();
+    file.write(reinterpret_cast<const char*>(&num_meshes), sizeof(num_meshes));
+    
+    for (const auto& topo : snapshot.mesh_topologies)
+    {
+        file.write(reinterpret_cast<const char*>(&topo.vertex_offset), sizeof(topo.vertex_offset));
+        file.write(reinterpret_cast<const char*>(&topo.num_vertices), sizeof(topo.num_vertices));
+        
+        // Write surface triangles
+        uint32_t num_triangles = topo.surface_triangles.size();
+        file.write(reinterpret_cast<const char*>(&num_triangles), sizeof(num_triangles));
+        file.write(reinterpret_cast<const char*>(topo.surface_triangles.data()), 
+                   num_triangles * sizeof(Eigen::Vector3i));
+        
+        // Write tetrahedra
+        file.write(reinterpret_cast<const char*>(&topo.has_tets), sizeof(topo.has_tets));
+        uint32_t num_tets = topo.tetrahedra.size();
+        file.write(reinterpret_cast<const char*>(&num_tets), sizeof(num_tets));
+        if (num_tets > 0)
+        {
+            file.write(reinterpret_cast<const char*>(topo.tetrahedra.data()), 
+                       num_tets * sizeof(Eigen::Vector4i));
+        }
+    }
+    
     // Write adhesion states
     uint32_t num_adhesions = snapshot.adhesion_states.size();
     file.write(reinterpret_cast<const char*>(&num_adhesions), sizeof(num_adhesions));
@@ -200,6 +226,35 @@ SimulationStateRecorder::_readBinary(std::ifstream& file)
     snapshot.vertex_velocities.resize(num_vertices);
     file.read(reinterpret_cast<char*>(snapshot.vertex_velocities.data()), 
               num_vertices * sizeof(Vec3r));
+    
+    // Read mesh topologies
+    uint32_t num_meshes;
+    file.read(reinterpret_cast<char*>(&num_meshes), sizeof(num_meshes));
+    snapshot.mesh_topologies.resize(num_meshes);
+    
+    for (auto& topo : snapshot.mesh_topologies)
+    {
+        file.read(reinterpret_cast<char*>(&topo.vertex_offset), sizeof(topo.vertex_offset));
+        file.read(reinterpret_cast<char*>(&topo.num_vertices), sizeof(topo.num_vertices));
+        
+        // Read surface triangles
+        uint32_t num_triangles;
+        file.read(reinterpret_cast<char*>(&num_triangles), sizeof(num_triangles));
+        topo.surface_triangles.resize(num_triangles);
+        file.read(reinterpret_cast<char*>(topo.surface_triangles.data()), 
+                  num_triangles * sizeof(Eigen::Vector3i));
+        
+        // Read tetrahedra
+        file.read(reinterpret_cast<char*>(&topo.has_tets), sizeof(topo.has_tets));
+        uint32_t num_tets;
+        file.read(reinterpret_cast<char*>(&num_tets), sizeof(num_tets));
+        topo.tetrahedra.resize(num_tets);
+        if (num_tets > 0)
+        {
+            file.read(reinterpret_cast<char*>(topo.tetrahedra.data()), 
+                      num_tets * sizeof(Eigen::Vector4i));
+        }
+    }
     
     // Read adhesion states
     uint32_t num_adhesions;
