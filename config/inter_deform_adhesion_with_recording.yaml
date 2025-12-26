@@ -29,8 +29,8 @@ state-recording-snapshot-interval: 0.1  # Record every 0.1 seconds (10 fps)
 # OPTIMIZED FOR FIXED RIGID OBJECT (bone never moves)
 inter-deform-adhesion-enable: true
 inter-deform-adhesion-rest-gap: 0.01        # 10mm rest gap
-inter-deform-adhesion-break-ratio: 3.0     # Allow more stretch before breaking
-inter-deform-adhesion-alpha: 1e-6           # Moderate stiffness
+inter-deform-adhesion-break-ratio: 3.5     # Allow more stretch before breaking
+inter-deform-adhesion-alpha: 1e-7           # Moderate stiffness
 inter-deform-adhesion-bond-distance: 0.02   # 20mm: larger radius since bone is fixed
 
 # CRITICAL OPTIMIZATION: Specify which object is fixed
