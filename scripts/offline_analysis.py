@@ -16,8 +16,11 @@ import struct
 import argparse
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 from pathlib import Path
 from dataclasses import dataclass
+from typing import List, Tuple
 from typing import List, Tuple
 import json
 
@@ -363,57 +366,242 @@ class OfflineAnalyzer:
         ax.legend()
         ax.grid(True, alpha=0.3)
         
-        output_path = output_dir / 'velocity_statistics.png'
+        output_path = output_dir / 'displacement_statistics.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"  Saved: {output_path}")
         plt.close()
+    
+    def visualize_3d_mesh_snapshots(self, output_dir: Path, frame_indices: List[int] = None) -> None:
+        """Generate 3D mesh visualizations with color-mapped displacement/velocity"""
+        print("\n[Analysis] Generating 3D mesh visualizations...")
         
+        if not self.snapshots:
+            print("  No snapshots available!")
+            return
+        
+        # Use first snapshot as reference
+        initial_positions = self.snapshots[0].vertex_positions
+        
+        # If no specific frames requested, visualize a few key frames
+        if frame_indices is None:
+            # Pick ~6 frames evenly distributed
+            n_frames = len(self.snapshots)
+            frame_indices = [0, n_frames//5, 2*n_frames//5, 3*n_frames//5, 4*n_frames//5, n_frames-1]
+            frame_indices = [i for i in frame_indices if i < n_frames]
+        
+        for idx in frame_indices:
+            if idx >= len(self.snapshots):
+                continue
+                
+            snapshot = self.snapshots[idx]
+            
+            # Compute displacement and velocity magnitudes
+            positions = snapshot.vertex_positions
+            velocities = snapshot.vertex_velocities
+            
+            disp_mags = np.array([np.linalg.norm(positions[i] - initial_positions[i]) 
+                                 for i in range(len(positions))])
+            vel_mags = np.array([np.linalg.norm(v) for v in velocities])
+            
+            # Extract xyz coordinates
+            x = np.array([p[0] for p in positions])
+            y = np.array([p[1] for p in positions])
+            z = np.array([p[2] for p in positions])
+            
+            # Create 3D visualization with displacement coloring
+            fig = plt.figure(figsize=(16, 6))
+            
+            # Subplot 1: Displacement magnitude
+            ax1 = fig.add_subplot(121, projection='3d')
+            scatter1 = ax1.scatter(x, y, z, c=disp_mags, cmap='hot', 
+                                  s=20, alpha=0.8, edgecolors='none')
+            ax1.set_xlabel('X (m)', fontsize=10)
+            ax1.set_ylabel('Y (m)', fontsize=10)
+            ax1.set_zlabel('Z (m)', fontsize=10)
+            ax1.set_title(f'Frame {idx} (t={snapshot.time:.2f}s) - Displacement', 
+                         fontsize=12, fontweight='bold')
+            cbar1 = plt.colorbar(scatter1, ax=ax1, shrink=0.5, aspect=5)
+            cbar1.set_label('Displacement (m)', fontsize=10)
+            
+            # Subplot 2: Velocity magnitude
+            ax2 = fig.add_subplot(122, projection='3d')
+            scatter2 = ax2.scatter(x, y, z, c=vel_mags, cmap='viridis', 
+                                  s=20, alpha=0.8, edgecolors='none')
+            ax2.set_xlabel('X (m)', fontsize=10)
+            ax2.set_ylabel('Y (m)', fontsize=10)
+            ax2.set_zlabel('Z (m)', fontsize=10)
+            ax2.set_title(f'Frame {idx} (t={snapshot.time:.2f}s) - Velocity', 
+                         fontsize=12, fontweight='bold')
+            cbar2 = plt.colorbar(scatter2, ax=ax2, shrink=0.5, aspect=5)
+            cbar2.set_label('Velocity (m/s)', fontsize=10)
+            
+            # Set same viewing angle for both
+            ax1.view_init(elev=20, azim=45)
+            ax2.view_init(elev=20, azim=45)
+            
+            plt.tight_layout()
+            output_path = output_dir / f'3d_mesh_frame_{idx:04d}.png'
+            plt.savefig(output_path, dpi=200, bbox_inches='tight')
+            print(f"  Saved: {output_path}")
+            plt.close()
+        
+        print(f"\n  💡 Note: These are point cloud visualizations.")
+        print(f"     For proper mesh surfaces with color mapping, use ParaView:")
+        print(f"     - Open the VTK files in {output_dir}/vtk_sequence/")
+        print(f"     - Select 'displacement_magnitude' for coloring")
+        print(f"     - Apply 'Delaunay 3D' filter for surface reconstruction")
+    
     def create_animation(self, output_dir: Path, fps: int = 30) -> None:
         """创建动画（可选）"""
         print("\n[Analysis] Creating animation...")
         print("  (This feature requires more implementation - placeholder for now)")
         # TODO: 可以用matplotlib或者VTK来创建3D动画
         
+    def analyze_displacement_heatmap(self, output_dir: Path) -> None:
+        """Analyze and visualize displacement from initial configuration"""
+        print("\n[Analysis] Analyzing displacement heatmap...")
+        
+        if len(self.snapshots) < 2:
+            print("  Need at least 2 snapshots for displacement analysis!")
+            return
+        
+        # Use first snapshot as reference configuration
+        initial_positions = self.snapshots[0].vertex_positions
+        
+        # Compute displacement magnitude for each snapshot
+        num_snapshots = len(self.snapshots)
+        num_vertices = len(initial_positions)
+        displacement_data = np.zeros((num_snapshots, num_vertices))
+        times = []
+        
+        for i, snapshot in enumerate(self.snapshots):
+            times.append(snapshot.time)
+            for j in range(num_vertices):
+                disp = snapshot.vertex_positions[j] - initial_positions[j]
+                displacement_data[i, j] = np.linalg.norm(disp)
+        
+        times = np.array(times)
+        
+        # Plot displacement heatmap
+        fig, ax = plt.subplots(figsize=(14, 8))
+        im = ax.imshow(displacement_data.T, aspect='auto', cmap='hot', 
+                      interpolation='nearest',
+                      extent=[times[0], times[-1], 0, num_vertices])
+        
+        ax.set_xlabel('Simulation Time (s)', fontsize=12)
+        ax.set_ylabel('Vertex ID', fontsize=12)
+        ax.set_title('Vertex Displacement Magnitude Heatmap', fontsize=14, fontweight='bold')
+        
+        cbar = plt.colorbar(im, ax=ax)
+        cbar.set_label('Displacement Magnitude (m)', fontsize=11)
+        
+        output_path = output_dir / 'displacement_heatmap.png'
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        print(f"  Saved: {output_path}")
+        plt.close()
+        
+        # Also plot max displacement over time
+        fig, ax = plt.subplots(figsize=(12, 6))
+        max_disp = np.max(displacement_data, axis=1)
+        mean_disp = np.mean(displacement_data, axis=1)
+        
+        ax.plot(times, max_disp, 'r-', label='Max Displacement', linewidth=2)
+        ax.plot(times, mean_disp, 'b-', label='Mean Displacement', linewidth=2)
+        
+        ax.set_xlabel('Simulation Time (s)', fontsize=12)
+        ax.set_ylabel('Displacement (m)', fontsize=12)
+        ax.set_title('Displacement Statistics Over Time', fontsize=14, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        output_path = output_dir / 'displacement_statistics.png'
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        print(f"  Saved: {output_path}")
+        plt.close()
+    
     def export_vtk_sequence(self, output_dir: Path) -> None:
-        """导出VTK序列用于ParaView可视化"""
+        """Export VTK sequence with displacement and velocity fields for ParaView"""
         print("\n[Analysis] Exporting VTK sequence for ParaView...")
+        
+        if not self.snapshots:
+            print("  No snapshots to export!")
+            return
         
         vtk_dir = output_dir / 'vtk_sequence'
         vtk_dir.mkdir(exist_ok=True)
         
+        # Use first snapshot as reference configuration
+        initial_positions = self.snapshots[0].vertex_positions
+        
         for i, snapshot in enumerate(self.snapshots):
             vtk_file = vtk_dir / f'snapshot_{i:06d}.vtk'
+            
+            num_points = len(snapshot.vertex_positions)
+            
+            # Compute displacement vectors and magnitudes
+            displacements = []
+            disp_magnitudes = []
+            for j in range(num_points):
+                disp = snapshot.vertex_positions[j] - initial_positions[j]
+                displacements.append(disp)
+                disp_magnitudes.append(np.linalg.norm(disp))
+            
+            # Compute velocity magnitudes
+            vel_magnitudes = [np.linalg.norm(vel) for vel in snapshot.vertex_velocities]
             
             with open(vtk_file, 'w') as f:
                 # Write VTK header
                 f.write("# vtk DataFile Version 3.0\n")
-                f.write(f"XPBD Tissue Simulation - Frame {snapshot.frame_number}\n")
+                f.write(f"XPBD Tissue Simulation - Frame {snapshot.frame_number} at t={snapshot.time:.4f}s\n")
                 f.write("ASCII\n")
                 f.write("DATASET POLYDATA\n")
                 
-                # Write points
-                num_points = len(snapshot.vertex_positions)
+                # Write points (current positions)
                 f.write(f"POINTS {num_points} float\n")
                 for pos in snapshot.vertex_positions:
-                    f.write(f"{pos[0]} {pos[1]} {pos[2]}\n")
+                    f.write(f"{pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f}\n")
                 
-                # Write point data (velocities, adhesion markers, etc.)
+                # Write point data
                 f.write(f"\nPOINT_DATA {num_points}\n")
                 
-                # Velocity vectors
-                f.write("VECTORS velocity float\n")
-                for vel in snapshot.vertex_velocities:
-                    f.write(f"{vel[0]} {vel[1]} {vel[2]}\n")
-                
-                # Adhesion markers
-                f.write("\nSCALARS has_adhesion int 1\n")
+                # 1. Displacement magnitude (scalar) - THIS IS KEY FOR HEATMAP!
+                f.write("\nSCALARS displacement_magnitude float 1\n")
                 f.write("LOOKUP_TABLE default\n")
-                adhesion_vertices = set(a.nerve_vertex_id for a in snapshot.adhesion_states if not a.is_broken)
-                for v_id in range(num_points):
-                    f.write(f"{1 if v_id in adhesion_vertices else 0}\n")
+                for mag in disp_magnitudes:
+                    f.write(f"{mag:.6f}\n")
+                
+                # 2. Velocity magnitude (scalar)
+                f.write("\nSCALARS velocity_magnitude float 1\n")
+                f.write("LOOKUP_TABLE default\n")
+                for mag in vel_magnitudes:
+                    f.write(f"{mag:.6f}\n")
+                
+                # 3. Displacement vectors
+                f.write("\nVECTORS displacement float\n")
+                for disp in displacements:
+                    f.write(f"{disp[0]:.6f} {disp[1]:.6f} {disp[2]:.6f}\n")
+                
+                # 4. Velocity vectors
+                f.write("\nVECTORS velocity float\n")
+                for vel in snapshot.vertex_velocities:
+                    f.write(f"{vel[0]:.6f} {vel[1]:.6f} {vel[2]:.6f}\n")
+                
+                # 5. Adhesion markers (if any)
+                if snapshot.adhesion_states:
+                    f.write("\nSCALARS has_adhesion int 1\n")
+                    f.write("LOOKUP_TABLE default\n")
+                    adhesion_vertices = set(a.nerve_vertex_id for a in snapshot.adhesion_states if not a.is_broken)
+                    for v_id in range(num_points):
+                        f.write(f"{1 if v_id in adhesion_vertices else 0}\n")
         
         print(f"  Saved {len(self.snapshots)} VTK files to: {vtk_dir}")
-        print(f"  Open in ParaView: File -> Open -> select vtk_sequence/snapshot_*.vtk")
+        print(f"\n  📊 To visualize in ParaView:")
+        print(f"     1. Open ParaView")
+        print(f"     2. File -> Open -> {vtk_dir}/snapshot_*.vtk")
+        print(f"     3. Click 'Apply'")
+        print(f"     4. In 'Coloring' dropdown, select 'displacement_magnitude' or 'velocity_magnitude'")
+        print(f"     5. Use the 'Play' button to animate through time")
+        print(f"     6. Adjust color scale (e.g., 'Cool to Warm' or 'Rainbow')")
 
 
 def main():
@@ -445,9 +633,11 @@ def main():
     analyzer.analyze_adhesion_breakage(output_dir)
     analyzer.analyze_adhesion_strength_heatmap(output_dir)
     analyzer.analyze_deformation_heatmap(output_dir)
-    analyzer.analyze_vertex_velocities(output_dir)  # Always useful for any simulation!
+    analyzer.analyze_vertex_velocities(output_dir)
+    analyzer.analyze_displacement_heatmap(output_dir)
+    analyzer.visualize_3d_mesh_snapshots(output_dir)  # New: 3D visualizations!
     
-    # Optional: export VTK
+    # Optional: export VTK (recommended for 3D visualization)
     if args.vtk:
         analyzer.export_vtk_sequence(output_dir)
     
