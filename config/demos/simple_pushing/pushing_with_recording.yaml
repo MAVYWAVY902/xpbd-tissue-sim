@@ -43,7 +43,8 @@ objects:
   -
     name: "Cube1"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"  # Simple cube mesh
+    # filename: "../resource/cube/cube8.msh"  # Simple cube mesh
+    filename: "../resource/tissue/neuroma_tet.msh"
     materials: ["Soft Tissue"]
     
     color: [0.8, 0.3, 0.2, 1.0]

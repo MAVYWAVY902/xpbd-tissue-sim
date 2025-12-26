@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-离线分析工具 - Offline Analysis for XPBD Tissue Simulation
+Offline Analysis Tool for XPBD Tissue Simulation
 
-读取模拟过程中保存的状态快照，分析：
-1. 粘连断裂事件 (Adhesion Breaking Events)
-2. 应变/应力热图 (Strain/Stress Heatmaps)
-3. 变形可视化 (Deformation Visualization)
+Reads saved simulation state snapshots and analyzes:
+1. Adhesion Breaking Events
+2. Strain/Stress Heatmaps
+3. Deformation Visualization
 
-用法:
+Usage:
     python offline_analysis.py --input output/state_snapshots.bin --output analysis/
 """
 
@@ -27,7 +27,7 @@ import json
 
 @dataclass
 class AdhesionState:
-    """粘连约束状态"""
+    """Adhesion constraint state"""
     nerve_vertex_id: int
     tumor_face_id: int
     nerve_position: np.ndarray  # (3,)
@@ -41,7 +41,7 @@ class AdhesionState:
 
 @dataclass
 class DeformationState:
-    """变形状态"""
+    """Deformation state"""
     element_id: int
     volumetric_strain: float
     deviatoric_strain: float
@@ -51,7 +51,7 @@ class DeformationState:
 
 @dataclass
 class MeshTopology:
-    """网格拓扑结构"""
+    """Mesh topology structure"""
     vertex_offset: int  # Starting index of vertices for this mesh
     num_vertices: int
     surface_triangles: List[Tuple[int, int, int]]  # Surface triangles (for visualization)
@@ -61,7 +61,7 @@ class MeshTopology:
 
 @dataclass
 class FrameSnapshot:
-    """单帧快照"""
+    """Single frame snapshot"""
     time: float
     frame_number: int
     vertex_positions: np.ndarray  # (N, 3)
@@ -73,14 +73,14 @@ class FrameSnapshot:
 
 
 class OfflineAnalyzer:
-    """离线分析器"""
+    """Offline analyzer"""
     
     def __init__(self, snapshot_file: str):
         self.snapshot_file = snapshot_file
         self.snapshots: List[FrameSnapshot] = []
         
     def load_snapshots(self) -> None:
-        """从二进制文件加载快照"""
+        """Load snapshots from binary file"""
         print(f"[OfflineAnalyzer] Loading snapshots from {self.snapshot_file}...")
         
         with open(self.snapshot_file, 'rb') as f:
@@ -100,7 +100,7 @@ class OfflineAnalyzer:
         print(f"  Time range: {self.snapshots[0].time:.3f}s - {self.snapshots[-1].time:.3f}s")
         
     def _read_snapshot(self, f) -> FrameSnapshot:
-        """读取单个快照"""
+        """Read a single snapshot"""
         # Read time and frame number
         time = struct.unpack('d', f.read(8))[0]
         frame_number = struct.unpack('i', f.read(4))[0]
@@ -229,7 +229,7 @@ class OfflineAnalyzer:
         )
     
     def analyze_adhesion_breakage(self, output_dir: Path) -> None:
-        """分析粘连断裂事件"""
+        """Analyze adhesion breakage events"""
         print("\n[Analysis] Analyzing adhesion breakage events...")
         
         # Collect breakage events
@@ -274,7 +274,7 @@ class OfflineAnalyzer:
         print(f"  Saved: {log_path}")
         
     def analyze_adhesion_strength_heatmap(self, output_dir: Path) -> None:
-        """分析粘连强度热图（随时间变化）"""
+        """Analyze adhesion strength heatmap over time"""
         print("\n[Analysis] Generating adhesion strength heatmap...")
         
         if not self.snapshots:
@@ -294,8 +294,8 @@ class OfflineAnalyzer:
         
         for i, snapshot in enumerate(self.snapshots):
             for j, adhesion in enumerate(snapshot.adhesion_states):
-                # 使用当前距离 vs rest gap 的比例作为"强度"指标
-                # 值越大 = 拉伸越严重
+                # Use current_distance / rest_gap ratio as "strength" metric
+                # Higher value = more severe stretching
                 stretch_ratio = adhesion.current_distance / adhesion.rest_gap if adhesion.rest_gap > 0 else 1.0
                 heatmap_data[i, j] = stretch_ratio
         
@@ -318,7 +318,7 @@ class OfflineAnalyzer:
         plt.close()
         
     def analyze_deformation_heatmap(self, output_dir: Path) -> None:
-        """分析变形应变热图"""
+        """Analyze deformation strain heatmap"""
         print("\n[Analysis] Generating deformation strain heatmap...")
         
         if not self.snapshots or not self.snapshots[0].deformation_states:
@@ -497,10 +497,10 @@ class OfflineAnalyzer:
         print(f"     - Apply 'Delaunay 3D' filter for surface reconstruction")
     
     def create_animation(self, output_dir: Path, fps: int = 30) -> None:
-        """创建动画（可选）"""
+        """Create animation (optional)"""
         print("\n[Analysis] Creating animation...")
         print("  (This feature requires more implementation - placeholder for now)")
-        # TODO: 可以用matplotlib或者VTK来创建3D动画
+        # TODO: Can use matplotlib or VTK to create 3D animation
         
     def analyze_displacement_heatmap(self, output_dir: Path) -> None:
         """Analyze and visualize displacement from initial configuration"""
@@ -564,6 +564,63 @@ class OfflineAnalyzer:
         print(f"  Saved: {output_path}")
         plt.close()
     
+    def _compute_deformation_gradient(self, v0, v1, v2, v3, v0_ref, v1_ref, v2_ref, v3_ref):
+        """Compute tetrahedral deformation gradient F = D_m * D_M^-1
+        
+        Args:
+            v0, v1, v2, v3: Four vertex positions in current configuration
+            v0_ref, v1_ref, v2_ref, v3_ref: Four vertex positions in reference configuration
+        
+        Returns:
+            F: 3x3 deformation gradient tensor
+        """
+        # Build edge matrix for current configuration D_m = [v1-v0, v2-v0, v3-v0]
+        D_m = np.column_stack([v1 - v0, v2 - v0, v3 - v0])
+        
+        # Build edge matrix for reference configuration D_M = [v1_ref-v0_ref, v2_ref-v0_ref, v3_ref-v0_ref]
+        D_M = np.column_stack([v1_ref - v0_ref, v2_ref - v0_ref, v3_ref - v0_ref])
+        
+        # Compute inverse of D_M
+        try:
+            D_M_inv = np.linalg.inv(D_M)
+            # Deformation gradient F = D_m * D_M^-1
+            F = D_m @ D_M_inv
+            return F
+        except np.linalg.LinAlgError:
+            # Degenerate tetrahedron, return identity matrix
+            return np.eye(3)
+    
+    def _compute_green_strain(self, F):
+        """Compute Green strain tensor E = 0.5 * (F^T * F - I)
+        
+        Args:
+            F: 3x3 deformation gradient tensor
+        
+        Returns:
+            E: 3x3 Green strain tensor
+        """
+        C = F.T @ F  # Right Cauchy-Green tensor
+        I = np.eye(3)
+        E = 0.5 * (C - I)
+        return E
+    
+    def _compute_von_mises_strain(self, E):
+        """Compute von Mises equivalent strain
+        
+        Args:
+            E: 3x3 strain tensor
+        
+        Returns:
+            von_mises_strain: Scalar equivalent strain
+        """
+        # Compute principal strains (eigenvalues of strain tensor)
+        eigenvalues = np.linalg.eigvalsh(E)
+        e1, e2, e3 = sorted(eigenvalues, reverse=True)
+        
+        # von Mises strain: sqrt(2/3 * ((e1-e2)^2 + (e2-e3)^2 + (e3-e1)^2))
+        von_mises = np.sqrt(2.0/3.0 * ((e1-e2)**2 + (e2-e3)**2 + (e3-e1)**2))
+        return von_mises
+    
     def export_vtk_sequence(self, output_dir: Path) -> None:
         """Export VTK sequence with complete mesh topology (UNSTRUCTURED_GRID format) for ParaView"""
         print("\n[Analysis] Exporting VTK sequence with mesh topology for ParaView...")
@@ -593,6 +650,57 @@ class OfflineAnalyzer:
             
             # Compute velocity magnitudes
             vel_magnitudes = [np.linalg.norm(vel) for vel in snapshot.vertex_velocities]
+            
+            # Compute strain for each tetrahedral element and map to vertices
+            vertex_strain_sum = np.zeros(num_points)  # Accumulated strain
+            vertex_strain_count = np.zeros(num_points, dtype=int)  # Counter
+            
+            if hasattr(snapshot, 'mesh_topologies') and snapshot.mesh_topologies:
+                for topo in snapshot.mesh_topologies:
+                    if hasattr(topo, 'has_tets') and topo.has_tets and len(topo.tetrahedra) > 0:
+                        offset = topo.vertex_offset
+                        
+                        # Compute strain for each tetrahedron
+                        for tet in topo.tetrahedra:
+                            # Get global indices of the four vertices
+                            v0_idx, v1_idx, v2_idx, v3_idx = tet[0]+offset, tet[1]+offset, tet[2]+offset, tet[3]+offset
+                            
+                            # Vertex positions in current configuration
+                            v0_curr = snapshot.vertex_positions[v0_idx]
+                            v1_curr = snapshot.vertex_positions[v1_idx]
+                            v2_curr = snapshot.vertex_positions[v2_idx]
+                            v3_curr = snapshot.vertex_positions[v3_idx]
+                            
+                            # Vertex positions in reference configuration
+                            v0_ref = initial_positions[v0_idx]
+                            v1_ref = initial_positions[v1_idx]
+                            v2_ref = initial_positions[v2_idx]
+                            v3_ref = initial_positions[v3_idx]
+                            
+                            # Compute deformation gradient
+                            F = self._compute_deformation_gradient(
+                                v0_curr, v1_curr, v2_curr, v3_curr,
+                                v0_ref, v1_ref, v2_ref, v3_ref
+                            )
+                            
+                            # Compute Green strain tensor
+                            E = self._compute_green_strain(F)
+                            
+                            # Compute von Mises equivalent strain
+                            vm_strain = self._compute_von_mises_strain(E)
+                            
+                            # Map strain to four vertices (averaging)
+                            for vid in [v0_idx, v1_idx, v2_idx, v3_idx]:
+                                vertex_strain_sum[vid] += vm_strain
+                                vertex_strain_count[vid] += 1
+                
+                # Compute average strain for each vertex
+                vertex_strains = np.zeros(num_points)
+                for j in range(num_points):
+                    if vertex_strain_count[j] > 0:
+                        vertex_strains[j] = vertex_strain_sum[j] / vertex_strain_count[j]
+            else:
+                vertex_strains = np.zeros(num_points)
             
             with open(vtk_file, 'w') as f:
                 # Write VTK header
@@ -663,29 +771,35 @@ class OfflineAnalyzer:
                 # Write point data (scalar/vector fields)
                 f.write(f"\nPOINT_DATA {num_points}\n")
                 
-                # 1. Displacement magnitude (scalar) - KEY FOR HEATMAP!
+                # 1. von Mises Strain (scalar) - strain heatmap showing deformation from adhesion!
+                f.write("\nSCALARS von_mises_strain float 1\n")
+                f.write("LOOKUP_TABLE default\n")
+                for strain in vertex_strains:
+                    f.write(f"{strain:.8f}\n")
+                
+                # 2. Displacement magnitude (scalar)
                 f.write("\nSCALARS displacement_magnitude float 1\n")
                 f.write("LOOKUP_TABLE default\n")
                 for mag in disp_magnitudes:
                     f.write(f"{mag:.6f}\n")
                 
-                # 2. Velocity magnitude (scalar)
+                # 3. Velocity magnitude (scalar)
                 f.write("\nSCALARS velocity_magnitude float 1\n")
                 f.write("LOOKUP_TABLE default\n")
                 for mag in vel_magnitudes:
                     f.write(f"{mag:.6f}\n")
                 
-                # 3. Displacement vectors
+                # 4. Displacement vectors
                 f.write("\nVECTORS displacement float\n")
                 for disp in displacements:
                     f.write(f"{disp[0]:.6f} {disp[1]:.6f} {disp[2]:.6f}\n")
                 
-                # 4. Velocity vectors
+                # 5. Velocity vectors
                 f.write("\nVECTORS velocity float\n")
                 for vel in snapshot.vertex_velocities:
                     f.write(f"{vel[0]:.6f} {vel[1]:.6f} {vel[2]:.6f}\n")
                 
-                # 5. Adhesion markers (if any)
+                # 6. Adhesion markers (if any)
                 if snapshot.adhesion_states:
                     f.write("\nSCALARS has_adhesion int 1\n")
                     f.write("LOOKUP_TABLE default\n")
@@ -698,7 +812,10 @@ class OfflineAnalyzer:
         print(f"     1. Open ParaView")
         print(f"     2. File -> Open -> {vtk_dir}/snapshot_*.vtk")
         print(f"     3. Click 'Apply'")
-        print(f"     4. In 'Coloring' dropdown, select 'displacement_magnitude' or 'velocity_magnitude'")
+        print(f"     4. In 'Coloring' dropdown, select:")
+        print(f"        - 'von_mises_strain' (Recommended!) - Shows strain from adhesion/deformation")
+        print(f"        - 'displacement_magnitude' - Shows total displacement")
+        print(f"        - 'velocity_magnitude' - Shows velocity field")
         print(f"     5. Use the 'Play' button to animate through time")
         print(f"     6. Adjust color scale (e.g., 'Cool to Warm' or 'Rainbow')")
 

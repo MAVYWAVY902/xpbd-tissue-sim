@@ -1,0 +1,121 @@
+## Inter-Deformable Adhesion Test with State Recording
+## Tests adhesion breaking between two deformable objects with stress/strain recording
+
+name: "Inter-Deformable Adhesion with Recording"
+description: "Testing deformable-deformable adhesion breakage with offline state recording for stress/strain analysis"
+
+visualization: "Easy3D"
+
+g-accel: 9.81 # downward acceleration due to gravity [m/s2]
+
+sim-mode: "Visualization"  # Interactive mode for manual pushing/grasping
+
+enable-mouse-interaction: true
+input-device: "Mouse" 
+
+time-step: 1e-3   # OPTIMIZED: Larger timestep since rigid bone is fixed (2x speedup)
+collision-rate: 50  # OPTIMIZED: Reduced since bone doesn't move (2x speedup)
+collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
+fps: 30 # frames per second of the visualization
+end-time: 200 # test time - shorter for quick benchmarking
+
+## ==================== STATE RECORDING CONFIGURATION ====================
+## Enable offline recording of simulation state for post-processing
+state-recording-enable: true
+state-recording-output-folder: "../output/adhesion_recording"
+state-recording-snapshot-interval: 0.1  # Record every 0.1 seconds (10 fps)
+
+## ==================== ADHESION SETTINGS ====================
+# OPTIMIZED FOR FIXED RIGID OBJECT (bone never moves)
+inter-deform-adhesion-enable: true
+inter-deform-adhesion-rest-gap: 0.01        # 10mm rest gap
+inter-deform-adhesion-break-ratio: 3.0     # Allow more stretch before breaking
+inter-deform-adhesion-alpha: 1e-6           # Moderate stiffness
+inter-deform-adhesion-bond-distance: 0.02   # 20mm: larger radius since bone is fixed
+
+# CRITICAL OPTIMIZATION: Specify which object is fixed
+# If bone (Cube2) is fixed, set this to true to enable fast path
+inter-deform-adhesion-fixed-triangle-object: true  # Triangle object (bone) is rigid and fixed
+# Note: You'll need to add code in Simulation.cpp to read these and create constraints
+
+## define elastic materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 5e4    # Young's modulus [Pa] - soft tissue
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.0 # coefficient of static friction [-]
+    mu-k: 0.0 # coefficient of kinetic friction [-]
+
+## objects in the simulation
+objects:
+
+  ## First deformable cube (RED - Left side)
+  -
+    name: "Cube1"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8.msh"
+
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    color: [1.0, 0.0, 0.0] # red cube
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration - positioned close to Cube2
+    max-size: 0.4
+    position: [-0.205, 0.2, 1.0]  # 22cm to the left, close enough for adhesion
+    velocity: [0.0, 0, 0]       # START STATIONARY - let adhesion pull gradually
+    rotation: [0, 0, 0]
+
+    ## collisions
+    collisions: true
+    inter-object-collisions: true  # Enable inter-object collision
+
+    ## XPBD-specific options
+    num-solver-iters: 5  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
+    solver-type: "Gauss-Seidel"  # SWITCH TO GAUSS-SEIDEL FOR SPEED AND STABILITY
+    # solver-type: "Jacobi"       # Jacobi is too slow with 30 iterations
+
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    
+    damping-multiplier: 60000  # Moderate damping
+
+
+  ## Second deformable cube (BLUE - Right side, adhered to Cube1)
+  -
+    name: "Cube2"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/cube/cube8.msh"
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    color: [0.0, 0.0, 1.0] # blue cube
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration - positioned close to Cube1
+    max-size: 0.4
+    position: [0.205, 0, 1.0]   # 22cm to the right, close to Cube1
+    velocity: [0, 0, 0]         # Stationary initially (will be pulled by adhesion)
+    rotation: [0, 0, 0]
+
+    ## collisions
+    collisions: true
+    inter-object-collisions: true  # Enable inter-object collision
+
+    ## XPBD-specific options
+    num-solver-iters: 5  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
+    solver-type: "Gauss-Seidel"  # SWITCH TO GAUSS-SEIDEL FOR SPEED AND STABILITY
+    # solver-type: "Jacobi"       # Jacobi is too slow with 30 iterations
+
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    
+    damping-multiplier: 60000  # Moderate damping
+
