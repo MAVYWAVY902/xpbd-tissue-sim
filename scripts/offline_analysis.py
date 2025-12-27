@@ -66,6 +66,7 @@ class FrameSnapshot:
     frame_number: int
     vertex_positions: np.ndarray  # (N, 3)
     vertex_velocities: np.ndarray  # (N, 3)
+    vertex_adhesion_force_magnitude: np.ndarray  # (N,) - magnitude of adhesion constraint forces
     mesh_topologies: List[MeshTopology]  # Mesh connectivity information
     adhesion_states: List[AdhesionState]
     deformation_states: List[DeformationState]
@@ -116,6 +117,9 @@ class OfflineAnalyzer:
         
         # Read vertex velocities
         vertex_velocities = np.frombuffer(f.read(num_vertices * 24), dtype=np.float64).reshape(-1, 3)
+        
+        # Read vertex adhesion force magnitudes
+        vertex_adhesion_force_magnitude = np.frombuffer(f.read(num_vertices * 8), dtype=np.float64)
         
         # Read mesh topologies
         num_meshes = struct.unpack('I', f.read(4))[0]
@@ -222,6 +226,7 @@ class OfflineAnalyzer:
             frame_number=frame_number,
             vertex_positions=vertex_positions,
             vertex_velocities=vertex_velocities,
+            vertex_adhesion_force_magnitude=vertex_adhesion_force_magnitude,
             mesh_topologies=mesh_topologies,
             adhesion_states=adhesion_states,
             deformation_states=deformation_states,
@@ -789,17 +794,23 @@ class OfflineAnalyzer:
                 for mag in vel_magnitudes:
                     f.write(f"{mag:.6f}\n")
                 
-                # 4. Displacement vectors
+                # 4. Adhesion force magnitude (scalar) - NEW!
+                f.write("\nSCALARS adhesion_force_magnitude float 1\n")
+                f.write("LOOKUP_TABLE default\n")
+                for force_mag in snapshot.vertex_adhesion_force_magnitude:
+                    f.write(f"{force_mag:.8f}\n")
+                
+                # 5. Displacement vectors
                 f.write("\nVECTORS displacement float\n")
                 for disp in displacements:
                     f.write(f"{disp[0]:.6f} {disp[1]:.6f} {disp[2]:.6f}\n")
                 
-                # 5. Velocity vectors
+                # 6. Velocity vectors
                 f.write("\nVECTORS velocity float\n")
                 for vel in snapshot.vertex_velocities:
                     f.write(f"{vel[0]:.6f} {vel[1]:.6f} {vel[2]:.6f}\n")
                 
-                # 6. Adhesion markers (if any)
+                # 7. Adhesion markers (if any)
                 if snapshot.adhesion_states:
                     f.write("\nSCALARS has_adhesion int 1\n")
                     f.write("LOOKUP_TABLE default\n")
@@ -813,11 +824,13 @@ class OfflineAnalyzer:
         print(f"     2. File -> Open -> {vtk_dir}/snapshot_*.vtk")
         print(f"     3. Click 'Apply'")
         print(f"     4. In 'Coloring' dropdown, select:")
+        print(f"        - 'adhesion_force_magnitude' (NEW!) - Shows adhesion constraint forces")
         print(f"        - 'von_mises_strain' (Recommended!) - Shows strain from adhesion/deformation")
         print(f"        - 'displacement_magnitude' - Shows total displacement")
         print(f"        - 'velocity_magnitude' - Shows velocity field")
         print(f"     5. Use the 'Play' button to animate through time")
         print(f"     6. Adjust color scale (e.g., 'Cool to Warm' or 'Rainbow')")
+        print(f"     7. **IMPORTANT for paper figures**: Fix colorbar range manually to avoid auto-scaling")
 
 
 def main():

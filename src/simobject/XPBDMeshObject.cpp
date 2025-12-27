@@ -727,6 +727,92 @@ int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::num
     return static_cast<int>(vec.size());
 }
 
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::collectAdhesionForces(
+    std::vector<Vec3r>& vertex_forces, int vertex_offset) const
+{
+    int num_forces_collected = 0;
+    Real max_force = 0.0;
+    
+    // Collect forces from NerveTumorAdhesionConstraint projectors
+    using NerveTumorProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>;
+    const auto& nerve_tumor_projectors = _solver.template getConstraintProjectorsOfType<NerveTumorProjectorType>();
+    
+    for (const auto& projector : nerve_tumor_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        // Get constraint forces: F = ∇C^T · λ / dt (1st-order) or ∇C^T · λ / dt² (2nd-order)
+        const auto forces = projector.constraintForces();
+        const auto& positions = projector.constraint()->positions();
+        
+        // Accumulate forces onto corresponding vertices
+        for (size_t i = 0; i < forces.size() && i < positions.size(); ++i)
+        {
+            // Find the vertex index in the global mesh
+            // positions[i].position_ptr points to the vertex data
+            // We need to calculate the index from the pointer offset
+            const Real* pos_ptr = positions[i].position_ptr;
+            const Real* base_ptr = this->_mesh->vertices().data();
+            int local_vertex_idx = (pos_ptr - base_ptr) / 3;  // Each vertex has 3 coordinates
+            
+            if (local_vertex_idx >= 0 && local_vertex_idx < this->_mesh->numVertices())
+            {
+                int global_vertex_idx = vertex_offset + local_vertex_idx;
+                if (global_vertex_idx >= 0 && global_vertex_idx < static_cast<int>(vertex_forces.size()))
+                {
+                    vertex_forces[global_vertex_idx] += forces[i];
+                    Real force_mag = forces[i].norm();
+                    if (force_mag > max_force) max_force = force_mag;
+                    num_forces_collected++;
+                }
+            }
+        }
+    }
+    
+    // Collect forces from InterDeformDeformAdhesionConstraint projectors
+    using InterDeformProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
+    const auto& inter_deform_projectors = _solver.template getConstraintProjectorsOfType<InterDeformProjectorType>();
+    
+    for (const auto& projector : inter_deform_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        const auto forces = projector.constraintForces();
+        const auto& positions = projector.constraint()->positions();
+        
+        for (size_t i = 0; i < forces.size() && i < positions.size(); ++i)
+        {
+            const Real* pos_ptr = positions[i].position_ptr;
+            const Real* base_ptr = this->_mesh->vertices().data();
+            int local_vertex_idx = (pos_ptr - base_ptr) / 3;
+            
+            if (local_vertex_idx >= 0 && local_vertex_idx < this->_mesh->numVertices())
+            {
+                int global_vertex_idx = vertex_offset + local_vertex_idx;
+                if (global_vertex_idx >= 0 && global_vertex_idx < static_cast<int>(vertex_forces.size()))
+                {
+                    vertex_forces[global_vertex_idx] += forces[i];
+                    Real force_mag = forces[i].norm();
+                    if (force_mag > max_force) max_force = force_mag;
+                    num_forces_collected++;
+                }
+            }
+        }
+    }
+    
+    // Debug output (only once every 100 calls to avoid spam)
+    static int call_count = 0;
+    call_count++;
+    if (call_count % 100 == 0)
+    {
+        std::cout << "[collectAdhesionForces] nerve_tumor_projectors: " << nerve_tumor_projectors.size()
+                  << ", inter_deform_projectors: " << inter_deform_projectors.size()
+                  << ", forces_collected: " << num_forces_collected
+                  << ", max_force: " << max_force << std::endl;
+    }
+}
+
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::clearAttachmentConstraints()

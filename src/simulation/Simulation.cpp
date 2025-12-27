@@ -3259,6 +3259,47 @@ void Simulation::_timeStep()
             vertex_offset += num_verts;
         }
         
+        // Collect adhesion constraint forces per vertex
+        // Initialize force accumulator for all vertices
+        int total_vertices = snapshot.vertex_positions.size();
+        snapshot.vertex_adhesion_force_magnitude.resize(total_vertices, 0.0);
+        std::vector<Vec3r> vertex_adhesion_forces(total_vertices, Vec3r::Zero());
+        
+        // Collect forces from all XPBD mesh objects
+        // Note: This collects forces from NerveTumorAdhesionConstraint and InterDeformDeformAdhesionConstraint
+        // Physical meaning: F = ∇C^T · λ / dt (1st-order) or ∇C^T · λ / dt² (2nd-order)
+        // These represent the constraint forces applied by adhesion constraints
+        
+        int current_vertex_offset = 0;
+        
+        // For second-order objects
+        auto& xpbd_objs_for_forces = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        for (const auto& obj : xpbd_objs_for_forces)
+        {
+            if (!obj || !obj->mesh()) continue;
+            
+            // Collect adhesion forces from this object
+            obj->collectAdhesionForces(vertex_adhesion_forces, current_vertex_offset);
+            current_vertex_offset += obj->mesh()->numVertices();
+        }
+        
+        // For first-order objects  
+        auto& fo_xpbd_objs_for_forces = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (const auto& obj : fo_xpbd_objs_for_forces)
+        {
+            if (!obj || !obj->mesh()) continue;
+            
+            // Collect adhesion forces from this object
+            obj->collectAdhesionForces(vertex_adhesion_forces, current_vertex_offset);
+            current_vertex_offset += obj->mesh()->numVertices();
+        }
+        
+        // Convert accumulated force vectors to magnitudes
+        for (int i = 0; i < total_vertices; ++i)
+        {
+            snapshot.vertex_adhesion_force_magnitude[i] = vertex_adhesion_forces[i].norm();
+        }
+        
         // Note: Adhesion states and deformation data collection
         // will be added in next step when we add accessor methods
         

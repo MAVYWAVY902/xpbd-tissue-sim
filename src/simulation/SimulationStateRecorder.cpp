@@ -110,6 +110,10 @@ void SimulationStateRecorder::_writeBinary(std::ofstream& file, const FrameSnaps
     file.write(reinterpret_cast<const char*>(snapshot.vertex_velocities.data()), 
                num_vertices * sizeof(Vec3r));
     
+    // Write vertex adhesion force magnitudes
+    file.write(reinterpret_cast<const char*>(snapshot.vertex_adhesion_force_magnitude.data()), 
+               num_vertices * sizeof(Real));
+    
     // Write mesh topologies
     uint32_t num_meshes = snapshot.mesh_topologies.size();
     file.write(reinterpret_cast<const char*>(&num_meshes), sizeof(num_meshes));
@@ -226,6 +230,11 @@ SimulationStateRecorder::_readBinary(std::ifstream& file)
     snapshot.vertex_velocities.resize(num_vertices);
     file.read(reinterpret_cast<char*>(snapshot.vertex_velocities.data()), 
               num_vertices * sizeof(Vec3r));
+    
+    // Read vertex adhesion force magnitudes
+    snapshot.vertex_adhesion_force_magnitude.resize(num_vertices);
+    file.read(reinterpret_cast<char*>(snapshot.vertex_adhesion_force_magnitude.data()), 
+              num_vertices * sizeof(Real));
     
     // Read mesh topologies
     uint32_t num_meshes;

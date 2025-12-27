@@ -20,7 +20,7 @@ end-time: 10000
 ## State Recording Configuration
 state-recording-enable: true
 state-recording-output-folder: "../output/pushing_recording/"
-state-recording-snapshot-interval: 0.1  # Save every 0.1 seconds
+state-recording-snapshot-interval: 0.05  # Save every 0.05 seconds
 
 ## Materials
 materials:

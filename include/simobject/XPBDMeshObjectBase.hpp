@@ -194,6 +194,15 @@ public:
     /** @returns the number of inter-deform adhesion constraints currently active on this object */
     virtual int numInterDeformAdhesionConstraints() const = 0;
     
+    /** Collects adhesion constraint forces for all vertices in this mesh.
+     * @param vertex_forces (OUTPUT) - vector to accumulate adhesion forces, sized to match mesh vertices
+     * @param vertex_offset - offset to apply to vertex indices (for multi-object scenarios)
+     * 
+     * This method iterates through all adhesion constraint projectors and accumulates
+     * the constraint forces (F = ∇C^T · λ / dt or λ / dt²) onto the affected vertices.
+     */
+    virtual void collectAdhesionForces(std::vector<Vec3r>& vertex_forces, int vertex_offset = 0) const = 0;
+    
     /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
      * @param v_ind : the index of the vertex
      * @param attach_pos_ptr : a pointer to the position for the vertex to be attached to

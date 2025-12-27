@@ -64,6 +64,11 @@ public:
         std::vector<Vec3r> vertex_positions;
         std::vector<Vec3r> vertex_velocities;
         
+        // Adhesion constraint forces (magnitude per vertex)
+        // Physical meaning: |F_adhesion| = |∇C^T · λ / dt| (1st-order) or |∇C^T · λ / dt²| (2nd-order)
+        // This represents the constraint force magnitude from all adhesion constraints acting on each vertex
+        std::vector<Real> vertex_adhesion_force_magnitude;
+        
         // Mesh topology (connectivity information)
         std::vector<MeshTopology> mesh_topologies;
         
