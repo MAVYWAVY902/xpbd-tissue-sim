@@ -672,7 +672,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
         const Real max_edge = std::max({p1p2, p1p3, p2p3});
         
         // LESS AGGRESSIVE CULLING: Use safety factor to avoid missing collisions
-        const Real safety_factor = 4.0;  // Check faces even if centroid is up to 4x edge length away
+        // Increased from 4.0 to 100.0 to handle cases where SDF distance (0.5m) >> edge length (0.05m)
+        const Real safety_factor = 100.0;
         if (centroid_dist*centroid_dist > safety_factor * max_edge) {
             faces_culled_by_centroid++;
             continue;
@@ -681,7 +682,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
         faces_checked_detailed++;
         const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
-        if (distance <= 1e-4)
+        // Collision threshold: slightly increased from 1e-4 to 1e-3 for numerical tolerance
+        if (distance <= 1e-3)
         {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
             // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
             const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);

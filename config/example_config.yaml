@@ -12,7 +12,7 @@ g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 # sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
 sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
-time-step: 1e-4   # simulation time step [s]
+time-step: 2e-4   # simulation time step [s]
 collision-rate: 100 # rate at which to run collision detection [Hz] 
 fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 100 # end time of the simulation [s]
@@ -67,11 +67,12 @@ objects:
     draw-faces: true    # draw mesh faces
 
     ## initial configuration
-    max-size: 1   # size of largest model dimension (preserves aspect ratio)
+    # max-size: 1.0   # DISABLED - using use-original-coords instead
     # size: [1, 1, 1]   # specify size of each dimension
     position: [0, 0, 0]   # initial position of mesh center of mass [m]
     velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
     rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
+    use-original-coords: true  # Preserve MeshLab alignment
 
     ## collisions
     collisions: true
@@ -90,7 +91,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 250000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 5000   # 'b' from the 1st-Order XPBD paper
   
 
 
@@ -162,7 +163,8 @@ objects:
     rotation: [0, 0, 0]
     velocity: [0, 0, 0]
     angular-velocity: [0, 0, 0]
-    max-size: 1
+    # max-size: 1.0  # DISABLED - using use-original-coords instead
+    use-original-coords: true  # Preserve MeshLab alignment
     collisions: true
     fixed: true
 

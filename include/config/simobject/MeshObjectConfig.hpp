@@ -20,6 +20,7 @@ class MeshObjectConfig
 
         Config::_extractParameter("max-size", node, _max_size);
         Config::_extractParameter("size", node, _size);
+        Config::_extractParameter("use-original-coords", node, _use_original_coords);
     }
 
     explicit MeshObjectConfig(const std::string& filename, const std::optional<Real>& max_size, const std::optional<Vec3r>& size,
@@ -42,6 +43,7 @@ class MeshObjectConfig
 
     std::optional<Real> maxSize() const { return _max_size.value; }
     std::optional<Vec3r> size() const { return _size.value; }
+    bool useOriginalCoords() const { return _use_original_coords.value; }
 
     protected:
     ConfigParameter<std::string> _filename = ConfigParameter<std::string>("");  // this should probably be an optional
@@ -52,6 +54,7 @@ class MeshObjectConfig
 
     ConfigParameter<std::optional<Real>> _max_size;
     ConfigParameter<std::optional<Vec3r>> _size;
+    ConfigParameter<bool> _use_original_coords = ConfigParameter<bool>(false);
 
 };
 

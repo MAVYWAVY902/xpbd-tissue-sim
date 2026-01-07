@@ -56,16 +56,12 @@ XPBDMeshObject_Base_<IsFirstOrder>::XPBDMeshObject_Base_(const Simulation* sim, 
 template<bool IsFirstOrder>
 void XPBDMeshObject_Base_<IsFirstOrder>::createSDF()
 {
-    std::cout << "[sdf] DEBUG: createSDF() called for '" << this->name() << "'\n" << std::flush;
     if (!_sdf.has_value())
     {
-        std::cout << "[sdf] DEBUG: Creating SDF (emplace)...\n" << std::flush;
         _sdf.emplace(this, _sim->embreeScene());
-        std::cout << "[sdf] DEBUG: SDF created successfully!\n" << std::flush;
     }
     else
     {
-        std::cout << "[sdf] DEBUG: SDF already exists, skipping\n" << std::flush;
     }
 }
 
@@ -90,8 +86,6 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMes
 
     // inter-object collision flag
     _inter_object_collisions = config->interObjectCollisions();
-    std::cout << "[xpbd] DEBUG: Object '" << config->name() << "' inter-object-collisions = " 
-              << (_inter_object_collisions ? "true" : "false") << "\n";
 
     // local collision iterations
     _num_local_collision_iters = config->numLocalCollisionIters();
@@ -125,11 +119,9 @@ Geometry::AABB XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintType
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::setup()
 {
-    std::cout << "[setup] DEBUG: Entering setup() for object '" << this->name() << "'\n";
     
     loadAndConfigureMesh();
     
-    std::cout << "[setup] DEBUG: After loadAndConfigureMesh() for '" << this->name() << "'\n";
 
     // add the class property to the element mesh, with default value 0
     tetMesh()->template addElementProperty<int>("class", 0);
@@ -891,7 +883,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
     }
     
     if (has_zero_masses && tetMesh()->numElements() == 0) {
-        std::cout << "[xpbd] DEBUG: 1D mesh detected (no tetrahedral elements), assigning fallback masses\n";
         // For 1D meshes, assign default mass based on material density
         const ElasticMaterial& default_material = _materials[0];
         const Real default_mass = default_material.density() * 1e-6;  // Small unit mass
@@ -912,7 +903,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         // Check if this is a Nerve-Only configuration (no elastic material constraints)
         if constexpr (std::is_same_v<typename SolverType::projector_type_list, typename XPBDMeshObjectConstraintConfigurations<IsFirstOrder>::NerveOnly::projector_type_list>)
         {
-            std::cout << "[xpbd] DEBUG: Nerve-Only configuration detected in base class, using simplified damping (no volume dependency)\n";
             // For Nerve-Only: use unit damping independent of volume
             for (int i = 0; i < _mesh->numVertices(); i++)
             {
@@ -921,7 +911,6 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_c
         }
         else
         {
-            std::cout << "[xpbd] DEBUG: Standard elastic configuration in base class, using volume-based damping\n";
             // Standard volume-based damping for elastic materials
             for (int i = 0; i < _mesh->numVertices(); i++)
             {
