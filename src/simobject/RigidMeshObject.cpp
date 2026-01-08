@@ -32,12 +32,25 @@ void RigidMeshObject::setup()
 {
     loadAndConfigureMesh();
 
-    // FIX: When use-original-coords is true, _p must be updated to actual mesh mass center
-    // because loadAndConfigureMesh() doesn't move mesh to _p, it only applies position as offset
+    // ROOT FIX: When use-original-coords is true, _p MUST equal the mesh's actual mass center
+    // because the mesh was not moved during loadAndConfigureMesh()
+    // This ensures globalToBody(vertex) = rotate(vertex - massCenter) works correctly
     if (_use_original_coords) {
-        _p = _mesh->massCenter();
+        Vec3r actual_mass_center = _mesh->massCenter();
+        
+        // Check if config position matches actual mass center
+        if ((_p - actual_mass_center).norm() > 1e-4) {
+            std::cout << "[RigidMeshObject] use-original-coords: Config position " << _p.transpose()
+                      << " differs from actual mass center " << actual_mass_center.transpose()
+                      << " (distance: " << (_p - actual_mass_center).norm() << "m)\n"
+                      << "  -> Using actual mass center for physics (REQUIRED for correct SDF queries)\n";
+        }
+        
+        // CRITICAL: Set _p to actual mass center
+        _p = actual_mass_center;
         _p_prev = _p;
-        std::cout << "[RigidMeshObject] use-original-coords: updated _p to actual mass center: (" 
+        
+        std::cout << "[RigidMeshObject] " << name() << ": Rigid body position set to mesh mass center: (" 
                   << _p.transpose() << ")" << std::endl;
     }
 

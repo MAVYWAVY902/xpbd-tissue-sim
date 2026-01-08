@@ -21,57 +21,47 @@ MeshSDF::MeshSDF(const Sim::RigidMeshObject* mesh_obj, const Config::RigidMeshOb
     }
     else
     {
-        // calculate the SDF at the mesh's un-transformed state
-        // if the corresponding RigidMeshObject to this SDF has an initial rotation, the mesh is already rotated, which will throw off the SDF
+        // ROOT FIX: SDF must ALWAYS be generated in body frame (centered at origin, unrotated)
+        // This is independent of use-original-coords setting
+        // The globalToBody() transformation handles the coordinate conversion
+        
         Geometry::Mesh mesh_copy(*(mesh_obj->mesh()));
         
-        // Check if use-original-coords is enabled
-        const bool use_original_coords = config && config->useOriginalCoords();
+        // Transform mesh to body frame: center at origin, remove rotation
+        // This is the same for both use-original-coords modes because:
+        // - In standard mode: mesh is already at _p with rotation _q
+        // - In use-original-coords mode: mesh is at its mass center (which equals _p) with rotation _q
+        mesh_copy.moveTogether(-mesh_obj->position());
+        const Mat3r rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(mesh_obj->orientation()));
+        mesh_copy.rotateAbout(Vec3r::Zero(), rot_mat);
         
-        if (!use_original_coords) {
-            // Standard behavior: center the mesh at origin for SDF generation
-            // untranslate the copy of the mesh
-            mesh_copy.moveTogether(-mesh_obj->position());
-            // unrotate the copy of the mesh
-            const Mat3r rot_mat = GeometryUtils::quatToMat(GeometryUtils::inverseQuat(mesh_obj->orientation()));
-            mesh_copy.rotateAbout(Vec3r::Zero(), rot_mat);
-            _sdf_offset = Vec3r::Zero();  // SDF centered at body origin
-        } else {
-            // FIX for use-original-coords: Center SDF at mesh mass center to avoid coordinate mismatch
-            // This ensures SDF queries work correctly even when mesh stays in original coordinates
-            Vec3r mass_center = mesh_copy.massCenter();
-            _sdf_offset = mass_center;  // Store offset for later coordinate conversion
-            mesh_copy.moveTogether(-mass_center);  // Center mesh at origin for SDF generation
-            
-            std::cout << "[MeshSDF] use-original-coords: Centering SDF at mesh mass center\n";
-            std::cout << "[MeshSDF]   Original mass center: (" << mass_center.transpose() << ")\n";
-            std::cout << "[MeshSDF]   SDF will be centered at origin with offset stored\n";
-        }
-        
-        // compute the SDF (always centered at origin now)
+        // Compute SDF in body frame (always centered at origin)
         _sdf = mesh2sdf::MeshSDF(mesh_copy.vertices(), mesh_copy.faces(), 128, 5, true);
         
-        // Print SDF bounding box after generation for debugging
+        // No offset needed - globalToBody() handles all coordinate conversion
+        _sdf_offset = Vec3r::Zero();
+        
+        // Print SDF bounding box for debugging
         const mesh2sdf::BoundingBox sdf_bbox = _sdf.gridBoundingBox();
-        std::cout << "[MeshSDF]   SDF grid bbox (centered): (" 
-                  << sdf_bbox.first[0] << ", " << sdf_bbox.first[1] << ", " << sdf_bbox.first[2] << ") to ("
-                  << sdf_bbox.second[0] << ", " << sdf_bbox.second[1] << ", " << sdf_bbox.second[2] << ")\n";
+        std::cout << "[MeshSDF] " << mesh_obj->name() << ": SDF generated in body frame\n";
+        std::cout << "  Body position (_p): (" << mesh_obj->position().transpose() << ")\n";
+        std::cout << "  SDF bbox: (" << sdf_bbox.first[0] << ", " << sdf_bbox.first[1] << ", " 
+                  << sdf_bbox.first[2] << ") to (" << sdf_bbox.second[0] << ", " 
+                  << sdf_bbox.second[1] << ", " << sdf_bbox.second[2] << ")\n";
     }
 }
 
 inline Real MeshSDF::evaluate(const Vec3r& x) const
 {
-    // When use-original-coords is true, apply offset correction
-    // x is in world coordinates, SDF is centered at origin with offset stored
-    if (_use_original_coords) {
-        // Transform world point by subtracting the stored offset
-        // This converts from world coordinates to SDF-centered coordinates
-        return _sdf.evaluate(x - _sdf_offset);
-    }
+    // ROOT FIX: ALWAYS use globalToBody() transformation
+    // This works correctly for both modes because:
+    // - Standard mode: _p is set by config, mesh moved to _p
+    // - use-original-coords mode: _p equals mesh mass center, mesh stays at mass center
+    // Either way: globalToBody(x) = rotate(x - _p) correctly transforms to body frame
     
-    // Standard behavior: transform x into body coordinates
     const Vec3r x_body = _mesh_obj->globalToBody(x);
-    // SDF may not be centered about the origin
+    
+    // SDF may not be centered about the origin (if loaded from file)
     if (_from_file)
     {
         // TODO: fix alignment between SDF coordinates and body coordinates
@@ -81,31 +71,24 @@ inline Real MeshSDF::evaluate(const Vec3r& x) const
         const Vec3r sdf_mesh_cm = _sdf.meshMassCenter();
         const Vec3r scaling_factors_xyz = sdf_mesh_size.array() / obj_mesh_size.array();
         const Vec3r x_sdf = sdf_mesh_cm.array() + x_body.array() * scaling_factors_xyz.array();
-        // std::cout << "x_body: " << x_body[0] << ", " << x_body[1] << ", " << x_body[2] << std::endl;
-        // std::cout << "x_sdf: " << x_sdf[0] << ", " << x_sdf[1] << ", " << x_sdf[2] << std::endl;
         const Real dist = _sdf.evaluate(x_sdf);
-        // std::cout << "dist: " << dist << std::endl;
         const Vec3r grad = _sdf.gradient(x_sdf);
         const Vec3r scaled_dist_vec =  grad.array() * dist / scaling_factors_xyz.array();
         return scaled_dist_vec.norm() * ( (dist < 0) ? -1 : 1);
     }
+    
+    // SDF is in body frame, x_body is in body frame -> direct query
     return _sdf.evaluate(x_body);
 }
 
 inline Vec3r MeshSDF::gradient(const Vec3r& x) const
 {
-    // When use-original-coords is true, apply offset correction
-    // x is in world coordinates, SDF is centered at origin with offset stored
-    if (_use_original_coords) {
-        // Transform world point by subtracting the stored offset
-        // Gradient direction is independent of translation, so no additional transform needed
-        return _sdf.gradient(x - _sdf_offset);
-    }
-    
-    // Standard behavior: transform x into body coordinates
+    // ROOT FIX: ALWAYS use globalToBody() transformation (same as evaluate())
     const Vec3r x_body = _mesh_obj->globalToBody(x);
+    
     Vec3r grad;
-    // SDF may not be centered about the origin
+    
+    // SDF may not be centered about the origin (if loaded from file)
     if (_from_file)
     {
         // TODO: fix alignment between SDF coordinates and body coordinates
@@ -119,8 +102,11 @@ inline Vec3r MeshSDF::gradient(const Vec3r& x) const
     }
     else
     {
+        // SDF is in body frame, query in body frame
         grad = _sdf.gradient(x_body);
     }
+    
+    // Transform gradient from body frame back to world frame
     return GeometryUtils::rotateVectorByQuat(grad, _mesh_obj->orientation());
 }
 

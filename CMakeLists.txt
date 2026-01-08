@@ -207,6 +207,18 @@ target_link_libraries(NerveTumorAdhesionUnitTest Solver)
 add_executable(AssignElements src/exec/util/assign_elements.cpp)
 target_link_libraries(AssignElements Config SimObject Geometry MeshUtils)
 
+add_executable(VerifySDF src/exec/util/verify_sdf.cpp)
+target_link_libraries(VerifySDF Geometry MeshUtils)
+
+add_executable(ExtractSDFSurface src/exec/util/extract_sdf_surface.cpp)
+target_link_libraries(ExtractSDFSurface Geometry MeshUtils)
+
+add_executable(MshToObj src/exec/util/msh_to_obj.cpp)
+target_link_libraries(MshToObj Geometry MeshUtils)
+
+add_executable(TestSDFCollision src/exec/util/test_sdf_collision.cpp)
+target_link_libraries(TestSDFCollision Geometry MeshUtils)
+
 vtk_module_autoinit(
   TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest VirtuosoStaticsModelTest InitialDeformationTest
   MODULES ${VTK_LIBRARIES}

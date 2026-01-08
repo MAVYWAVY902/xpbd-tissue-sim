@@ -198,13 +198,18 @@ public:
         } else {
             // Check if we should use original coordinates (like MeshLab)
             if (_use_original_coords) {
-                // Skip resize and recentering - only apply position offset and rotation
-                if (_initial_position.norm() > 1e-10) {
-                    _mesh->moveTogether(_initial_position);
+                // ROOT FIX: use-original-coords means mesh stays EXACTLY where it was loaded
+                // NO transformations applied - not even position offset!
+                // The mesh's mass center BECOMES the rigid body position
+                // This ensures globalToBody() transformation works correctly
+                
+                if (_initial_position.norm() > 1e-6 || _initial_rotation.norm() > 1e-6) {
+                    std::cout << "[MeshObject WARNING] use-original-coords=true but position="
+                              << _initial_position.transpose() << " rotation=" << _initial_rotation.transpose()
+                              << " specified.\n  These are IGNORED - mesh stays at loaded coordinates!\n";
                 }
-                if (_initial_rotation.norm() > 1e-10) {
-                    _mesh->rotateAbout(_initial_position, _initial_rotation);
-                }
+                
+                // Do nothing - mesh stays exactly as loaded
             } else {
                 // Standard pipeline: resize -> recenter mass -> rotate
                 if (_max_size.has_value()) {

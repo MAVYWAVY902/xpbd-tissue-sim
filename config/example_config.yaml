@@ -56,7 +56,7 @@ objects:
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
-    filename: "../resource/tissue/neuroma_tet_fixed.msh"  # Fixed: rescaled and centered
+    filename: "../resource/tissue/neuroma_tet_fixed.msh"  # RESCALED: mm → m conversion applied
 
     materials: ["Soft Tissue"] # the elastic material (must match with the name of a material defined above)
 
@@ -67,15 +67,14 @@ objects:
     draw-faces: true    # draw mesh faces
 
     ## initial configuration
-    use-original-coords: true   # Now safe: coordinates are properly scaled and centered
-    # max-size: 0.83   # Don't resize - preserve exact coordinates from fixed file
-    # size: [1, 1, 1]   # specify size of each dimension
-    position: [-0.001, 0.005, -0.002]   # initial position of mesh center of mass [m]
-    velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
-    rotation: [0, 0, -20]     # initial rotation [deg] (specified as XYZ Euler angles)
+    use-original-coords: false   # Let system rescale and center the mesh
+    max-size: 0.05               # Scale to 50mm max dimension
+    position: [0, 0, 0]          # Put tumor at exact origin (overlapping with bone)
+    velocity: [0, 0, 0.0]        # initial velocity [m/s]
+    rotation: [0, 0, 0]          # No rotation
 
     ## collisions
-    collisions: true
+    collisions: true   # ENABLED: Detect collisions with other objects
 
     ## XPBD-specific options
     num-solver-iters: 3   # number of solver loop iterations per time step 
@@ -112,16 +111,16 @@ objects:
   #   collisions: true
 
 
-  # # rigid sphere
-  # -
-  #   name: "sphere"
-  #   type: "RigidSphere"
-  #   radius: 0.5
-  #   density: 10000
-  #   position: [0.7, 0, 0]
-  #   velocity: [0, 0, 0]
-  #   fixed: true
-  #   collisions: true
+  # rigid sphere
+  -
+    name: "sphere"
+    type: "RigidSphere"
+    radius: 0.02
+    density: 10000
+    position: [0.03, 0, 0]
+    velocity: [0, 0, 0]
+    fixed: true
+    collisions: true
 
 
   # # rigid cylinder
@@ -153,25 +152,25 @@ objects:
   #   collisions: true
   #   fixed: true
 
-  # rigid mesh
-  - 
-    name: "tbone_v1"
-    type: "RigidMeshObject"
-    filename: "../resource/tissue/tbone_800_fixed.obj"  # Fixed: rescaled and centered
-    density: 100
+  # # rigid mesh
+  # - 
+  #   name: "tbone_v1"
+  #   type: "RigidMeshObject"
+  #   filename: "../resource/bone/tbone_800_fixed.obj"  # RESCALED: mm → m (scale 0.001)
+  #   density: 100
     
-    ## visualization options
-    color: [0.8, 0.8, 0.9, 1.0]  # light blue/grey color
-    draw-points: false
-    draw-edges: true
-    draw-faces: true
+  #   ## visualization options
+  #   color: [0.8, 0.8, 0.9, 1.0]  # light blue/grey color
+  #   draw-points: false
+  #   draw-edges: true
+  #   draw-faces: true
     
-    use-original-coords: true   # Now safe: coordinates are properly scaled and centered
-    # max-size: 0.03   # Don't resize - preserve exact coordinates from fixed file
-    position: [0, 0, 0]  # Both at origin - they'll overlap if aligned in MeshLab
-    rotation: [0, 0, 0]
-    velocity: [0, 0, 0]
-    angular-velocity: [0, 0, 0]
-    collisions: true
-    fixed: true
+  #   use-original-coords: false   # Let system rescale and center the mesh
+  #   max-size: 0.05               # Scale to 50mm max dimension (same as deformable mesh)
+  #   position: [0, 0, 0]          # Center of mass position (aligned with deformable)
+  #   rotation: [0, 0, 0]          # No rotation
+  #   velocity: [0, 0, 0]
+  #   angular-velocity: [0, 0, 0]
+  #   collisions: true   # ENABLED: Detect collisions with deformable objects
+  #   fixed: true
 

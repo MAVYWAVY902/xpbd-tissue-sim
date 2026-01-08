@@ -712,16 +712,23 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     {
         Real deform_to_rigid_dist = (sample_vertex - rigid_body_pos).norm();
         
+        // DEBUG: Show body-frame transformation
+        Vec3r sample_vertex_body = rigid_obj->globalToBody(sample_vertex);
+        Vec3r closest_centroid_body = rigid_obj->globalToBody(closest_centroid);
+        
         std::cout << "[RIGID-DEFORM COLLISION] Check #" << collision_check_count 
                   << " | Pair: " << xpbd_mesh_obj->name() << " <-> " << rigid_obj->name()
                   << "\n  Faces total: " << faces.cols()
                   << " | Culled: " << faces_culled_by_centroid
                   << " | Checked: " << faces_checked_detailed
                   << "\n  SDF range: [" << std::setprecision(6) << min_sdf_dist << ", " << max_sdf_dist << "] meters"
-                  << "\n  Deform sample vertex: (" << std::setprecision(4) << sample_vertex.transpose() << ")"
+                  << "\n  Deform sample vertex (world): (" << std::setprecision(4) << sample_vertex.transpose() << ")"
+                  << "\n  Deform sample vertex (body):  (" << sample_vertex_body.transpose() << ")"
                   << "\n  Rigid body position:  (" << rigid_body_pos.transpose() << ")"
                   << "\n  Direct distance (vertex to rigid center): " << std::setprecision(4) << deform_to_rigid_dist << "m"
-                  << "\n  Closest face centroid: (" << closest_centroid.transpose() << ") SDF_dist=" << min_sdf_dist
+                  << "\n  Closest face centroid (world): (" << closest_centroid.transpose() << ")"
+                  << "\n  Closest face centroid (body):  (" << closest_centroid_body.transpose() << ")"
+                  << "\n  Closest centroid SDF_dist=" << min_sdf_dist << " meters = " << (min_sdf_dist*1000) << "mm"
                   << "\n  Collisions: " << collisions_this_check << " | Total: " << total_collisions_detected
                   << " | Time: " << _sim->time() << "s\n";
     }
