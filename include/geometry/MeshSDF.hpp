@@ -43,6 +43,8 @@ class MeshSDF : public SDF
     const Sim::RigidMeshObject* _mesh_obj;
     mesh2sdf::MeshSDF _sdf;
     bool _from_file;
+    bool _use_original_coords;  // If true, SDF is in original coords, not body-centered
+    Vec3r _sdf_offset;  // Offset from world origin to SDF center (for use-original-coords mode)
 
 };
 

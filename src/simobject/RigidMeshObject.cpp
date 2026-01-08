@@ -6,7 +6,7 @@ namespace Sim
 {
 
 RigidMeshObject::RigidMeshObject(const Simulation* sim, const ConfigType* config)
-    : RigidObject(sim, config), MeshObject(config, config)
+    : RigidObject(sim, config), MeshObject(config, config), _config(config)
 {
     _density = config->density();
 }
@@ -31,6 +31,15 @@ Geometry::AABB RigidMeshObject::boundingBox() const
 void RigidMeshObject::setup()
 {
     loadAndConfigureMesh();
+
+    // FIX: When use-original-coords is true, _p must be updated to actual mesh mass center
+    // because loadAndConfigureMesh() doesn't move mesh to _p, it only applies position as offset
+    if (_use_original_coords) {
+        _p = _mesh->massCenter();
+        _p_prev = _p;
+        std::cout << "[RigidMeshObject] use-original-coords: updated _p to actual mass center: (" 
+                  << _p.transpose() << ")" << std::endl;
+    }
 
     // compute mass and inertia properties of mesh - in its REST STATE
     // meaning that we have to calculate the mass properties in the mesh's unrotated state

@@ -30,7 +30,7 @@ materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 2e5    # Young's modulus [Pa]
+    E: 8e3    # Young's modulus [Pa]
     nu: 0.45  # Poisson's ratio [-]
     mu-s: 0.0 # coefficient of static friction [-]
     mu-k: 0.0 # coefficient of kinetic friction [-]
@@ -56,7 +56,7 @@ objects:
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
-    filename: "../resource/tissue/neuroma_tet.msh"
+    filename: "../resource/tissue/neuroma_tet_fixed.msh"  # Fixed: rescaled and centered
 
     materials: ["Soft Tissue"] # the elastic material (must match with the name of a material defined above)
 
@@ -67,12 +67,12 @@ objects:
     draw-faces: true    # draw mesh faces
 
     ## initial configuration
-    # max-size: 1.0   # DISABLED - using use-original-coords instead
+    use-original-coords: true   # Now safe: coordinates are properly scaled and centered
+    # max-size: 0.83   # Don't resize - preserve exact coordinates from fixed file
     # size: [1, 1, 1]   # specify size of each dimension
-    position: [0, 0, 0]   # initial position of mesh center of mass [m]
+    position: [-0.001, 0.005, -0.002]   # initial position of mesh center of mass [m]
     velocity: [0, 0, 0.0]   # initial velocity [m/s] (applied to all vertices in the deformable mesh)
-    rotation: [0, 0, 0]     # initial rotation [deg] (specified as XYZ Euler angles)
-    use-original-coords: true  # Preserve MeshLab alignment
+    rotation: [0, 0, -20]     # initial rotation [deg] (specified as XYZ Euler angles)
 
     ## collisions
     collisions: true
@@ -91,7 +91,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 5000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 6000000   # 'b' from the 1st-Order XPBD paper
   
 
 
@@ -157,14 +157,21 @@ objects:
   - 
     name: "tbone_v1"
     type: "RigidMeshObject"
-    filename: "../resource/bone/tbone_800.obj"
+    filename: "../resource/tissue/tbone_800_fixed.obj"  # Fixed: rescaled and centered
     density: 100
-    position: [0, 0, 0]
+    
+    ## visualization options
+    color: [0.8, 0.8, 0.9, 1.0]  # light blue/grey color
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+    
+    use-original-coords: true   # Now safe: coordinates are properly scaled and centered
+    # max-size: 0.03   # Don't resize - preserve exact coordinates from fixed file
+    position: [0, 0, 0]  # Both at origin - they'll overlap if aligned in MeshLab
     rotation: [0, 0, 0]
     velocity: [0, 0, 0]
     angular-velocity: [0, 0, 0]
-    # max-size: 1.0  # DISABLED - using use-original-coords instead
-    use-original-coords: true  # Preserve MeshLab alignment
     collisions: true
     fixed: true
 

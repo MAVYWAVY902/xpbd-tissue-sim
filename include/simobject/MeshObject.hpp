@@ -238,8 +238,7 @@ protected:
 
 protected:
     std::unique_ptr<Geometry::Mesh> _mesh;
-
-private:
+    
     std::string _filename;
     Vec3r _initial_position;
     Vec3r _initial_rotation;

@@ -36,11 +36,10 @@ class RigidMeshObject : public RigidObject, public MeshObject
 
     virtual void setOrientation(const Vec4r& orientation) override;
 
-    /** TODO: propogate the config object somehow so that we can pass on the SDF filename */
     virtual void createSDF() override 
     { 
         if(!_sdf.has_value()) 
-            _sdf = SDFType(this, nullptr); 
+            _sdf = SDFType(this, _config); 
     }
 
     virtual const SDFType* SDF() const override { return _sdf.has_value() ? &_sdf.value() : nullptr; }
@@ -52,6 +51,7 @@ class RigidMeshObject : public RigidObject, public MeshObject
     protected:
     Real _density;
     std::unique_ptr<Geometry::Mesh> _initial_mesh;
+    const ConfigType* _config;
 
     /** Signed Distance Field for the mesh. Must be created explicitly with createSDF(). */
     std::optional<SDFType> _sdf;
