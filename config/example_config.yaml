@@ -74,7 +74,7 @@ objects:
     rotation: [0, 0, 0]          # No rotation
 
     ## collisions
-    collisions: true   # ENABLED: Detect collisions with other objects
+    collisions: false   # ENABLED: Detect collisions with other objects
 
     ## XPBD-specific options
     num-solver-iters: 3   # number of solver loop iterations per time step 
@@ -111,16 +111,16 @@ objects:
   #   collisions: true
 
 
-  # rigid sphere
-  -
-    name: "sphere"
-    type: "RigidSphere"
-    radius: 0.02
-    density: 10000
-    position: [0.03, 0, 0]
-    velocity: [0, 0, 0]
-    fixed: true
-    collisions: true
+  # # rigid sphere
+  # -
+  #   name: "sphere"
+  #   type: "RigidSphere"
+  #   radius: 0.02
+  #   density: 10000
+  #   position: [0.03, 0, 0]
+  #   velocity: [0, 0, 0]
+  #   fixed: true
+  #   collisions: true
 
 
   # # rigid cylinder
@@ -152,25 +152,25 @@ objects:
   #   collisions: true
   #   fixed: true
 
-  # # rigid mesh
-  # - 
-  #   name: "tbone_v1"
-  #   type: "RigidMeshObject"
-  #   filename: "../resource/bone/tbone_800_fixed.obj"  # RESCALED: mm → m (scale 0.001)
-  #   density: 100
+  # rigid mesh
+  - 
+    name: "tbone_v1"
+    type: "RigidMeshObject"
+    filename: "../resource/bone/refine05_fixed.obj"  # Reformatted to match working tbone_800 format
+    density: 100
     
-  #   ## visualization options
-  #   color: [0.8, 0.8, 0.9, 1.0]  # light blue/grey color
-  #   draw-points: false
-  #   draw-edges: true
-  #   draw-faces: true
+    ## visualization options
+    color: [0.8, 0.8, 0.9, 1.0]  # light blue/grey color
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
     
-  #   use-original-coords: false   # Let system rescale and center the mesh
-  #   max-size: 0.05               # Scale to 50mm max dimension (same as deformable mesh)
-  #   position: [0, 0, 0]          # Center of mass position (aligned with deformable)
-  #   rotation: [0, 0, 0]          # No rotation
-  #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
-  #   collisions: true   # ENABLED: Detect collisions with deformable objects
-  #   fixed: true
+    use-original-coords: false   # Let system rescale and center the mesh
+    max-size: 0.05               # Scale to 50mm max dimension (same as deformable mesh)
+    position: [0, 0, 0]          # Center of mass position (aligned with deformable)
+    rotation: [0, 0, 0]          # No rotation
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    collisions: false   # ENABLED: Detect collisions with deformable objects
+    fixed: true
 
