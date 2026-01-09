@@ -74,7 +74,7 @@ objects:
     rotation: [0, 0, 0]          # No rotation
 
     ## collisions
-    collisions: false   # ENABLED: Detect collisions with other objects
+    collisions: true   # ENABLED: Detect collisions with other objects
 
     ## XPBD-specific options
     num-solver-iters: 3   # number of solver loop iterations per time step 
@@ -90,7 +90,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 6000000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 600000   # 'b' from the 1st-Order XPBD paper
   
 
 
@@ -167,10 +167,10 @@ objects:
     
     use-original-coords: false   # Let system rescale and center the mesh
     max-size: 0.05               # Scale to 50mm max dimension (same as deformable mesh)
-    position: [0, 0, 0]          # Center of mass position (aligned with deformable)
+    position: [0.01, -0.03, 0]          # Center of mass position (aligned with deformable)
     rotation: [0, 0, 0]          # No rotation
     velocity: [0, 0, 0]
     angular-velocity: [0, 0, 0]
-    collisions: false   # ENABLED: Detect collisions with deformable objects
+    collisions: true   # ENABLED: Detect collisions with deformable objects
     fixed: true
 
