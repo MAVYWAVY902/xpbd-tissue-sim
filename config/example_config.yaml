@@ -32,8 +32,8 @@ materials:
     density: 1000   # density [kg/m^3]
     E: 8e3    # Young's modulus [Pa]
     nu: 0.45  # Poisson's ratio [-]
-    mu-s: 0.0 # coefficient of static friction [-]
-    mu-k: 0.0 # coefficient of kinetic friction [-]
+    mu-s: 1.1 # coefficient of static friction [-]
+    mu-k: 0.7 # coefficient of kinetic friction [-]
 
 ## objects in the simulation
 objects:
@@ -56,7 +56,7 @@ objects:
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
-    filename: "../resource/tissue/neuroma_tet_fixed.msh"  # RESCALED: mm → m conversion applied
+    filename: "../resource/tumor_fixed/tumor_fixed01.obj"  # RESCALED: mm → m conversion applied
 
     materials: ["Soft Tissue"] # the elastic material (must match with the name of a material defined above)
 
@@ -67,9 +67,9 @@ objects:
     draw-faces: true    # draw mesh faces
 
     ## initial configuration
-    use-original-coords: false   # Let system rescale and center the mesh
-    max-size: 0.05               # Scale to 50mm max dimension
-    position: [0, 0, 0]          # Put tumor at exact origin (overlapping with bone)
+    use-original-coords: true   # Allow position adjustment
+    max-size: 1.0               # Keep original size (no scaling)
+    position: [0, 0, 0]          # Will be centered at origin
     velocity: [0, 0, 0.0]        # initial velocity [m/s]
     rotation: [0, 0, 0]          # No rotation
 
@@ -90,7 +90,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 1000000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 2000000   # 'b' from the 1st-Order XPBD paper
   
 
 
@@ -156,7 +156,7 @@ objects:
   - 
     name: "tbone_v1"
     type: "RigidMeshObject"
-    filename: "../resource/bone/refine05_fixed.obj"  # Reformatted to match working tbone_800 format
+    filename: "../resource/tbone_fixed/tbone_ds06.obj"  # Reformatted to match working tbone_800 format
     density: 100
     
     ## visualization options
@@ -165,9 +165,9 @@ objects:
     draw-edges: true
     draw-faces: true
     
-    use-original-coords: false   # Let system rescale and center the mesh
-    max-size: 0.05               # Scale to 50mm max dimension (same as deformable mesh)
-    position: [0.01, -0.03, 0]          # Center of mass position (aligned with deformable)
+    use-original-coords: true   # Let system rescale and center the mesh
+    max-size: 1.0               # Scale to 50mm max dimension (same as deformable mesh)
+    position: [0.0, -0.0, 0.0]  # Offset to align with tumor center
     rotation: [0, 0, 0]          # No rotation
     velocity: [0, 0, 0]
     angular-velocity: [0, 0, 0]
