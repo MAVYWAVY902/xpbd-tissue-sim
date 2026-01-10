@@ -90,7 +90,7 @@ objects:
     residual-policy: "Never"              # don't compute the residuals
 
     ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 600000   # 'b' from the 1st-Order XPBD paper
+    damping-multiplier: 1000000   # 'b' from the 1st-Order XPBD paper
   
 
 

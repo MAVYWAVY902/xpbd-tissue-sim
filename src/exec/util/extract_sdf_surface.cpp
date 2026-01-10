@@ -14,6 +14,8 @@
 #include <fstream>
 #include <vector>
 #include <unordered_map>
+#include <set>
+#include <queue>
 #include <cmath>
 
 #include "geometry/Mesh.hpp"
@@ -43,10 +45,18 @@ public:
         // Edge to vertex index map (for sharing vertices)
         std::unordered_map<uint64_t, int> edge_to_vertex;
         
-        // Process each cell
-        for (int i = 0; i < _ni-1; ++i) {
-            for (int j = 0; j < _nj-1; ++j) {
-                for (int k = 0; k < _nk-1; ++k) {
+        // IMPORTANT: Skip padding regions to avoid boundary artifacts
+        // Only process the core region (exclude 2 voxels from each boundary)
+        const int margin = 2;  // Skip outer layers to avoid grid boundary artifacts
+        
+        std::cout << "Processing core region: [" << margin << ":" << (_ni-1-margin) 
+                  << "] x [" << margin << ":" << (_nj-1-margin) 
+                  << "] x [" << margin << ":" << (_nk-1-margin) << "]" << std::endl;
+        
+        // Process each cell (avoiding grid boundaries)
+        for (int i = margin; i < _ni-1-margin; ++i) {
+            for (int j = margin; j < _nj-1-margin; ++j) {
+                for (int k = margin; k < _nk-1-margin; ++k) {
                     processCube(i, j, k, vertices, faces, edge_to_vertex);
                 }
             }
@@ -98,48 +108,79 @@ private:
         corners[6] = _origin + Vec3r(i+1, j+1, k+1).cwiseProduct(_cell_size);
         corners[7] = _origin + Vec3r(i,   j+1, k+1).cwiseProduct(_cell_size);
         
-        // Interpolate vertices on edges where sign changes
-        // Using simplified marching cubes: just find crossing edges
-        std::vector<Vec3r> edge_vertices;
+        // Edge table: which edges intersect for each cube configuration
+        // Using proper marching cubes with edge sharing
         
-        // Check all 12 edges
+        // Check all 12 edges and create/reuse vertices on crossings
         int edges[12][2] = {
-            {0,1}, {1,2}, {2,3}, {3,0},  // bottom face
-            {4,5}, {5,6}, {6,7}, {7,4},  // top face
+            {0,1}, {1,2}, {2,3}, {3,0},  // bottom face (k)
+            {4,5}, {5,6}, {6,7}, {7,4},  // top face (k+1)
             {0,4}, {1,5}, {2,6}, {3,7}   // vertical edges
         };
         
+        std::vector<int> edge_vertex_indices;
+        
         for (int e = 0; e < 12; ++e) {
-            int v0 = edges[e][0];
-            int v1 = edges[e][1];
+            int v0_local = edges[e][0];
+            int v1_local = edges[e][1];
             
             // Check if edge crosses zero level
-            if ((values[v0] < 0 && values[v1] >= 0) || 
-                (values[v0] >= 0 && values[v1] < 0))
+            if ((values[v0_local] < 0 && values[v1_local] >= 0) || 
+                (values[v0_local] >= 0 && values[v1_local] < 0))
             {
-                // Linear interpolation
-                Real t = values[v0] / (values[v0] - values[v1]);
-                Vec3r vertex = corners[v0] + t * (corners[v1] - corners[v0]);
-                edge_vertices.push_back(vertex);
+                // Compute global edge ID for sharing across cells
+                int gi0, gj0, gk0, gi1, gj1, gk1;
+                
+                // Map local corner index to grid position
+                int di0 = v0_local & 1;
+                int dj0 = (v0_local >> 1) & 1;
+                int dk0 = (v0_local >> 2) & 1;
+                int di1 = v1_local & 1;
+                int dj1 = (v1_local >> 1) & 1;
+                int dk1 = (v1_local >> 2) & 1;
+                
+                gi0 = i + di0; gj0 = j + dj0; gk0 = k + dk0;
+                gi1 = i + di1; gj1 = j + dj1; gk1 = k + dk1;
+                
+                // Create unique edge key (sorted to ensure consistency)
+                uint64_t edge_key;
+                if (gi0 < gi1 || (gi0 == gi1 && gj0 < gj1) || 
+                    (gi0 == gi1 && gj0 == gj1 && gk0 < gk1)) {
+                    edge_key = ((uint64_t)gi0 << 40) | ((uint64_t)gj0 << 20) | gk0 |
+                               (((uint64_t)gi1 << 40) | ((uint64_t)gj1 << 20) | gk1) << 32;
+                } else {
+                    edge_key = ((uint64_t)gi1 << 40) | ((uint64_t)gj1 << 20) | gk1 |
+                               (((uint64_t)gi0 << 40) | ((uint64_t)gj0 << 20) | gk0) << 32;
+                }
+                
+                // Check if vertex already exists for this edge
+                auto it = edge_to_vertex.find(edge_key);
+                int vert_idx;
+                
+                if (it != edge_to_vertex.end()) {
+                    // Reuse existing vertex
+                    vert_idx = it->second;
+                } else {
+                    // Create new vertex with linear interpolation
+                    Real t = values[v0_local] / (values[v0_local] - values[v1_local]);
+                    Vec3r vertex = corners[v0_local] + t * (corners[v1_local] - corners[v0_local]);
+                    
+                    vert_idx = vertices.size();
+                    vertices.push_back(vertex);
+                    edge_to_vertex[edge_key] = vert_idx;
+                }
+                
+                edge_vertex_indices.push_back(vert_idx);
             }
         }
         
-        // Create triangles (simple fan triangulation)
-        if (edge_vertices.size() >= 3) {
-            Vec3r centroid = Vec3r::Zero();
-            for (const auto& v : edge_vertices) centroid += v;
-            centroid /= edge_vertices.size();
-            
-            int centroid_idx = vertices.size();
-            vertices.push_back(centroid);
-            
-            for (size_t v = 0; v < edge_vertices.size(); ++v) {
-                vertices.push_back(edge_vertices[v]);
-                
-                int v0 = centroid_idx;
-                int v1 = centroid_idx + 1 + v;
-                int v2 = centroid_idx + 1 + ((v + 1) % edge_vertices.size());
-                
+        // Create triangles using fan triangulation
+        if (edge_vertex_indices.size() >= 3) {
+            // Use first vertex as pivot for fan
+            int v0 = edge_vertex_indices[0];
+            for (size_t i = 1; i + 1 < edge_vertex_indices.size(); ++i) {
+                int v1 = edge_vertex_indices[i];
+                int v2 = edge_vertex_indices[i + 1];
                 faces.push_back(Eigen::Vector3i(v0, v1, v2));
             }
         }
@@ -190,6 +231,106 @@ int main(int argc, char* argv[])
     std::vector<Eigen::Vector3i> surface_faces;
     
     mc.extractSurface(surface_vertices, surface_faces);
+
+    std::cout << "\nFiltering artifacts (keeping only largest component)..." << std::endl;
+    
+    // Build adjacency: face -> neighboring faces
+    std::unordered_map<int, std::vector<int>> face_neighbors;
+    std::unordered_map<int, std::vector<int>> vertex_faces;
+    
+    for (int f = 0; f < surface_faces.size(); f++) {
+        for (int i = 0; i < 3; i++) {
+            vertex_faces[surface_faces[f][i]].push_back(f);
+        }
+    }
+    
+    for (int f = 0; f < surface_faces.size(); f++) {
+        std::set<int> neighbors;
+        for (int i = 0; i < 3; i++) {
+            int v = surface_faces[f][i];
+            for (int nf : vertex_faces[v]) {
+                if (nf != f) neighbors.insert(nf);
+            }
+        }
+        face_neighbors[f] = std::vector<int>(neighbors.begin(), neighbors.end());
+    }
+    
+    // Find connected components via BFS
+    std::vector<bool> visited(surface_faces.size(), false);
+    std::vector<std::vector<int>> components;
+    
+    for (int start_face = 0; start_face < surface_faces.size(); start_face++) {
+        if (visited[start_face]) continue;
+        
+        std::vector<int> component;
+        std::queue<int> queue;
+        queue.push(start_face);
+        visited[start_face] = true;
+        
+        while (!queue.empty()) {
+            int f = queue.front();
+            queue.pop();
+            component.push_back(f);
+            
+            for (int neighbor : face_neighbors[f]) {
+                if (!visited[neighbor]) {
+                    visited[neighbor] = true;
+                    queue.push(neighbor);
+                }
+            }
+        }
+        
+        components.push_back(component);
+    }
+    
+    // Find largest component
+    int largest_idx = 0;
+    for (int i = 1; i < components.size(); i++) {
+        if (components[i].size() > components[largest_idx].size()) {
+            largest_idx = i;
+        }
+    }
+    
+    std::cout << "  Found " << components.size() << " components" << std::endl;
+    std::cout << "  Largest component: " << components[largest_idx].size() 
+              << " faces (" << (100.0 * components[largest_idx].size() / surface_faces.size()) 
+              << "%)" << std::endl;
+    
+    if (components.size() > 1) {
+        int removed_faces = surface_faces.size() - components[largest_idx].size();
+        std::cout << "  Filtering out " << (components.size() - 1) 
+                  << " artifact components (" << removed_faces << " faces)" << std::endl;
+    }
+    
+    // Keep only largest component
+    std::set<int> used_vertices;
+    std::vector<Eigen::Vector3i> filtered_faces;
+    
+    for (int face_idx : components[largest_idx]) {
+        filtered_faces.push_back(surface_faces[face_idx]);
+        for (int i = 0; i < 3; i++) {
+            used_vertices.insert(surface_faces[face_idx][i]);
+        }
+    }
+    
+    // Remap vertices (remove unused)
+    std::map<int, int> old_to_new;
+    std::vector<Vec3r> filtered_vertices;
+    
+    for (int old_idx : used_vertices) {
+        old_to_new[old_idx] = filtered_vertices.size();
+        filtered_vertices.push_back(surface_vertices[old_idx]);
+    }
+    
+    // Update face indices
+    for (auto& face : filtered_faces) {
+        face[0] = old_to_new[face[0]];
+        face[1] = old_to_new[face[1]];
+        face[2] = old_to_new[face[2]];
+    }
+    
+    surface_vertices = filtered_vertices;
+    surface_faces = filtered_faces;
 
     // Save as OBJ
     std::cout << "\nSaving to " << output_file << "..." << std::endl;
