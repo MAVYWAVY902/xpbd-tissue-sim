@@ -59,6 +59,9 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
      * @returns a 1d vector of vertex indicies - 2 consecutive entries corresponds to a edge to be rendered.
      */
     std::vector<unsigned int> edgesAsFlatList() const;
+    
+    /** Sets texture from a PNG file for Easy3D rendering. */
+    void setTexture(const std::string& texture_path);
 
     protected:
     /** Updates the vertex cache. Called before redrawing to get latest updates to mesh vertices drawn.

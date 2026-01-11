@@ -1,0 +1,57 @@
+## Texture Mapping Test Configuration
+## This config demonstrates PNG texture mapping on a mesh with UV coordinates
+
+name: "Texture-Test"
+description: "Testing texture mapping with UV coordinates"
+
+visualization: "VTK"  # Use VTK for texture support
+g-accel: 0
+sim-mode: "Frame-by-frame"  # Press any key to advance frame
+time-step: 1e-3
+collision-rate: 100
+fps: 30
+end-time: 10
+
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000
+    E: 8e3
+    nu: 0.45
+    mu-s: 1.1
+    mu-k: 0.7
+
+objects:
+  # Tumor with texture mapping
+  -
+    name: "Tumor_Textured"
+    type: "RigidMeshObject"
+    
+    ## Mesh file with UV coordinates (exported from Blender with "Include UVs")
+    filename: "../resource/tumor_fixed/tumor_fixed01_with_uv.obj"
+    
+    ## PNG texture file
+    texture-file: "../resource/textures/AlbedoLiver2.png"
+    
+    ## Visualization
+    draw-points: false
+    draw-edges: false  # Turn off edges to see texture clearly
+    draw-faces: true
+    
+    ## Transform
+    use-original-coords: true
+    max-size: 1.0
+    position: [0, 0, 0]
+    rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    
+    ## Physics
+    density: 100
+    collisions: false
+    fixed: true
+
+## Notes:
+## - Make sure tumor_fixed01_with_uv.obj was exported from Blender with UV coordinates
+## - The texture file AlbedoLiver2.png should be in the textures folder
+## - Press any key to advance frames and rotate the view to see the texture

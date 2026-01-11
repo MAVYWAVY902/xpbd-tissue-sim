@@ -1189,6 +1189,25 @@ Geometry::Mesh MeshUtils::loadSurfaceMeshFromFile(const std::string& filename)
     }
 
     Geometry::Mesh mesh(verts, faces);
+    
+    // Extract UV coordinates if available
+    if (ai_mesh->HasTextureCoords(0))
+    {
+        std::cout << "\tLoading UV coordinates from mesh..." << std::endl;
+        Eigen::Matrix<Real, 2, -1, Eigen::ColMajor> uv_coords(2, ai_mesh->mNumVertices);
+        for (unsigned i = 0; i < ai_mesh->mNumVertices; i++)
+        {
+            uv_coords(0, i) = ai_mesh->mTextureCoords[0][i].x;
+            uv_coords(1, i) = ai_mesh->mTextureCoords[0][i].y;
+        }
+        mesh.setUVCoords(uv_coords);
+        std::cout << "\tSuccessfully loaded " << ai_mesh->mNumVertices << " UV coordinates" << std::endl;
+    }
+    else
+    {
+        std::cout << "\tNo UV coordinates found in mesh file" << std::endl;
+    }
+    
     return mesh;
 }
 
@@ -1207,11 +1226,51 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
 
     if (file_path.extension() == ".obj" || file_path.extension() == ".stl")
     {
-        convertToSTL(filename);
-        convertSTLtoMSH(file_path.replace_extension(".stl"));
+        // Skip STL conversion - convert OBJ directly to MSH using GMSH
+        std::cout << "MeshUtils::convertOBJtoMSH - converting " << filename << " directly to .msh using GMSH..." << std::endl;
+        
+        std::filesystem::path msh_path(filename);
+        msh_path.replace_extension(".msh");
+        
+        // Open the OBJ file with GMSH
+        gmsh::open(filename);
+        gmsh::option::setNumber("General.Verbosity", 5);
+        
+        // Get the surface
+        std::vector<std::pair<int, int>> surfaces;
+        gmsh::model::getEntities(surfaces, 2);
+        
+        if (surfaces.empty())
+        {
+            std::cerr << "ERROR: No surfaces found in " << filename << std::endl;
+            throw std::runtime_error("No surfaces found in OBJ file");
+        }
+        
+        std::cout << "\tFound " << surfaces.size() << " surface(s)" << std::endl;
+        
+        // Create volume from surface
+        std::vector<int> surface_tags;
+        for (const auto& surf : surfaces)
+        {
+            surface_tags.push_back(surf.second);
+        }
+        
+        int surface_loop_tag = gmsh::model::geo::addSurfaceLoop(surface_tags);
+        int volume_tag = gmsh::model::geo::addVolume(std::vector<int>{surface_loop_tag});
+        gmsh::model::geo::synchronize();
+        
+        std::cout << "\tCreated volume with tag: " << volume_tag << std::endl;
+        
+        // Generate 3D mesh
+        gmsh::model::mesh::generate(3);
+        
+        // Write to MSH file
+        gmsh::write(msh_path.string());
+        
+        std::cout << "\tGMSH conversion successful - new file is " << msh_path.string() << "\n" << std::endl;
     }
 
-    file_path = file_path.replace_extension(".msh");
+    file_path.replace_extension(".msh");
 
     // ensure the file is a .msh file
     if (file_path.extension() != ".msh" && file_path.extension() != ".MSH")
@@ -1402,6 +1461,76 @@ Geometry::TetMesh MeshUtils::loadTetMeshFromGmshFile(const std::string& filename
     // write the loaded surface mesh part to file
     const std::string surface_mesh_filename = filename.substr(0,filename.length()-4) + "_surface_mesh.obj";
     tet_mesh.writeMeshToObjFile(surface_mesh_filename);
+
+    // NEW: Try to recover UV coordinates from original OBJ file
+    std::filesystem::path orig_file_path(filename);
+    orig_file_path.replace_extension(".obj");
+    if (std::filesystem::exists(orig_file_path))
+    {
+        std::cout << "[UV Recovery] Attempting to load UV coordinates from: " << orig_file_path << std::endl;
+        
+        Assimp::Importer importer;
+        const aiScene* scene = importer.ReadFile(orig_file_path.string(), 
+            aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
+        
+        if (scene && scene->HasMeshes() && scene->mMeshes[0]->HasTextureCoords(0))
+        {
+            const aiMesh* ai_mesh = scene->mMeshes[0];
+            std::cout << "[UV Recovery] Found " << ai_mesh->mNumVertices << " vertices with UV in OBJ" << std::endl;
+            std::cout << "[UV Recovery] MSH has " << vertices.cols() << " vertices" << std::endl;
+            
+            // Build spatial hash map for vertex matching (OBJ vertices → MSH vertices)
+            const Real tolerance = 1e-6;
+            std::unordered_map<int, std::pair<Real, Real>> msh_vertex_to_uv;
+            
+            // For each OBJ vertex with UV
+            for (unsigned obj_v = 0; obj_v < ai_mesh->mNumVertices; obj_v++)
+            {
+                Vec3r obj_pos(ai_mesh->mVertices[obj_v].x, 
+                             ai_mesh->mVertices[obj_v].y, 
+                             ai_mesh->mVertices[obj_v].z);
+                Real uv_u = ai_mesh->mTextureCoords[0][obj_v].x;
+                Real uv_v = ai_mesh->mTextureCoords[0][obj_v].y;
+                
+                // Find matching MSH surface vertex by position
+                for (int msh_v = 0; msh_v < vertices.cols(); msh_v++)
+                {
+                    Vec3r msh_pos = vertices.col(msh_v);
+                    if ((obj_pos - msh_pos).norm() < tolerance)
+                    {
+                        msh_vertex_to_uv[msh_v] = {uv_u, uv_v};
+                        break;
+                    }
+                }
+            }
+            
+            if (!msh_vertex_to_uv.empty())
+            {
+                std::cout << "[UV Recovery] Matched " << msh_vertex_to_uv.size() << " vertices with UV coordinates" << std::endl;
+                
+                // Build UV matrix for all vertices (interior vertices get (0,0))
+                Eigen::Matrix<Real, 2, -1> uv_coords;
+                uv_coords.setZero(2, vertices.cols());
+                
+                for (const auto& [vertex_idx, uv] : msh_vertex_to_uv)
+                {
+                    uv_coords(0, vertex_idx) = uv.first;
+                    uv_coords(1, vertex_idx) = uv.second;
+                }
+                
+                tet_mesh.setUVCoords(uv_coords);
+                std::cout << "[UV Recovery] UV coordinates successfully applied to TetMesh!" << std::endl;
+            }
+            else
+            {
+                std::cout << "[UV Recovery] Warning: Could not match any vertices (position mismatch)" << std::endl;
+            }
+        }
+        else
+        {
+            std::cout << "[UV Recovery] No UV coordinates found in original OBJ file" << std::endl;
+        }
+    }
 
     return tet_mesh;
 
@@ -2114,25 +2243,65 @@ void MeshUtils::convertToSTL(const std::string& filename)
     std::cout << "\tAssimp import successful" << std::endl;
 
     Assimp::Exporter exporter;
-    const std::string& stl_filename = file_path.replace_extension(".stl").string();
-    exporter.Export(scene, "stl", stl_filename);
-
-    std::cout << "\tAssimp export successful - new file is " << stl_filename << "\n" << std::endl;
+    
+    // List available export formats
+    std::cout << "\tAvailable Assimp export formats:" << std::endl;
+    for (size_t i = 0; i < exporter.GetExportFormatCount(); i++)
+    {
+        const aiExportFormatDesc* desc = exporter.GetExportFormatDescription(i);
+        std::cout << "\t  - " << desc->id << ": " << desc->description << std::endl;
+    }
+    
+    std::filesystem::path stl_path(filename);
+    const std::string& stl_filename = stl_path.replace_extension(".stl").string();
+    std::cout << "\tExporting to STL: " << stl_filename << std::endl;
+    
+    // Try different STL format identifiers
+    aiReturn result = exporter.Export(scene, "stl", stl_filename);
+    
+    if (result != AI_SUCCESS)
+    {
+        std::cerr << "\tERROR: Assimp export with 'stl' FAILED!" << std::endl;
+        std::cerr << "\tAssimp error: '" << exporter.GetErrorString() << "'" << std::endl;
+        
+        // Try stlb (binary STL)
+        std::cout << "\tTrying 'stlb' (binary STL)..." << std::endl;
+        result = exporter.Export(scene, "stlb", stl_filename);
+        
+        if (result != AI_SUCCESS)
+        {
+            std::cerr << "\tERROR: 'stlb' also failed: '" << exporter.GetErrorString() << "'" << std::endl;
+            return;
+        }
+    }
+    
+    // Verify the file was actually created
+    if (std::filesystem::exists(stl_filename))
+    {
+        std::cout << "\tAssimp export successful - new file is " << stl_filename << std::endl;
+        std::cout << "\tFile size: " << std::filesystem::file_size(stl_filename) << " bytes\n" << std::endl;
+    }
+    else
+    {
+        std::cerr << "\tERROR: Export returned success but file does not exist: " << stl_filename << std::endl;
+    }
 }
 
 void MeshUtils::convertSTLtoMSH(const std::string& filename)
 {
     std::cout << "MeshUtils::convertSTLtoMSH - converting " << filename << " from .stl to .msh format..." << std::endl;
 
+    // Use the path as-is (relative or absolute)
+    std::filesystem::path file_path(filename);
+    
     // ensure the file exists
-    if (!std::filesystem::exists(filename))
+    if (!std::filesystem::exists(file_path))
     {
-        std::cerr << "\t" << filename << " does not exist!" << std::endl;
+        std::cerr << "\t" << file_path << " does not exist!" << std::endl;
+        std::cerr << "\tCurrent working directory: " << std::filesystem::current_path() << std::endl;
         return;
     }
 
-
-    std::filesystem::path file_path(filename);
 
     // ensure the file is an STL file
     if (file_path.extension() != ".stl" && file_path.extension() != ".STL")
@@ -2141,7 +2310,7 @@ void MeshUtils::convertSTLtoMSH(const std::string& filename)
         return;
     }
 
-    gmsh::open(filename);
+    gmsh::open(file_path.string());
     gmsh::option::setNumber("General.Verbosity", 5);
 
     // Get the surface (should be tag 1)

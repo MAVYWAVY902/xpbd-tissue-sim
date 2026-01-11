@@ -1,0 +1,7 @@
+# MTL文件
+newmtl material0
+Ka 1.0 1.0 1.0
+Kd 0.8 0.8 0.8
+Ks 0.3 0.3 0.3
+Ns 32.0
+map_Kd nerve_test_texture.png

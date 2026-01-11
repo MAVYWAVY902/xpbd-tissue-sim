@@ -12,7 +12,7 @@ namespace Geometry
 {
 
 Mesh::Mesh(const VerticesMat& vertices, const FacesMat& faces)
-    : _vertices(vertices), _faces(faces)
+    : _vertices(vertices), _faces(faces), _has_uv_coords(false)
 {
     // create surface vertex property
     addVertexProperty<bool>("surface");
@@ -36,6 +36,8 @@ Mesh::Mesh(const Mesh& other)
     _vertex_properties = other._vertex_properties;
     _face_properties = other._face_properties;
     _vertex_adjacent_vertices = other._vertex_adjacent_vertices;
+    _uv_coords = other._uv_coords;
+    _has_uv_coords = other._has_uv_coords;
 
     // NOTE: we do NOT do anything with the GPU resource - if we are copying this mesh, we don't want to just automatically create a new GPU resource if we don't need to
     // (we can't copy the GPU resource since it's a unique_ptr)
@@ -49,6 +51,8 @@ Mesh::Mesh(Mesh&& other)
     _vertex_properties = std::move(other._vertex_properties);
     _face_properties = std::move(other._face_properties);
     _vertex_adjacent_vertices = std::move(other._vertex_adjacent_vertices);
+    _uv_coords = std::move(other._uv_coords);
+    _has_uv_coords = other._has_uv_coords;
 
  #ifdef HAVE_CUDA
     _gpu_resource = std::move(other._gpu_resource);

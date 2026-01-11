@@ -4,10 +4,12 @@
 #include "config/simobject/ObjectConfig.hpp"
 #include "config/simobject/MeshObjectConfig.hpp"
 #include "config/simobject/ElasticMaterialConfig.hpp"
+#include "utils/MTLParser.hpp"
 
 #include "common/XPBDTypedefs.hpp"
 
 #include <memory>
+#include <filesystem>
 
 namespace Sim
 {
@@ -74,6 +76,8 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     // optional: list of vertex indices to fix (0-based)
     _extractParameter("fixed-vertices", node, _fixed_vertices);
         
+        // Auto-load MTL file if available
+        _loadMTLIfAvailable();
     }
 
     explicit XPBDMeshObjectConfig(  const std::string& name, const Vec3r& initial_position, const Vec3r& initial_rotation,                  // Object params
@@ -132,6 +136,78 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     ConfigParameter<std::vector<std::string>> _materials = ConfigParameter<std::vector<std::string>>({});
     ConfigParameter<std::optional<std::string>> _element_classes_filename;
     ConfigParameter<std::vector<int>> _fixed_vertices = ConfigParameter<std::vector<int>>({});
+    
+    private:
+    /** Auto-load MTL file if present and apply to render config */
+    void _loadMTLIfAvailable()
+    {
+        std::string obj_filename = filename();
+        if (obj_filename.empty()) {
+            return;
+        }
+        
+        std::filesystem::path obj_path(obj_filename);
+        std::cout << KCYN << "[XPBDMeshObject] Checking for MTL file for: " 
+                  << obj_path.filename().string() << RST << std::endl;
+        
+        // Only try to load MTL if user hasn't manually specified material properties
+        if (_render_config.mtlFile().has_value() || 
+            _render_config.diffuseColor().has_value() ||
+            _render_config.specularColor().has_value() ||
+            _render_config.color().has_value())
+        {
+            std::cout << KYEL << "[XPBDMeshObject] Skipping MTL auto-load: User specified material/color in config" 
+                      << RST << std::endl;
+            return; // User has manually configured materials
+        }
+        
+        // Check if corresponding MTL file exists
+        std::filesystem::path mtl_path = obj_path.parent_path() / (obj_path.stem().string() + ".mtl");
+        
+        if (!std::filesystem::exists(mtl_path)) {
+            std::cout << KYEL << "[XPBDMeshObject] No MTL file found at: " 
+                      << mtl_path.string() << RST << std::endl;
+            return; // No MTL file found
+        }
+        
+        std::cout << KGRN << "[XPBDMeshObject] Found MTL file: " 
+                  << mtl_path.filename().string() << RST << std::endl;
+        
+        // Parse MTL file
+        Utils::MTLParser parser;
+        auto materials = parser.parse(mtl_path.string());
+        
+        std::cout << KCYN << "[XPBDMeshObject] Parsed " << materials.size() << " materials from MTL" << RST << std::endl;
+        
+        if (materials.empty()) {
+            std::cout << KRED << "[XPBDMeshObject] ERROR: No materials found in MTL file!" << RST << std::endl;
+            return; // No materials in MTL file
+        }
+        
+        // Use the first material (most MTL files have only one material)
+        const Utils::Material& mat = materials.begin()->second;
+        
+        std::cout << KGRN << "========================================" << RST << std::endl;
+        std::cout << KGRN << "[XPBDMeshObject] Successfully loaded MTL material:" << RST << std::endl;
+        std::cout << KGRN << "  Material name: " << mat.name << RST << std::endl;
+        std::cout << KGRN << "  Diffuse (Kd):  [" << mat.diffuse_color.transpose() << "]" << RST << std::endl;
+        std::cout << KGRN << "  Ambient (Ka):  [" << mat.ambient_color.transpose() << "]" << RST << std::endl;
+        std::cout << KGRN << "  Specular (Ks): [" << mat.specular_color.transpose() << "]" << RST << std::endl;
+        std::cout << KGRN << "  Shininess (Ns): " << mat.specular_exponent << RST << std::endl;
+        std::cout << KGRN << "  Opacity: " << mat.opacity << RST << std::endl;
+        std::cout << KGRN << "========================================" << RST << std::endl;
+        
+        // Apply material properties to render config
+        std::cout << KCYN << "[XPBDMeshObject] Applying material to render config..." << RST << std::endl;
+        _render_config.setDiffuseColor(mat.diffuse_color);
+        _render_config.setAmbientColor(mat.ambient_color);
+        _render_config.setSpecularColor(mat.specular_color);
+        _render_config.setSpecularExponent(mat.specular_exponent);
+        _render_config.setOpacity(mat.opacity);
+        _render_config.setMtlFile(mtl_path.string());
+        _render_config.setMaterialName(mat.name);
+        std::cout << KGRN << "[XPBDMeshObject] Material applied successfully!" << RST << std::endl;
+    }
 };
 
 } // namespace Config

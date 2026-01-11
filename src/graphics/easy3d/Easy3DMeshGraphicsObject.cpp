@@ -4,6 +4,10 @@
 #include <easy3d/renderer/drawable_points.h>
 #include <easy3d/renderer/drawable_triangles.h>
 #include <easy3d/renderer/renderer.h>
+#include <easy3d/renderer/texture.h>
+#include <easy3d/util/resource.h>
+
+#include <iostream>
 
 namespace Graphics {
 
@@ -50,10 +54,46 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config, b
             }
             
         });
-        // set a uniform color for the mesh
-        if (config.color().has_value())
+        
+        // Set uniform color for the mesh
+        // Priority: 1) MTL diffuse color, 2) config color, 3) config colors[0]
+        Vec3r final_color(0.8, 0.8, 0.8); // default gray
+        bool has_color = false;
+        
+        std::cout << "[Easy3D] DEBUG: Checking colors for '" << GraphicsObject::name() << "':\n";
+        std::cout << "  - diffuseColor has_value: " << config.diffuseColor().has_value() << "\n";
+        std::cout << "  - color has_value: " << config.color().has_value() << "\n";
+        std::cout << "  - colors has_value: " << config.colors().has_value() << "\n";
+        
+        // Check for MTL diffuse color (highest priority)
+        if (config.diffuseColor().has_value())
         {
-            easy3d::vec4 color(config.color().value()[0], config.color().value()[1], config.color().value()[2], config.opacity());
+            final_color = config.diffuseColor().value();
+            has_color = true;
+            std::cout << "  -> Using diffuseColor: [" << final_color[0] << " " << final_color[1] << " " << final_color[2] << "]\n";
+        }
+        // Fall back to config color
+        else if (config.color().has_value())
+        {
+            final_color = config.color().value();
+            has_color = true;
+            std::cout << "  -> Using color: [" << final_color[0] << " " << final_color[1] << " " << final_color[2] << "]\n";
+        }
+        // Fall back to first color in colors array
+        else if (config.colors().has_value() && config.colors().value().size() > 0)
+        {
+            final_color = config.colors().value()[0];
+            has_color = true;
+            std::cout << "  -> Using colors[0]: [" << final_color[0] << " " << final_color[1] << " " << final_color[2] << "]\n";
+        }
+        else
+        {
+            std::cout << "  -> Using default gray: [" << final_color[0] << " " << final_color[1] << " " << final_color[2] << "]\n";
+        }
+        
+        if (has_color)
+        {
+            easy3d::vec4 color(final_color[0], final_color[1], final_color[2], config.opacity());
             tri_drawable->set_uniform_coloring(color);
         }
     }
@@ -251,6 +291,61 @@ void Easy3DMeshGraphicsObject::_updateVertexCache()
     {
         _vertex_cache.at(i) = (easy3d::vec3(vertices(0,i), vertices(1,i), vertices(2,i)));
     }
+}
+
+void Easy3DMeshGraphicsObject::setTexture(const std::string& texture_path)
+{
+    std::cout << "[Easy3D] Loading texture: " << texture_path << std::endl;
+    
+    // Get the triangles drawable (faces) using renderer
+    easy3d::TrianglesDrawable* tri_drawable = renderer()->get_triangles_drawable("faces");
+    if (!tri_drawable)
+    {
+        std::cerr << "[Easy3D] ERROR: No triangles drawable found for texture!" << std::endl;
+        return;
+    }
+    
+    // Check if mesh has UV coordinates
+    if (!_mesh->hasUVCoords())
+    {
+        std::cerr << "[Easy3D] ERROR: Mesh has no UV coordinates for texture mapping!" << std::endl;
+        return;
+    }
+    
+    // Get UV coordinates from mesh
+    const Eigen::Matrix<Real, 2, -1>& uv_coords = _mesh->uvCoords();
+    std::cout << "[Easy3D] Found " << uv_coords.cols() << " UV coordinates" << std::endl;
+    
+    // Convert UV coordinates to Easy3D format
+    std::vector<easy3d::vec2> texcoords;
+    texcoords.reserve(uv_coords.cols());
+    for (int i = 0; i < uv_coords.cols(); i++)
+    {
+        texcoords.push_back(easy3d::vec2(uv_coords(0, i), uv_coords(1, i)));
+    }
+    
+    // Set texture coordinates on the drawable
+    tri_drawable->update_texcoord_buffer(texcoords);
+    
+    // Load the texture
+    easy3d::Texture* texture = easy3d::Texture::create(texture_path);
+    if (!texture)
+    {
+        std::cerr << "[Easy3D] ERROR: Failed to load texture from: " << texture_path << std::endl;
+        return;
+    }
+    
+    std::cout << "[Easy3D] Texture loaded successfully: " << texture->width() << "x" << texture->height() << std::endl;
+    
+    // Apply texture to the drawable
+    tri_drawable->set_texture(texture);
+    
+    // Disable uniform coloring when using texture
+    tri_drawable->set_coloring_method(easy3d::State::TEXTURED);
+    
+    std::cout << "[Easy3D] Texture rendering mode set to TEXTURED" << std::endl;
+    std::cout << "[Easy3D] Current texture: " << (tri_drawable->texture() ? "SET" : "NULL") << std::endl;
+    std::cout << "[Easy3D] Texture applied successfully!" << std::endl;
 }
 
 

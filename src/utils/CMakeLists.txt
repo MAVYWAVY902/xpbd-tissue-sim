@@ -9,10 +9,12 @@ set(UTILS_SRC_DIR "./")
 
 set(MESH_UTILS_HEADERS
     ${UTILS_INCLUDE_DIR}/MeshUtils.hpp
+    ${UTILS_INCLUDE_DIR}/MTLParser.hpp
 )
 
 set(MESH_UTILS_SOURCES
     ${UTILS_SRC_DIR}/MeshUtils.cpp
+    ${UTILS_SRC_DIR}/MTLParser.cpp
 )
 
 set(GEOMETRY_UTILS_HEADERS

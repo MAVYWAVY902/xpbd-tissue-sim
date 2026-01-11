@@ -53,6 +53,17 @@ public:
     /** Returns a non-const-reference to the faces of the mesh. */
     FacesMat &faces() { return _faces; }
 
+    /** Returns whether the mesh has UV coordinates for texture mapping. */
+    bool hasUVCoords() const { return _has_uv_coords; }
+    /** Returns a const-reference to the UV coordinates of the mesh. */
+    const Eigen::Matrix<Real, 2, -1, Eigen::ColMajor> &uvCoords() const { return _uv_coords; }
+    /** Sets the UV coordinates for the mesh. */
+    void setUVCoords(const Eigen::Matrix<Real, 2, -1, Eigen::ColMajor> &uv_coords) 
+    { 
+        _uv_coords = uv_coords; 
+        _has_uv_coords = true; 
+    }
+
     /** Number of verticees in the mesh. */
     int numVertices() const { return _vertices.cols(); }
     /** Number of faces in the mesh. */
@@ -345,6 +356,10 @@ protected:
     VerticesMat _vertices; // the vertices of the mesh
     FacesMat _faces;       // the faces of the mesh
     VerticesMat _vertex_normals; // vertex normals of the mesh
+
+    // UV coordinates for texture mapping (2xN matrix)
+    Eigen::Matrix<Real, 2, -1, Eigen::ColMajor> _uv_coords;
+    bool _has_uv_coords; // flag indicating if UV coordinates are available
 
     std::vector<std::vector<int>> _vertex_adjacent_vertices;
 

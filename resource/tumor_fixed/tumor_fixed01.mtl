@@ -1,0 +1,10 @@
+# Material for tumor/neuroma tissue
+# Generated automatically for xpbd-tissue-sim
+
+newmtl tumor_tissue
+Ka 0.3 0.2 0.18          # Ambient: Soft reddish-brown ambient
+Kd 0.95 0.7 0.6          # Diffuse: Pinkish beige tissue color
+Ks 0.2 0.15 0.15         # Specular: Subtle wet tissue shine
+Ns 15.0                  # Specular exponent: Low shininess (soft, biological material)
+d 1.0                    # Opacity: Fully opaque
+illum 2                  # Illumination: Color, ambient, diffuse, and specular

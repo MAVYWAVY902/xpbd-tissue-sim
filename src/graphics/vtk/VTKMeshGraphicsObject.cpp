@@ -57,6 +57,24 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     _vtk_poly_data->SetPoints(vtk_points);
     _vtk_poly_data->SetPolys(vtk_faces);
 
+    // Add UV coordinates if available
+    if (_mesh->hasUVCoords())
+    {
+        std::cout << "\tAdding UV coordinates to VTK mesh..." << std::endl;
+        vtkNew<vtkFloatArray> texCoords;
+        texCoords->SetNumberOfComponents(2);
+        texCoords->SetName("TextureCoordinates");
+        
+        const auto& uvs = _mesh->uvCoords();
+        for (int i = 0; i < _mesh->numVertices(); i++)
+        {
+            texCoords->InsertNextTuple2(uvs(0, i), uvs(1, i));
+        }
+        
+        _vtk_poly_data->GetPointData()->SetTCoords(texCoords);
+        std::cout << "\tSuccessfully added " << _mesh->numVertices() << " UV coordinates to VTK mesh" << std::endl;
+    }
+
     vtkNew<vtkPolyDataMapper> mapper;
     if (render_config.smoothNormals())
     {
@@ -85,6 +103,16 @@ VTKMeshGraphicsObject::VTKMeshGraphicsObject(const std::string& name, const Geom
     _vtk_actor->SetMapper(mapper);
 
     VTKUtils::setupActorFromRenderConfig(_vtk_actor.Get(), render_config);
+    
+    // If texture will be applied, prepare the actor for texture mapping
+    if (render_config.textureFile().has_value() && _mesh->hasUVCoords())
+    {
+        // Set color to white so texture colors show through
+        _vtk_actor->GetProperty()->SetColor(1.0, 1.0, 1.0);
+        // Ensure the actor uses the texture
+        _vtk_actor->GetProperty()->SetAmbient(0.0);
+        _vtk_actor->GetProperty()->SetDiffuse(1.0);
+    }
 
     // if the config file specifies multiple colors, and the mesh has the "class" vertex attribute
     // then we can assign different colors to vertices based on their class
@@ -136,6 +164,46 @@ void VTKMeshGraphicsObject::update()
         points->SetPoint(vi, v.data());
     }
     points->Modified();
+}
+
+void VTKMeshGraphicsObject::setTexture(const std::string& texture_path)
+{
+    if (texture_path.empty())
+    {
+        std::cout << "\tNo texture path specified, skipping texture loading" << std::endl;
+        return;
+    }
+
+    if (!_mesh->hasUVCoords())
+    {
+        std::cerr << "\tWARNING: Cannot apply texture - mesh does not have UV coordinates!" << std::endl;
+        return;
+    }
+
+    std::cout << "\tLoading texture from: " << texture_path << std::endl;
+
+    // Read the PNG texture
+    vtkNew<vtkPNGReader> pngReader;
+    pngReader->SetFileName(texture_path.c_str());
+    pngReader->Update();
+
+    // Check if the file was loaded successfully
+    if (pngReader->GetOutput() == nullptr)
+    {
+        std::cerr << "\tERROR: Failed to load texture from " << texture_path << std::endl;
+        return;
+    }
+
+    // Create texture
+    _vtk_texture = vtkSmartPointer<vtkTexture>::New();
+    _vtk_texture->SetInputConnection(pngReader->GetOutputPort());
+    _vtk_texture->InterpolateOn();  // Enable linear interpolation for smooth textures
+    _vtk_texture->RepeatOff();      // Don't repeat texture outside 0-1 UV range
+
+    // Apply texture to actor
+    _vtk_actor->SetTexture(_vtk_texture);
+
+    std::cout << "\tSuccessfully applied texture to mesh" << std::endl;
 }
 
 } // namespace Graphics

@@ -8,6 +8,7 @@
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
 #include <vtkActor.h>
+#include <vtkTexture.h>
 
 namespace Graphics
 {
@@ -20,10 +21,14 @@ class VTKMeshGraphicsObject : public MeshGraphicsObject
     virtual void update() override;
 
     vtkSmartPointer<vtkActor> actor() { return _vtk_actor; }
+    
+    /** Sets texture from a PNG file. */
+    void setTexture(const std::string& texture_path);
 
     private:
     vtkSmartPointer<vtkPolyData> _vtk_poly_data;
     vtkSmartPointer<vtkActor> _vtk_actor;
+    vtkSmartPointer<vtkTexture> _vtk_texture;
 };
 
 } // namespace Graphics

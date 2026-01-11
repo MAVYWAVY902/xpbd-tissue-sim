@@ -137,16 +137,68 @@ struct VTKUtils
         }
 
         // set the color of the object
-        // if a base color texture is not specified (or the object has no UV coordinates), then it will fall back to the base color
-        if (render_config.color().has_value())
+        // Priority: 1) MTL diffuse color, 2) config color, 3) config colors[0]
+        Vec3r final_color(0.8, 0.8, 0.8); // default gray
+        bool has_color = false;
+        
+        // Check for MTL diffuse color (highest priority)
+        if (render_config.diffuseColor().has_value())
         {
-            Vec3r solid_color = render_config.color().value();
-            actor->GetProperty()->SetColor(solid_color[0], solid_color[1], solid_color[2]);
+            final_color = render_config.diffuseColor().value();
+            has_color = true;
         }
+        // Fall back to config color
+        else if (render_config.color().has_value())
+        {
+            final_color = render_config.color().value();
+            has_color = true;
+        }
+        // Fall back to first color in colors array
         else if (render_config.colors().has_value())
         {
-            Vec3r solid_color = render_config.colors().value()[0];
-            actor->GetProperty()->SetColor(solid_color[0], solid_color[1], solid_color[2]);
+            final_color = render_config.colors().value()[0];
+            has_color = true;
+        }
+        
+        if (has_color)
+        {
+            actor->GetProperty()->SetColor(final_color[0], final_color[1], final_color[2]);
+        }
+        
+        // Set MTL ambient color (if specified)
+        if (render_config.ambientColor().has_value())
+        {
+            Vec3r ambient = render_config.ambientColor().value();
+            actor->GetProperty()->SetAmbientColor(ambient[0], ambient[1], ambient[2]);
+            actor->GetProperty()->SetAmbient(0.3); // Ambient contribution factor
+        }
+        
+        // Set MTL specular properties (if specified)
+        if (render_config.specularColor().has_value())
+        {
+            Vec3r specular = render_config.specularColor().value();
+            actor->GetProperty()->SetSpecularColor(specular[0], specular[1], specular[2]);
+            
+            // Only enable specular if color is non-zero
+            if (specular.norm() > 0.01)
+            {
+                actor->GetProperty()->SetSpecular(0.5); // Specular contribution factor
+                
+                // Set specular power/shininess (if specified)
+                if (render_config.specularExponent().has_value())
+                {
+                    // MTL Ns range: 0-1000, VTK specular power range: 0-128
+                    // Convert: VTK_power = MTL_Ns / 8
+                    Real ns = render_config.specularExponent().value();
+                    Real vtk_power = std::min(128.0, ns / 8.0);
+                    actor->GetProperty()->SetSpecularPower(vtk_power);
+                }
+            }
+            else
+            {
+                // No specular highlights
+                actor->GetProperty()->SetSpecular(0.0);
+            }
         }
         
 

@@ -72,6 +72,15 @@ int VTKGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectRend
 
         // create a new MeshGraphicsObject for visualizing this MeshObject
         auto ptr = std::make_unique<VTKMeshGraphicsObject>(obj->name(), mo->mesh(), render_config);
+        
+        // Apply texture if specified in the render config
+        if (render_config.textureFile().has_value())
+        {
+            std::string texture_path = render_config.textureFile().value();
+            std::cout << "\tApplying texture from config: " << texture_path << std::endl;
+            ptr->setTexture(texture_path);
+        }
+        
         _vtk_viewer->renderer()->AddActor(ptr->actor());
         new_graphics_obj = std::move(ptr);
     }

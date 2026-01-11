@@ -82,7 +82,19 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectR
     {
         // create a new MeshGraphicsObject for visualizing this MeshObject
         // std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
-        new_graphics_obj = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), obj_config);
+        auto e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), obj_config);
+        
+        // Apply texture if specified in config
+        if (obj_config.textureFile().has_value())
+        {
+            Easy3DMeshGraphicsObject* ptr = dynamic_cast<Easy3DMeshGraphicsObject*>(e3d_mgo.get());
+            if (ptr)
+            {
+                ptr->setTexture(obj_config.textureFile().value());
+            }
+        }
+        
+        new_graphics_obj = std::move(e3d_mgo);
     }
 
     // try downcasting to a RigidSphere

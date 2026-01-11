@@ -3,18 +3,18 @@
 name: "Example"  # name of the simulation
 description: "Example simulation" # description of the simulation
 
-visualization: "Easy3D" # what graphics to use ('Easy3D' for Easy3D graphics or 'None' for no graphics)
+visualization: "VTK" # Use VTK for texture mapping support (change to 'Easy3D' if not using textures)
 
 g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 
 ## different simulation "modes"
-# sim-mode: "Frame-by-frame"  # "Frame-by-frame" lets you advance the simulation one frame at a time by pressing any key
-# sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time (good for interaction)
-sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
+sim-mode: "Frame-by-frame"  # "Frame-by-frame" lets you advance the simulation one frame at a time by pressing any key
+# sim-mode: "Visualization"     # "Visualization" runs the simulation at 'real-time' such that sim time = wall clock time
+# sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
 time-step: 2e-4   # simulation time step [s]
 collision-rate: 100 # rate at which to run collision detection [Hz] 
-fps: 60 # frames per second of the visualization (higher for smooth interaction)
+fps: 30 # frames per second of the visualization (i.e. how often to redraw graphics)
 end-time: 100 # end time of the simulation [s]
 # fix-max-z: true           # Fix top vertices to create "ceiling attachment"
 
@@ -38,12 +38,13 @@ materials:
 ## objects in the simulation
 objects:
 
-  ## example deformable object
+  ## example textured object (use RigidMeshObject for testing texture first)
   -
-    name: "Cube1"
+    name: "Tumor_Textured"
 
-    ## type of object
-    type: "FirstOrderXPBDMeshObject"  # use the 1st-order XPBD method
+    ## type of object - using RigidMeshObject for texture testing
+    type: "RigidMeshObject"  # Rigid object (easier to see texture without deformation)
+    # type: "FirstOrderXPBDMeshObject"  # Uncomment for deformable object
     # type: "XPBDMeshObject"          # use the standard, 2nd-order XPBD method
 
     ## filename to load from (.msh is GMSH's volumetric mesh format, but if .obj or .stl is provided, will automatically turn surface mesh to volume mesh)
@@ -56,18 +57,19 @@ objects:
     # filename: "../resource/tissue/Prostate.msh"
     # filename: "../resource/tissue/Trachea_processed.stl"
     # filename: "../resource/tissue/tracheal_tumor.msh"
-    # filename: "../resource/tumor_fixed/tumor_fixed01.obj"  # Original OBJ without UV
-    filename: "../resource/tumor_fixed/tumor_fixed01_with_uv.obj"  # OBJ with UV coordinates
+    filename: "../resource/tumor_fixed/tumor_fixed01.obj"  # Original OBJ without UV for testing shape first
+    # filename: "../resource/tumor_fixed/tumor_fixed01_with_uv.obj"  # OBJ with UV (re-export from Blender first!)
 
-    materials: ["Soft Tissue"] # the elastic material (must match with the name of a material defined above)
+    # materials: ["Soft Tissue"] # Only needed for deformable objects
     
-    ## PNG texture file - Easy3D texture mapping enabled!
-    texture-file: "../resource/textures/AlbedoLiver2.png"
-
+    ## PNG texture file (COMMENTED OUT until tumor_fixed01_with_uv.obj is correctly re-exported)
+    # texture-file: "../resource/textures/AlbedoLiver2.png"  # Uncomment after fixing UV file
+    
     ## visualization options
-    color: [1.0, 1.0, 1.0]  # White color so texture shows through
+    color: [1.0, 0.5, 0.3]  # Orange tumor color
+    # color: [1.0, 1.0, 1.0]  # Use white when applying texture (uncomment with texture-file)
     draw-points: false  # draw mesh points
-    draw-edges: false    # draw mesh edges
+    draw-edges: true    # draw mesh edges (set to false when using texture for clearer view)
     draw-faces: true    # draw mesh faces
 
     ## initial configuration
@@ -77,24 +79,17 @@ objects:
     velocity: [0, 0, 0.0]        # initial velocity [m/s]
     rotation: [0, 0, 0]          # No rotation
 
-    ## collisions
-    collisions: true   # ENABLED: Detect collisions with other objects
+    ## Physics (for RigidMeshObject)
+    density: 100
+    collisions: false   # Disabled for simple visualization
+    fixed: true  # Keep stationary to see texture clearly
 
-    ## XPBD-specific options
-    num-solver-iters: 3   # number of solver loop iterations per time step 
-    
-    solver-type: "Gauss-Seidel"   # use Gauss-Seidel solver (serial)
-    # solver-type: "Jacobi"       # use Jacobi solver (now with OpenMP parallelization!)
-    # solver-type: "Parallel-Jacobi"  # use parallelized Jacobi solver (note: unstable and requires GPU)
-
-    constraint-type: "Stable-Neohookean-Combined"   # use Stable Neohookean constraints with 2x2 block constraint solve for each tet element
-    # constraint-type: "Stable-Neohookean"          # use Stable Neohookean constraints with separate constraint solve for each tet element
-
-    # residual-policy: "Every-Substep"    # compute the residuals after every time step
-    residual-policy: "Never"              # don't compute the residuals
-
-    ## 1st-Order XPBD options (has no effect on XPBDMeshObject)
-    damping-multiplier: 2000000   # 'b' from the 1st-Order XPBD paper
+    ## XPBD-specific options (only used if type is FirstOrderXPBDMeshObject)
+    # num-solver-iters: 3
+    # solver-type: "Gauss-Seidel"
+    # constraint-type: "Stable-Neohookean-Combined"
+    # residual-policy: "Never"
+    # damping-multiplier: 2000000
   
 
 
@@ -164,7 +159,7 @@ objects:
     density: 100
     
     ## visualization options
-    color: [0.95, 0.92, 0.85]  # COMMENTED OUT - Using MTL file material instead
+    # color: [0.95, 0.92, 0.85]  # COMMENTED OUT - Using MTL file material instead
     draw-points: false
     draw-edges: true
     draw-faces: true
