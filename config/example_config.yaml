@@ -18,6 +18,14 @@ fps: 60 # frames per second of the visualization (higher for smooth interaction)
 end-time: 100 # end time of the simulation [s]
 # fix-max-z: true           # Fix top vertices to create "ceiling attachment"
 
+## ==================== ADHESION CONSTRAINT SETTINGS ====================
+## Rigid-Deform Adhesion: Bonds between rigid objects and deformable tissue
+rigid-deform-adhesion-enable: true           # Enable/disable rigid-deform adhesion
+rigid-deform-adhesion-rest-gap: 0.005         # 5mm rest gap - target separation distance
+rigid-deform-adhesion-break-ratio: 2.0        # Break at 100% strain (separation = 2x rest_gap)
+rigid-deform-adhesion-alpha: 1e-5             # Compliance (lower = stiffer spring)
+rigid-deform-adhesion-bond-distance: 0.010    # 10mm - initial search radius for creating bonds
+
 # nerve stretch constraint testing
 # To enable/disable nerve constraints for comparison tests, use environment variables:
 # export NERVE_ENABLE=1        # Enable nerve constraints (default)
@@ -40,7 +48,7 @@ objects:
 
   ## example deformable object
   -
-    name: "Cube1"
+    name: "DeformableMesh"
 
     ## type of object
     type: "FirstOrderXPBDMeshObject"  # use the 1st-order XPBD method
@@ -158,7 +166,7 @@ objects:
 
   # rigid mesh
   - 
-    name: "tbone_v1"
+    name: "RigidBone"
     type: "RigidMeshObject"
     filename: "../resource/tbone_fixed/tbone_ds06.obj"  # Reformatted to match working tbone_800 format
     density: 100

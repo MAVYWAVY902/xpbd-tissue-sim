@@ -1,0 +1,101 @@
+## Rigid-Deform Adhesion Test Configuration
+## Tests adhesion constraint between a rigid body and a deformable mesh
+## This uses the new RigidDeformAdhesionConstraint
+
+name: "Rigid-Deform Adhesion Test"
+description: "Test adhesion between rigid bone and deformable tissue with breakable bonds"
+
+visualization: "Easy3D"
+
+g-accel: 0  # downward acceleration due to gravity [m/s2]
+
+sim-mode: "AFAP"  # Run as fast as possible
+
+time-step: 1e-3  # simulation time step [s]
+collision-rate: 100  # rate at which to run collision detection [Hz]
+fps: 60  # frames per second of the visualization
+end-time: 200.0  # end time of the simulation [s]
+
+## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
+rigid-deform-adhesion-enable: true
+rigid-deform-adhesion-rest-gap: 0.005        # 5mm rest gap
+rigid-deform-adhesion-break-ratio: 1.5       # Break at 100% strain (2x rest length)
+rigid-deform-adhesion-alpha: 1e-5            # Compliance (lower = stiffer) - INCREASED for stability
+rigid-deform-adhesion-bond-distance: 0.008   # 8mm: create bonds (REDUCED to create fewer constraints)
+
+## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
+grasp-radius: 0.013   # Grasping tool radius: 13mm (default 100mm)
+tool-radius: 0.013    # Pushing tool radius: 13mm (default 200mm)
+
+## define elastic materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 5e4    # Young's modulus [Pa]
+    nu: 0.45  # Poisson's ratio [-]
+    mu-s: 0.8 # coefficient of static friction [-]
+    mu-k: 0.5 # coefficient of kinetic friction [-]
+
+## objects in the simulation
+objects:
+
+  # rigid sphere
+  -
+    name: "sphere"
+    type: "RigidSphere"
+    radius: 0.035
+    density: 10000
+    position: [0.03, 0, 0]
+    velocity: [0, 0, 0]
+    fixed: true
+    collisions: true
+
+    
+    ## visualization options
+    color: [0.9, 0.9, 0.8]
+    draw-points: false
+    draw-edges: false
+    draw-faces: true
+    
+    ## initial configuration
+    use-original-coords: true
+    max-size: 1.0
+    position: [0, 0, 0]
+    rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+    
+    ## physics
+    collisions: true
+    fixed: true  # Keep bone stationary for this test
+
+  ## Deformable tissue object
+  -
+    name: "Tissue"  # Must match name in Simulation.cpp
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tumor_fixed/tumor_fixed01.obj"
+    materials: ["Soft Tissue"]
+    
+    ## visualization options
+    color: [1.0, 0.7, 0.7]
+    draw-points: false
+    draw-edges: false
+    draw-faces: true
+    
+    ## initial configuration
+    use-original-coords: true
+    max-size: 1.0
+    position: [0, 0.02, 0]  # Start slightly above bone
+    velocity: [0, 0, 0]
+    rotation: [0, 0, 0]
+    
+    ## collisions
+    collisions: true  # Disable collision detection for adhesion-only test
+    
+    ## XPBD-specific options
+    num-solver-iters: 25
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 6000000

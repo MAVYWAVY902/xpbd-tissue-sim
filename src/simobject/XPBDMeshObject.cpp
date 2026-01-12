@@ -20,6 +20,7 @@
 #include "solver/constraint/NerveStretchConstraint.hpp" 
 #include "solver/constraint/NerveTumorAdhesionConstraint.hpp"
 #include "solver/constraint/InterDeformDeformAdhesionConstraint.hpp"
+#include "solver/constraint/RigidDeformAdhesionConstraint.hpp"
 
 #include <chrono> 
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
@@ -352,13 +353,18 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     using InterDeformAdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
     auto& inter_deform_projectors = _solver.template getConstraintProjectorsOfType<InterDeformAdhesionConstraintType>();
     
+    // Get rigid-deform adhesion constraint projectors (needs IsFirstOrder template parameter)
+    using RigidDeformAdhesionProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
+    auto& rigid_deform_projectors = _solver.template getConstraintProjectorsOfType<RigidDeformAdhesionProjectorType>();
+    
     // Skip if no adhesion constraints
-    if (nerve_tumor_projectors.empty() && inter_deform_projectors.empty()) return;
+    if (nerve_tumor_projectors.empty() && inter_deform_projectors.empty() && rigid_deform_projectors.empty()) return;
     
     // Count active constraints and gather statistics every 3000 calls
     if (call_count % 3000 == 0) {
         int nerve_tumor_active = 0;
         int inter_deform_active = 0;
+        int rigid_deform_active = 0;
         Real min_distance = 1e6;
         Real max_distance = 0.0;
         Real avg_distance = 0.0;
@@ -415,6 +421,30 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             }
         }
         
+        // Count rigid-deform adhesions
+        for (size_t i = 0; i < rigid_deform_projectors.size(); ++i) {
+            if (rigid_deform_projectors[i].isValid()) {
+                rigid_deform_active++;
+                total_active++;
+                
+                const auto& constraint_ref = rigid_deform_projectors[i].constraint();
+                const auto* constraint = &constraint_ref.get();
+                if (constraint) {
+                    Real dist = constraint->getCurrentDistance();
+                    Real rest_gap = constraint->getRestGap();
+                    Real ratio = (rest_gap > 0) ? (dist / rest_gap) : 0.0;
+                    
+                    min_distance = std::min(min_distance, dist);
+                    max_distance = std::max(max_distance, dist);
+                    avg_distance += dist;
+                    
+                    min_ratio = std::min(min_ratio, ratio);
+                    max_ratio = std::max(max_ratio, ratio);
+                    avg_ratio += ratio;
+                }
+            }
+        }
+        
         if (total_active > 0) {
             avg_distance /= total_active;
             avg_ratio /= total_active;
@@ -423,6 +453,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
                       << " | Step #" << call_count 
                       << "\n  | Nerve-tumor: " << nerve_tumor_active << " / " << nerve_tumor_projectors.size()
                       << "\n  | Inter-deform: " << inter_deform_active << " / " << inter_deform_projectors.size()
+                      << "\n  | Rigid-deform: " << rigid_deform_active << " / " << rigid_deform_projectors.size()
                       << "\n  | Total active: " << total_active
                       << "\n  | Distances: min=" << min_distance << "m, max=" << max_distance 
                       << "m, avg=" << avg_distance << "m"
@@ -454,6 +485,19 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
         const auto* constraint = &constraint_ref.get();
         if (constraint && constraint->shouldBreak()) {
             inter_deform_to_invalidate.push_back(static_cast<int>(i));
+        }
+    }
+    
+    // Check and break rigid-deform adhesion constraints
+    std::vector<int> rigid_deform_to_invalidate;
+    for (size_t i = 0; i < rigid_deform_projectors.size(); ++i) {
+        auto& projector = rigid_deform_projectors[i];
+        if (!projector.isValid()) continue;
+        
+        const auto& constraint_ref = projector.constraint();
+        const auto* constraint = &constraint_ref.get();
+        if (constraint && constraint->shouldBreak()) {
+            rigid_deform_to_invalidate.push_back(static_cast<int>(i));
         }
     }
     
@@ -519,12 +563,19 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
         }
     }
     
+    // Invalidate rigid-deform adhesion projectors that should break
+    for (int idx : rigid_deform_to_invalidate) {
+        _solver.template setProjectorValidity<RigidDeformAdhesionProjectorType>(idx, false);
+        std::cout << "[adhesion BREAK] Broke rigid-deform adhesion constraint #" << idx << "\n";
+    }
+    
     // Print summary
-    // if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty()) {
-    //     std::cout << "[adhesion BREAK] Object: " << this->name()
-    //               << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
-    //               << " + " << inter_deform_to_invalidate.size() << " inter-deform adhesions\n";
-    // }
+    if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || !rigid_deform_to_invalidate.empty()) {
+        std::cout << "[adhesion BREAK] Object: " << this->name()
+                  << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
+                  << " + " << inter_deform_to_invalidate.size() << " inter-deform"
+                  << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
+    }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -705,6 +756,45 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
 
     // 5. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::InterDeformDeformAdhesionConstraint>;
+    return _solver.addConstraintProjector(
+        _sim->dt(),
+        RefType(vec, vec.size() - 1)
+    );
+}
+
+// NEW: addRigidDeformAdhesionConstraint
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<
+    Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
+    ::addRigidDeformAdhesionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj,
+                                      const Vec3r& rigid_body_point,
+                                      int tri_v1, int tri_v2, int tri_v3,
+                                      Real rest_gap, Real break_ratio, Real alpha)
+{
+    // 1. Get triangle vertex position pointers and masses from THIS object
+    Real* tri_p1 = _mesh->vertexPointer(tri_v1);
+    Real* tri_p2 = _mesh->vertexPointer(tri_v2);
+    Real* tri_p3 = _mesh->vertexPointer(tri_v3);
+    
+    Real tri_m1 = vertexConstraintInertia(tri_v1);
+    Real tri_m2 = vertexConstraintInertia(tri_v2);
+    Real tri_m3 = vertexConstraintInertia(tri_v3);
+
+    // 2. Add to constraints array
+    auto& vec = _constraints.template get<Solver::RigidDeformAdhesionConstraint>();
+    vec.emplace_back(
+        sdf, rigid_obj, rigid_body_point,
+        tri_v1, tri_p1, tri_m1,
+        tri_v2, tri_p2, tri_m2,
+        tri_v3, tri_p3, tri_m3,
+        rest_gap,
+        break_ratio,
+        alpha
+    );
+
+    // 3. Tell solver about the new constraint
+    using RefType = Solver::ConstraintReference<Solver::RigidDeformAdhesionConstraint>;
     return _solver.addConstraintProjector(
         _sim->dt(),
         RefType(vec, vec.size() - 1)
@@ -1033,6 +1123,27 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
             num_adhesion_constraints++;
         }
     }
+    
+    // Reset inter-deform adhesion constraints
+    using InterDeformAdhesionConstraintType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
+    auto& inter_deform_adhesion_projectors = _solver.template getConstraintProjectorsOfType<InterDeformAdhesionConstraintType>();
+    for (auto& projector : inter_deform_adhesion_projectors) {
+        if (projector.isValid()) {
+            projector.constraint()->resetMaxDistanceThisStep();
+            num_adhesion_constraints++;
+        }
+    }
+    
+    // Reset rigid-deform adhesion constraints
+    using RigidDeformAdhesionConstraintType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
+    auto& rigid_deform_adhesion_projectors = _solver.template getConstraintProjectorsOfType<RigidDeformAdhesionConstraintType>();
+    for (auto& projector : rigid_deform_adhesion_projectors) {
+        if (projector.isValid()) {
+            projector.constraint()->resetMaxDistanceThisStep();
+            num_adhesion_constraints++;
+        }
+    }
+    
     auto end_reset = std::chrono::high_resolution_clock::now();
 
     // set _x_prev to be ready for the next substep

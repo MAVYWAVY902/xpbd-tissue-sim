@@ -2440,6 +2440,283 @@ void Simulation::setup()
     }
     // ==================== END INTER-DEFORM ADHESION CONSTRAINTS ====================
 
+    // ==================== RIGID-DEFORM ADHESION CONSTRAINTS ====================
+    // Create adhesion constraints between rigid objects and deformable meshes
+    // This allows rigid bodies to stick to soft tissue with breakable bonds
+    
+    if (_config->rigidDeformAdhesionEnable()) {
+        std::cout << "[rigid-deform adhesion] *** RIGID-DEFORM ADHESION ENABLED *** Creating constraints...\n";
+        
+        // Get adhesion parameters from config
+        const Real rest_gap = _config->rigidDeformAdhesionRestGap();
+        const Real break_ratio = _config->rigidDeformAdhesionBreakRatio();
+        const Real alpha = _config->rigidDeformAdhesionAlpha();
+        const Real bond_distance = _config->rigidDeformAdhesionBondDistance();
+        
+        std::cout << "[rigid-deform adhesion] Parameters: rest_gap=" << rest_gap 
+                  << ", break_ratio=" << break_ratio << ", alpha=" << alpha 
+                  << ", bond_distance=" << bond_distance << "\n";
+        
+        // Find rigid and deformable objects to pair
+        // Example: Find object named "RigidBone" and "Tissue"
+        Sim::RigidObject* rigid_obj_ptr = nullptr;
+        FirstOrderXPBDMeshObject_Base* tissue_ptr = nullptr;
+        
+        // Search for rigid mesh objects specifically
+        auto& rigid_mesh_objs = _objects.get<std::unique_ptr<Sim::RigidMeshObject>>();
+        for (auto& rigid_uptr : rigid_mesh_objs) {
+            if (!rigid_uptr) continue;
+            std::cout << "[rigid-deform adhesion] Found rigid mesh object: " << rigid_uptr->name() << "\n";
+            if (rigid_uptr->name() == "RigidBone" || rigid_uptr->name() == "Bone" || rigid_uptr->name() == "sphere") {
+                rigid_obj_ptr = rigid_uptr.get();
+                std::cout << "[rigid-deform adhesion] ✅ Found rigid object for adhesion: " << rigid_uptr->name() << "\n";
+                break;
+            }
+        }
+        
+        // If not found in RigidMeshObject, check other rigid types
+        if (!rigid_obj_ptr) {
+            auto& rigid_spheres = _objects.get<std::unique_ptr<Sim::RigidSphere>>();
+            for (auto& rigid_uptr : rigid_spheres) {
+                if (!rigid_uptr) continue;
+                std::cout << "[rigid-deform adhesion] Found rigid sphere: " << rigid_uptr->name() << "\n";
+                if (rigid_uptr->name() == "RigidBone" || rigid_uptr->name() == "Bone" || rigid_uptr->name() == "sphere") {
+                    rigid_obj_ptr = rigid_uptr.get();
+                    std::cout << "[rigid-deform adhesion] ✅ Found rigid object for adhesion: " << rigid_uptr->name() << "\n";
+                    break;
+                }
+            }
+        }
+        
+        if (!rigid_obj_ptr) {
+            auto& rigid_boxes = _objects.get<std::unique_ptr<Sim::RigidBox>>();
+            for (auto& rigid_uptr : rigid_boxes) {
+                if (!rigid_uptr) continue;
+                std::cout << "[rigid-deform adhesion] Found rigid box: " << rigid_uptr->name() << "\n";
+                if (rigid_uptr->name() == "RigidBone" || rigid_uptr->name() == "Bone" || rigid_uptr->name() == "sphere") {
+                    rigid_obj_ptr = rigid_uptr.get();
+                    std::cout << "[rigid-deform adhesion] ✅ Found rigid object for adhesion: " << rigid_uptr->name() << "\n";
+                    break;
+                }
+            }
+        }
+        
+        if (!rigid_obj_ptr) {
+            auto& rigid_cylinders = _objects.get<std::unique_ptr<Sim::RigidCylinder>>();
+            for (auto& rigid_uptr : rigid_cylinders) {
+                if (!rigid_uptr) continue;
+                std::cout << "[rigid-deform adhesion] Found rigid cylinder: " << rigid_uptr->name() << "\n";
+                if (rigid_uptr->name() == "RigidBone" || rigid_uptr->name() == "Bone" || rigid_uptr->name() == "sphere") {
+                    rigid_obj_ptr = rigid_uptr.get();
+                    std::cout << "[rigid-deform adhesion] ✅ Found rigid object for adhesion: " << rigid_uptr->name() << "\n";
+                    break;
+                }
+            }
+        }
+        
+        // Search for deformable objects
+        for (auto& fo_uptr : fo_xpbd_objs) {
+            if (!fo_uptr) continue;
+            std::cout << "[rigid-deform adhesion] Found deformable object: " << fo_uptr->name() << "\n";
+            if (fo_uptr->name() == "Tissue" || fo_uptr->name() == "DeformableMesh") {
+                tissue_ptr = fo_uptr.get();
+                std::cout << "[rigid-deform adhesion] ✅ Found deformable object for adhesion\n";
+            }
+        }
+        
+        if (rigid_obj_ptr && tissue_ptr) {
+            const auto* tissue_mesh = tissue_ptr->mesh();
+            const int tissue_nf = tissue_mesh->numFaces();
+            
+            std::cout << "[rigid-deform adhesion] Rigid object: " << rigid_obj_ptr->name() << "\n";
+            std::cout << "[rigid-deform adhesion] Tissue mesh: " << tissue_ptr->name() << " with " << tissue_nf << " faces\n";
+            
+            int constraints_added = 0;
+            int faces_checked = 0;
+            int faces_within_range = 0;
+            Real min_distance_found = std::numeric_limits<Real>::max();
+            Real max_distance_found = 0.0;
+            
+            // Get rigid object SDF for distance queries
+            // First, ensure SDF is created for primitives
+            if (auto* rigid_sphere = dynamic_cast<Sim::RigidSphere*>(rigid_obj_ptr)) {
+                rigid_sphere->createSDF();
+            } else if (auto* rigid_box = dynamic_cast<Sim::RigidBox*>(rigid_obj_ptr)) {
+                rigid_box->createSDF();
+            } else if (auto* rigid_cylinder = dynamic_cast<Sim::RigidCylinder*>(rigid_obj_ptr)) {
+                rigid_cylinder->createSDF();
+            }
+            
+            // Now get the SDF
+            const Geometry::SDF* sdf = nullptr;
+            if (auto* rigid_mesh_obj = dynamic_cast<Sim::RigidMeshObject*>(rigid_obj_ptr)) {
+                sdf = rigid_mesh_obj->SDF();
+            } else if (auto* rigid_sphere = dynamic_cast<Sim::RigidSphere*>(rigid_obj_ptr)) {
+                sdf = rigid_sphere->SDF();
+            } else if (auto* rigid_box = dynamic_cast<Sim::RigidBox*>(rigid_obj_ptr)) {
+                sdf = rigid_box->SDF();
+            } else if (auto* rigid_cylinder = dynamic_cast<Sim::RigidCylinder*>(rigid_obj_ptr)) {
+                sdf = rigid_cylinder->SDF();
+            }
+            
+            if (!sdf) {
+                std::cout << "[rigid-deform adhesion] ❌ ERROR: Could not get SDF for rigid object. Skipping constraint creation.\n";
+            } else {
+                std::cout << "[rigid-deform adhesion] ✅ Got SDF for rigid object\n";
+            }
+            
+            // Skip if no SDF available
+            if (!sdf) {
+                std::cout << "[rigid-deform adhesion] ❌ Cannot create constraints without SDF\n";
+            } else {
+            
+            // Helper lambda to attempt casting and adding constraints
+            auto try_add_rigid_deform = [&](auto* typed_tissue_ptr) -> bool {
+                if (!typed_tissue_ptr) return false;
+                
+                std::cout << "[rigid-deform adhesion] Successfully cast tissue to typed pointer\n";
+                
+                // For each face in the tissue, find if it's close to the rigid body surface
+                // Use the SDF to compute actual surface-to-point distance
+                
+                for (int f = 0; f < tissue_nf; ++f) {
+                    faces_checked++;
+                    
+                    const auto face = tissue_mesh->face(f);
+                    const int v1 = face[0], v2 = face[1], v3 = face[2];
+                    
+                    const Vec3r tri_p1 = tissue_mesh->vertex(v1);
+                    const Vec3r tri_p2 = tissue_mesh->vertex(v2);
+                    const Vec3r tri_p3 = tissue_mesh->vertex(v3);
+                    
+                    // Compute triangle centroid
+                    const Vec3r tri_center = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+                    
+                    // Use SDF to get actual distance from triangle to rigid surface
+                    // SDF returns: negative if inside, positive if outside, 0 at surface
+                    const Real signed_distance = sdf->evaluate(tri_center);
+                    const Real distance = std::abs(signed_distance);  // Use absolute distance for bonding
+                    
+                    // Track statistics
+                    min_distance_found = std::min(min_distance_found, distance);
+                    max_distance_found = std::max(max_distance_found, distance);
+                    
+                    if (distance <= bond_distance) {
+                        faces_within_range++;
+                        
+                        // Create adhesion constraint
+                        // The rigid body point is the position in body coordinates
+                        const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(tri_center);
+                        
+                        try {
+                            typed_tissue_ptr->addRigidDeformAdhesionConstraint(
+                                sdf, rigid_obj_ptr, rigid_body_point,
+                                v1, v2, v3,
+                                rest_gap, break_ratio, alpha
+                            );
+                            
+                            ++constraints_added;
+                            if (constraints_added <= 10) {
+                                std::cout << "[rigid-deform adhesion] Added constraint: RigidBody -> Tissue_face[" 
+                                          << v1 << "," << v2 << "," << v3 
+                                          << "] distance=" << distance << "m\n";
+                            }
+                        } catch (const std::exception& e) {
+                            std::cout << "[rigid-deform adhesion] Failed to add constraint: " << e.what() << "\n";
+                        }
+                    }
+                }
+                
+                return constraints_added > 0;
+            };
+            
+            // Try different constraint configurations for tissue
+            bool handled = false;
+            
+            // Try Gauss-Seidel variants
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol1 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                using TissueType1 = XPBDMeshObject_<true, Sol1::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType1*>(tissue_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol2 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                using TissueType2 = XPBDMeshObject_<true, Sol2::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType2*>(tissue_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                using TissueType3 = XPBDMeshObject_<true, Sol3::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType3*>(tissue_ptr));
+            }
+            
+            // Try Jacobi variants
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol1 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                using TissueType1 = XPBDMeshObject_<true, Sol1::Jacobi, typename Cfg::StableNeohookean::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType1*>(tissue_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol2 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                using TissueType2 = XPBDMeshObject_<true, Sol2::Jacobi, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType2*>(tissue_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                using TissueType3 = XPBDMeshObject_<true, Sol3::Jacobi, typename Cfg::NerveOnly::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType3*>(tissue_ptr));
+            }
+            
+            // Summary - always show statistics to help debug
+            std::cout << "[rigid-deform adhesion] =========================\n";
+            std::cout << "[rigid-deform adhesion] CONSTRAINT CREATION SUMMARY\n";
+            std::cout << "[rigid-deform adhesion] =========================\n";
+            std::cout << "[rigid-deform adhesion] Total constraints created: " << constraints_added << "\n";
+            std::cout << "[rigid-deform adhesion] Between " << rigid_obj_ptr->name() << " and " << tissue_ptr->name() << " (" << tissue_nf << " faces)\n";
+            std::cout << "[rigid-deform adhesion] \n";
+            std::cout << "[rigid-deform adhesion] Distance statistics:\n";
+            std::cout << "[rigid-deform adhesion]   Faces checked: " << faces_checked << "\n";
+            std::cout << "[rigid-deform adhesion]   Faces within bond_distance: " << faces_within_range << "\n";
+            if (min_distance_found < std::numeric_limits<Real>::max()) {
+                std::cout << "[rigid-deform adhesion]   Min distance found: " << min_distance_found << " m (" << (min_distance_found*1000) << " mm)\n";
+                std::cout << "[rigid-deform adhesion]   Max distance found: " << max_distance_found << " m (" << (max_distance_found*1000) << " mm)\n";
+            }
+            std::cout << "[rigid-deform adhesion] \n";
+            std::cout << "[rigid-deform adhesion] Parameters used:\n";
+            std::cout << "[rigid-deform adhesion]   rest_gap = " << rest_gap << " m (" << (rest_gap*1000) << " mm)\n";
+            std::cout << "[rigid-deform adhesion]   break_ratio = " << break_ratio << "\n";
+            std::cout << "[rigid-deform adhesion]   alpha = " << alpha << "\n";
+            std::cout << "[rigid-deform adhesion]   bond_distance = " << bond_distance << " m (" << (bond_distance*1000) << " mm)\n";
+            std::cout << "[rigid-deform adhesion] =========================\n";
+            
+            if (constraints_added > 0) {
+                std::cout << "[rigid-deform adhesion] ✅ SUCCESSFULLY CREATED RIGID-DEFORM ADHESION CONSTRAINTS\n";
+            } else {
+                std::cout << "[rigid-deform adhesion] ❌ WARNING: NO CONSTRAINTS CREATED\n";
+                std::cout << "[rigid-deform adhesion] 💡 Reason: No tissue faces within bond_distance (" << (bond_distance*1000) << " mm)\n";
+                if (min_distance_found < std::numeric_limits<Real>::max()) {
+                    std::cout << "[rigid-deform adhesion] 💡 Closest face is " << (min_distance_found*1000) << " mm away\n";
+                    std::cout << "[rigid-deform adhesion] 💡 Try: Increase bond-distance to at least " << (min_distance_found*1.1) << " m, or move objects closer\n";
+                }
+            }
+            
+            } // End of if(sdf) block
+        } else {
+            std::cout << "[rigid-deform adhesion] ❌ Could not find required objects\n";
+            if (!rigid_obj_ptr) std::cout << "[rigid-deform adhesion]   Missing: Rigid object\n";
+            if (!tissue_ptr) std::cout << "[rigid-deform adhesion]   Missing: Deformable tissue\n";
+        }
+    } else {
+        std::cout << "[rigid-deform adhesion] Rigid-deform adhesion disabled in config\n";
+    }
+    // ==================== END RIGID-DEFORM ADHESION CONSTRAINTS ====================
+
     // logger
     if (_logger)
     {
@@ -2858,6 +3135,25 @@ void Simulation::_timeStep()
         //     std::cout << "[inter-deform adhesion] ⚠️  " << broken_this_step 
         //               << " constraint(s) BROKE at timestep " << break_check_count << "\n";
         // }
+    }
+    
+    // Check and break rigid-deform adhesion constraints (uses strain-based breaking)
+    if (_config->rigidDeformAdhesionEnable()) {
+        static int rigid_break_check_count = 0;
+        static int total_rigid_constraints_broken = 0;
+        rigid_break_check_count++;
+        
+        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        int broken_this_step = 0;
+        for (auto& obj : xpbd_mesh_objs) {
+            // Note: Rigid-deform constraints use strain-based breaking, pass 0.0 as dummy
+            obj->checkAndBreakAdhesionConstraints(0.0);
+        }
+
+        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (auto& obj : fo_xpbd_mesh_objs) {
+            obj->checkAndBreakAdhesionConstraints(0.0);
+        }
     }
 
     // —— POST: read again and print error —— //

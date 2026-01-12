@@ -244,8 +244,8 @@ void GraspingSimulation::_toggleGrasping()
                     xpbd_mesh_obj->addAttachmentConstraint(v, &_cursor->position(), attachment_offset);
                     attached_here++;
                     _grasped_vertices.push_back(std::make_pair(xpbd_mesh_obj.get(), v));
-                    printf("DEBUG: Vertex %d at (%.2f, %.2f, %.2f) distance %.4f - SELECTED\n", 
-                           v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(), distance);
+                    // printf("DEBUG: Vertex %d at (%.2f, %.2f, %.2f) distance %.4f - SELECTED\n", 
+                    //        v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(), distance);
                 }
             }
             
@@ -332,8 +332,8 @@ void GraspingSimulation::_toggleGrasping()
                     fo_xpbd_mesh_obj->addAttachmentConstraint(v, &_cursor->position(), attachment_offset);
                     attached_here++;
                     // Note: Not storing FirstOrder objects in _grasped_vertices due to template type mismatch
-                    printf("DEBUG: Vertex %d at (%.2f, %.2f, %.2f) distance %.4f - SELECTED\n", 
-                           v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(), distance);
+                    // printf("DEBUG: Vertex %d at (%.2f, %.2f, %.2f) distance %.4f - SELECTED\n", 
+                    //        v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(), distance);
                 }
             }
             

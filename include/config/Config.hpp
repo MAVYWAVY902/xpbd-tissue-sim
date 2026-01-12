@@ -117,6 +117,13 @@ class Config
         _extractParameter("inter-deform-adhesion-break-ratio", node, _inter_deform_adhesion_break_ratio);
         _extractParameter("inter-deform-adhesion-alpha", node, _inter_deform_adhesion_alpha);
         _extractParameter("inter-deform-adhesion-bond-distance", node, _inter_deform_adhesion_bond_distance);
+        
+        // load rigid-deform adhesion parameters (optional)
+        _extractParameter("rigid-deform-adhesion-enable", node, _rigid_deform_adhesion_enable);
+        _extractParameter("rigid-deform-adhesion-rest-gap", node, _rigid_deform_adhesion_rest_gap);
+        _extractParameter("rigid-deform-adhesion-break-ratio", node, _rigid_deform_adhesion_break_ratio);
+        _extractParameter("rigid-deform-adhesion-alpha", node, _rigid_deform_adhesion_alpha);
+        _extractParameter("rigid-deform-adhesion-bond-distance", node, _rigid_deform_adhesion_bond_distance);
 
         std::cout << "\nExtracting parameters for object with name " << BOLD << name() << RST << "..." << std::endl;
     }
@@ -165,6 +172,13 @@ class Config
     Real interDeformAdhesionBreakRatio() const { return _inter_deform_adhesion_break_ratio.value.value_or(1.5); }  // 50% strain breaks bond
     Real interDeformAdhesionAlpha() const { return _inter_deform_adhesion_alpha.value.value_or(1e-6); }  // compliance
     Real interDeformAdhesionBondDistance() const { return _inter_deform_adhesion_bond_distance.value.value_or(0.01); }  // 1 cm bond creation threshold
+
+    // Rigid-deform adhesion getters
+    bool rigidDeformAdhesionEnable() const { return _rigid_deform_adhesion_enable.value.value_or(false); }  // default false
+    Real rigidDeformAdhesionRestGap() const { return _rigid_deform_adhesion_rest_gap.value.value_or(0.005); }  // 5 mm rest gap
+    Real rigidDeformAdhesionBreakRatio() const { return _rigid_deform_adhesion_break_ratio.value.value_or(1.5); }  // 50% strain breaks bond
+    Real rigidDeformAdhesionAlpha() const { return _rigid_deform_adhesion_alpha.value.value_or(1e-6); }  // compliance
+    Real rigidDeformAdhesionBondDistance() const { return _rigid_deform_adhesion_bond_distance.value.value_or(0.01); }  // 1 cm bond creation threshold
 
     protected:
 
@@ -540,7 +554,15 @@ class Config
     ConfigParameter<std::optional<Real>> _inter_deform_adhesion_break_ratio = ConfigParameter<std::optional<Real>>(1.5);  // 50% strain
     ConfigParameter<std::optional<Real>> _inter_deform_adhesion_alpha = ConfigParameter<std::optional<Real>>(1e-6);
     ConfigParameter<std::optional<Real>> _inter_deform_adhesion_bond_distance = ConfigParameter<std::optional<Real>>(0.01);  // 1 cm
+    
+    /** Rigid-deform adhesion configuration parameters */
+    ConfigParameter<std::optional<bool>> _rigid_deform_adhesion_enable = ConfigParameter<std::optional<bool>>(false);
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_rest_gap = ConfigParameter<std::optional<Real>>(0.005);  // 5 mm
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_break_ratio = ConfigParameter<std::optional<Real>>(1.5);  // 50% strain
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_alpha = ConfigParameter<std::optional<Real>>(1e-6);
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_bond_distance = ConfigParameter<std::optional<Real>>(0.01);  // 1 cm
 };
+
 
 } // namespace Config
 

@@ -31,6 +31,8 @@ set(SOLVER_HEADERS
     ${SOLVER_INCLUDE_DIR}/constraint/NerveBendingConstraint.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/NerveTumorAdhesionConstraint.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/NerveTumorBond.hpp
+    ${SOLVER_INCLUDE_DIR}/constraint/InterDeformDeformAdhesionConstraint.hpp
+    ${SOLVER_INCLUDE_DIR}/constraint/RigidDeformAdhesionConstraint.hpp
 
 )
 
@@ -48,6 +50,8 @@ set(SOLVER_SOURCES
     ${SOLVER_SRC_DIR}/constraint/NerveBendingConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/NerveTumorAdhesionConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/InterDeformDeformAdhesionConstraint.cpp
+    ${SOLVER_SRC_DIR}/constraint/RigidDeformAdhesionConstraint.cpp
+
 
 )
 

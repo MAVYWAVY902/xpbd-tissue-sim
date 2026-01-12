@@ -213,6 +213,23 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
                                               int tri_v1, int tri_v2, int tri_v3, 
                                               Real rest_gap, Real break_ratio, Real alpha = 0.0);
 
+    /** Adds a rigid-deformable adhesion constraint between a rigid body point and a face on this object.
+     * This enables adhesion between a rigid object and a deformable mesh.
+     * @param sdf - SDF of the rigid object
+     * @param rigid_obj - pointer to the rigid object
+     * @param rigid_body_point - attachment point on rigid body (in body coordinates)
+     * @param tri_v1, tri_v2, tri_v3 - triangle vertex indices from THIS object's mesh
+     * @param rest_gap - rest separation distance
+     * @param break_ratio - strain threshold for breaking
+     * @param alpha - compliance parameter
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>>
+        addRigidDeformAdhesionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj,
+                                        const Vec3r& rigid_body_point,
+                                        int tri_v1, int tri_v2, int tri_v3,
+                                        Real rest_gap, Real break_ratio, Real alpha = 0.0);
+
     /** Clears all attachment constraint that are on this object. */
     virtual void clearAttachmentConstraints() override;
 
