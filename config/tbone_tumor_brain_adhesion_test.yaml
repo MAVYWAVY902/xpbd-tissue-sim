@@ -1,0 +1,169 @@
+## TBone-Tumor-Brain Adhesion Test Configuration
+## Complete test with:
+##   1. Rigid TBone mesh
+##   2. Deformable Tumor mesh
+##   3. Deformable Brain mesh
+## Adhesion constraints:
+##   - Inter-deform adhesion: Tumor ↔ Brain
+##   - Rigid-deform adhesion: TBone ↔ Tumor
+
+name: "TBone-Tumor-Brain Adhesion Test"
+description: "Testing rigid-deform and inter-deform adhesion with three objects"
+
+visualization: "Easy3D"
+
+g-accel: 0 # downward acceleration due to gravity [m/s2]
+
+sim-mode: "AFAP"     # Run as fast as possible for testing
+
+time-step: 1e-3      # 1ms timestep for good performance
+collision-rate: 20   # Collision detection every 50ms
+collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
+fps: 60              # frames per second of the visualization
+end-time: 200        # test time [s]
+
+## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
+grasp-radius: 0.013   # Grasping tool radius: 13mm (default 100mm)
+tool-radius: 0.013    # Pushing tool radius: 13mm (default 200mm)
+
+## ==================== INTER-DEFORM ADHESION SETTINGS ====================
+## Adhesion between two deformable objects (Tumor ↔ Brain)
+inter-deform-adhesion-enable: true
+inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
+inter-deform-adhesion-break-ratio: 1.5       # Break at 50% strain
+inter-deform-adhesion-alpha: 1e-5            # Compliance (stiffness)
+inter-deform-adhesion-bond-distance: 0.005   # 5mm bond distance (scaled for 50mm objects)
+inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformable
+
+## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
+## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
+rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
+rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
+rigid-deform-adhesion-break-ratio: 2.0       # Break at 100% strain (separation = 2x rest_gap)
+rigid-deform-adhesion-alpha: 1e-5            # Compliance (lower = stiffer spring)
+rigid-deform-adhesion-bond-distance: 0.005   # 5mm - initial search radius for creating bonds
+
+## define elastic materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 8e3          # Young's modulus [Pa] - moderate stiffness
+    nu: 0.45        # Poisson's ratio [-]
+    mu-s: 0.0       # coefficient of static friction [-]
+    mu-k: 0.0       # coefficient of kinetic friction [-]
+
+## objects in the simulation
+objects:
+
+  ## ==================== DEFORMABLE TUMOR ====================
+  -
+    name: "DeformableMesh"  # Keep name as DeformableMesh for inter-deform adhesion code
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tumor_fixed/tumor_fixed01.obj"
+
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    color: [1.0, 0.5, 0.0]  # Orange - tumor
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 1               # Scale to 50mm (0.05m)
+    position: [0.0, 0.0, 0.0]    # Center at origin
+    velocity: [0.0, 0, 0.0]      # Stationary
+    rotation: [0, 0, 0]
+
+    ## collisions
+    collisions: true
+    inter-object-collisions: true  # Enable inter-object collision with brain
+
+    ## XPBD-specific options
+    num-solver-iters: 3
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 500000
+
+
+  ## ==================== DEFORMABLE BRAIN ====================
+  -
+    name: "Brain"  # Keep name as Cube2 for inter-deform adhesion code
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/brain_fixed/brain_scale01.obj"
+
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    color: [0.0, 1.0, 1.0]  # Cyan - brain
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 1               # Scale to 50mm (0.05m)
+    position: [0.0, 0.0, 0.0]    # Center at origin (overlapping with tumor)
+    velocity: [0.0, 0, 0.0]      # Stationary
+    rotation: [0, 0, 0]
+
+    ## collisions
+    collisions: true
+    inter-object-collisions: true  # Enable inter-object collision with tumor
+
+    ## XPBD-specific options
+    num-solver-iters: 3
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 500000
+
+
+  ## ==================== RIGID TBONE ====================
+  -
+    name: "RigidBone"
+    type: "RigidMeshObject"
+    filename: "../resource/tbone_fixed/tbone_ds06.obj"
+    density: 1000
+
+    ## visualization options
+    color: [0.95, 0.92, 0.85]  # Bone white
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 1               # Scale to 50mm max dimension (same as deformables)
+    position: [0.0, 0.0, 0.0]    # Center at origin (overlapping with tumor)
+    rotation: [0, 0, 0]          # No rotation
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+
+    ## physics
+    collisions: true   # Enable collisions with deformable objects
+    fixed: true        # Keep bone stationary
+
+
+## ==================== TESTING NOTES ====================
+# 
+# Expected behavior:
+# 1. All three objects (tumor, brain, tbone) are centered and overlapping at origin
+# 2. Inter-deform adhesion constraints form between tumor and brain
+# 3. Rigid-deform adhesion constraints form between tbone and tumor
+# 4. You can grasp and move objects to test adhesion behavior
+# 5. Adhesion breaks when strain exceeds break_ratio threshold
+# 
+# Object naming:
+#   - "Cube1" = Tumor (required name for inter-deform adhesion code)
+#   - "Cube2" = Brain (required name for inter-deform adhesion code)
+#   - "RigidBone" = TBone (for rigid-deform adhesion)
+# 
+# Performance optimizations:
+#   - time-step: 1e-3 (1ms) for smooth simulation
+#   - collision-rate: 20 (every 50ms) to reduce overhead
+#   - damping-multiplier: 500000 (moderate, not too stiff)
+#   - num-solver-iters: 3 (good balance of accuracy and speed)

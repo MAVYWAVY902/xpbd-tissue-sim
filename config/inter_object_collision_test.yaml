@@ -10,19 +10,23 @@ g-accel: 0 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 1e-3   # simulation time step [s]
-collision-rate: 1000 # rate at which to run collision detection [Hz]
+time-step: 1e-4   # 1ms timestep (5x larger = 5x faster)
+collision-rate: 60  # Collision detection every 50ms (5x less frequent = 5x faster)
 collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
                              # auto: use brute-force for <2000 faces, embree for >=2000 faces
-fps: 30 # frames per second of the visualization
+fps: 60 # frames per second of the visualization
 end-time: 200 # test time
+
+## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
+grasp-radius: 0.013   # Grasping tool radius: 13mm (default 100mm)
+tool-radius: 0.013    # Pushing tool radius: 13mm (default 200mm)
 
 ## define elastic materials
 materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 5e4    # Young's modulus [Pa] - increased stiffness for stability
+    E: 10e4    # Young's modulus [Pa] - increased stiffness for stability
     nu: 0.45  # Poisson's ratio [-]
     mu-s: 0.0 # coefficient of static friction [-]
     mu-k: 0.0 # coefficient of kinetic friction [-]
@@ -34,7 +38,7 @@ objects:
   -
     name: "Cube1"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
+    filename: "../resource/brain_fixed/brain_scale02.obj"
     materials: ["Soft Tissue"]
 
     ## visualization options
@@ -44,9 +48,10 @@ objects:
     draw-faces: true
 
     ## initial configuration
-    max-size: 0.5
-    position: [-0.27, 0, 1.0]
-    velocity: [0.02, 0, -0.05]  # Very slow velocity for stability testing
+    use-original-coords: true
+    max-size: 0.05
+    position: [-0.03, 0, 0]  # Move 30mm to left to separate from Cube2
+    velocity: [0.0, 0, -0.0]  # Very slow velocity for stability testing
     rotation: [0, 0, 0]
 
     ## collisions
@@ -59,14 +64,14 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 50000  # Moderate damping
+    damping-multiplier: 1500000  # Reduced from 6M for better performance
 
 
   ## Second deformable cube
   -
     name: "Cube2"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/tissue/neuroma_tet.msh"
+    filename: "../resource/tumor_fixed/tumor_fixed01.obj"
 
     materials: ["Soft Tissue"]
 
@@ -77,9 +82,10 @@ objects:
     draw-faces: true
 
     ## initial configuration
-    max-size: 0.5
-    position: [0.27, 0, 1.0]
-    velocity: [-0.01, 0, 0]  # Very slow velocity
+    use-original-coords: true
+    max-size: 0.05
+    position: [0.03, 0, 0]  # Move 30mm to right to separate from Cube1
+    velocity: [-0.0, 0, 0]  # Very slow velocity
     rotation: [0, 0, 0]
 
     ## collisions
@@ -95,7 +101,7 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 50000  # Moderate damping
+    damping-multiplier: 1500000  # Reduced from 6M for better performance
 
 
   ## Ground plane (optional - uncomment if you want a floor)

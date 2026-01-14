@@ -196,18 +196,18 @@ void GraspingSimulation::_toggleGrasping()
     for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs) { fo_xpbd_mesh_obj->clearAttachmentConstraints(); }
 
         const Vec3r grasp_center = _cursor->position();
-        printf("DEBUG: Grasp center is at (%.2f, %.2f, %.2f)\n", grasp_center.x(), grasp_center.y(), grasp_center.z());
+        // printf("DEBUG: Grasp center is at (%.2f, %.2f, %.2f)\n", grasp_center.x(), grasp_center.y(), grasp_center.z());
 
         // --- NEW RELIABLE METHOD ---
-        printf("DEBUG: Number of deformable objects: %zu\n", xpbd_mesh_objs.size() + fo_xpbd_mesh_objs.size());
-        printf("DEBUG: Grasp radius: %.4f\n", _grasp_radius);
+        // printf("DEBUG: Number of deformable objects: %zu\n", xpbd_mesh_objs.size() + fo_xpbd_mesh_objs.size());
+        // printf("DEBUG: Grasp radius: %.4f\n", _grasp_radius);
         
         int total_vertices_found = 0;
         
         // Process XPBDMeshObject_Base objects
         for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
         {
-            printf("DEBUG: Processing XPBDMeshObject with %d vertices\n", xpbd_mesh_obj->mesh()->numVertices());
+            // printf("DEBUG: Processing XPBDMeshObject with %d vertices\n", xpbd_mesh_obj->mesh()->numVertices());
             int fixed_count = 0;
             int within_radius_count = 0;
             
@@ -252,7 +252,7 @@ void GraspingSimulation::_toggleGrasping()
             // SPECIAL HANDLING FOR 1D MESHES: Sample points along edges
             if (xpbd_mesh_obj->mesh()->numFaces() == 0 && xpbd_mesh_obj->mesh()->hasVertexProperty<int>("has_line_segments"))
             {
-                printf("DEBUG: 1D mesh detected, checking edge-sphere collisions\n");
+                // printf("DEBUG: 1D mesh detected, checking edge-sphere collisions\n");
                 int edge_samples = 0;
                 
                 // Sample points along each edge for sphere collision
@@ -281,13 +281,13 @@ void GraspingSimulation::_toggleGrasping()
                                 xpbd_mesh_obj->addAttachmentConstraint(closest_vertex, &_cursor->position(), attachment_offset);
                                 attached_here++;
                                 _grasped_vertices.push_back(std::make_pair(xpbd_mesh_obj.get(), closest_vertex));
-                                printf("DEBUG: Edge sample at (%.2f, %.2f, %.2f) distance %.4f - attached to vertex %d\n", 
-                                       sample_pos.x(), sample_pos.y(), sample_pos.z(), distance, closest_vertex);
+                                // printf("DEBUG: Edge sample at (%.2f, %.2f, %.2f) distance %.4f - attached to vertex %d\n", 
+                                //        sample_pos.x(), sample_pos.y(), sample_pos.z(), distance, closest_vertex);
                             }
                         }
                     }
                 }
-                printf("DEBUG: 1D mesh edge sampling found %d collision points\n", edge_samples);
+                // printf("DEBUG: 1D mesh edge sampling found %d collision points\n", edge_samples);
             }
             
             printf("DEBUG: XPBDMeshObject summary - Fixed vertices: %d, Vertices within radius: %d\n", fixed_count, within_radius_count);

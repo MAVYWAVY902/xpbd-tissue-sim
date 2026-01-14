@@ -7,23 +7,28 @@ description: "Testing deformable-deformable adhesion between two cubes with manu
 
 visualization: "Easy3D"
 
-g-accel: 9.81 # downward acceleration due to gravity [m/s2]
+g-accel: 0 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 1e-3   # OPTIMIZED: Larger timestep since rigid bone is fixed (2x speedup)
-collision-rate: 50  # OPTIMIZED: Reduced since bone doesn't move (2x speedup)
+time-step: 2e-4   # OPTIMIZED: Larger timestep since rigid bone is fixed (2x speedup)
+collision-rate: 100  # OPTIMIZED: Reduced since bone doesn't move (2x speedup)
 collision-algorithm: "embree"  # Options: "auto", "brute-force", "embree" 
-fps: 30 # frames per second of the visualization
+fps: 60 # frames per second of the visualization
 end-time: 200 # test time - shorter for quick benchmarking
+
+## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
+grasp-radius: 0.013   # Grasping tool radius: 13mm (default 100mm)
+tool-radius: 0.013    # Pushing tool radius: 13mm (default 200mm)
+
 
 ## ==================== ADHESION SETTINGS ====================
 # OPTIMIZED FOR FIXED RIGID OBJECT (bone never moves)
 inter-deform-adhesion-enable: true
-inter-deform-adhesion-rest-gap: 0.01        # 10mm rest gap
-inter-deform-adhesion-break-ratio: 3.0     # Allow more stretch before breaking
-inter-deform-adhesion-alpha: 1e-6           # Moderate stiffness
-inter-deform-adhesion-bond-distance: 0.02   # 20mm: larger radius since bone is fixed
+inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
+inter-deform-adhesion-break-ratio: 1.5       # Allow more stretch before breaking
+inter-deform-adhesion-alpha: 1e-5            # Moderate stiffness
+inter-deform-adhesion-bond-distance: 0.005   # 5mm bond distance (scaled for 50mm objects)
 
 # CRITICAL OPTIMIZATION: Specify which object is fixed
 # If bone (Cube2) is fixed, set this to true to enable fast path
@@ -47,7 +52,7 @@ objects:
   -
     name: "Cube1"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
+    filename: "../resource/tumor_fixed/tumor_fixed01.obj"
     # filename: "../resource/tissue/neuroma_tet.msh"
 
     materials: ["Soft Tissue"]
@@ -59,9 +64,10 @@ objects:
     draw-faces: true
 
     ## initial configuration - positioned close to Cube2
-    max-size: 0.4
-    position: [-0.205, 0.2, 1.0]  # 22cm to the left, close enough for adhesion
-    velocity: [0.0, 0, 0]       # START STATIONARY - let adhesion pull gradually
+    use-original-coords: false   # DISABLE to allow positioning
+    max-size: 0.05              # Scale to 50mm (0.05m)
+    position: [0.0, 0.0, 0.0]     # Center at origin
+    velocity: [0.0, 0, 0.0]      # START STATIONARY - let adhesion pull gradually
     rotation: [0, 0, 0]
 
     ## collisions
@@ -69,33 +75,34 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 5  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
+    num-solver-iters: 3  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
     solver-type: "Gauss-Seidel"  # SWITCH TO GAUSS-SEIDEL FOR SPEED AND STABILITY
     # solver-type: "Jacobi"       # Jacobi is too slow with 30 iterations
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 60000  # Moderate damping
+    damping-multiplier: 1000000  # Moderate damping
 
 
   ## Second deformable cube (RIGHT - will be stuck to Cube1 via adhesion)
   -
     name: "Cube2"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/cube/cube8.msh"
+    filename: "../resource/brain_fixed/brain_scale01.obj"
     materials: ["Soft Tissue"]
 
     ## visualization options
-    color: [0.0, 0.0, 1.0] # blue cube
+    color: [0.0, 1.0, 1.0] # blue cube
     draw-points: false
     draw-edges: true
     draw-faces: true
 
     ## initial configuration - positioned close to Cube1
-    max-size: 0.4
-    position: [0.205, 0, 1.0]   # 22cm to the right, close to Cube1
-    velocity: [0, 0, 0]         # Stationary initially (will be pulled by adhesion)
+    use-original-coords: false   # DISABLE to allow positioning
+    max-size: 0.05              # Scale to 50mm (0.05m)
+    position: [0.0, 0.0, 0.0]     # Center at origin (overlapping with Cube1)
+    velocity: [-0.0, 0, 0]        # Stationary initially (will be pulled by adhesion)
     rotation: [0, 0, 0]
 
     ## collisions
@@ -103,14 +110,14 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 5  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
+    num-solver-iters: 3  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
     solver-type: "Gauss-Seidel"  # SWITCH TO GAUSS-SEIDEL FOR SPEED AND STABILITY
     # solver-type: "Jacobi"       # Jacobi is too slow with 30 iterations
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 60000  # Moderate damping
+    damping-multiplier: 1000000  # Moderate damping
 
 
   # ## Ground plane for reference

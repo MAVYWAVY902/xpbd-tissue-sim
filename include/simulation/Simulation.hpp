@@ -162,8 +162,45 @@ class Simulation
         {
             using ObjPtrType = std::unique_ptr<typename ConfigType::ObjectType>;
 
+            std::cout << "\n[LOADING] ======================================\n";
+            std::cout << "[LOADING] Creating object: '" << obj_config->name() << "'\n";
+            std::cout << "[LOADING] Type: " << typeid(typename ConfigType::ObjectType).name() << "\n";
+
             ObjPtrType new_obj = obj_config->createObject(this);
             new_obj->setup();
+
+            // Print size/bounding box information if it's a MeshObject
+            if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(new_obj.get()))
+            {
+                const auto* mesh = mo->mesh();
+                if (mesh && mesh->numVertices() > 0)
+                {
+                    Vec3r min_coord = mesh->vertex(0);
+                    Vec3r max_coord = mesh->vertex(0);
+                    
+                    for (int i = 1; i < mesh->numVertices(); ++i)
+                    {
+                        const Vec3r& v = mesh->vertex(i);
+                        min_coord = min_coord.cwiseMin(v);
+                        max_coord = max_coord.cwiseMax(v);
+                    }
+                    
+                    Vec3r size = max_coord - min_coord;
+                    Vec3r center = (max_coord + min_coord) / 2.0;
+                    Real max_dim = size.maxCoeff();
+                    
+                    std::cout << "[LOADING] Mesh stats:\n";
+                    std::cout << "[LOADING]   Vertices: " << mesh->numVertices() << "\n";
+                    std::cout << "[LOADING]   Faces: " << mesh->numFaces() << "\n";
+                    std::cout << "[LOADING]   Bounding box min: (" << min_coord.transpose() << ") m\n";
+                    std::cout << "[LOADING]   Bounding box max: (" << max_coord.transpose() << ") m\n";
+                    std::cout << "[LOADING]   Size (LxWxH): (" << size.transpose() << ") m\n";
+                    std::cout << "[LOADING]   Max dimension: " << max_dim << " m = " << (max_dim * 1000) << " mm\n";
+                    std::cout << "[LOADING]   Center: (" << center.transpose() << ") m\n";
+                }
+            }
+
+            std::cout << "[LOADING] ======================================\n\n";
 
             // handle XPBDMeshObjects slightly differently so that we can tell the CollisionScene if self-collisions are enabled
             if constexpr (std::is_convertible_v<ConfigType*, Config::XPBDMeshObjectConfig*>)

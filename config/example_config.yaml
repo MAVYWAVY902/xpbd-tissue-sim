@@ -13,7 +13,7 @@ g-accel: 0 # downward acceleration due to gravity (in the z-direction) [m/s2]
 sim-mode: "AFAP"            # "AFAP" runs the simulation As Fast As Possible, without caring if sim time is going faster than wall clock time
 
 time-step: 2e-4   # simulation time step [s]
-collision-rate: 100 # rate at which to run collision detection [Hz] 
+collision-rate: 60 # rate at which to run collision detection [Hz] 
 fps: 60 # frames per second of the visualization (higher for smooth interaction)
 end-time: 100 # end time of the simulation [s]
 # fix-max-z: true           # Fix top vertices to create "ceiling attachment"
@@ -80,7 +80,7 @@ objects:
 
     ## initial configuration
     use-original-coords: true   # Allow position adjustment
-    max-size: 1.0               # Keep original size (no scaling)
+    max-size: 0.05               # Keep original size (no scaling)
     position: [0, 0, 0]          # Will be centered at origin
     velocity: [0, 0, 0.0]        # initial velocity [m/s]
     rotation: [0, 0, 0]          # No rotation
@@ -178,7 +178,7 @@ objects:
     draw-faces: true
     
     use-original-coords: true   # Let system rescale and center the mesh
-    max-size: 1.0               # Scale to 50mm max dimension (same as deformable mesh)
+    max-size: 0.05               # Scale to 50mm max dimension (same as deformable mesh)
     position: [0.0, -0.0, 0.0]  # Offset to align with tumor center
     rotation: [0, 0, 0]          # No rotation
     velocity: [0, 0, 0]
