@@ -269,18 +269,18 @@ bool RigidDeformAdhesionConstraint::shouldBreak() const
         should_break = (_max_distance_this_step > _break_ratio * 0.01);  // break_ratio * 1cm
     }
     
-    // DEBUG: Print breaking info
-    if (should_break) {
-        const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
-        Real current_distance = getCurrentDistance();
-        Real current_ratio = current_distance / _rest_gap;
+    // // DEBUG: Print breaking info
+    // if (should_break) {
+    //     const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
+    //     Real current_distance = getCurrentDistance();
+    //     Real current_ratio = current_distance / _rest_gap;
         
-        std::cout << "[RIGID-DEFORM ADHESION BREAKING!] rigid_body=" << rigid_obj->name()
-                  << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
-                  << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
-                  << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
-                  << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
-    }
+    //     std::cout << "[RIGID-DEFORM ADHESION BREAKING!] rigid_body=" << rigid_obj->name()
+    //               << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
+    //               << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
+    //               << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
+    //               << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
+    // }
     
     return should_break;
 }

@@ -48,7 +48,7 @@ objects:
     draw-faces: true
 
     ## initial configuration
-    use-original-coords: true
+    use-original-coords: false
     max-size: 0.05
     position: [-0.03, 0, 0]  # Move 30mm to left to separate from Cube2
     velocity: [0.0, 0, -0.0]  # Very slow velocity for stability testing
