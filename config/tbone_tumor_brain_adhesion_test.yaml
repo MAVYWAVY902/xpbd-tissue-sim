@@ -98,7 +98,7 @@ objects:
     materials: ["Soft Tissue"]
 
     ## visualization options
-    color: [0.8, 0.9, 1.0]  # Light blue - brain (更柔和的颜色)
+    color: [0.0, 1.0, 1.0]  # Cyan - brain
     draw-points: false
     draw-edges: true
     draw-faces: true
@@ -106,23 +106,20 @@ objects:
     ## initial configuration
     use-original-coords: true   # Center and scale mesh
     max-size: 0.05               # Scale to 50mm (0.05m)
-    position: [0.03, 0.0, 0.0]   # RIGHT: +30mm to avoid overlap with tumor
+    position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
     velocity: [0.0, 0, 0.0]      # Stationary
     rotation: [0, 0, 0]
 
-    ## 固定约束：模拟脑干连接（防止brain整体飞走）
-    fix-min-z: true              # 固定Z坐标最小的顶点（底部/后部）
-
     ## collisions
     collisions: true
-    inter-object-collisions: true  # Enable inter-object collision with tumor
+    inter-object-collisions: true
 
     ## XPBD-specific options
     num-solver-iters: 3
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 3500000  # 提高阻尼（从2M到3.5M），让运动更稳定
+    damping-multiplier: 2000000 
 
 
   ## ==================== RIGID TBONE ====================

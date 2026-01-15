@@ -186,9 +186,17 @@ int Mesh::getClosestVertex(const Vec3r& p) const
 std::vector<int> Mesh::getVerticesWithX(const Real x) const
 {
     std::vector<int> verts;
+    
+    // FIXED: Use tolerance-based range matching instead of exact equality
+    // This fixes the issue where only 1 vertex was fixed for irregular meshes
+    // Now fixes all vertices within a small range (5% of bounding box width)
+    const Real bbox_width = boundingBox().max[0] - boundingBox().min[0];
+    const Real tolerance = 0.05 * bbox_width;  // 5% of width = reasonable "slice" thickness
+    
     for (int i = 0; i < numVertices(); i++)
     {
-        if (_vertices(0,i) == x)
+        // Fix vertices within tolerance range of target X
+        if (std::abs(_vertices(0,i) - x) <= tolerance)
         {
             verts.push_back(i);
         }
@@ -200,9 +208,17 @@ std::vector<int> Mesh::getVerticesWithX(const Real x) const
 std::vector<int> Mesh::getVerticesWithY(const Real y) const
 {
     std::vector<int> verts;
+    
+    // FIXED: Use tolerance-based range matching instead of exact equality
+    // This fixes the issue where only 1 vertex was fixed for irregular meshes
+    // Now fixes all vertices within a small range (5% of bounding box depth)
+    const Real bbox_depth = boundingBox().max[1] - boundingBox().min[1];
+    const Real tolerance = 0.05 * bbox_depth;  // 5% of depth = reasonable "slice" thickness
+    
     for (int i = 0; i < numVertices(); i++)
     {
-        if (_vertices(1,i) == y)
+        // Fix vertices within tolerance range of target Y
+        if (std::abs(_vertices(1,i) - y) <= tolerance)
         {
             verts.push_back(i);
         }
@@ -214,9 +230,17 @@ std::vector<int> Mesh::getVerticesWithY(const Real y) const
 std::vector<int> Mesh::getVerticesWithZ(const Real z) const
 {
     std::vector<int> verts;
+    
+    // FIXED: Use tolerance-based range matching instead of exact equality
+    // This fixes the issue where only 1 vertex was fixed for irregular meshes
+    // Now fixes all vertices within a small range (5% of bounding box height)
+    const Real bbox_height = boundingBox().max[2] - boundingBox().min[2];
+    const Real tolerance = 0.05 * bbox_height;  // 5% of height = reasonable "slice" thickness
+    
     for (int i = 0; i < numVertices(); i++)
     {
-        if (_vertices(2,i) == z)
+        // Fix vertices within tolerance range of target Z
+        if (std::abs(_vertices(2,i) - z) <= tolerance)
         {
             verts.push_back(i);
         }
