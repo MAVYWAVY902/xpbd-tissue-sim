@@ -2231,7 +2231,7 @@ void Simulation::setup()
                   << ", break_ratio=" << break_ratio << ", alpha=" << alpha 
                   << ", bond_distance=" << bond_distance << "\n";
         
-        // Find objects named "Cube1" and "Cube2"
+        // Find objects named "Tumor" and "Brain"
         FirstOrderXPBDMeshObject_Base* cube1_ptr = nullptr;
         FirstOrderXPBDMeshObject_Base* cube2_ptr = nullptr;
         
@@ -2241,12 +2241,12 @@ void Simulation::setup()
             
             std::cout << "[inter-deform adhesion] Found object: " << fo_base_ptr->name() << "\n";
             
-            if (fo_base_ptr->name() == "Cube1") {
+            if (fo_base_ptr->name() == "Tumor") {
                 cube1_ptr = fo_base_ptr;
-                std::cout << "[inter-deform adhesion] ✅ Found Cube1\n";
-            } else if (fo_base_ptr->name() == "Cube2") {
+                std::cout << "[inter-deform adhesion] ✅ Found Tumor\n";
+            } else if (fo_base_ptr->name() == "Brain") {
                 cube2_ptr = fo_base_ptr;
-                std::cout << "[inter-deform adhesion] ✅ Found Cube2\n";
+                std::cout << "[inter-deform adhesion] ✅ Found Brain\n";
             }
         }
         
@@ -2256,8 +2256,8 @@ void Simulation::setup()
             const int cube1_nv = cube1_mesh->numVertices();
             const int cube2_nf = cube2_mesh->numFaces();
             
-            std::cout << "[inter-deform adhesion] Cube1: " << cube1_nv << " vertices\n";
-            std::cout << "[inter-deform adhesion] Cube2: " << cube2_nf << " faces\n";
+            std::cout << "[inter-deform adhesion] Tumor: " << cube1_nv << " vertices\n";
+            std::cout << "[inter-deform adhesion] Brain: " << cube2_nf << " faces\n";
             
             int constraints_added = 0;
             int vertices_checked = 0;
@@ -2269,10 +2269,10 @@ void Simulation::setup()
             auto try_add_inter_deform = [&](auto* typed_cube2_ptr) -> bool {
                 if (!typed_cube2_ptr) return false;
                 
-                std::cout << "[inter-deform adhesion] Successfully cast Cube2 to typed pointer\n";
+                std::cout << "[inter-deform adhesion] Successfully cast Brain to typed pointer\n";
                 std::cout << "[inter-deform adhesion] Using EMBREE BVH for spatial acceleration\n";
                 
-                // For each vertex in Cube1, find closest face in Cube2 using Embree BVH
+                // For each vertex in Tumor, find closest face in Brain using Embree BVH
                 for (int v = 0; v < cube1_nv; ++v) {
                     vertices_checked++;
                     const Vec3r cube1_vertex = cube1_mesh->vertex(v);
@@ -2398,7 +2398,7 @@ void Simulation::setup()
                 std::cout << "[inter-deform adhesion] ✅ SUCCESSFULLY CREATED ADHESION CONSTRAINTS\n";
                 std::cout << "[inter-deform adhesion] =========================\n";
                 std::cout << "[inter-deform adhesion] Total constraints created: " << constraints_added << "\n";
-                std::cout << "[inter-deform adhesion] Between Cube1 (" << cube1_nv << " vertices) and Cube2 (" << cube2_nf << " faces)\n";
+                std::cout << "[inter-deform adhesion] Between Tumor (" << cube1_nv << " vertices) and Brain (" << cube2_nf << " faces)\n";
                 std::cout << "[inter-deform adhesion] \n";
                 std::cout << "[inter-deform adhesion] Distance statistics:\n";
                 std::cout << "[inter-deform adhesion]   Vertices checked: " << vertices_checked << "\n";
@@ -2424,12 +2424,12 @@ void Simulation::setup()
                 std::cout << "[inter-deform adhesion] \n";
                 std::cout << "[inter-deform adhesion] Possible reasons:\n";
                 std::cout << "[inter-deform adhesion]   - Objects too far apart (min_distance > bond_distance)\n";
-                std::cout << "[inter-deform adhesion]   - Failed to cast Cube2 to correct XPBD type\n";
-                std::cout << "[inter-deform adhesion]   - Cube1 vertices: " << cube1_nv << ", Cube2 faces: " << cube2_nf << "\n";
+                std::cout << "[inter-deform adhesion]   - Failed to cast Brain to correct XPBD type\n";
+                std::cout << "[inter-deform adhesion]   - Tumor vertices: " << cube1_nv << ", Brain faces: " << cube2_nf << "\n";
                 std::cout << "[inter-deform adhesion] =========================\n";
             }
         } else {
-            std::cout << "[inter-deform adhesion] ❌ Could not find Cube1 and/or Cube2 objects\n";
+            std::cout << "[inter-deform adhesion] ❌ Could not find Tumor and/or Brain objects\n";
             std::cout << "[inter-deform adhesion] Available objects:\n";
             for (auto& fo_uptr : fo_xpbd_objs) {
                 if (fo_uptr) std::cout << "[inter-deform adhesion]   - " << fo_uptr->name() << "\n";
@@ -2518,7 +2518,8 @@ void Simulation::setup()
         for (auto& fo_uptr : fo_xpbd_objs) {
             if (!fo_uptr) continue;
             std::cout << "[rigid-deform adhesion] Found deformable object: " << fo_uptr->name() << "\n";
-            if (fo_uptr->name() == "Tissue" || fo_uptr->name() == "DeformableMesh") {
+            if (fo_uptr->name() == "Tumor" || fo_uptr->name() == "Brain" || 
+                fo_uptr->name() == "Tissue" || fo_uptr->name() == "DeformableMesh") {
                 tissue_ptr = fo_uptr.get();
                 std::cout << "[rigid-deform adhesion] ✅ Found deformable object for adhesion\n";
             }
@@ -3076,83 +3077,53 @@ void Simulation::_timeStep()
     _objects.for_each_element([](auto& obj) { obj->update(); });
 
     // —— check and break adhesion constraints AFTER physics update —— //
-    // This ensures we check distances AFTER constraint projection and fixed vertex enforcement
-    if (_config->nerveTumorAdhesionEnable()) {
-        const Real break_distance = _config->nerveTumorAdhesionBreakDistance();
-        
-        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
-        for (auto& obj : xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
-
-        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
-        for (auto& obj : fo_xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
-    }
+    // ⚡ PERFORMANCE OPTIMIZATION: Check breaking every N steps instead of every step
+    // This significantly reduces overhead when there are many adhesion constraints
+    static int adhesion_check_counter = 0;
+    const int ADHESION_CHECK_INTERVAL = 50;  // Check every 50 steps (with dt=5e-4, this is 25ms)
+    adhesion_check_counter++;
     
-    // Check and break inter-deform adhesion constraints (uses strain-based breaking, no break_distance param)
-    if (_config->interDeformAdhesionEnable()) {
-        static int break_check_count = 0;
-        static int total_constraints_broken = 0;
-        break_check_count++;
+    const bool should_check_breaking = (adhesion_check_counter % ADHESION_CHECK_INTERVAL == 0);
+    
+    if (should_check_breaking) {
+        // This ensures we check distances AFTER constraint projection and fixed vertex enforcement
+        if (_config->nerveTumorAdhesionEnable()) {
+            const Real break_distance = _config->nerveTumorAdhesionBreakDistance();
+            
+            auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+            for (auto& obj : xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
+
+            auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+            for (auto& obj : fo_xpbd_mesh_objs) obj->checkAndBreakAdhesionConstraints(break_distance);
+        }
         
-        // Count active constraints before breaking
-        int active_before = 0;
-        auto& fo_xpbd_mesh_objs_count = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
-        for (auto& obj_uptr : fo_xpbd_mesh_objs_count) {
-            auto* obj = obj_uptr.get();
-            if (obj && obj->name() == "Cube2") {
-                // Try to get constraint count (this is a simplified check)
-                active_before += obj->numInterDeformAdhesionConstraints();
+        // Check and break inter-deform adhesion constraints (uses strain-based breaking, no break_distance param)
+        if (_config->interDeformAdhesionEnable()) {
+            // Note: Inter-deform constraints use strain-based breaking (via shouldBreak()), 
+            // not distance-based like nerve-tumor, so we pass 0.0 as dummy parameter
+            auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+            for (auto& obj : xpbd_mesh_objs) {
+                obj->checkAndBreakAdhesionConstraints(0.0);
+            }
+
+            auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+            for (auto& obj : fo_xpbd_mesh_objs) {
+                obj->checkAndBreakAdhesionConstraints(0.0);
             }
         }
         
-        // if (break_check_count % 100 == 0) {
-        //     std::cout << "[inter-deform adhesion] Status at timestep " << break_check_count << ": "
-        //               << active_before << " active constraints, "
-        //               << total_constraints_broken << " broken so far\n";
-        // }
-        
-        // Note: Inter-deform constraints use strain-based breaking (via shouldBreak()), 
-        // not distance-based like nerve-tumor, so we pass 0.0 as dummy parameter
-        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
-        int broken_this_step = 0;
-        for (auto& obj : xpbd_mesh_objs) {
-            int before = obj->numInterDeformAdhesionConstraints();
-            obj->checkAndBreakAdhesionConstraints(0.0);
-            int after = obj->numInterDeformAdhesionConstraints();
-            broken_this_step += (before - after);
-        }
+        // Check and break rigid-deform adhesion constraints (uses strain-based breaking)
+        if (_config->rigidDeformAdhesionEnable()) {
+            auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+            for (auto& obj : xpbd_mesh_objs) {
+                // Note: Rigid-deform constraints use strain-based breaking, pass 0.0 as dummy
+                obj->checkAndBreakAdhesionConstraints(0.0);
+            }
 
-        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
-        for (auto& obj : fo_xpbd_mesh_objs) {
-            int before = obj->numInterDeformAdhesionConstraints();
-            obj->checkAndBreakAdhesionConstraints(0.0);
-            int after = obj->numInterDeformAdhesionConstraints();
-            broken_this_step += (before - after);
-        }
-        
-        total_constraints_broken += broken_this_step;
-        
-        // if (broken_this_step > 0) {
-        //     std::cout << "[inter-deform adhesion] ⚠️  " << broken_this_step 
-        //               << " constraint(s) BROKE at timestep " << break_check_count << "\n";
-        // }
-    }
-    
-    // Check and break rigid-deform adhesion constraints (uses strain-based breaking)
-    if (_config->rigidDeformAdhesionEnable()) {
-        static int rigid_break_check_count = 0;
-        static int total_rigid_constraints_broken = 0;
-        rigid_break_check_count++;
-        
-        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
-        int broken_this_step = 0;
-        for (auto& obj : xpbd_mesh_objs) {
-            // Note: Rigid-deform constraints use strain-based breaking, pass 0.0 as dummy
-            obj->checkAndBreakAdhesionConstraints(0.0);
-        }
-
-        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
-        for (auto& obj : fo_xpbd_mesh_objs) {
-            obj->checkAndBreakAdhesionConstraints(0.0);
+            auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+            for (auto& obj : fo_xpbd_mesh_objs) {
+                obj->checkAndBreakAdhesionConstraints(0.0);
+            }
         }
     }
 

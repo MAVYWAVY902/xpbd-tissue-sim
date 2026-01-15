@@ -16,8 +16,8 @@ g-accel: 0 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 1e-3      # 1ms timestep for good performance
-collision-rate: 20   # Collision detection every 50ms
+time-step: 5e-4      # 0.5ms timestep
+collision-rate: 60  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
 end-time: 200        # test time [s]
@@ -58,9 +58,9 @@ objects:
 
   ## ==================== DEFORMABLE TUMOR ====================
   -
-    name: "DeformableMesh"  # Keep name as DeformableMesh for inter-deform adhesion code
+    name: "Tumor"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/tumor_fixed/tumor_fixed01.obj"
+    filename: "../resource/tumor_fixed/tumor_squeezed.obj"
 
     materials: ["Soft Tissue"]
 
@@ -72,8 +72,8 @@ objects:
 
     ## initial configuration
     use-original-coords: true   # Center and scale mesh
-    max-size: 1               # Scale to 50mm (0.05m)
-    position: [0.0, 0.0, 0.0]    # Center at origin
+    max-size: 0.05               # Scale to 50mm (0.05m)
+    position: [-0.0, 0.0, 0.0]    # LEFT: -30mm to avoid overlap!
     velocity: [0.0, 0, 0.0]      # Stationary
     rotation: [0, 0, 0]
 
@@ -86,14 +86,14 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 500000
+    damping-multiplier: 800000  # Reduced from 5M (was too stiff)
 
 
   ## ==================== DEFORMABLE BRAIN ====================
   -
-    name: "Brain"  # Keep name as Cube2 for inter-deform adhesion code
+    name: "Brain"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/brain_fixed/brain_scale01.obj"
+    filename: "../resource/brain_fixed/brain_scale03.obj"
 
     materials: ["Soft Tissue"]
 
@@ -105,8 +105,8 @@ objects:
 
     ## initial configuration
     use-original-coords: true   # Center and scale mesh
-    max-size: 1               # Scale to 50mm (0.05m)
-    position: [0.0, 0.0, 0.0]    # Center at origin (overlapping with tumor)
+    max-size: 0.05               # Scale to 50mm (0.05m)
+    position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
     velocity: [0.0, 0, 0.0]      # Stationary
     rotation: [0, 0, 0]
 
@@ -119,7 +119,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 500000
+    damping-multiplier: 800000  # Reduced from 5M (was too stiff)
 
 
   ## ==================== RIGID TBONE ====================
@@ -137,8 +137,8 @@ objects:
 
     ## initial configuration
     use-original-coords: true   # Center and scale mesh
-    max-size: 1               # Scale to 50mm max dimension (same as deformables)
-    position: [0.0, 0.0, 0.0]    # Center at origin (overlapping with tumor)
+    max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
+    position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
     rotation: [0, 0, 0]          # No rotation
     velocity: [0, 0, 0]
     angular-velocity: [0, 0, 0]
@@ -148,22 +148,20 @@ objects:
     fixed: true        # Keep bone stationary
 
 
-## ==================== TESTING NOTES ====================
-# 
-# Expected behavior:
-# 1. All three objects (tumor, brain, tbone) are centered and overlapping at origin
-# 2. Inter-deform adhesion constraints form between tumor and brain
-# 3. Rigid-deform adhesion constraints form between tbone and tumor
-# 4. You can grasp and move objects to test adhesion behavior
-# 5. Adhesion breaks when strain exceeds break_ratio threshold
-# 
-# Object naming:
-#   - "Cube1" = Tumor (required name for inter-deform adhesion code)
-#   - "Cube2" = Brain (required name for inter-deform adhesion code)
-#   - "RigidBone" = TBone (for rigid-deform adhesion)
-# 
-# Performance optimizations:
-#   - time-step: 1e-3 (1ms) for smooth simulation
-#   - collision-rate: 20 (every 50ms) to reduce overhead
-#   - damping-multiplier: 500000 (moderate, not too stiff)
-#   - num-solver-iters: 3 (good balance of accuracy and speed)
+## ==================== CONSTRAINT INFO ====================
+# Objects:
+#   Tumor - deformable
+#   Brain - deformable  
+#   RigidBone - rigid, fixed
+#
+# Constraints:
+#   1. Inter-deform adhesion: Tumor ↔ Brain
+#      Code: Simulation.cpp L2234 (looks for "Tumor" & "Brain")
+#      Vertex-to-face bonds when distance < 5mm, breaks at 50% strain
+#
+#   2. Rigid-deform adhesion: RigidBone ↔ Tumor
+#      Code: Simulation.cpp L2517 (rigid:"RigidBone" + deform:"Tumor"/"Brain"/"Tissue"/"DeformableMesh")
+#      Face centroid-to-SDF bonds when distance < 5mm, breaks at 100% strain
+#
+#   3. Inter-object collision: Tumor ↔ Brain
+#      Embree BVH spatial acceleration, prevents interpenetration

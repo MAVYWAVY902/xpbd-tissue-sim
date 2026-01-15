@@ -111,15 +111,15 @@ void RigidDeformAdhesionConstraint::evaluate(Real* C) const
     *C = _constraint_value_cached;
     
     // DEBUG: Print every 1000 evaluations when constraint is active
-    if (*C > 0 && eval_count % 1000 == 0) {
-        std::cout << "[RIGID-DEFORM ADHESION ACTIVE eval #" << eval_count << "] "
-                  << "rigid_body=" << rigid_obj->name()
-                  << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
-                  << " | sep=" << separation_distance << "m"
-                  << " | rest=" << _rest_gap << "m"
-                  << " | C=" << *C << "m"
-                  << " | alpha=" << this->alpha() << "\n";
-    }
+    // if (*C > 0 && eval_count % 1000 == 0) {
+    //     std::cout << "[RIGID-DEFORM ADHESION ACTIVE eval #" << eval_count << "] "
+    //               << "rigid_body=" << rigid_obj->name()
+    //               << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
+    //               << " | sep=" << separation_distance << "m"
+    //               << " | rest=" << _rest_gap << "m"
+    //               << " | C=" << *C << "m"
+    //               << " | alpha=" << this->alpha() << "\n";
+    // }
 }
 
 void RigidDeformAdhesionConstraint::gradient(Real* grad) const

@@ -566,16 +566,16 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     // Invalidate rigid-deform adhesion projectors that should break
     for (int idx : rigid_deform_to_invalidate) {
         _solver.template setProjectorValidity<RigidDeformAdhesionProjectorType>(idx, false);
-        std::cout << "[adhesion BREAK] Broke rigid-deform adhesion constraint #" << idx << "\n";
+        // std::cout << "[adhesion BREAK] Broke rigid-deform adhesion constraint #" << idx << "\n";
     }
     
     // Print summary
-    if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || !rigid_deform_to_invalidate.empty()) {
-        std::cout << "[adhesion BREAK] Object: " << this->name()
-                  << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
-                  << " + " << inter_deform_to_invalidate.size() << " inter-deform"
-                  << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
-    }
+    // if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || !rigid_deform_to_invalidate.empty()) {
+    //     std::cout << "[adhesion BREAK] Object: " << this->name()
+    //               << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
+    //               << " + " << inter_deform_to_invalidate.size() << " inter-deform"
+    //               << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
+    // }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>

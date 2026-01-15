@@ -234,6 +234,10 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     const Real bary_epsilon = -0.01; // Only 1% tolerance - much tighter than -0.1
     
     // ========== PART 1: Vertices of obj1 vs Faces of obj2 ==========
+    // ⚡ PERFORMANCE OPTIMIZATION: Sample vertices sparsely to reduce BVH queries
+    // Instead of checking ALL vertices, check every Nth vertex
+    const int VERTEX_SAMPLING_INTERVAL = 3;  // Check every 3rd vertex (3x faster!)
+    
     if (use_brute_force)
     {
         // BRUTE FORCE PATH: Simple nested loops (fast for small meshes)
@@ -303,7 +307,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     else
     {
         // EMBREE BVH PATH: Spatial acceleration (fast for large meshes)
-        for (int v_idx = 0; v_idx < mesh1->numVertices(); v_idx++)
+        // ⚡ SPARSE SAMPLING: Check every Nth vertex to reduce BVH queries
+        for (int v_idx = 0; v_idx < mesh1->numVertices(); v_idx += VERTEX_SAMPLING_INTERVAL)
         {
             if (!mesh1->vertexOnSurface(v_idx))
                 continue;
@@ -445,7 +450,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     else
     {
         // EMBREE BVH PATH
-        for (int v_idx = 0; v_idx < mesh2->numVertices(); v_idx++)
+        // ⚡ SPARSE SAMPLING: Check every Nth vertex to reduce BVH queries
+        for (int v_idx = 0; v_idx < mesh2->numVertices(); v_idx += VERTEX_SAMPLING_INTERVAL)
         {
             if (!mesh2->vertexOnSurface(v_idx))
                 continue;
@@ -708,30 +714,30 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     collision_check_count++;
     total_collisions_detected += collisions_this_check;
     
-    if (collision_check_count % 500 == 0 || collisions_this_check > 0)
-    {
-        Real deform_to_rigid_dist = (sample_vertex - rigid_body_pos).norm();
+    // if (collision_check_count % 5000 == 0 || collisions_this_check > 0)
+    // {
+    //     Real deform_to_rigid_dist = (sample_vertex - rigid_body_pos).norm();
         
-        // DEBUG: Show body-frame transformation
-        Vec3r sample_vertex_body = rigid_obj->globalToBody(sample_vertex);
-        Vec3r closest_centroid_body = rigid_obj->globalToBody(closest_centroid);
+    //     // DEBUG: Show body-frame transformation
+    //     Vec3r sample_vertex_body = rigid_obj->globalToBody(sample_vertex);
+    //     Vec3r closest_centroid_body = rigid_obj->globalToBody(closest_centroid);
         
-        std::cout << "[RIGID-DEFORM COLLISION] Check #" << collision_check_count 
-                  << " | Pair: " << xpbd_mesh_obj->name() << " <-> " << rigid_obj->name()
-                  << "\n  Faces total: " << faces.cols()
-                  << " | Culled: " << faces_culled_by_centroid
-                  << " | Checked: " << faces_checked_detailed
-                  << "\n  SDF range: [" << std::setprecision(6) << min_sdf_dist << ", " << max_sdf_dist << "] meters"
-                  << "\n  Deform sample vertex (world): (" << std::setprecision(4) << sample_vertex.transpose() << ")"
-                  << "\n  Deform sample vertex (body):  (" << sample_vertex_body.transpose() << ")"
-                  << "\n  Rigid body position:  (" << rigid_body_pos.transpose() << ")"
-                  << "\n  Direct distance (vertex to rigid center): " << std::setprecision(4) << deform_to_rigid_dist << "m"
-                  << "\n  Closest face centroid (world): (" << closest_centroid.transpose() << ")"
-                  << "\n  Closest face centroid (body):  (" << closest_centroid_body.transpose() << ")"
-                  << "\n  Closest centroid SDF_dist=" << min_sdf_dist << " meters = " << (min_sdf_dist*1000) << "mm"
-                  << "\n  Collisions: " << collisions_this_check << " | Total: " << total_collisions_detected
-                  << " | Time: " << _sim->time() << "s\n";
-    }
+    //     std::cout << "[RIGID-DEFORM COLLISION] Check #" << collision_check_count 
+    //               << " | Pair: " << xpbd_mesh_obj->name() << " <-> " << rigid_obj->name()
+    //               << "\n  Faces total: " << faces.cols()
+    //               << " | Culled: " << faces_culled_by_centroid
+    //               << " | Checked: " << faces_checked_detailed
+    //               << "\n  SDF range: [" << std::setprecision(6) << min_sdf_dist << ", " << max_sdf_dist << "] meters"
+    //               << "\n  Deform sample vertex (world): (" << std::setprecision(4) << sample_vertex.transpose() << ")"
+    //               << "\n  Deform sample vertex (body):  (" << sample_vertex_body.transpose() << ")"
+    //               << "\n  Rigid body position:  (" << rigid_body_pos.transpose() << ")"
+    //               << "\n  Direct distance (vertex to rigid center): " << std::setprecision(4) << deform_to_rigid_dist << "m"
+    //               << "\n  Closest face centroid (world): (" << closest_centroid.transpose() << ")"
+    //               << "\n  Closest face centroid (body):  (" << closest_centroid_body.transpose() << ")"
+    //               << "\n  Closest centroid SDF_dist=" << min_sdf_dist << " meters = " << (min_sdf_dist*1000) << "mm"
+    //               << "\n  Collisions: " << collisions_this_check << " | Total: " << total_collisions_detected
+    //               << " | Time: " << _sim->time() << "s\n";
+    // }
 }
 
 template <bool IsFirstOrder>

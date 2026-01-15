@@ -119,15 +119,15 @@ void InterDeformDeformAdhesionConstraint::evaluate(Real* C) const
     static int active_count = 0;
     if (*C > 0) {
         active_count++;
-        if (active_count <= 20 || active_count % 2000 == 0) {
-            std::cout << "[INTER-DEFORM ADHESION ACTIVE #" << active_count << "] "
-                      << "vertex_v=" << _positions[0].index 
-                      << " tri=[" << _positions[1].index << "," << _positions[2].index << "," << _positions[3].index << "]"
-                      << " | sep=" << separation_distance << "m"
-                      << " | rest=" << _rest_gap << "m"
-                      << " | C=" << *C << "m"
-                      << " | alpha=" << this->alpha() << "\n";
-        }
+        // if (active_count <= 20 || active_count % 2000 == 0) {
+        //     std::cout << "[INTER-DEFORM ADHESION ACTIVE #" << active_count << "] "
+        //               << "vertex_v=" << _positions[0].index 
+        //               << " tri=[" << _positions[1].index << "," << _positions[2].index << "," << _positions[3].index << "]"
+        //               << " | sep=" << separation_distance << "m"
+        //               << " | rest=" << _rest_gap << "m"
+        //               << " | C=" << *C << "m"
+        //               << " | alpha=" << this->alpha() << "\n";
+        // }
     }
 }
 
