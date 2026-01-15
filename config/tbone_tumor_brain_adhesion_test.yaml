@@ -39,8 +39,8 @@ inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformabl
 ## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
 rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
 rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
-rigid-deform-adhesion-break-ratio: 2.5       # Break at 100% strain (separation = 2x rest_gap)
-rigid-deform-adhesion-alpha: 2e-7            # Compliance (lower = stiffer spring)
+rigid-deform-adhesion-break-ratio: 1.5       # Break at 100% strain (separation = 2x rest_gap)
+rigid-deform-adhesion-alpha: 2e-6            # Compliance (lower = stiffer spring)
 rigid-deform-adhesion-bond-distance: 0.01    # 5mm - initial search radius for creating bonds
 
 ## define elastic materials
@@ -77,6 +77,16 @@ objects:
     velocity: [0.0, 0, 0.0]      # Stationary
     rotation: [0, 0, 0]
 
+    ## ==================== BOUNDARY FIXING (Tumor) ====================
+    ## Optional: Fix tumor boundaries to simulate nerve root/vascular attachment
+    ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+    fix-min-z: true        # Fix BOTTOM (posterior attachment)
+    fix-max-z: true      # Fix TOP
+    fix-min-y: true      # Fix BACK (toward IAC/bone)
+    fix-max-y: true      # Fix FRONT
+    fix-min-x: true      # Fix LEFT (lateral)
+    fix-max-x: true      # Fix RIGHT (medial)
+
     ## collisions
     collisions: true
     inter-object-collisions: true  # Enable inter-object collision with brain
@@ -89,44 +99,54 @@ objects:
     damping-multiplier: 2000000  # Reduced from 5M (was too stiff)
 
 
-  ## ==================== DEFORMABLE BRAIN ====================
-  -
-    name: "Brain"
-    type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/brain_fixed/brain_scale03.obj"
+  # ## ==================== DEFORMABLE BRAIN ====================
+  # -
+  #   name: "Brain"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/brain_fixed/brain_MOD.obj"
 
-    materials: ["Soft Tissue"]
+  #   materials: ["Soft Tissue"]
 
-    ## visualization options
-    color: [0.0, 1.0, 1.0]  # Cyan - brain
-    draw-points: false
-    draw-edges: true
-    draw-faces: true
+  #   ## visualization options
+  #   color: [0.0, 1.0, 1.0]  # Cyan - brain
+  #   draw-points: false
+  #   draw-edges: true
+  #   draw-faces: true
 
-    ## initial configuration
-    use-original-coords: true   # Center and scale mesh
-    max-size: 0.05               # Scale to 50mm (0.05m)
-    position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
-    velocity: [0.0, 0, 0.0]      # Stationary
-    rotation: [0, 0, 0]
+  #   ## initial configuration
+  #   use-original-coords: true   # Center and scale mesh
+  #   max-size: 0.05               # Scale to 50mm (0.05m)
+  #   position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
+  #   velocity: [0.0, 0, 0.0]      # Stationary
+  #   rotation: [0, 0, 0]
 
-    ## collisions
-    collisions: true
-    inter-object-collisions: true
+  #   ## ==================== BOUNDARY FIXING (Brain) ====================
+  #   ## Simulate brain stem connection - prevents whole-object translation
+  #   ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+  #   fix-min-z: true       # Fix BOTTOM (brain stem/posterior fossa) 
+  #   fix-max-z: true      # Fix TOP (superior)
+  #   fix-min-y: true      # Fix BACK (posterior wall)
+  #   fix-max-y: true      # Fix FRONT (anterior wall)
+  #   fix-min-x: true      # Fix LEFT (lateral)
+  #   fix-max-x: true      # Fix RIGHT (lateral)
 
-    ## XPBD-specific options
-    num-solver-iters: 3
-    solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean-Combined"
-    residual-policy: "Never"
-    damping-multiplier: 2000000 
+  #   ## collisions
+  #   collisions: true
+  #   inter-object-collisions: true
+
+  #   ## XPBD-specific options
+  #   num-solver-iters: 3
+  #   solver-type: "Gauss-Seidel"
+  #   constraint-type: "Stable-Neohookean-Combined"
+  #   residual-policy: "Never"
+  #   damping-multiplier: 2000000 
 
 
   ## ==================== RIGID TBONE ====================
   -
     name: "RigidBone"
     type: "RigidMeshObject"
-    filename: "../resource/tbone_fixed/tbone_ds06.obj"
+    filename: "../resource/tbone_fixed/tbone_MOD.obj"
     density: 1000
 
     ## visualization options
