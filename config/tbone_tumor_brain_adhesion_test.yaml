@@ -20,7 +20,7 @@ time-step: 2e-4      # 0.5ms timestep
 collision-rate: 100  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
-end-time: 200        # test time [s]
+end-time: 300        # test time [s]
 
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
 grasp-radius: 0.013   # Grasping tool radius: 13mm (default 100mm)
@@ -40,8 +40,8 @@ inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformabl
 rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
 rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
 rigid-deform-adhesion-break-ratio: 2.5       # Break at 100% strain (separation = 2x rest_gap)
-rigid-deform-adhesion-alpha: 2e-8            # Compliance (lower = stiffer spring)
-rigid-deform-adhesion-bond-distance: 0.005   # 5mm - initial search radius for creating bonds
+rigid-deform-adhesion-alpha: 2e-7            # Compliance (lower = stiffer spring)
+rigid-deform-adhesion-bond-distance: 0.01    # 5mm - initial search radius for creating bonds
 
 ## define elastic materials
 materials:
@@ -98,7 +98,7 @@ objects:
     materials: ["Soft Tissue"]
 
     ## visualization options
-    color: [0.0, 1.0, 1.0]  # Cyan - brain
+    color: [0.8, 0.9, 1.0]  # Light blue - brain (更柔和的颜色)
     draw-points: false
     draw-edges: true
     draw-faces: true
@@ -106,9 +106,12 @@ objects:
     ## initial configuration
     use-original-coords: true   # Center and scale mesh
     max-size: 0.05               # Scale to 50mm (0.05m)
-    position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
+    position: [0.03, 0.0, 0.0]   # RIGHT: +30mm to avoid overlap with tumor
     velocity: [0.0, 0, 0.0]      # Stationary
     rotation: [0, 0, 0]
+
+    ## 固定约束：模拟脑干连接（防止brain整体飞走）
+    fix-min-z: true              # 固定Z坐标最小的顶点（底部/后部）
 
     ## collisions
     collisions: true
@@ -119,7 +122,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 2000000  # Reduced from 5M (was too stiff)
+    damping-multiplier: 3500000  # 提高阻尼（从2M到3.5M），让运动更稳定
 
 
   ## ==================== RIGID TBONE ====================
