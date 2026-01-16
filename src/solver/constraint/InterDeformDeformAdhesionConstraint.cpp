@@ -47,28 +47,18 @@ void InterDeformDeformAdhesionConstraint::evaluate(Real* C) const
     Eigen::Map<const Vec3r> tri_p2(_positions[2].position_ptr);
     Eigen::Map<const Vec3r> tri_p3(_positions[3].position_ptr);
 
-    // PERFORMANCE OPTIMIZATION: Use cached barycentric coordinates!
-    // Instead of recomputing expensive point-to-triangle distance every iteration,
-    // we reconstruct the closest point using the CACHED barycentric coordinates.
-    // This assumes the closest point stays roughly at the same barycentric location
-    // on the triangle as it deforms (valid for small deformations).
+    // ✅ CRITICAL FIX: Recompute projection point every frame to handle large deformations
+    // The cached barycentric coordinates become invalid when triangle deforms significantly
+    // This prevents constraint direction errors that cause spikes and instability
+    Vec3r closest_point, normal;
+    computePointTriangleDistance(vertex_pos, tri_p1, tri_p2, tri_p3,
+                                closest_point, normal, _bary_cached);
     
-    // Reconstruct closest point on deformed triangle using cached barycentric coords
-    const Vec3r xs_current = _bary_cached[0] * tri_p1 + 
-                             _bary_cached[1] * tri_p2 + 
-                             _bary_cached[2] * tri_p3;
+    // Update cached barycentric coordinates with current frame's projection
+    const Vec3r xs_current = closest_point;
     
-    // Recompute normal (must be updated as triangle deforms)
-    const Vec3r edge1 = tri_p2 - tri_p1;
-    const Vec3r edge2 = tri_p3 - tri_p1;
-    Vec3r normal = edge1.cross(edge2);
-    const Real normal_length = normal.norm();
-    
-    if (normal_length < 1e-12) {
-        *C = 0.0;  // Degenerate triangle
-        return;
-    }
-    normal /= normal_length;  // Normalize
+    // Normal is already computed by computePointTriangleDistance() above
+    // (no need to recompute)
     
     // Compute signed distance along normal direction
     const Vec3r separation_vec = vertex_pos - xs_current;
