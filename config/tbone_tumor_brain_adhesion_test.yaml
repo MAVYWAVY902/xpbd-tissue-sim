@@ -12,11 +12,11 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-g-accel: 0 # downward acceleration due to gravity [m/s2]
+g-accel: 9.8 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 2e-4      # 0.5ms timestep
+time-step: 1e-4      # 0.5ms timestep
 collision-rate: 100  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
@@ -25,13 +25,14 @@ end-time: 300        # test time [s]
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
 grasp-radius: 0.013   # Grasping tool radius: 13mm (default 100mm)
 tool-radius: 0.013    # Pushing tool radius: 13mm (default 200mm)
+fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL objects (GraspingTest/PushingTest default=true)
 
 ## ==================== INTER-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between two deformable objects (Tumor ↔ Brain)
-inter-deform-adhesion-enable: false
+inter-deform-adhesion-enable: true
 inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
 inter-deform-adhesion-break-ratio: 1.5       # Break at 50% strain
-inter-deform-adhesion-alpha: 1e-5            # Compliance (stiffness)
+inter-deform-adhesion-alpha: 1e-4            # Compliance (stiffness)
 inter-deform-adhesion-bond-distance: 0.005   # 5mm bond distance (scaled for 50mm objects)
 inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformable
 
@@ -48,7 +49,7 @@ materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 5e4          # Young's modulus [Pa] - moderate stiffness
+    E: 8e4          # Young's modulus [Pa] - moderate stiffness
     nu: 0.45        # Poisson's ratio [-]
     mu-s: 0.0       # coefficient of static friction [-]
     mu-k: 0.0       # coefficient of kinetic friction [-]
@@ -80,19 +81,20 @@ objects:
     ## ==================== BOUNDARY FIXING (Tumor) ====================
     ## Optional: Fix tumor boundaries to simulate nerve root/vascular attachment
     ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
-    fix-min-z: true        # Fix BOTTOM (posterior attachment)
-    fix-max-z: true      # Fix TOP
-    fix-min-y: true      # Fix BACK (toward IAC/bone)
-    fix-max-y: true      # Fix FRONT
-    fix-min-x: true      # Fix LEFT (lateral)
-    fix-max-x: true      # Fix RIGHT (medial)
+    ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+    # fix-min-z: false       # Fix BOTTOM (posterior attachment) - can enable for nerve root
+    # fix-max-z: false     # Fix TOP
+    # fix-min-y: false     # Fix BACK (toward IAC/bone)
+    # fix-max-y: false     # Fix FRONT
+    # fix-min-x: false     # Fix LEFT (lateral)
+    # fix-max-x: false     # Fix RIGHT (medial)
 
     ## collisions
     collisions: true
     inter-object-collisions: true  # Enable inter-object collision with brain
 
     ## XPBD-specific options
-    num-solver-iters: 3
+    num-solver-iters: 8
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
@@ -123,19 +125,20 @@ objects:
   #   ## ==================== BOUNDARY FIXING (Brain) ====================
   #   ## Simulate brain stem connection - prevents whole-object translation
   #   ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
-  #   fix-min-z: true       # Fix BOTTOM (brain stem/posterior fossa) 
-  #   fix-max-z: true      # Fix TOP (superior)
-  #   fix-min-y: true      # Fix BACK (posterior wall)
-  #   fix-max-y: true      # Fix FRONT (anterior wall)
-  #   fix-min-x: true      # Fix LEFT (lateral)
-  #   fix-max-x: true      # Fix RIGHT (lateral)
+  #   ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+  #   # fix-min-z: false        # Fix BOTTOM (brain stem/posterior fossa)
+  #   # fix-max-z: false     # Fix TOP (superior)
+  #   # fix-min-y: false     # Fix BACK (posterior wall)
+  #   # fix-max-y: false     # Fix FRONT (anterior wall)
+  #   # fix-min-x: false     # Fix LEFT (lateral)
+  #   # fix-max-x: false     # Fix RIGHT (lateral)
 
   #   ## collisions
   #   collisions: true
   #   inter-object-collisions: true
 
   #   ## XPBD-specific options
-  #   num-solver-iters: 3
+  #   num-solver-iters: 8
   #   solver-type: "Gauss-Seidel"
   #   constraint-type: "Stable-Neohookean-Combined"
   #   residual-policy: "Never"

@@ -14,7 +14,7 @@ InterObjectDeformableCollisionConstraint::InterObjectDeformableCollisionConstrai
     PositionReference(v, p, m),
     PositionReference(fv1, fp1, fm1),
     PositionReference(fv2, fp2, fm2),
-    PositionReference(fv3, fp3, fm3)}), 0)  // Much smaller compliance = stiffer/harder constraint (reduced from 1e-8)
+    PositionReference(fv3, fp3, fm3)}), 1e-7)  // Compliance: 1e-7 for stable collision response (0 causes numerical explosion)
 {
 
 }

@@ -297,8 +297,8 @@ void PushingSimulation::_applyPushingForces()
                 }
                 
                 // Calculate push offset - this is the key for proper pushing!
-                Real push_magnitude = penetration * (_push_stiffness / 1000.0); // Gentle but visible
-                push_magnitude = std::min(push_magnitude, _tool_radius * 0.1); // Limit to 10% of radius
+                Real push_magnitude = penetration * (_push_stiffness / 600.0); // 10x stronger to prevent penetration
+                push_magnitude = std::min(push_magnitude, _tool_radius * 0.3); // Limit to 50% of radius (5x larger)
                 
                 Vec3r push_offset = push_direction * push_magnitude;
                 
@@ -361,8 +361,8 @@ void PushingSimulation::_applyPushingForces()
                 }
                 
                 // Calculate push offset
-                Real push_magnitude = penetration * (_push_stiffness / 1000.0); // Gentle but visible
-                push_magnitude = std::min(push_magnitude, _tool_radius * 0.1); // Limit to 10% of radius
+                Real push_magnitude = penetration * (_push_stiffness / 600.0); // 10x stronger to prevent penetration
+                push_magnitude = std::min(push_magnitude, _tool_radius * 0.3); // Limit to 50% of radius (5x larger)
                 
                 Vec3r push_offset = push_direction * push_magnitude;
                 
