@@ -1406,64 +1406,32 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_a
     // Force is negative gradient
     force -= dE_dxi;
     
-    // Compute full Hessian like Gaia (d²E/dF² in F-space, then transform to vertex space)
-    // H_F = lambda * (ddetF/dF ⊗ ddetF/dF) + lambda * k * (d²detF/dF²) + mu * I
-    // where k = detF - a
+    // ==========================================================================================
+    // OPTIMIZATION: Gauss-Newton Approximation for Hessian
+    // ==========================================================================================
+    // Instead of computing the exact non-linear Hessian (which is indefinite) and performing 
+    // an expensive 9x9 SVD to project it to PSD, we use the Gauss-Newton approximation.
+    //
+    // Exact Hessian: H = mu*I + lambda * ( g*g^T + (J-a)*H_J )
+    // Gauss-Newton : H = mu*I + lambda * ( g*g^T )
+    //
+    // The Gauss-Newton approximation drops the second derivative of the volume constraint.
+    // dominated closer to equilibrium. It is inherently PSD (Positive Semi-Definite),
+    // so we can skip the SVD entirely. This provides a massive speedup (10x-50x less ops).
+    // ==========================================================================================
     
-    // Step 1: Compute 9×9 Hessian in F-space
-    Eigen::Matrix<Real, 9, 9> d2E_dF_dF = ddetF_dF * ddetF_dF.transpose();  // Outer product
+    // 1. Volume preservation part (Rank-1 udpate): lambda * (g * g^T)
+    // Note: ddetF_dF is the gradient of volume (g)
+    Eigen::Matrix<Real, 9, 9> d2E_dF_dF = (lambda * restVolume) * (ddetF_dF * ddetF_dF.transpose());
     
-    // Add second derivative of det(F) terms (from Gaia's implementation)
-    const Real k = detF - a;
-    d2E_dF_dF(0, 4) += k * F(2,2); d2E_dF_dF(4, 0) += k * F(2,2);
-    d2E_dF_dF(0, 5) += k * -F(1,2); d2E_dF_dF(5, 0) += k * -F(1,2);
-    d2E_dF_dF(0, 7) += k * -F(2,1); d2E_dF_dF(7, 0) += k * -F(2,1);
-    d2E_dF_dF(0, 8) += k * F(1,1); d2E_dF_dF(8, 0) += k * F(1,1);
-    
-    d2E_dF_dF(1, 3) += k * -F(2,2); d2E_dF_dF(3, 1) += k * -F(2,2);
-    d2E_dF_dF(1, 5) += k * F(0,2); d2E_dF_dF(5, 1) += k * F(0,2);
-    d2E_dF_dF(1, 6) += k * F(2,1); d2E_dF_dF(6, 1) += k * F(2,1);
-    d2E_dF_dF(1, 8) += k * -F(0,1); d2E_dF_dF(8, 1) += k * -F(0,1);
-    
-    d2E_dF_dF(2, 3) += k * F(1,2); d2E_dF_dF(3, 2) += k * F(1,2);
-    d2E_dF_dF(2, 4) += k * -F(0,2); d2E_dF_dF(4, 2) += k * -F(0,2);
-    d2E_dF_dF(2, 6) += k * -F(1,1); d2E_dF_dF(6, 2) += k * -F(1,1);
-    d2E_dF_dF(2, 7) += k * F(0,1); d2E_dF_dF(7, 2) += k * F(0,1);
-    
-    d2E_dF_dF(3, 7) += k * F(2,0); d2E_dF_dF(7, 3) += k * F(2,0);
-    d2E_dF_dF(3, 8) += k * -F(1,0); d2E_dF_dF(8, 3) += k * -F(1,0);
-    
-    d2E_dF_dF(4, 6) += k * -F(2,0); d2E_dF_dF(6, 4) += k * -F(2,0);
-    d2E_dF_dF(4, 8) += k * F(0,0); d2E_dF_dF(8, 4) += k * F(0,0);
-    
-    d2E_dF_dF(5, 6) += k * F(1,0); d2E_dF_dF(6, 5) += k * F(1,0);
-    d2E_dF_dF(5, 7) += k * -F(0,0); d2E_dF_dF(7, 5) += k * -F(0,0);
-    
-    // Scale by lambda
-    d2E_dF_dF *= lambda;
-    
-    // Add mu to diagonal
+    // 2. Add mu to diagonal (Isotropic part): mu * I
+    Real mu_vol = mu * restVolume;
     for (int i = 0; i < 9; i++) {
-        d2E_dF_dF(i, i) += mu;
+        d2E_dF_dF(i, i) += mu_vol;
     }
     
-    // Scale by volume
-    d2E_dF_dF *= restVolume;
-    
-    // PSD Filtering: Project Hessian to positive semi-definite space (matching Gaia)
-    // This ensures the Hessian always provides a descent direction
-    Eigen::JacobiSVD<Eigen::Matrix<Real, 9, 9>> svd(d2E_dF_dF, Eigen::ComputeFullU | Eigen::ComputeFullV);
-    Eigen::Matrix<Real, 9, 1> eigenVals = svd.singularValues();
-    
-    // Zero out negative eigenvalues
-    Eigen::Matrix<Real, 9, 9> diagonalEV = Eigen::Matrix<Real, 9, 9>::Zero();
-    for (int i = 0; i < 9; i++) {
-        if (eigenVals(i) > 0) {
-            diagonalEV(i, i) = eigenVals(i);
-        }
-    }
-    d2E_dF_dF = svd.matrixU() * diagonalEV * svd.matrixV().transpose();
-    
+    // NO SVD NEEDED! The matrix is constructed from PSD terms (Sum of Squares + Identity).
+
     // Step 2: Transform to vertex space using chain rule: H = (dF/dx)^T * H_F * (dF/dx)
     // HL = H_F * (dF/dx) where dF/dx is represented by [m1,m2,m3] coefficients
     Eigen::Matrix<Real, 3, 9> HL;

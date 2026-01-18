@@ -16,7 +16,7 @@ g-accel: 0 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 5e-4      # 0.5ms timestep
+time-step: 1e-3      # 0.5ms timestep
 collision-rate: 100  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
@@ -27,8 +27,8 @@ end-time: 300        # test time [s]
 solver-type: vbd              # Options: "xpbd" or "vbd"
 
 ## VBD-specific parameters (Balanced for stability and performance)
-vbd-iterations: 5             # Fewer iterations for speed
-vbd-step-size: 0.5            # Conservative step size for stability  
+vbd-iterations: 2             # Fewer iterations for speed
+vbd-step-size: 1.0            # Conservative step size for stability  
 vbd-use-full-hessian: true    # Use complete Hessian matrix
 # vbd-damping: 0.01             # Very light damping (1%)
 
@@ -111,7 +111,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 1000     # Much lower for proper elasticity (was 600000)
+    damping-multiplier: 500     # Much lower for proper elasticity (was 600000)
 
 
   # ## ==================== DEFORMABLE BRAIN ====================
