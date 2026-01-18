@@ -38,6 +38,12 @@ enum class Visualization
     VTK
 };
 
+enum class SolverType
+{
+    XPBD=0,  // Traditional XPBD constraint projection
+    VBD      // Vertex Block Descent with Hessian (Gauss-Newton or Full)
+};
+
 class SimulationConfig : public Config
 {
 
@@ -60,6 +66,16 @@ class SimulationConfig : public Config
                                                                   {"Easy3D", Visualization::EASY3D},
                                                                   {"VTK", Visualization::VTK}};
         return visualization;
+    }
+
+    /** Static predefined options for the solver type. */
+    static std::map<std::string, SolverType> SOLVER_TYPE_OPTIONS()
+    {
+        static std::map<std::string, SolverType> solver_type{{"XPBD", SolverType::XPBD},
+                                                              {"xpbd", SolverType::XPBD},
+                                                              {"VBD", SolverType::VBD},
+                                                              {"vbd", SolverType::VBD}};
+        return solver_type;
     }
 
     public:
@@ -93,6 +109,13 @@ class SimulationConfig : public Config
         _extractParameter("fps", node, _fps);
         _extractParameter("collision-rate", node, _collision_rate);
         _extractParameter("collision-algorithm", node, _collision_algorithm);
+        
+        // Extract solver parameters
+        _extractParameterWithOptions("solver-type", node, _solver_type, SOLVER_TYPE_OPTIONS());
+        _extractParameter("xpbd-iterations", node, _xpbd_iterations);
+        _extractParameter("vbd-iterations", node, _vbd_iterations);
+        _extractParameter("vbd-use-full-hessian", node, _vbd_use_full_hessian);
+        _extractParameter("vbd-step-size", node, _vbd_step_size);
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -179,6 +202,13 @@ class SimulationConfig : public Config
     Real fps() const { return _fps.value; }
     Real collisionRate() const { return _collision_rate.value; }
     std::string collisionAlgorithm() const { return _collision_algorithm.value; }
+    
+    // Solver getters
+    SolverType solverType() const { return _solver_type.value; }
+    int xpbdIterations() const { return _xpbd_iterations.value; }
+    int vbdIterations() const { return _vbd_iterations.value; }
+    bool vbdUseFullHessian() const { return _vbd_use_full_hessian.value; }
+    Real vbdStepSize() const { return _vbd_step_size.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const ConfigVectorType& objectConfigs() const { return _object_configs; }
@@ -206,6 +236,13 @@ class SimulationConfig : public Config
     ConfigParameter<Real> _fps = ConfigParameter<Real>(30.0);
     ConfigParameter<Real> _collision_rate = ConfigParameter<Real>(100);
     ConfigParameter<std::string> _collision_algorithm = ConfigParameter<std::string>("auto");
+    
+    // Solver parameters
+    ConfigParameter<SolverType> _solver_type = ConfigParameter<SolverType>(SolverType::XPBD);
+    ConfigParameter<int> _xpbd_iterations = ConfigParameter<int>(15);  // XPBD default
+    ConfigParameter<int> _vbd_iterations = ConfigParameter<int>(5);    // VBD needs fewer
+    ConfigParameter<bool> _vbd_use_full_hessian = ConfigParameter<bool>(false);  // Phase 1: Gauss-Newton
+    ConfigParameter<Real> _vbd_step_size = ConfigParameter<Real>(1.0);  // VBD step size (can tune)
 
     // State recording parameters
     ConfigParameter<bool> _state_recording_enable = ConfigParameter<bool>(false);

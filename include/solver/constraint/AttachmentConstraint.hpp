@@ -93,6 +93,11 @@ class AttachmentConstraint : public Constraint
     GPUConstraintType createGPUConstraint() const;
     #endif
 
+    // Accessors for VBD solver to compute attachment forces
+    int vertexIndex() const { return _positions[0].index; }
+    const Vec3r* attachmentPosition() const { return _attached_pos_ptr; }
+    const Vec3r& attachmentOffset() const { return _attachment_offset; }
+
     private:
     const Vec3r* _attached_pos_ptr;
     const Vec3r _attachment_offset;

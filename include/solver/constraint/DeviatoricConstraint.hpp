@@ -75,6 +75,19 @@ class DeviatoricConstraint : public ElementConstraint
         _gradient(grad, C, F);
     }
 
+    /** Computes the full Hessian of this constraint with pre-allocated memory.
+     * i.e. returns ∇²C(x) as a collection of 4×4 3×3 blocks.
+     * 
+     * For VBD solver: H_full = k·(∇C⊗∇C + C·∇²C)
+     * This method computes ∇²C, the second derivative term.
+     * 
+     * @param C - the current value of the constraint
+     * @param grad - the gradient vector (12×1) already computed
+     * @param hess (OUTPUT) - array of 16 Mat3r blocks representing the 12×12 Hessian
+     *                        hess[i*4+j] is the 3×3 block for vertices i,j (i,j ∈ {0,1,2,3})
+     */
+    void hessian(Real C, const Real* grad, Mat3r* hess) const;
+
     Vec3r elasticForce(int index) const
     {
         Real C;

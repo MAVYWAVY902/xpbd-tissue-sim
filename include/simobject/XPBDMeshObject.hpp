@@ -289,6 +289,39 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      */
     void _projectConstraints();
 
+    /** Solves constraints using VBD (Vertex Block Descent) method.
+     * Uses energy minimization with Gauss-Newton approximation (Phase 1) or full Hessian (Phase 2).
+     * Each vertex block is solved by accumulating gradient and Hessian contributions from all constraints.
+     */
+    void _solveVBD();
+    
+    /** Line search for VBD optimization (Gaia-style) */
+    Real _vbdLineSearch(int vertexId, const Vec3r& descentDirection, Real initialEnergy, Real stepSize);
+    
+    /** Evaluate vertex energy for line search */
+    Real _evaluateVertexEnergy(int vertexId) const;
+    
+    /** Accumulate Neo-Hookean elastic forces and Hessian for a vertex from one tetrahedron.
+     * This follows Gaia's implementation: compute deformation gradient F, then compute
+     * energy gradient and Hessian in F-space, then transform to vertex coordinates.
+     * @param vertexId - the vertex index for which to compute forces
+     * @param tetIdx - the tetrahedron element index
+     * @param localVertexIdx - which corner of the tet is this vertex (0-3)
+     * @param DmInv - inverse of rest shape matrix for this tet
+     * @param restVolume - rest volume of this tet
+     * @param mu - shear modulus (Lamé first parameter)
+     * @param lambda - bulk modulus (Lamé second parameter)
+     * @param force - (OUTPUT) accumulated force vector
+     * @param hessian - (OUTPUT) accumulated Hessian matrix
+     */
+    void _accumulateNeoHookeanForce(int vertexId, int tetIdx, int localVertexIdx,
+                                     const Mat3r& DmInv, Real restVolume,
+                                     Real mu, Real lambda,
+                                     Vec3r& force, Mat3r& hessian) const;
+    
+    /** Store tet volumes for energy evaluation */
+    std::vector<Real> _tetVolumes;
+
     /** Update the velocities based on the updated positions.
      */
     // void _updateVelocities();
@@ -331,6 +364,32 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     /** A heterogeneous container of all the constraints.
      */
     VariadicVectorContainer<ConstraintTypes...> _constraints;
+
+    /** Graph coloring for VBD Gauss-Seidel solver.
+     * Each category contains vertices that can be updated in parallel (no shared tetrahedra).
+     * Only computed once during setup() and reused for all VBD iterations.
+     */
+    std::vector<std::vector<int>> _vertex_color_categories;
+    
+    /** Balanced parallel groups (Gaia-style) for better load balancing.
+     * Instead of strict color ordering, distribute vertices across balanced groups.
+     */
+    std::vector<std::vector<int>> _vertex_parallel_groups;
+    
+    /** Flag indicating if graph coloring has been computed */
+    bool _graph_coloring_computed = false;
+    
+    /** For VBD: store predicted/inertial positions (after applying velocity and gravity).
+     * VBD will minimize energy to find equilibrium positions near these inertial positions.
+     * This includes the effects of velocity and external forces (gravity).
+     */
+    MatXr _inertial_vertices;
+
+    /** For VBD: store initial rest configuration (undeformed shape).
+     * This is used to compute elastic restoring forces in VBD.
+     * Set once at initialization, never changes during simulation.
+     */
+    MatXr _rest_vertices;
 
     /** The number of local iterations for collision area.
      * Constraint projectors in the vicinity of active collision constraints (see _gatherProjectorsForLocalCollisionIterations) are assembled

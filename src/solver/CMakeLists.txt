@@ -34,6 +34,9 @@ set(SOLVER_HEADERS
     ${SOLVER_INCLUDE_DIR}/constraint/InterDeformDeformAdhesionConstraint.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/RigidDeformAdhesionConstraint.hpp
 
+    # Graph Coloring for VBD Gauss-Seidel
+    ${SOLVER_INCLUDE_DIR}/GraphColoring.hpp
+    ${SOLVER_INCLUDE_DIR}/TetMeshVertexGraph.hpp
 )
 
 set(SOLVER_SOURCES
@@ -52,7 +55,9 @@ set(SOLVER_SOURCES
     ${SOLVER_SRC_DIR}/constraint/InterDeformDeformAdhesionConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/RigidDeformAdhesionConstraint.cpp
 
-
+    # Graph Coloring for VBD Gauss-Seidel
+    ${SOLVER_SRC_DIR}/GraphColoring.cpp
+    ${SOLVER_SRC_DIR}/TetMeshVertexGraph.cpp
 )
 
 target_sources(Solver
@@ -61,14 +66,18 @@ target_sources(Solver
         ${SOLVER_SOURCES}
 )
 
-# Link OpenMP ONLY for Jacobi solver (conditionally enabled)
+# Link OpenMP for both Jacobi and VBD solvers (conditionally enabled)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(Solver PUBLIC OpenMP::OpenMP_CXX)
     # Define ENABLE_JACOBI_OPENMP to activate OpenMP code in XPBDJacobiSolver
     target_compile_definitions(Solver PUBLIC ENABLE_JACOBI_OPENMP)
+    # Define ENABLE_VBD_OPENMP to activate OpenMP code in VBD solver
+    target_compile_definitions(Solver PUBLIC ENABLE_VBD_OPENMP)
     message(STATUS "Jacobi solver: OpenMP parallelization ENABLED")
+    message(STATUS "VBD solver: OpenMP parallelization ENABLED")
 else()
     message(STATUS "Jacobi solver: OpenMP not found, running serially")
+    message(STATUS "VBD solver: OpenMP not found, running serially")
 endif()
 
 install(TARGETS Solver EXPORT Solver-targets

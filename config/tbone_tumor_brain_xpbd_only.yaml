@@ -1,0 +1,147 @@
+## TBone-Tumor-Brain Adhesion Test Configuration - XPBD ONLY
+## Same as tbone_tumor_brain_xpbd_vbd.yaml but with XPBD solver for performance comparison
+
+name: "TBone-Tumor-Brain Adhesion Test - XPBD"
+description: "Performance baseline test with XPBD solver"
+
+visualization: "Easy3D"
+
+g-accel: 0 # downward acceleration due to gravity [m/s2]
+
+sim-mode: "AFAP"     # Run as fast as possible for testing
+
+time-step: 1e-4      # 0.5ms timestep
+collision-rate: 100  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
+collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
+fps: 60              # frames per second of the visualization
+end-time: 300        # test time [s]
+
+## ==================== SOLVER SELECTION ====================
+## Using XPBD for baseline performance comparison
+solver-type: xpbd             # XPBD baseline
+
+## XPBD-specific parameters
+xpbd-iterations: 5           # XPBD iterations per timestep
+
+## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
+grasp-radius: 0.007   # Grasping tool radius: 13mm (default 100mm)
+tool-radius: 0.007    # Pushing tool radius: 13mm (default 200mm)
+fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL objects (GraspingTest/PushingTest default=true)
+
+## ==================== INTER-DEFORM ADHESION SETTINGS ====================
+## Adhesion between two deformable objects (Tumor ↔ Brain)
+inter-deform-adhesion-enable: true
+inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
+inter-deform-adhesion-break-ratio: 1.2       # Break at 20% strain
+inter-deform-adhesion-alpha: 1e-4            # Compliance: k=10,000 (SOFTER! was 1e-6 → k=1,000,000)
+inter-deform-adhesion-bond-distance: 0.003   # 3mm bond distance (reduced to minimize constraint count)
+inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformable
+
+## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
+## Adhesion between rigid object and deformable object (TBone ↔ Tumor)
+rigid-deform-adhesion-enable: true
+rigid-deform-adhesion-rest-gap: 0.001        # 1mm rest gap (scaled for 50mm objects)
+rigid-deform-adhesion-break-ratio: 1.5       # Break at 50% strain
+rigid-deform-adhesion-alpha: 1e-5            # Compliance: k=100,000
+rigid-deform-adhesion-bond-distance: 0.003   # 3mm bond distance
+rigid-deform-adhesion-fixed-triangle-object: true  # TBone is rigid
+
+## ==================== OBJECT DEFINITIONS ====================
+
+# Deformable TBONE (Fixed for now - will be made rigid in future)
+objects:
+  - name: "tumor"
+    type: "deformable"
+    mesh-file: "tumor_fixed/tumor.msh"
+    volume: 9e-6      # 9 cubic cm (9e-6 m^3) for 50mm tumor (from original config)
+    density: 1000.0   # 1000 kg/m^3 (water density)
+    youngs-modulus: 25000.0    # 25 kPa Young's modulus for brain tumor
+    poissons-ratio: 0.45       # 0.45 Poisson's ratio for nearly incompressible tissue
+    damping-ratio: 0.5         # Damping ratio (was 1.0 - try softer 0.5)
+    
+    # Soft tissue parameters
+    mass-density: 1000.0  # 1000 kg/m^3 (water density)
+    
+    # Visual settings
+    color:
+      r: 1.0  # Red
+      g: 0.8
+      b: 0.8
+    mesh-line-width: 0.75
+    mesh-point-size: 0.75
+    
+    position:
+      x: 0.015   # 15mm to right (tumor next to brain)
+      y: 0.0
+      z: 0.0
+    
+    rotation: 
+      x: 0
+      y: 0
+      z: 0
+      
+    render-mode: "face+edge"
+
+  - name: "brain"
+    type: "deformable"  
+    mesh-file: "brain_fixed/brain.msh"
+    volume: 1.4e-5    # 14 cubic cm (1.4e-5 m^3) for 50mm brain (from original config)
+    density: 1000.0   # 1000 kg/m^3 (water density)
+    youngs-modulus: 3000.0     # 3 kPa Young's modulus for soft brain tissue
+    poissons-ratio: 0.45       # 0.45 Poisson's ratio for nearly incompressible tissue
+    damping-ratio: 0.5         # Damping ratio (was 1.0 - try softer 0.5)
+    
+    # Soft tissue parameters
+    mass-density: 1000.0  # 1000 kg/m^3 (water density)
+    
+    # Visual settings
+    color:
+      r: 0.8  # Light gray
+      g: 0.8
+      b: 1.0
+    mesh-line-width: 0.75
+    mesh-point-size: 0.75
+    
+    position:
+      x: 0.0     # Brain at center
+      y: 0.0
+      z: 0.0
+    
+    rotation: 
+      x: 0
+      y: 0
+      z: 0
+      
+    render-mode: "face+edge"
+
+  - name: "tbone"
+    type: "deformable"  # Currently deformable (will become rigid in future iterations)
+    mesh-file: "tbone_fixed/tbone.msh"
+    volume: 1.0e-5    # 10 cubic cm (1.0e-5 m^3) placeholder volume
+    density: 2000.0   # 2000 kg/m^3 (higher density for bone)
+    youngs-modulus: 1000000.0  # 1 GPa - very stiff (almost rigid) 
+    poissons-ratio: 0.3        # 0.3 Poisson's ratio for bone
+    damping-ratio: 0.8         # Higher damping for bone
+    
+    # Bone parameters  
+    mass-density: 2000.0  # 2000 kg/m^3 (bone density)
+    
+    # Visual settings
+    color:
+      r: 1.0  # White/gray
+      g: 1.0
+      b: 0.8
+    mesh-line-width: 1.0
+    mesh-point-size: 1.0
+    
+    position:
+      x: -0.015  # 15mm to left (TBone next to brain, opposite tumor)
+      y: 0.0
+      z: 0.0
+    
+    rotation: 
+      x: 0
+      y: 0
+      z: 0
+      
+    render-mode: "face+edge"

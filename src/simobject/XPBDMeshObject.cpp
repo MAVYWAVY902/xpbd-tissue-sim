@@ -2,6 +2,11 @@
 
 #include "common/colors.hpp"
 
+// OpenMP support for VBD parallel execution
+#ifdef ENABLE_VBD_OPENMP
+#include <omp.h>
+#endif
+
 #include "config/simobject/XPBDMeshObjectConfig.hpp"
 #include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
 
@@ -21,6 +26,10 @@
 #include "solver/constraint/NerveTumorAdhesionConstraint.hpp"
 #include "solver/constraint/InterDeformDeformAdhesionConstraint.hpp"
 #include "solver/constraint/RigidDeformAdhesionConstraint.hpp"
+
+// Graph Coloring for VBD Gauss-Seidel
+#include "solver/TetMeshVertexGraph.hpp"
+#include "utils/LinearSolver.hpp"
 
 #include <chrono> 
 #include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
@@ -180,7 +189,28 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
     _vertex_velocities = Geometry::Mesh::VerticesMat::Zero(3, _mesh->numVertices());
     _vertex_velocities.colwise() = _initial_velocity;
 
+    // Save initial rest vertices for VBD elastic force computation
+    // This is the TRUE rest configuration (before any deformation)
+    _rest_vertices = _mesh->vertices();
+
     _calculatePerVertexQuantities();
+    
+    // Initialize tet volumes for energy evaluation in VBD line search
+    _tetVolumes.resize(tetMesh()->numElements());
+    for (int tet_idx = 0; tet_idx < tetMesh()->numElements(); tet_idx++) {
+        const auto& tet = tetMesh()->element(tet_idx);
+        Vec3r x0 = _mesh->vertex(tet[0]);
+        Vec3r x1 = _mesh->vertex(tet[1]);
+        Vec3r x2 = _mesh->vertex(tet[2]);
+        Vec3r x3 = _mesh->vertex(tet[3]);
+        
+        Mat3r edges;
+        edges.col(0) = x1 - x0;
+        edges.col(1) = x2 - x0;
+        edges.col(2) = x3 - x0;
+        
+        _tetVolumes[tet_idx] = std::abs(edges.determinant()) / 6.0;
+    }
     
     // Apply any fixed vertices that were specified in the YAML config
     // MUST be after _calculatePerVertexQuantities() which allocates _is_fixed_vertex
@@ -1153,8 +1183,19 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
     _movePositionsInertially();
     auto end_inertia = std::chrono::high_resolution_clock::now();
     
+    // For VBD: save the inertial/predicted positions (after velocity and gravity applied)
+    // VBD will minimize energy to find equilibrium near these inertial positions
+    if (_sim->config()->solverType() == Config::SolverType::VBD) {
+        _inertial_vertices = _mesh->vertices();
+    }
+    
     auto start_projection = std::chrono::high_resolution_clock::now();
-    _projectConstraints();
+    // Choose solver based on config
+    if (_sim->config()->solverType() == Config::SolverType::VBD) {
+        _solveVBD();
+    } else {
+        _projectConstraints();
+    }
     auto end_projection = std::chrono::high_resolution_clock::now();
     
     auto end_total = std::chrono::high_resolution_clock::now();
@@ -1249,6 +1290,601 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_p
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_accumulateNeoHookeanForce(
+    int vertexId, int tetIdx, int localVertexIdx,
+    const Mat3r& DmInv, Real restVolume,
+    Real mu, Real lambda,
+    Vec3r& force, Mat3r& hessian) const
+{
+    // Following Gaia's VBD_NeoHookean.cpp implementation
+    // Neo-Hookean energy: E = mu * ||F||^2 + lambda * (det(F) - alpha)^2
+    // where alpha = 1 + mu/lambda
+    
+    const Real a = 1.0 + mu / lambda;
+    const auto& tet = tetMesh()->element(tetIdx);
+    
+    // Compute current deformation gradient F = Ds * DmInv
+    // Ds is the current edge matrix
+    const Vec3r& x0 = _mesh->vertex(tet[0]);
+    const Vec3r& x1 = _mesh->vertex(tet[1]);
+    const Vec3r& x2 = _mesh->vertex(tet[2]);
+    const Vec3r& x3 = _mesh->vertex(tet[3]);
+    
+    Mat3r Ds;
+    Ds.col(0) = x0 - x3;
+    Ds.col(1) = x1 - x3;
+    Ds.col(2) = x2 - x3;
+    
+    Mat3r F = Ds * DmInv;
+    Real detF = F.determinant();
+    
+    // Skip only invalid numeric values (NaNs/Infs)
+    // CRITICAL FIX: Do NOT skip small/negative determinants! 
+    // Doing so disables the restoring force that prevents inversion/collapse.
+    if (!std::isfinite(detF)) {
+        return;
+    }
+    
+    // Compute gradient of energy w.r.t. F
+    // Neo-Hookean: E = mu * ||F||^2 + lambda * (det(F) - a)^2
+    // dE/dF = 2*mu*F + 2*lambda*(det(F) - a) * d(det(F))/dF
+    Eigen::Matrix<Real, 9, 1> dPhi_D_dF;
+    dPhi_D_dF << F(0,0), F(1,0), F(2,0), F(0,1), F(1,1), F(2,1), F(0,2), F(1,2), F(2,2);
+    
+    // Compute d(detF)/dF (cofactor matrix)
+    Eigen::Matrix<Real, 9, 1> ddetF_dF;
+    ddetF_dF << F(1,1)*F(2,2) - F(1,2)*F(2,1),  // ddetF/dF11
+                F(0,2)*F(2,1) - F(0,1)*F(2,2),  // ddetF/dF21
+                F(0,1)*F(1,2) - F(0,2)*F(1,1),  // ddetF/dF31
+                F(1,2)*F(2,0) - F(1,0)*F(2,2),  // ddetF/dF12
+                F(0,0)*F(2,2) - F(0,2)*F(2,0),  // ddetF/dF22
+                F(0,2)*F(1,0) - F(0,0)*F(1,2),  // ddetF/dF32
+                F(1,0)*F(2,1) - F(1,1)*F(2,0),  // ddetF/dF13
+                F(0,1)*F(2,0) - F(0,0)*F(2,1),  // ddetF/dF23
+                F(0,0)*F(1,1) - F(0,1)*F(1,0);  // ddetF/dF33
+    
+    // Energy gradient in F-space (matching Gaia: no factor of 2)
+    // Gaia uses: dE/dF = mu*F + lambda*(detF - alpha)*d(detF)/dF
+    Eigen::Matrix<Real, 9, 1> dE_dF = restVolume * (mu*dPhi_D_dF + lambda*(detF - a)*ddetF_dF);
+    
+    // Check for numerical issues
+    if (!dE_dF.allFinite()) {
+        // Skip this element if forces are not finite
+        return;
+    }
+    
+    // Transform from F-space to vertex coordinates using chain rule
+    // dE/dxi = (dF/dxi)^T * dE/dF
+    // where dF/dxi depends on which vertex corner we are
+    
+    Real m1, m2, m3;
+    // CORRECTED LOGIC for Pivot x3 (Ds = [x0-x3, x1-x3, x2-x3])
+    // The previous implementation was copied from Gaia which likely used Pivot x0, causing incorrect forces.
+    switch (localVertexIdx) {
+        case 0: // x0 uses Row 0 of DmInv
+            m1 = DmInv(0,0);
+            m2 = DmInv(0,1);
+            m3 = DmInv(0,2);
+            break;
+        case 1: // x1 uses Row 1 of DmInv
+            m1 = DmInv(1,0);
+            m2 = DmInv(1,1);
+            m3 = DmInv(1,2);
+            break;
+        case 2: // x2 uses Row 2 of DmInv
+            m1 = DmInv(2,0);
+            m2 = DmInv(2,1);
+            m3 = DmInv(2,2);
+            break;
+        case 3: // x3 uses Negative Sum of Rows
+            m1 = -DmInv(0,0) - DmInv(1,0) - DmInv(2,0);
+            m2 = -DmInv(0,1) - DmInv(1,1) - DmInv(2,1);
+            m3 = -DmInv(0,2) - DmInv(1,2) - DmInv(2,2);
+            break;
+        default:
+            m1 = m2 = m3 = 0;
+            break;
+    }
+    
+    // Compute vertex force: dE/dxi = sum_j(dE/dF_ij * dF_ij/dxi)
+    Vec3r dE_dxi;
+    dE_dxi(0) = dE_dF(0)*m1 + dE_dF(3)*m2 + dE_dF(6)*m3;
+    dE_dxi(1) = dE_dF(1)*m1 + dE_dF(4)*m2 + dE_dF(7)*m3;
+    dE_dxi(2) = dE_dF(2)*m1 + dE_dF(5)*m2 + dE_dF(8)*m3;
+    
+    // Debug: Print force contribution for first few vertices
+    static int debug_tet_count = 0;
+    if (debug_tet_count < 10 && vertexId < 3) {
+        std::cout << "[NEO-HOOKEAN DEBUG] Vertex " << vertexId << " Tet " << tetIdx
+                  << " | detF=" << detF << " | restVol=" << restVolume
+                  << " | mu=" << mu << " | lambda=" << lambda
+                  << " | dE_dF.norm()=" << dE_dF.norm()
+                  << " | dE_dxi.norm()=" << dE_dxi.norm() << std::endl;
+        debug_tet_count++;
+    }
+    
+    // Force is negative gradient
+    force -= dE_dxi;
+    
+    // Compute full Hessian like Gaia (d²E/dF² in F-space, then transform to vertex space)
+    // H_F = lambda * (ddetF/dF ⊗ ddetF/dF) + lambda * k * (d²detF/dF²) + mu * I
+    // where k = detF - a
+    
+    // Step 1: Compute 9×9 Hessian in F-space
+    Eigen::Matrix<Real, 9, 9> d2E_dF_dF = ddetF_dF * ddetF_dF.transpose();  // Outer product
+    
+    // Add second derivative of det(F) terms (from Gaia's implementation)
+    const Real k = detF - a;
+    d2E_dF_dF(0, 4) += k * F(2,2); d2E_dF_dF(4, 0) += k * F(2,2);
+    d2E_dF_dF(0, 5) += k * -F(1,2); d2E_dF_dF(5, 0) += k * -F(1,2);
+    d2E_dF_dF(0, 7) += k * -F(2,1); d2E_dF_dF(7, 0) += k * -F(2,1);
+    d2E_dF_dF(0, 8) += k * F(1,1); d2E_dF_dF(8, 0) += k * F(1,1);
+    
+    d2E_dF_dF(1, 3) += k * -F(2,2); d2E_dF_dF(3, 1) += k * -F(2,2);
+    d2E_dF_dF(1, 5) += k * F(0,2); d2E_dF_dF(5, 1) += k * F(0,2);
+    d2E_dF_dF(1, 6) += k * F(2,1); d2E_dF_dF(6, 1) += k * F(2,1);
+    d2E_dF_dF(1, 8) += k * -F(0,1); d2E_dF_dF(8, 1) += k * -F(0,1);
+    
+    d2E_dF_dF(2, 3) += k * F(1,2); d2E_dF_dF(3, 2) += k * F(1,2);
+    d2E_dF_dF(2, 4) += k * -F(0,2); d2E_dF_dF(4, 2) += k * -F(0,2);
+    d2E_dF_dF(2, 6) += k * -F(1,1); d2E_dF_dF(6, 2) += k * -F(1,1);
+    d2E_dF_dF(2, 7) += k * F(0,1); d2E_dF_dF(7, 2) += k * F(0,1);
+    
+    d2E_dF_dF(3, 7) += k * F(2,0); d2E_dF_dF(7, 3) += k * F(2,0);
+    d2E_dF_dF(3, 8) += k * -F(1,0); d2E_dF_dF(8, 3) += k * -F(1,0);
+    
+    d2E_dF_dF(4, 6) += k * -F(2,0); d2E_dF_dF(6, 4) += k * -F(2,0);
+    d2E_dF_dF(4, 8) += k * F(0,0); d2E_dF_dF(8, 4) += k * F(0,0);
+    
+    d2E_dF_dF(5, 6) += k * F(1,0); d2E_dF_dF(6, 5) += k * F(1,0);
+    d2E_dF_dF(5, 7) += k * -F(0,0); d2E_dF_dF(7, 5) += k * -F(0,0);
+    
+    // Scale by lambda
+    d2E_dF_dF *= lambda;
+    
+    // Add mu to diagonal
+    for (int i = 0; i < 9; i++) {
+        d2E_dF_dF(i, i) += mu;
+    }
+    
+    // Scale by volume
+    d2E_dF_dF *= restVolume;
+    
+    // PSD Filtering: Project Hessian to positive semi-definite space (matching Gaia)
+    // This ensures the Hessian always provides a descent direction
+    Eigen::JacobiSVD<Eigen::Matrix<Real, 9, 9>> svd(d2E_dF_dF, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    Eigen::Matrix<Real, 9, 1> eigenVals = svd.singularValues();
+    
+    // Zero out negative eigenvalues
+    Eigen::Matrix<Real, 9, 9> diagonalEV = Eigen::Matrix<Real, 9, 9>::Zero();
+    for (int i = 0; i < 9; i++) {
+        if (eigenVals(i) > 0) {
+            diagonalEV(i, i) = eigenVals(i);
+        }
+    }
+    d2E_dF_dF = svd.matrixU() * diagonalEV * svd.matrixV().transpose();
+    
+    // Step 2: Transform to vertex space using chain rule: H = (dF/dx)^T * H_F * (dF/dx)
+    // HL = H_F * (dF/dx) where dF/dx is represented by [m1,m2,m3] coefficients
+    Eigen::Matrix<Real, 3, 9> HL;
+    HL.row(0) = d2E_dF_dF.row(0) * m1 + d2E_dF_dF.row(3) * m2 + d2E_dF_dF.row(6) * m3;
+    HL.row(1) = d2E_dF_dF.row(1) * m1 + d2E_dF_dF.row(4) * m2 + d2E_dF_dF.row(7) * m3;
+    HL.row(2) = d2E_dF_dF.row(2) * m1 + d2E_dF_dF.row(5) * m2 + d2E_dF_dF.row(8) * m3;
+    
+    // H = (dF/dx)^T * HL
+    Mat3r d2E_dxi_dxi;
+    d2E_dxi_dxi.col(0) = HL.col(0) * m1 + HL.col(3) * m2 + HL.col(6) * m3;
+    d2E_dxi_dxi.col(1) = HL.col(1) * m1 + HL.col(4) * m2 + HL.col(7) * m3;
+    d2E_dxi_dxi.col(2) = HL.col(2) * m1 + HL.col(5) * m2 + HL.col(8) * m3;
+    
+    hessian += d2E_dxi_dxi;
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_solveVBD()
+{
+    // ============================================================================
+    // VBD (Vertex Block Descent) Solver - GAUSS-SEIDEL版本 with Graph Coloring
+    // 
+    // 基于Gaia的实现：
+    // 1. 使用Graph Coloring将顶点分组（同组顶点无共享四面体）
+    // 2. 按颜色顺序迭代（Gauss-Seidel）：后面的顶点能看到前面的更新
+    // 3. 同一颜色内并行更新
+    // 4. 每个顶点立即应用更新（不是批量）
+    // ============================================================================
+    
+    const int num_verts = _mesh->numVertices();
+    const int num_iters = _sim->config()->vbdIterations();
+    const Real step_size = _sim->config()->vbdStepSize();
+    const Real dt = _sim->dt();
+    const bool use_full_hessian = _sim->config()->vbdUseFullHessian();
+    
+    const std::vector<Solver::AttachmentConstraint>& attachment_constraints = 
+        _constraints.template get<Solver::AttachmentConstraint>();
+    
+    // Use an accelerated lookup for attachment constraints to avoid O(N*M) complexity
+    // Map: vertex_index -> list of pointers to constraints affecting it
+    std::vector<std::vector<const Solver::AttachmentConstraint*>> vertex_to_attachments(num_verts);
+    bool has_attachments = !attachment_constraints.empty();
+    
+    if (has_attachments) {
+        for (const auto& constraint : attachment_constraints) {
+            if (constraint.vertexIndex() < num_verts) {
+                vertex_to_attachments[constraint.vertexIndex()].push_back(&constraint);
+            }
+        }
+    }
+
+    static int debug_frame = 0;
+    debug_frame++;
+    if (debug_frame % 60 == 0) {
+        std::cout << "\n[VBD DEBUG] Frame " << debug_frame 
+                  << " | Attachment constraints: " << attachment_constraints.size()
+                  << " | Step size: " << step_size 
+                  << " | Iterations: " << num_iters << "\n";
+    }
+    
+    // 预计算Graph Coloring（只在第一次调用时）
+    if (!_graph_coloring_computed) {
+        std::cout << "\n[VBD Setup] Computing graph coloring for Gauss-Seidel...\n";
+        auto coloring = Solver::TetMeshVertexGraph::colorMesh(*tetMesh());
+        
+        // Apply color balancing to improve distribution
+        std::cout << "[VBD Setup] Applying color balancing..." << std::endl;
+        coloring->balanceColoredCategories(2.0f);  // Allow 2:1 ratio
+        
+        _vertex_color_categories = coloring->getCategories();
+        
+        // Create balanced parallel groups (Gaia-style) - inline implementation
+        std::cout << "[VBD] Creating balanced parallel groups..." << std::endl;
+        _vertex_parallel_groups.clear();
+        _vertex_parallel_groups.resize(_vertex_color_categories.size());
+        
+        // Helper to find smallest group
+        auto findSmallestGroup = [&]() -> size_t {
+            size_t smallestIdx = 0;
+            size_t smallestSize = _vertex_parallel_groups[0].size();
+            for (size_t i = 1; i < _vertex_parallel_groups.size(); i++) {
+                if (_vertex_parallel_groups[i].size() < smallestSize) {
+                    smallestSize = _vertex_parallel_groups[i].size();
+                    smallestIdx = i;
+                }
+            }
+            return smallestIdx;
+        };
+        
+        // Distribute vertices from color categories to balanced parallel groups
+        for (size_t colorIdx = 0; colorIdx < _vertex_color_categories.size(); colorIdx++) {
+            const auto& colorVertices = _vertex_color_categories[colorIdx];
+            for (int vertexId : colorVertices) {
+                size_t targetGroup = findSmallestGroup();
+                _vertex_parallel_groups[targetGroup].push_back(vertexId);
+            }
+        }
+        
+        // Print statistics
+        size_t minSize = _vertex_parallel_groups[0].size();
+        size_t maxSize = _vertex_parallel_groups[0].size();
+        for (size_t i = 0; i < _vertex_parallel_groups.size(); i++) {
+            size_t groupSize = _vertex_parallel_groups[i].size();
+            minSize = std::min(minSize, groupSize);
+            maxSize = std::max(maxSize, groupSize);
+        }
+        double balanceRatio = maxSize > 0 ? double(maxSize) / double(minSize) : 1.0;
+        std::cout << "[VBD] 平衡比例: " << balanceRatio << ":1 (理想值: 1:1)" << std::endl;
+        
+        _graph_coloring_computed = true;
+        
+        std::cout << "[VBD Setup] Graph coloring完成:\n";
+        std::cout << "  总顶点数: " << num_verts << "\n";
+        std::cout << "  颜色数量: " << _vertex_color_categories.size() << "\n";
+        
+        // 添加图统计信息
+        auto graph = Solver::TetMeshVertexGraph::buildFromMesh(*tetMesh());
+        std::cout << "  图统计:\n";
+        std::cout << "    边数: " << graph.edges.size() << "\n";
+        std::cout << "    平均度数: " << (2.0 * graph.edges.size() / num_verts) << "\n";
+        
+        // 计算最大度数
+        int max_degree = 0;
+        for (const auto& neighbors : graph.adjacencyList) {
+            max_degree = std::max(max_degree, static_cast<int>(neighbors.size()));
+        }
+        std::cout << "    最大度数: " << max_degree << "\n";
+        
+        for (size_t i = 0; i < _vertex_color_categories.size(); i++) {
+            std::cout << "    颜色 " << i << ": " << _vertex_color_categories[i].size() << " 顶点\n";
+        }
+        std::cout << "  验证: " << (coloring->isValid() ? "通过" : "失败") << "\n";
+        
+        // Configure OpenMP threading for VBD parallel execution (one-time setup)
+        #ifdef ENABLE_VBD_OPENMP
+        const int max_threads = std::min(8, static_cast<int>(_vertex_parallel_groups.size()));
+        omp_set_num_threads(max_threads);
+        std::cout << "[VBD Setup] Parallel execution enabled with " << max_threads << " threads" << std::endl;
+        #else
+        std::cout << "[VBD Setup] Serial execution (OpenMP disabled)" << std::endl;
+        #endif
+    }
+    
+    // 保存inertia位置（移动后的位置）
+    const MatXr inertia_positions = _mesh->vertices();
+    
+    // ============================================================================
+    // VBD外层循环：使用平衡并行组 (Gaia-style)
+    // ============================================================================
+    for (int iter = 0; iter < num_iters; iter++) {
+        // 按平衡并行组处理，而不是严格颜色顺序
+        for (size_t group = 0; group < _vertex_parallel_groups.size(); group++) {
+            const auto& vertices_in_group = _vertex_parallel_groups[group];
+            
+            // 同一组的顶点并行更新（OpenMP）
+            #ifdef ENABLE_VBD_OPENMP
+            #pragma omp parallel for schedule(static)
+            #endif
+            for (size_t i = 0; i < vertices_in_group.size(); i++) {
+                const int vid = vertices_in_group[i];
+                
+                if (vertexFixed(vid)) continue;
+                
+                // ========================================
+                // GAIA-INSPIRED VBD STEP (Much more efficient!)
+                // ========================================
+                
+                // Assemble force and Hessian directly like Gaia's VBDStep
+                const Real dt = _sim->dt();
+                const Real mass = vertexMass(vid);
+                const Vec3r x_current = _mesh->vertex(vid);
+                const Vec3r x_inertia = _inertial_vertices.col(vid);  // Use saved inertial/predicted position
+                
+                Vec3r force = Vec3r::Zero();
+                Mat3r hessian = Mat3r::Zero();
+                
+                // 1. Inertia force and Hessian (like Gaia's accumlateInertiaForceAndHessian)
+                // Force is NEGATIVE gradient: -∇E = -m/(dt²)*(x-x_inertia) = m/(dt²)*(x_inertia-x)
+                // x_inertia is the predicted position (with velocity and gravity already applied)
+                // VBD brings vertices from current position back toward this inertial equilibrium
+                force = mass / (dt * dt) * (x_inertia - x_current);
+                hessian = (mass / (dt * dt)) * Mat3r::Identity();
+                
+                // 2. Elastic forces from Neo-Hookean energy (like Gaia's accumlateMaterialForceAndHessian)
+                // For each tetrahedron attached to this vertex, compute elastic restoring force
+                const std::vector<int>& attached_tets = tetMesh()->vertexAttachedElements(vid);
+                
+                // Get material parameters (use first material for simplicity)
+                const ElasticMaterial& material = _materials[0];
+                const Real mu = material.mu();      // Lamé first parameter (shear modulus)
+                const Real lambda = material.lambda(); // Lamé second parameter (bulk modulus)
+                
+                // Use full material stiffness - PSD filtering in Hessian ensures stability
+                
+                for (int tet_idx : attached_tets) {
+                    const auto& tet = tetMesh()->element(tet_idx);
+                    
+                    // Find which corner of the tet this vertex is (0-3)
+                    int local_vid = -1;
+                    for (int c = 0; c < 4; c++) {
+                        if (tet[c] == vid) {
+                            local_vid = c;
+                            break;
+                        }
+                    }
+                    assert(local_vid >= 0);
+                    
+                    // Compute DmInv from rest vertices
+                    // Dm is the rest shape matrix: [X0-X3 | X1-X3 | X2-X3]
+                    const Vec3r& X0_rest = _rest_vertices.col(tet[0]);
+                    const Vec3r& X1_rest = _rest_vertices.col(tet[1]);
+                    const Vec3r& X2_rest = _rest_vertices.col(tet[2]);
+                    const Vec3r& X3_rest = _rest_vertices.col(tet[3]);
+                    
+                    Mat3r Dm;
+                    Dm.col(0) = X0_rest - X3_rest;
+                    Dm.col(1) = X1_rest - X3_rest;
+                    Dm.col(2) = X2_rest - X3_rest;
+                    
+                    Mat3r DmInv = Dm.inverse();
+                    Real restVol = std::abs(Dm.determinant()) / 6.0;
+                    
+                    // Accumulate Neo-Hookean force and Hessian (full material stiffness)
+                    Vec3r elastic_force = Vec3r::Zero();
+                    Mat3r elastic_hessian = Mat3r::Zero();
+                    _accumulateNeoHookeanForce(vid, tet_idx, local_vid,
+                                               DmInv, restVol, mu, lambda,
+                                               elastic_force, elastic_hessian);
+                    force += elastic_force;
+                    hessian += elastic_hessian;
+                }
+                
+                // DEBUG: Check elastic force magnitude
+                if (debug_frame % 60 == 0 && vid < 5 && attached_tets.size() > 0) {
+                    Vec3r inertia_force_vec = mass / (dt * dt) * (x_inertia - x_current);
+                    Vec3r elastic_force_vec = force - inertia_force_vec;
+                    Real inertia_force_mag = inertia_force_vec.norm();
+                    Real elastic_force_mag = elastic_force_vec.norm();
+                    std::cout << "[VBD DEBUG] Vertex " << vid 
+                              << " | #Tets=" << attached_tets.size()
+                              << " | Inertia=" << inertia_force_mag
+                              << " | Elastic=" << elastic_force_mag 
+                              << " | Ratio=" << (elastic_force_mag / (inertia_force_mag + 1e-10))
+                              << " | Total=" << force.norm() << std::endl;
+                }
+                
+                // 3. Attachment constraint forces (for grasping)
+                // Optimized: Use pre-computed lookup table instead of iterating all constraints
+                int num_attachments_for_vertex = 0; // Declare outside scope for later use
+                
+                if (has_attachments && !vertex_to_attachments[vid].empty()) {
+                    for (const auto* constraint_ptr : vertex_to_attachments[vid]) {
+                        num_attachments_for_vertex++;
+                        const auto& constraint = *constraint_ptr;
+                        
+                        // Get target position: attach_pos + offset
+                        const Vec3r* attach_pos_ptr = constraint.attachmentPosition();
+                        const Vec3r& offset = constraint.attachmentOffset();
+                        Vec3r target_pos = *attach_pos_ptr + offset;
+                        
+                        // Spring force: k * (target - current)
+                        // Use moderate stiffness for responsive but stable grasping
+                        // Reduced from 1e5 to 2e4 to avoid numerical instability with VBD step size
+                        const Real k_attachment = 2e4;  // Stiff spring (approx 100x material stiffness)
+                        Vec3r attachment_force = k_attachment * (target_pos - x_current);
+                        
+                        // DEBUG: Print first constraint for this vertex
+                        if (num_attachments_for_vertex == 1 && debug_frame % 60 == 0 && vid < 10) {
+                            std::cout << "[VBD DEBUG] Vertex " << vid 
+                                      << " | Target: (" << target_pos.transpose() << ")"
+                                      << " | Current: (" << x_current.transpose() << ")"
+                                      << " | Attach force: " << attachment_force.norm() << "\n";
+                        }
+                        
+                        force += attachment_force;
+                        hessian += k_attachment * Mat3r::Identity();
+                    }
+                }
+                
+                // 4. Solve for descent direction (like Gaia's CuMatrix::solve3x3_psd_stable)
+                if (force.squaredNorm() > 1e-12) {
+                    Vec3r descentDirection;
+                    bool solverSuccess = Utils::solve3x3PSD(hessian.data(), force.data(), descentDirection.data());
+                    
+                    // DEBUG: Print movement for first few vertices with attachments
+                    if (num_attachments_for_vertex > 0 && debug_frame % 60 == 0 && vid < 5) {
+                        std::cout << "[VBD DEBUG] Vertex " << vid 
+                                  << " | Total force: " << force.norm()
+                                  << " | Descent dir: " << descentDirection.norm()
+                                  << " | Step: " << (step_size * descentDirection).norm() << "\n";
+                    }
+                    
+                    if (solverSuccess) {
+                        // Apply step using config step size
+                        _mesh->displaceVertex(vid, step_size * descentDirection);
+                    } else {
+                        // Fallback: gradient descent when solver fails
+                        _mesh->displaceVertex(vid, step_size * 0.1 * force.normalized());
+                    }
+                }
+            }
+        }
+    }
+    
+    // NOTE: Do NOT reset fixed vertices to _previous_vertices!
+    // Fixed vertices (from grasping) should stay at their CURRENT position,
+    // not be pulled back to the position from BEFORE inertial motion.
+    // The "continue" at line 1402 already handles skipping fixed vertices during VBD.
+}
+
+// ============================================================================
+// VBD Line Search Implementation (Gaia-style)
+// ============================================================================
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_evaluateVertexEnergy(int vertexId) const {
+    const Real dt = _sim->dt();
+    Real total_energy = 0.0;
+    
+    // 1. Inertia energy (matches Gaia's computeInertiaEnergy implementation)
+    const Real mass = vertexMass(vertexId);
+    const Vec3r x_current = _mesh->vertex(vertexId);
+    const Vec3r x_inertia = _previous_vertices.col(vertexId);  // Inertia position
+    
+    Real inertia_energy = 0.5 * mass / (dt * dt) * (x_current - x_inertia).squaredNorm();
+    total_energy += inertia_energy;
+    
+    // 2. Elastic energy (approximate contribution from attached tetrahedra)
+    // For each tet containing this vertex, compute its elastic energy contribution
+    for (int tet_idx = 0; tet_idx < tetMesh()->numElements(); tet_idx++) {
+        const auto& tet = tetMesh()->element(tet_idx);
+        bool vertex_in_tet = false;
+        for (int i = 0; i < 4; i++) {
+            if (tet[i] == vertexId) {
+                vertex_in_tet = true;
+                break;
+            }
+        }
+        
+        if (vertex_in_tet) {
+            // Simple approximation: 1/4 of the tet's elastic energy
+            // This is a reasonable approximation for line search purposes
+            Vec3r x0 = _mesh->vertex(tet[0]);
+            Vec3r x1 = _mesh->vertex(tet[1]);
+            Vec3r x2 = _mesh->vertex(tet[2]);
+            Vec3r x3 = _mesh->vertex(tet[3]);
+            
+            // Compute deformation gradient and simple elastic energy
+            // Using a simplified Neo-Hookean energy approximation
+            Mat3r F;
+            F.col(0) = x1 - x0;
+            F.col(1) = x2 - x0; 
+            F.col(2) = x3 - x0;
+            
+            Real det_F = F.determinant();
+            if (det_F > 1e-10) { // Avoid singularities
+                Real I1 = F.squaredNorm();
+                Real I3 = det_F * det_F;
+                
+                // Simplified Neo-Hookean energy (without proper material parameters)
+                Real elastic_contribution = 0.25 * (I1 + 1.0 / I3 - 3.0) * _tetVolumes[tet_idx];
+                total_energy += elastic_contribution * 0.25;  // 1/4 contribution per vertex
+            }
+        }
+    }
+    
+    return total_energy;
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_vbdLineSearch(
+    int vertexId, const Vec3r& descentDirection, Real initialEnergy, Real maxStepSize) {
+    
+    // Fast Line Search parameters for performance
+    const Real c = 0.1;           // Wolfe condition parameter
+    const Real tau = 0.7;         // Less aggressive reduction (was 0.5)
+    const int maxIters = 3;       // Minimal iterations for speed (was 8)
+    const Real minStepSize = 1e-4; // Larger minimum step (was 1e-6)
+    
+    const Vec3r originalPos = _mesh->vertex(vertexId);
+    const Real m = descentDirection.squaredNorm();
+    
+    Real alpha = maxStepSize;
+    Real bestAlpha = 0.0;
+    Real bestEnergy = initialEnergy;
+    
+    for (int iter = 0; iter < maxIters; iter++) {
+        // Test this step size
+        _mesh->setVertex(vertexId, originalPos + alpha * descentDirection);
+        
+        Real currentEnergy = _evaluateVertexEnergy(vertexId);
+        
+        // Track best energy found
+        if (currentEnergy < bestEnergy) {
+            bestAlpha = alpha;
+            bestEnergy = currentEnergy;
+        }
+        
+        // Check Wolfe condition (sufficient decrease)
+        if (currentEnergy < initialEnergy - alpha * c * m) {
+            // Found good step size
+            break;
+        }
+        
+        // Reduce step size
+        alpha *= tau;
+        
+        // Stop if step size too small
+        if (alpha < minStepSize) {
+            break;
+        }
+    }
+    
+    // Restore original position
+    _mesh->setVertex(vertexId, originalPos);
+    
+    // Return best step size found (fallback to small step if no improvement)
+    return (bestAlpha > 0) ? bestAlpha : minStepSize;
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::velocityUpdate()
 {
     // TODO: apply frictional forces
@@ -1276,6 +1912,10 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ve
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
     _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
+    
+    // Very light velocity damping to preserve elasticity
+    const Real damping_factor = 0.998; // Only 0.2% reduction per timestep (was 0.995)
+    _vertex_velocities *= damping_factor;
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -1617,73 +2257,6 @@ const XPBDMeshObjectGPUResource* XPBDMeshObject_<IsFirstOrder, SolverType, TypeL
 }
 #endif
 
-} // namespace Sim
-
-
-
-
-/////////////////////////////////////////////////////////////////
-// Explicit template instantiations
-////////////////////////////////////////////////////////////////
-
-#include "common/XPBDTypedefs.hpp"
-// instantiate templates
-
-// First attempt at automating template instantation - didn't work, bunch of linker errors.
-
-// // Helper to instantiate XPBDMeshObject
-// template<typename SolverType, typename ConstraintsTypeList>
-// struct XPBDMeshObjectInstantiator
-// {
-//     // static constexpr void instantiate()
-//     // {
-//     //     // INSTANTIATE_XPBDMESHOBJECT(SolverType, ConstraintsTypeList);
-//     //     return (void)sizeof
-//     // }
-//     // static constexpr int dummy = sizeof(XPBDMeshObject<SolverType, ConstraintsTypeList>);
-//     inline static constexpr int __attribute__((used)) dummy = sizeof(XPBDMeshObject<SolverType, ConstraintsTypeList>);
-// };
-
-// template<typename SolverTypeList>
-// struct InstantiateXPBDMeshObjectsFromSolverType;
-
-// template<typename ...SolverTypes>
-// struct InstantiateXPBDMeshObjectsFromSolverType<TypeList<SolverTypes...>>
-// {
-//     // static constexpr void instantiate()
-//     // {
-//     //     (XPBDMeshObjectInstantiator<SolverTypes, typename SolverTypes::constraint_type_list>::instantiate(), ...);
-//     // }
-//     // using expand = int[];
-//     // inline static constexpr expand __attribute__((used)) dummy = {
-//     //     (XPBDMeshObjectInstantiator<SolverTypes, typename SolverTypes::constraint_type_list>::dummy, 0)...
-//     // };
-//     std::tuple<XPBDMeshObject<SolverTypes, typename SolverTypes::constraint_type_list>...> unused;
-// };
-
-// template<typename ConstraintConfigTypeList>
-// struct InstantiateAllXPBDMeshObjects;
-
-// template<typename ...ConstraintConfigs>
-// struct InstantiateAllXPBDMeshObjects<TypeList<ConstraintConfigs...>>
-// {
-//     // static constexpr void instantiate()
-//     // {
-//     //     (InstantiateXPBDMeshObjectsFromSolverType<typename XPBDMeshObjectSolverTypes<typename ConstraintConfigs::projector_type_list>::type_list>::instantiate(), ...);
-//     // }
-//     // using expand = int[];
-//     // inline static constexpr expand __attribute__((used)) dummy = {
-//     //     (InstantiateXPBDMeshObjectsFromSolverType<typename XPBDMeshObjectSolverTypes<typename ConstraintConfigs::projector_type_list>::type_list>::dummy[0], 0)...
-//     // };
-//     std::tuple<InstantiateXPBDMeshObjectsFromSolverType<typename XPBDMeshObjectSolverTypes<typename ConstraintConfigs::projector_type_list>::type_list>...> unused;
-// };
-
-// // inline constexpr int __attribute__((used)) enusre_instantiation = InstantiateAllXPBDMeshObjects<XPBDMeshObjectConstraintConfigurations::type_list>::dummy[0];
-// // InstantiateAllXPBDMeshObjects<typename XPBDMeshObjectConstraintConfigurations::type_list>::instantiate();
-// template struct InstantiateAllXPBDMeshObjects<typename XPBDMeshObjectConstraintConfigurations::type_list>;
-
-namespace Sim {
-
 // TODO: find a way to automate this!
 using SolverTypesStableNeohookean = XPBDObjectSolverTypes<false, typename XPBDMeshObjectConstraintConfigurations<false>::StableNeohookean::projector_type_list>;
 using SolverTypesStableNeohookeanCombined = XPBDObjectSolverTypes<false, typename XPBDMeshObjectConstraintConfigurations<false>::StableNeohookeanCombined::projector_type_list>;
@@ -1700,25 +2273,29 @@ template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::Gauss
 template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::Jacobi, StableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::ParallelJacobi, StableNeohookeanCombinedConstraints>;
 
-using FirstOrderSolverTypesStableNeohookean = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookean::projector_type_list>;
-using FirstOrderSolverTypesStableNeohookeanCombined = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookeanCombined::projector_type_list>;
-using FirstOrderStableNeohookeanConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookean::constraint_type_list;
-using FirstOrderStableNeohookeanCombinedConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookeanCombined::constraint_type_list;
-template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::GaussSeidel, FirstOrderStableNeohookeanConstraints>;
-template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::Jacobi, FirstOrderStableNeohookeanConstraints>;
-template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::ParallelJacobi, FirstOrderStableNeohookeanConstraints>;
-
-template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::GaussSeidel, FirstOrderStableNeohookeanCombinedConstraints>;
-template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::Jacobi, FirstOrderStableNeohookeanCombinedConstraints>;
-template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::ParallelJacobi, FirstOrderStableNeohookeanCombinedConstraints>;
-
-// Nerve-Only constraint config
+// NerveOnly constraint config  
 using SolverTypesNerveOnly = XPBDObjectSolverTypes<false, typename XPBDMeshObjectConstraintConfigurations<false>::NerveOnly::projector_type_list>;
 using NerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigurations<false>::NerveOnly::constraint_type_list;
 
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::GaussSeidel, NerveOnlyConstraints>;
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::Jacobi, NerveOnlyConstraints>;
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::ParallelJacobi, NerveOnlyConstraints>;
+
+// First Order Stable Neohookean constraint config
+using FirstOrderSolverTypesStableNeohookean = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookean::projector_type_list>;
+using FirstOrderStableNeohookeanConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookean::constraint_type_list;
+
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::GaussSeidel, FirstOrderStableNeohookeanConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::Jacobi, FirstOrderStableNeohookeanConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::ParallelJacobi, FirstOrderStableNeohookeanConstraints>;
+
+// First Order Stable Neohookean Combined constraint config
+using FirstOrderSolverTypesStableNeohookeanCombined = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookeanCombined::projector_type_list>;
+using FirstOrderStableNeohookeanCombinedConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookeanCombined::constraint_type_list;
+
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::GaussSeidel, FirstOrderStableNeohookeanCombinedConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::Jacobi, FirstOrderStableNeohookeanCombinedConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::ParallelJacobi, FirstOrderStableNeohookeanCombinedConstraints>;
 
 // First Order Nerve-Only constraint config
 using FirstOrderSolverTypesNerveOnly = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::projector_type_list>;
@@ -1727,9 +2304,5 @@ using FirstOrderNerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigur
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::GaussSeidel, FirstOrderNerveOnlyConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::Jacobi, FirstOrderNerveOnlyConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::ParallelJacobi, FirstOrderNerveOnlyConstraints>;
-
-// CTAD
-// template<typename SolverType, typename ...ConstraintTypes> XPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const XPBDMeshObjectConfig* config)
-//     -> XPBDMeshObject<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>;
 
 } // namespace Sim

@@ -1,0 +1,203 @@
+## TBone-Tumor-Brain Adhesion Test Configuration
+## Complete test with:
+##   1. Rigid TBone mesh
+##   2. Deformable Tumor mesh
+##   3. Deformable Brain mesh
+## Adhesion constraints:
+##   - Inter-deform adhesion: Tumor ↔ Brain
+##   - Rigid-deform adhesion: TBone ↔ Tumor
+
+name: "TBone-Tumor-Brain Adhesion Test"
+description: "Testing rigid-deform and inter-deform adhesion with three objects"
+
+visualization: "Easy3D"
+
+g-accel: 0 # downward acceleration due to gravity [m/s2]
+
+sim-mode: "AFAP"     # Run as fast as possible for testing
+
+time-step: 5e-4      # 0.5ms timestep
+collision-rate: 100  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
+collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
+fps: 60              # frames per second of the visualization
+end-time: 300        # test time [s]
+
+## ==================== SOLVER SELECTION ====================
+## Choose between XPBD (constraint projection) and VBD (energy minimization)
+solver-type: vbd              # Options: "xpbd" or "vbd"
+
+## VBD-specific parameters (Balanced for stability and performance)
+vbd-iterations: 5             # Fewer iterations for speed
+vbd-step-size: 0.5            # Conservative step size for stability  
+vbd-use-full-hessian: true    # Use complete Hessian matrix
+# vbd-damping: 0.01             # Very light damping (1%)
+
+## XPBD-specific parameters (baseline for comparison)
+xpbd-iterations: 5           # XPBD iterations per timestep (baseline reference)
+
+## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
+grasp-radius: 0.007   # Grasping tool radius: 13mm (default 100mm)
+tool-radius: 0.007    # Pushing tool radius: 13mm (default 200mm)
+fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL objects (GraspingTest/PushingTest default=true)
+
+## ==================== INTER-DEFORM ADHESION SETTINGS ====================
+## Adhesion between two deformable objects (Tumor ↔ Brain)
+inter-deform-adhesion-enable: true
+inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
+inter-deform-adhesion-break-ratio: 1.2       # Break at 20% strain
+inter-deform-adhesion-alpha: 1e-4            # Compliance: k=10,000 (SOFTER! was 1e-6 → k=1,000,000)
+inter-deform-adhesion-bond-distance: 0.003   # 3mm bond distance (reduced to minimize constraint count)
+inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformable
+
+## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
+## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
+rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
+rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
+rigid-deform-adhesion-break-ratio: 1.5       # Break at 50% strain (separation = 1.5x rest_gap)
+rigid-deform-adhesion-alpha: 1e-4            # Compliance: k=10,000 (SOFTER! was 2e-6 → k=500,000)
+rigid-deform-adhesion-bond-distance: 0.01    # 5mm - initial search radius for creating bonds
+
+## define elastic materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 5e4          # Lower Young's modulus for softer response
+    nu: 0.4         # Slightly lower Poisson's ratio
+    mu-s: 0.0       # coefficient of static friction [-]
+    mu-k: 0.0       # coefficient of kinetic friction [-]
+
+## objects in the simulation
+objects:
+
+  ## ==================== DEFORMABLE TUMOR ====================
+  -
+    name: "Tumor"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tumor_fixed/tumor_squeezed.obj"
+
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    color: [1.0, 0.5, 0.0]  # Orange - tumor
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 0.05               # Scale to 50mm (0.05m)
+    position: [-0.0, 0.0, 0.0]    # LEFT: -30mm to avoid overlap!
+    velocity: [0.0, 0, 0.0]      # Stationary
+    rotation: [0, 0, 0]
+
+    ## ==================== BOUNDARY FIXING (Tumor) ====================
+    ## Optional: Fix tumor boundaries to simulate nerve root/vascular attachment
+    ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+    ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+    # fix-min-z: false       # Fix BOTTOM (posterior attachment) - can enable for nerve root
+    # fix-max-z: false     # Fix TOP
+    # fix-min-y: false     # Fix BACK (toward IAC/bone)
+    # fix-max-y: false     # Fix FRONT
+    # fix-min-x: false     # Fix LEFT (lateral)
+    # fix-max-x: false     # Fix RIGHT (medial)
+
+    ## collisions
+    collisions: true
+    inter-object-collisions: true  # Enable inter-object collision with brain
+
+    ## XPBD-specific options
+    num-solver-iters: 5
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 1000     # Much lower for proper elasticity (was 600000)
+
+
+  # ## ==================== DEFORMABLE BRAIN ====================
+  # -
+  #   name: "Brain"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/brain_fixed/brain_MOD3.obj"
+
+  #   materials: ["Soft Tissue"]
+
+  #   ## visualization options
+  #   color: [0.0, 1.0, 1.0]  # Cyan - brain
+  #   draw-points: false
+  #   draw-edges: true
+  #   draw-faces: true
+
+  #   ## initial configuration
+  #   use-original-coords: true   # Center and scale mesh
+  #   max-size: 0.05               # Scale to 50mm (0.05m)
+  #   position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
+  #   velocity: [0.0, 0, 0.0]      # Stationary
+  #   rotation: [0, 0, 0]
+
+  #   ## ==================== BOUNDARY FIXING (Brain) ====================
+  #   ## Simulate brain stem connection - prevents whole-object translation
+  #   ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+  #   ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+  #   fix-min-z: true        # Fix BOTTOM (brain stem/posterior fossa)
+  #   # fix-max-z: false     # Fix TOP (superior)
+  #   # fix-min-y: false     # Fix BACK (posterior wall)
+  #   # fix-max-y: false     # Fix FRONT (anterior wall)
+  #   # fix-min-x: false     # Fix LEFT (lateral)
+  #   # fix-max-x: false     # Fix RIGHT (lateral)
+
+  #   ## collisions
+  #   collisions: true
+  #   inter-object-collisions: true
+
+  #   ## XPBD-specific options
+  #   num-solver-iters: 5
+  #   solver-type: "Gauss-Seidel"
+  #   constraint-type: "Stable-Neohookean-Combined"
+  #   residual-policy: "Never"
+  #   damping-multiplier: 60000 
+
+
+  # ## ==================== RIGID TBONE ====================
+  # -
+  #   name: "RigidBone"
+  #   type: "RigidMeshObject"
+  #   filename: "../resource/tbone_fixed/tbone_MOD.obj"
+  #   density: 1000
+
+  #   ## visualization options
+  #   color: [0.95, 0.92, 0.85]  # Bone white
+  #   draw-points: false
+  #   draw-edges: true
+  #   draw-faces: true
+
+  #   ## initial configuration
+  #   use-original-coords: true   # Center and scale mesh
+  #   max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
+  #   position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
+  #   rotation: [0, 0, 0]          # No rotation
+  #   velocity: [0, 0, 0]
+  #   angular-velocity: [0, 0, 0]
+
+  #   ## physics
+  #   collisions: true   # Enable collisions with deformable objects
+  #   fixed: true        # Keep bone stationary
+
+
+## ==================== CONSTRAINT INFO ====================
+# Objects:
+#   Tumor - deformable
+#   Brain - deformable  
+#   RigidBone - rigid, fixed
+#
+# Constraints:
+#   1. Inter-deform adhesion: Tumor ↔ Brain
+#      Code: Simulation.cpp L2234 (looks for "Tumor" & "Brain")
+#      Vertex-to-face bonds when distance < 5mm, breaks at 50% strain
+#
+#   2. Rigid-deform adhesion: RigidBone ↔ Tumor
+#      Code: Simulation.cpp L2517 (rigid:"RigidBone" + deform:"Tumor"/"Brain"/"Tissue"/"DeformableMesh")
+#      Face centroid-to-SDF bonds when distance < 5mm, breaks at 100% strain
+#
+#   3. Inter-object collision: Tumor ↔ Brain
+#      Embree BVH spatial acceleration, prevents interpenetration

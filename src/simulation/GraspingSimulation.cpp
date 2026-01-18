@@ -196,18 +196,23 @@ void GraspingSimulation::_toggleGrasping()
     for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs) { fo_xpbd_mesh_obj->clearAttachmentConstraints(); }
 
         const Vec3r grasp_center = _cursor->position();
-        // printf("DEBUG: Grasp center is at (%.2f, %.2f, %.2f)\n", grasp_center.x(), grasp_center.y(), grasp_center.z());
+        printf("DEBUG: Grasp center is at (%.2f, %.2f, %.2f)\n", grasp_center.x(), grasp_center.y(), grasp_center.z());
 
         // --- NEW RELIABLE METHOD ---
-        // printf("DEBUG: Number of deformable objects: %zu\n", xpbd_mesh_objs.size() + fo_xpbd_mesh_objs.size());
-        // printf("DEBUG: Grasp radius: %.4f\n", _grasp_radius);
+        printf("DEBUG: Number of deformable objects: %zu\n", xpbd_mesh_objs.size() + fo_xpbd_mesh_objs.size());
+        printf("DEBUG: Grasp radius: %.4f\n", _grasp_radius);
         
         int total_vertices_found = 0;
         
         // Process XPBDMeshObject_Base objects
         for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
         {
-            // printf("DEBUG: Processing XPBDMeshObject with %d vertices\n", xpbd_mesh_obj->mesh()->numVertices());
+            printf("DEBUG: Processing XPBDMeshObject '%s' with %d vertices\n", 
+                   xpbd_mesh_obj->name().c_str(), xpbd_mesh_obj->mesh()->numVertices());
+            auto bbox = xpbd_mesh_obj->mesh()->boundingBox();
+            printf("DEBUG: Mesh bounds: min(%.3f,%.3f,%.3f) max(%.3f,%.3f,%.3f)\n",
+                   bbox.min.x(), bbox.min.y(), bbox.min.z(),
+                   bbox.max.x(), bbox.max.y(), bbox.max.z());
             int fixed_count = 0;
             int within_radius_count = 0;
             
@@ -296,7 +301,12 @@ void GraspingSimulation::_toggleGrasping()
         // Process FirstOrderXPBDMeshObject_Base objects
         for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs)
         {
-            printf("DEBUG: Processing FirstOrderXPBDMeshObject with %d vertices\n", fo_xpbd_mesh_obj->mesh()->numVertices());
+            printf("DEBUG: Processing FirstOrderXPBDMeshObject '%s' with %d vertices\n", 
+                   fo_xpbd_mesh_obj->name().c_str(), fo_xpbd_mesh_obj->mesh()->numVertices());
+            auto bbox = fo_xpbd_mesh_obj->mesh()->boundingBox();
+            printf("DEBUG: Mesh bounds: min(%.3f,%.3f,%.3f) max(%.3f,%.3f,%.3f)\n",
+                   bbox.min.x(), bbox.min.y(), bbox.min.z(),
+                   bbox.max.x(), bbox.max.y(), bbox.max.z());
             int fixed_count = 0;
             int within_radius_count = 0;
             
