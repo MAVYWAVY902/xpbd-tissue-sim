@@ -390,6 +390,19 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      * Set once at initialization, never changes during simulation.
      */
     MatXr _rest_vertices;
+    
+    /** For VBD: Pre-computed inverse rest shape matrices for all elements.
+     * Avoids recomputing 3x3 inverses every iteration.
+     */
+    std::vector<Mat3r> _vbd_dm_inverses;
+    
+    /** For VBD: Pre-computed rest volumes for all elements. */
+    std::vector<Real> _vbd_rest_volumes;
+    
+    /** For VBD: Pre-computed map of vertex to attachment constraints.
+     * Optimization to avoid iterating all constraints for every vertex.
+     */
+    std::vector<std::vector<const Solver::AttachmentConstraint*>> _vbd_vertex_to_attachments;
 
     /** The number of local iterations for collision area.
      * Constraint projectors in the vicinity of active collision constraints (see _gatherProjectorsForLocalCollisionIterations) are assembled

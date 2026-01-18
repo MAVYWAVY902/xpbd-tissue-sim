@@ -1502,18 +1502,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
     const std::vector<Solver::AttachmentConstraint>& attachment_constraints = 
         _constraints.template get<Solver::AttachmentConstraint>();
     
-    // Use an accelerated lookup for attachment constraints to avoid O(N*M) complexity
-    // Map: vertex_index -> list of pointers to constraints affecting it
-    std::vector<std::vector<const Solver::AttachmentConstraint*>> vertex_to_attachments(num_verts);
+    // REMOVED: Slow repeated allocation
+    // Use member variable _vbd_vertex_to_attachments instead
     bool has_attachments = !attachment_constraints.empty();
-    
-    if (has_attachments) {
-        for (const auto& constraint : attachment_constraints) {
-            if (constraint.vertexIndex() < num_verts) {
-                vertex_to_attachments[constraint.vertexIndex()].push_back(&constraint);
-            }
-        }
-    }
 
     static int debug_frame = 0;
     debug_frame++;
@@ -1605,6 +1596,45 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
         #else
         std::cout << "[VBD Setup] Serial execution (OpenMP disabled)" << std::endl;
         #endif
+
+        // Pre-compute DmInv and Rest Volumes for all tets
+        std::cout << "[VBD Setup] Pre-computing DmInv and Volumes..." << std::endl;
+        int num_tets = tetMesh()->numElements();
+        _vbd_dm_inverses.resize(num_tets);
+        _vbd_rest_volumes.resize(num_tets);
+        
+        for (int i = 0; i < num_tets; i++) {
+            const auto& tet = tetMesh()->element(i);
+            const Vec3r& X0_rest = _rest_vertices.col(tet[0]);
+            const Vec3r& X1_rest = _rest_vertices.col(tet[1]);
+            const Vec3r& X2_rest = _rest_vertices.col(tet[2]);
+            const Vec3r& X3_rest = _rest_vertices.col(tet[3]);
+            
+            Mat3r Dm;
+            Dm.col(0) = X0_rest - X3_rest;
+            Dm.col(1) = X1_rest - X3_rest;
+            Dm.col(2) = X2_rest - X3_rest;
+            
+            _vbd_dm_inverses[i] = Dm.inverse();
+            _vbd_rest_volumes[i] = std::abs(Dm.determinant()) / 6.0;
+        }
+        std::cout << "[VBD Setup] Pre-computation complete." << std::endl;
+    }
+    
+    // Use pre-computed attachment lookup
+    // Optimization: Reuse memory
+    if (_vbd_vertex_to_attachments.size() != num_verts) {
+        _vbd_vertex_to_attachments.resize(num_verts);
+    }
+    // Clear old pointers (fast, doesn't deallocate)
+    for(auto& vec : _vbd_vertex_to_attachments) vec.clear();
+
+    if (!attachment_constraints.empty()) {
+        for (const auto& constraint : attachment_constraints) {
+            if (constraint.vertexIndex() < num_verts) {
+                _vbd_vertex_to_attachments[constraint.vertexIndex()].push_back(&constraint);
+            }
+        }
     }
     
     // 保存inertia位置（移动后的位置）
@@ -1663,37 +1693,23 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                     
                     // Find which corner of the tet this vertex is (0-3)
                     int local_vid = -1;
-                    for (int c = 0; c < 4; c++) {
-                        if (tet[c] == vid) {
-                            local_vid = c;
-                            break;
-                        }
-                    }
-                    assert(local_vid >= 0);
+                    if (tet[0] == vid) local_vid = 0;
+                    else if (tet[1] == vid) local_vid = 1;
+                    else if (tet[2] == vid) local_vid = 2;
+                    else if (tet[3] == vid) local_vid = 3;
                     
-                    // Compute DmInv from rest vertices
-                    // Dm is the rest shape matrix: [X0-X3 | X1-X3 | X2-X3]
-                    const Vec3r& X0_rest = _rest_vertices.col(tet[0]);
-                    const Vec3r& X1_rest = _rest_vertices.col(tet[1]);
-                    const Vec3r& X2_rest = _rest_vertices.col(tet[2]);
-                    const Vec3r& X3_rest = _rest_vertices.col(tet[3]);
+                    if (local_vid == -1) continue;
                     
-                    Mat3r Dm;
-                    Dm.col(0) = X0_rest - X3_rest;
-                    Dm.col(1) = X1_rest - X3_rest;
-                    Dm.col(2) = X2_rest - X3_rest;
+                    // Optimization: Use precomputed DmInv and RestVolume
+                    const Mat3r& DmInv = _vbd_dm_inverses[tet_idx];
+                    const Real restVol = _vbd_rest_volumes[tet_idx];
                     
-                    Mat3r DmInv = Dm.inverse();
-                    Real restVol = std::abs(Dm.determinant()) / 6.0;
-                    
-                    // Accumulate Neo-Hookean force and Hessian (full material stiffness)
-                    Vec3r elastic_force = Vec3r::Zero();
-                    Mat3r elastic_hessian = Mat3r::Zero();
-                    _accumulateNeoHookeanForce(vid, tet_idx, local_vid,
-                                               DmInv, restVol, mu, lambda,
-                                               elastic_force, elastic_hessian);
-                    force += elastic_force;
-                    hessian += elastic_hessian;
+                    _accumulateNeoHookeanForce(
+                        vid, tet_idx, local_vid,
+                        DmInv, restVol,
+                        mu, lambda,
+                        force, hessian
+                    );
                 }
                 
                 // DEBUG: Check elastic force magnitude
@@ -1712,10 +1728,10 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 
                 // 3. Attachment constraint forces (for grasping)
                 // Optimized: Use pre-computed lookup table instead of iterating all constraints
-                int num_attachments_for_vertex = 0; // Declare outside scope for later use
+                int num_attachments_for_vertex = 0;
                 
-                if (has_attachments && !vertex_to_attachments[vid].empty()) {
-                    for (const auto* constraint_ptr : vertex_to_attachments[vid]) {
+                if (has_attachments && !_vbd_vertex_to_attachments[vid].empty()) {
+                    for (const auto* constraint_ptr : _vbd_vertex_to_attachments[vid]) {
                         num_attachments_for_vertex++;
                         const auto& constraint = *constraint_ptr;
                         
@@ -1725,9 +1741,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                         Vec3r target_pos = *attach_pos_ptr + offset;
                         
                         // Spring force: k * (target - current)
-                        // Use moderate stiffness for responsive but stable grasping
-                        // Reduced from 1e5 to 2e4 to avoid numerical instability with VBD step size
-                        const Real k_attachment = 2e4;  // Stiff spring (approx 100x material stiffness)
+                        // Use moderate stiffness to avoid numerical instability
+                        const Real k_attachment = 2e4; 
                         Vec3r attachment_force = k_attachment * (target_pos - x_current);
                         
                         // DEBUG: Print first constraint for this vertex
