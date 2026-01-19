@@ -24,13 +24,13 @@ end-time: 300        # test time [s]
 
 ## ==================== SOLVER SELECTION ====================
 ## Choose between XPBD (constraint projection) and VBD (energy minimization)
-solver-type: vbd              # Options: "xpbd" or "vbd"
+solver-type: xpbd              # Options: "xpbd" or "vbd"
 
 ## VBD-specific parameters (Balanced for stability and performance)
-vbd-iterations: 2             # Fewer iterations for speed
-vbd-step-size: 1.0            # Conservative step size for stability  
+vbd-iterations: 20           # Increased significantly to resolve stiff interactions
+vbd-step-size: 1.0            # Standard step size
 vbd-use-full-hessian: true    # Use complete Hessian matrix
-# vbd-damping: 0.01             # Very light damping (1%)
+vbd-damping: 2.0              # Moderate damping to prevent explosions but allow movement
 
 ## XPBD-specific parameters (baseline for comparison)
 xpbd-iterations: 5           # XPBD iterations per timestep (baseline reference)
@@ -42,27 +42,27 @@ fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL object
 
 ## ==================== INTER-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between two deformable objects (Tumor ↔ Brain)
-inter-deform-adhesion-enable: true
-inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
-inter-deform-adhesion-break-ratio: 1.2       # Break at 20% strain
-inter-deform-adhesion-alpha: 1e-4            # Compliance: k=10,000 (SOFTER! was 1e-6 → k=1,000,000)
-inter-deform-adhesion-bond-distance: 0.003   # 3mm bond distance (reduced to minimize constraint count)
-inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformable
+inter-deform-adhesion-enable: true          # Re-enable this!
+inter-deform-adhesion-rest-gap: 0.0015       # 1.5mm rest gap (Used for breaking check, but init uses actual dist)
+inter-deform-adhesion-break-ratio: 1.5       # Increase break ratio to 1.5 (allow 50% stretch before break)
+inter-deform-adhesion-alpha: 0.0005          # Balanced: 5x softer than original (prevents explosion), 10x stiffer than frozen 
+inter-deform-adhesion-bond-distance: 0.005   
+inter-deform-adhesion-fixed-triangle-object: false
 
 ## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
-rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
-rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
-rigid-deform-adhesion-break-ratio: 1.5       # Break at 50% strain (separation = 1.5x rest_gap)
-rigid-deform-adhesion-alpha: 1e-4            # Compliance: k=10,000 (SOFTER! was 2e-6 → k=500,000)
-rigid-deform-adhesion-bond-distance: 0.01    # 5mm - initial search radius for creating bonds
+rigid-deform-adhesion-enable: true
+rigid-deform-adhesion-rest-gap: 0.002
+rigid-deform-adhesion-break-ratio: 1.3        # Allow more stretch
+rigid-deform-adhesion-alpha: 1e-4             # Compliance: k = 100,000
+rigid-deform-adhesion-bond-distance: 0.005
 
 ## define elastic materials
 materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 5e4          # Lower Young's modulus for softer response
+    E: 5e4          # Increased from 5e4 to 5e5 to improve "Spring Back" speed
     nu: 0.4         # Slightly lower Poisson's ratio
     mu-s: 0.0       # coefficient of static friction [-]
     mu-k: 0.0       # coefficient of kinetic friction [-]
@@ -87,7 +87,7 @@ objects:
     ## initial configuration
     use-original-coords: true   # Center and scale mesh
     max-size: 0.05               # Scale to 50mm (0.05m)
-    position: [-0.0, 0.0, 0.0]    # LEFT: -30mm to avoid overlap!
+    position: [-0.03, 0.0, 0.0]    # LEFT: -30mm to avoid overlap!
     velocity: [0.0, 0, 0.0]      # Stationary
     rotation: [0, 0, 0]
 
@@ -111,51 +111,51 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 500     # Much lower for proper elasticity (was 600000)
+    damping-multiplier: 10000000     # Reduced from 5,000,000 to 1000 for proper responsiveness
 
 
-  # ## ==================== DEFORMABLE BRAIN ====================
-  # -
-  #   name: "Brain"
-  #   type: "FirstOrderXPBDMeshObject"
-  #   filename: "../resource/brain_fixed/brain_MOD3.obj"
+  ## ==================== DEFORMABLE BRAIN ====================
+  -
+    name: "Brain"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/brain_fixed/brain_MOD3.obj"
 
-  #   materials: ["Soft Tissue"]
+    materials: ["Soft Tissue"]
 
-  #   ## visualization options
-  #   color: [0.0, 1.0, 1.0]  # Cyan - brain
-  #   draw-points: false
-  #   draw-edges: true
-  #   draw-faces: true
+    ## visualization options
+    color: [0.0, 1.0, 1.0]  # Cyan - brain
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
 
-  #   ## initial configuration
-  #   use-original-coords: true   # Center and scale mesh
-  #   max-size: 0.05               # Scale to 50mm (0.05m)
-  #   position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
-  #   velocity: [0.0, 0, 0.0]      # Stationary
-  #   rotation: [0, 0, 0]
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 0.05               # Scale to 50mm (0.05m)
+    position: [0.03, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
+    velocity: [0.0, 0, 0.0]      # Stationary
+    rotation: [0, 0, 0]
 
-  #   ## ==================== BOUNDARY FIXING (Brain) ====================
-  #   ## Simulate brain stem connection - prevents whole-object translation
-  #   ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
-  #   ## WARNING: Fixing ALL 6 directions will completely freeze the object!
-  #   fix-min-z: true        # Fix BOTTOM (brain stem/posterior fossa)
-  #   # fix-max-z: false     # Fix TOP (superior)
-  #   # fix-min-y: false     # Fix BACK (posterior wall)
-  #   # fix-max-y: false     # Fix FRONT (anterior wall)
-  #   # fix-min-x: false     # Fix LEFT (lateral)
-  #   # fix-max-x: false     # Fix RIGHT (lateral)
+    ## ==================== BOUNDARY FIXING (Brain) ====================
+    ## Simulate brain stem connection - prevents whole-object translation
+    ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+    ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+    fix-min-z: false        # Fix BOTTOM (brain stem/posterior fossa)
+    # fix-max-z: false     # Fix TOP (superior)
+    # fix-min-y: false     # Fix BACK (posterior wall)
+    # fix-max-y: false     # Fix FRONT (anterior wall)
+    # fix-min-x: false     # Fix LEFT (lateral)
+    # fix-max-x: false     # Fix RIGHT (lateral)
 
-  #   ## collisions
-  #   collisions: true
-  #   inter-object-collisions: true
+    ## collisions
+    collisions: true
+    inter-object-collisions: true
 
-  #   ## XPBD-specific options
-  #   num-solver-iters: 5
-  #   solver-type: "Gauss-Seidel"
-  #   constraint-type: "Stable-Neohookean-Combined"
-  #   residual-policy: "Never"
-  #   damping-multiplier: 60000 
+    ## XPBD-specific options
+    # num-solver-iters: 5
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 10000000 
 
 
   # ## ==================== RIGID TBONE ====================

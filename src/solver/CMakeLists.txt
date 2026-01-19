@@ -80,6 +80,11 @@ else()
     message(STATUS "VBD solver: OpenMP not found, running serially")
 endif()
 
+# Enable VBD line search for stability (can be disabled for performance if needed)
+# Line search adaptively adjusts step size to prevent overshooting
+target_compile_definitions(Solver PUBLIC ENABLE_VBD_LINE_SEARCH)
+message(STATUS "VBD solver: Line search ENABLED for improved stability")
+
 install(TARGETS Solver EXPORT Solver-targets
     RUNTIME DESTINATION bin/${PROJECT_NAME}
     LIBRARY DESTINATION lib/${PROJECT_NAME})

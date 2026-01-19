@@ -18,6 +18,7 @@
 #include "solver/xpbd_solver/XPBDParallelJacobiSolver.hpp"
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
+#include "solver/constraint/InterObjectDeformableCollisionConstraint.hpp"
 #include "solver/constraint/DeformableDeformableCollisionConstraint.hpp"
 #include "solver/constraint/InterObjectDeformableCollisionConstraint.hpp"
 #include "solver/constraint/HydrostaticConstraint.hpp"
@@ -276,6 +277,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addStat
     constraint_vec.emplace_back(sdf, p, n, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
     using ConstraintRefType = Solver::ConstraintReference<Solver::StaticDeformableCollisionConstraint>;
+    _vbd_constraints_dirty = true;
     return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
 
@@ -301,6 +303,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addRigi
     constraint_vec.emplace_back(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
     using ConstraintRefType = Solver::ConstraintReference<Solver::RigidDeformableCollisionConstraint>;
+    _vbd_constraints_dirty = true;
     return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
 
@@ -329,6 +332,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addInte
     );
 
     using ConstraintRefType = Solver::ConstraintReference<Solver::InterObjectDeformableCollisionConstraint>;
+    _vbd_constraints_dirty = true;
     return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
 
@@ -351,8 +355,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
     _constraints.template clear<Solver::DeformableDeformableCollisionConstraint>();
     _constraints.template clear<Solver::InterObjectDeformableCollisionConstraint>();
     _constraints.template clear<Solver::RigidDeformableCollisionConstraint>();
-
-
+    
+    _vbd_constraints_dirty = true;
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -619,6 +623,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addAtta
     constraint_vec.emplace_back(v_ind, v_ptr, mass, attach_pos_ptr, attachment_offset);
     
     using ConstraintRefType = Solver::ConstraintReference<Solver::AttachmentConstraint>;
+    _vbd_constraints_dirty = true;
     return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
 
@@ -734,6 +739,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
 
     // 4. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::NerveTumorAdhesionConstraint>;
+    _vbd_constraints_dirty = true;
     return _solver.addConstraintProjector(
         _sim->dt(),
         RefType(vec, vec.size() - 1)
@@ -786,6 +792,64 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
 
     // 5. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::InterDeformDeformAdhesionConstraint>;
+    _vbd_constraints_dirty = true;
+    return _solver.addConstraintProjector(
+        _sim->dt(),
+        RefType(vec, vec.size() - 1)
+    );
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<
+    Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
+    ::addInterDeformDeformAdhesionConstraintAsVertex(XPBDMeshObject_Base_<IsFirstOrder>* other_obj, int vertex_v,
+                                            int tri_v1, int tri_v2, int tri_v3, 
+                                            Real rest_gap, Real break_ratio, Real alpha)
+{
+    // Implementation for when THIS object provides the Vertex (tumor), and OTHER object provides the Triangle (brain/nerve)
+    
+    // 1. Get vertex position pointer and mass from THIS object
+    Real* vertex_p = _mesh->vertexPointer(vertex_v);
+    Real vertex_m = vertexConstraintInertia(vertex_v);
+    
+    // 2. Get triangle vertex position pointers and masses from the OTHER object
+    Real* tri_p1 = other_obj->mesh()->vertexPointer(tri_v1);
+    Real* tri_p2 = other_obj->mesh()->vertexPointer(tri_v2);
+    Real* tri_p3 = other_obj->mesh()->vertexPointer(tri_v3);
+    
+    Real tri_m1 = other_obj->vertexConstraintInertia(tri_v1);
+    Real tri_m2 = other_obj->vertexConstraintInertia(tri_v2);
+    Real tri_m3 = other_obj->vertexConstraintInertia(tri_v3);
+
+    // 3. Add to constraints array
+    // Note: We use the SAME constraint type. The solver doesn't care who 'owns' it, 
+    // it just needs valid pointers to the data. Use of pointers allows cross-object constraints.
+    auto& vec = _constraints.template get<Solver::InterDeformDeformAdhesionConstraint>();
+    vec.emplace_back(
+        vertex_v, vertex_p, vertex_m,
+        tri_v1, tri_p1, tri_m1,
+        tri_v2, tri_p2, tri_m2,
+        tri_v3, tri_p3, tri_m3,
+        rest_gap,
+        break_ratio,
+        alpha
+    );
+    
+    // Flag dirty so lookup tables are rebuilt
+    _vbd_constraints_dirty = true;
+
+    // 4. Mark vertex as having adhesion constraint for visualization
+    if (!_mesh->template hasVertexProperty<bool>("has_adhesion_constraint")) {
+        _mesh->template addVertexProperty<bool>("has_adhesion_constraint", false);
+    }
+    auto& adhesion_prop = _mesh->template getVertexProperty<bool>("has_adhesion_constraint");
+    if (vertex_v < _mesh->numVertices()) {
+        adhesion_prop.set(vertex_v, true);
+    }
+
+    // 5. Tell solver about the new constraint
+    using RefType = Solver::ConstraintReference<Solver::InterDeformDeformAdhesionConstraint>;
     return _solver.addConstraintProjector(
         _sim->dt(),
         RefType(vec, vec.size() - 1)
@@ -825,6 +889,7 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
 
     // 3. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::RigidDeformAdhesionConstraint>;
+    _vbd_constraints_dirty = true;
     return _solver.addConstraintProjector(
         _sim->dt(),
         RefType(vec, vec.size() - 1)
@@ -934,6 +999,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
     _solver.template clearProjectorsOfType<AttachmentConstraintProjType>();
     // clear constraints
     _constraints.template clear<Solver::AttachmentConstraint>();
+    _vbd_constraints_dirty = true;
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -1197,6 +1263,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
         _projectConstraints();
     }
     auto end_projection = std::chrono::high_resolution_clock::now();
+
+    // Check for broken adhesion constraints
+    checkAndBreakAdhesionConstraints(0.0);
+
+    // CRITICAL FIX: Update velocities for the next time step!
+    // Without this, _vertex_velocities remains 0 (or stale), meaning no inertia
+    // is applied in the next step's _movePositionsInertially(), causing the object
+    // to appear frozen or overdamped.
+    velocityUpdate();
     
     auto end_total = std::chrono::high_resolution_clock::now();
     
@@ -1232,20 +1307,54 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_movePositionsInertially()
 {
     const Real dt = _sim->dt();
+    
+    // Check if we are using VBD solver which requires 2nd order dynamics (inertia)
+    // Even if the object is configured as FirstOrder (Quasi-Static), VBD needs explicit inertia
+    // to produce dynamic behavior ("spring back").
+    bool use_vbd = (_sim->config()->solverType() == Config::SolverType::VBD);
+
     if constexpr (IsFirstOrder)
     {
-        for (int i = 0; i < _mesh->numVertices(); i++)
+        if (!use_vbd)
         {
-            const Real dz = -_sim->gAccel() * _vertex_masses[i] * dt / _vertex_B[i];
-            _mesh->displaceVertex(i, Vec3r(0,0,dz));
+            // Quasi-Static / First Order update (Overdamped)
+            // Only used if IsFirstOrder is TRUE AND NOT using VBD
+            for (int i = 0; i < _mesh->numVertices(); i++)
+            {
+                const Real dz = -_sim->gAccel() * _vertex_masses[i] * dt / _vertex_B[i];
+                _mesh->displaceVertex(i, Vec3r(0,0,dz));
+            }
+            return;
         }
-        
+        else
+        {
+            // [FIXED] VBD First Order Logic (Quasi-Static)
+            // Even with VBD, if the object is FirstOrder, we typically don't want 2nd order inertia.
+            // However, strictly zeroing velocity inertia (x_pred = x_curr) causes the VBD inertial term
+            // (m/dt^2) to act as a massive drag force that prevents ANY movement (manipulation).
+            //
+            // To allow manipulation (grasping) to work, we MUST allow the object to predict movement 
+            // based on current velocity, even if that velocity is heavily damped.
+            // 
+            // We fall through to the standard 2nd order update below, which uses _vertex_velocities.
+            // Since _vertex_velocities is damped at the end of the previous step (based on vbd-damping),
+            // this will produce the correct "Overdamped Dynamic" behavior instead of "Frozen Static".
+            
+            // Explicitly fall through
+        }
     }
-    else
-    {
-        // move vertices according to their velocity
-        _mesh->moveSeparate(dt*_vertex_velocities);
-        // external forces (right now just gravity, which acts in -z direction)
+
+    // 2nd Order Dynamics (Inertia + Gravity) - Fallthrough
+    // Executed if:
+    // 1. IsFirstOrder is false (Standard XPBD)
+    // 2. IsFirstOrder is true BUT use_vbd is true (VBD override)
+    
+    // x_pred = x + v*dt + 0.5*a*dt^2 (Here 1.0*g*dt^2 roughly)
+    // Note: _vertex_velocities is updated at the end of the previous step
+    _mesh->moveSeparate(dt * _vertex_velocities);
+    
+    // External forces (gravity)
+    if (std::abs(_sim->gAccel()) > 1e-6) {
         for (int i = 0; i < _mesh->numVertices(); i++)
         {
             const Real dz = -_sim->gAccel() * dt * dt;
@@ -1476,12 +1585,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
 
     static int debug_frame = 0;
     debug_frame++;
-    if (debug_frame % 60 == 0) {
-        std::cout << "\n[VBD DEBUG] Frame " << debug_frame 
-                  << " | Attachment constraints: " << attachment_constraints.size()
-                  << " | Step size: " << step_size 
-                  << " | Iterations: " << num_iters << "\n";
-    }
+    // if (debug_frame % 60 == 0) {
+    //     std::cout << "\n[VBD DEBUG] Frame " << debug_frame 
+    //               << " | Attachment constraints: " << attachment_constraints.size()
+    //               << " | Step size: " << step_size 
+    //               << " | Iterations: " << num_iters << "\n";
+    // }
     
     // 预计算Graph Coloring（只在第一次调用时）
     if (!_graph_coloring_computed) {
@@ -1589,29 +1698,74 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
         std::cout << "[VBD Setup] Pre-computation complete." << std::endl;
     }
     
+
+    // Pre-compute Rigid-Deformable Collision Lookup
+    // =============================================
+    if (_vbd_constraints_dirty) {
+        _cacheCollisionConstraints(); 
+        
+        // Also ensure _vbd_constraints_dirty is cleared AFTER this frame
+        // But we can't clear it here because cacheCollisionConstraints might use it?
+        // Actually, let's keep it true for this frame and clear it at the end of solve
+    }
+    
     // Use pre-computed attachment lookup
     // Optimization: Reuse memory
+    // Only rebuild if dirty map or new constraints added
     if (_vbd_vertex_to_attachments.size() != num_verts) {
         _vbd_vertex_to_attachments.resize(num_verts);
     }
-    // Clear old pointers (fast, doesn't deallocate)
-    for(auto& vec : _vbd_vertex_to_attachments) vec.clear();
+    
+    // Always rebuild attachment lookup if dirty to capture new grasps
+    if (_vbd_constraints_dirty) {
+        // Clear old pointers (fast, doesn't deallocate)
+        for(auto& vec : _vbd_vertex_to_attachments) vec.clear();
 
-    if (!attachment_constraints.empty()) {
-        for (const auto& constraint : attachment_constraints) {
-            if (constraint.vertexIndex() < num_verts) {
-                _vbd_vertex_to_attachments[constraint.vertexIndex()].push_back(&constraint);
+        if (!attachment_constraints.empty()) {
+            for (const auto& constraint : attachment_constraints) {
+                if (constraint.vertexIndex() < num_verts) {
+                    _vbd_vertex_to_attachments[constraint.vertexIndex()].push_back(&constraint);
+                }
             }
         }
     }
     
     // 保存inertia位置（移动后的位置）
     const MatXr inertia_positions = _mesh->vertices();
+
+    // ============================================================================
+    // CHEBYSHEV ACCELERATION SETUP
+    // ============================================================================
+    if (_vbd_prev_iter_vertices.cols() != num_verts) {
+        _vbd_prev_iter_vertices.resize(3, num_verts);
+        _vbd_iter_start_vertices.resize(3, num_verts);
+    }
+    
+    // Initialize history with current predicted positions
+    _vbd_prev_iter_vertices = _mesh->vertices();
+    
+    Real omega = 1.0;
+    const Real rho = 0.995; // Spectral radius estimate (tuned for stability)
     
     // ============================================================================
     // VBD外层循环：使用平衡并行组 (Gaia-style)
     // ============================================================================
     for (int iter = 0; iter < num_iters; iter++) {
+        
+        // GAIA-STYLE: Intermediate Collision Detection
+        // Update collision constraints every few iterations to effectively handle large deformations/penetrations
+        const int intermediate_collision_rate = 5; // Every 5 iterations
+        if (iter > 0 && iter % intermediate_collision_rate == 0) {
+           if (_sim) const_cast<Simulation*>(_sim)->refreshCollisionScene();
+           _cacheCollisionConstraints(); // Re-populate local cache from new constraints
+        }
+
+        // 1. Update Chebyshev Omega
+        omega = _getChebyshevOmega(iter + 1, rho, omega);
+        
+        // 2. Save current state x_k (will become x_{k-1} for next iter)
+        _vbd_iter_start_vertices = _mesh->vertices();
+
         // 按平衡并行组处理，而不是严格颜色顺序
         for (size_t group = 0; group < _vertex_parallel_groups.size(); group++) {
             const auto& vertices_in_group = _vertex_parallel_groups[group];
@@ -1686,12 +1840,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                     Vec3r elastic_force_vec = force - inertia_force_vec;
                     Real inertia_force_mag = inertia_force_vec.norm();
                     Real elastic_force_mag = elastic_force_vec.norm();
-                    std::cout << "[VBD DEBUG] Vertex " << vid 
-                              << " | #Tets=" << attached_tets.size()
-                              << " | Inertia=" << inertia_force_mag
-                              << " | Elastic=" << elastic_force_mag 
-                              << " | Ratio=" << (elastic_force_mag / (inertia_force_mag + 1e-10))
-                              << " | Total=" << force.norm() << std::endl;
+                    // std::cout << "[VBD DEBUG] Vertex " << vid 
+                    //           << " | #Tets=" << attached_tets.size()
+                    //           << " | Inertia=" << inertia_force_mag
+                    //           << " | Elastic=" << elastic_force_mag 
+                    //           << " | Ratio=" << (elastic_force_mag / (inertia_force_mag + 1e-10))
+                    //           << " | Total=" << force.norm() << std::endl;
                 }
                 
                 // 3. Attachment constraint forces (for grasping)
@@ -1709,39 +1863,446 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                         Vec3r target_pos = *attach_pos_ptr + offset;
                         
                         // Spring force: k * (target - current)
-                        // Use moderate stiffness to avoid numerical instability
-                        const Real k_attachment = 2e4; 
+                        // BALANCED: 5e4 provides strong grasp without instability (with line search enabled)
+                        // Combined with line search, this prevents overshooting while maintaining responsiveness
+                        const Real k_attachment = 5e4;  // 50,000 N/m
                         Vec3r attachment_force = k_attachment * (target_pos - x_current);
                         
                         // DEBUG: Print first constraint for this vertex
-                        if (num_attachments_for_vertex == 1 && debug_frame % 60 == 0 && vid < 10) {
-                            std::cout << "[VBD DEBUG] Vertex " << vid 
-                                      << " | Target: (" << target_pos.transpose() << ")"
-                                      << " | Current: (" << x_current.transpose() << ")"
-                                      << " | Attach force: " << attachment_force.norm() << "\n";
-                        }
+                        // if (num_attachments_for_vertex == 1 && debug_frame % 60 == 0 && vid < 10) {
+                        //     std::cout << "[VBD DEBUG] Vertex " << vid 
+                        //               << " | Target: (" << target_pos.transpose() << ")"
+                        //               << " | Current: (" << x_current.transpose() << ")"
+                        //               << " | Attach force: " << attachment_force.norm() << "\n";
+                        // }
                         
                         force += attachment_force;
                         hessian += k_attachment * Mat3r::Identity();
                     }
                 }
                 
-                // 4. Solve for descent direction (like Gaia's CuMatrix::solve3x3_psd_stable)
+                // 4. Rigid-Deformable Collision (Penalty Method)
+                // ==============================================
+                if (!_vbd_rigid_collisions[vid].empty()) {
+                    const Real collision_k = 100000.0; 
+                    
+                    for (const auto* c : _vbd_rigid_collisions[vid]) {
+                         const auto& positions = c->positions();
+                         int v1_idx = positions[0].index;
+                         int v2_idx = positions[1].index;
+                         int v3_idx = positions[2].index;
+                         
+                         Real weight = 0.0;
+                         if (vid == v1_idx) weight = c->u();
+                         else if (vid == v2_idx) weight = c->v();
+                         else if (vid == v3_idx) weight = c->w();
+                         else continue;
+
+                         Vec3r p1 = _mesh->vertex(v1_idx);
+                         Vec3r p2 = _mesh->vertex(v2_idx);
+                         Vec3r p3 = _mesh->vertex(v3_idx);
+                         Vec3r p_cur = c->u() * p1 + c->v() * p2 + c->w() * p3;
+                         
+                         Real dist = c->sdf()->evaluate(p_cur);
+                         
+                         if (dist < 0) { // Penetrating
+                             Vec3r n = c->sdf()->gradient(p_cur);
+                             Vec3r F = -collision_k * dist * n;
+                             
+                             force += weight * F;
+                             Mat3r H = collision_k * (n * n.transpose());
+                             hessian += (weight * weight) * H;
+                         }
+                    }
+                }
+
+                // 5. Static-Deformable Collision (Penalty Method)
+                // ===============================================
+                if (!_vbd_static_collisions[vid].empty()) {
+                    const Real collision_k = 100000.0;
+                    
+                    for (const auto* c : _vbd_static_collisions[vid]) {
+                         const auto& positions = c->positions();
+                         int v1_idx = positions[0].index;
+                         int v2_idx = positions[1].index;
+                         int v3_idx = positions[2].index;
+                         
+                         Real weight = 0.0;
+                         if (vid == v1_idx) weight = c->u();
+                         else if (vid == v2_idx) weight = c->v();
+                         else if (vid == v3_idx) weight = c->w();
+                         else continue;
+
+                         Vec3r p1 = _mesh->vertex(v1_idx);
+                         Vec3r p2 = _mesh->vertex(v2_idx);
+                         Vec3r p3 = _mesh->vertex(v3_idx);
+                         Vec3r p_cur = c->u() * p1 + c->v() * p2 + c->w() * p3;
+                         
+                         Real dist = c->sdf()->evaluate(p_cur);
+                         
+                         if (dist < 0) {
+                             Vec3r n = c->sdf()->gradient(p_cur);
+                             Vec3r F = -collision_k * dist * n;
+                             
+                             force += weight * F;
+                             Mat3r H = collision_k * (n * n.transpose());
+                             hessian += (weight * weight) * H;
+                         }
+                    }
+                }
+
+                // 6. Inter-Object Deformable Collision (Gaia Penalty Method - Improved)
+                // =====================================================================
+                if (!_vbd_inter_deform_collisions[vid].empty()) {
+                    
+                    // Stiffness: High to keep objects apart
+                    const Real collision_k = 2e5; 
+                    
+                    // Buffer zone: Reduced to 1mm to avoid fighting with Adhesion (rest_gap = 2mm)
+                    // Previously 3mm -> caused oscillation in [2mm, 3mm] range
+                    const Real thickness = 0.001; 
+
+                    // Max correction per step: Safety clamp to prevent explosions
+                    const Real max_force_mag = 5000.0; 
+
+                    for (const auto* c : _vbd_inter_deform_collisions[vid]) {
+                        
+                        const auto& positions = c->positions();
+                        
+                        Eigen::Map<const Vec3r> q(positions[0].position_ptr);
+                        Eigen::Map<const Vec3r> p1(positions[1].position_ptr);
+                        Eigen::Map<const Vec3r> p2(positions[2].position_ptr);
+                        Eigen::Map<const Vec3r> p3(positions[3].position_ptr);
+
+                        Vec3r cross_prod = (p2 - p1).cross(p3 - p1);
+                        Real area_sq = cross_prod.squaredNorm();
+                        if (area_sq < 1e-12) continue; 
+                        
+                        Vec3r n = cross_prod / std::sqrt(area_sq);
+                        
+                        // Distance to plane
+                        Real dist = (q - p1).dot(n);
+                        
+                        // Check against buffer zone
+                        if (dist < thickness) {
+                             
+                             // Depth inside the buffer (positive value)
+                             Real penetration = thickness - dist;
+                             
+                             // ------------------- CRITICAL FIX -------------------
+                             // 1. One-sided check: Only push if penetrating from the "outside" (positive normal side)
+                             // If dist is largely negative, it means we are deeply inside or on the backface.
+                             // Penalty methods often explode if they push "wrongly" when point is behind failure.
+                             // Assuming consistent winding, 'n' points outwards.
+                             // Limit penetration depth to avoid crazy forces if topology tangles
+                             if (penetration > thickness * 2.0) penetration = thickness * 2.0;
+
+                             // 2. Force calculation (Linear Spring)
+                             // Increase stiffness significantly if penetration is deep? No, that causes explosions.
+                             // Keep stiffness constant.
+                             Real lambda = collision_k * penetration;
+                             
+                             // 3. Safety Clamp: Prevent numerical explosions
+                             if (lambda > max_force_mag) lambda = max_force_mag;
+
+                             const Real* vid_ptr = _mesh->vertices().data() + vid * 3;
+                             
+                             Real b_i = 0.0;
+                             Real sign = 0.0;
+                             
+                             if (positions[0].position_ptr == vid_ptr) {
+                                 // q (vertex)
+                                 b_i = 1.0;
+                                 sign = 1.0; // Force pushes q along n
+                             } else {
+                                 // p1, p2, p3 (triangle)
+                                 // Barycentric check (simplified projection)
+                                 Vec3r proj_q = q - dist * n;
+                                 Vec3r v0 = p2 - p1;
+                                 Vec3r v1 = p3 - p1;
+                                 Vec3r v2 = proj_q - p1;
+                                 
+                                 Real d00 = v0.dot(v0);
+                                 Real d01 = v0.dot(v1);
+                                 Real d11 = v1.dot(v1);
+                                 Real d20 = v2.dot(v0);
+                                 Real d21 = v2.dot(v1);
+                                 Real denom = d00 * d11 - d01 * d01;
+                                 
+                                 if (std::abs(denom) < 1e-12) continue;
+                                 
+                                 Real v = (d11 * d20 - d01 * d21) / denom;
+                                 Real w = (d00 * d21 - d01 * d20) / denom;
+                                 Real u = 1.0 - v - w;
+                                 
+                                 // Relaxed barycentric check for edges
+                                 if (u < -0.2 || v < -0.2 || w < -0.2) continue; 
+                                 
+                                 if (positions[1].position_ptr == vid_ptr) b_i = u;
+                                 else if (positions[2].position_ptr == vid_ptr) b_i = v;
+                                 else b_i = w;
+                                 
+                                 sign = -1.0; // Force pushes triangle opposite to n
+                             }
+                             
+                             // Force direction: n points OUT of triangle.
+                             // If q is at dist < thickness (e.g. 0.0), it should be pushed by +n.
+                             // If triangle is pushed, it should be by -n.
+                             // sign handles this (+1 for q, -1 for triangle).
+                             Vec3r F_collision = sign * b_i * lambda * n;
+                             
+                             // 4. Stabilizing Hessian
+                             // Pure penalty Hessian is K * n * n^T. This is rank-1 and allows sliding.
+                             // Deep penetration often causes "fighting" between normal force and friction/adhesion.
+                             // We add a significant isotropic term (damping/regularization) to prevent shooting nodes to infinity.
+                             
+                             // Main normal stiffness
+                             Mat3r H_normal = collision_k * b_i * b_i * (n * n.transpose());
+                             
+                             // Regularization: 10% of stiffness implicitly prevents large steps in ANY direction when colliding
+                             // This is the "magic sauce" for stable penalty methods in VBD
+                             Mat3r H_stabilize = (collision_k * 0.1) * Mat3r::Identity(); 
+                             
+                             force += F_collision;
+                             hessian += (H_normal + H_stabilize);
+                        }
+                    }
+                }
+
+                // 7. Rigid-Deform Adhesion (Sticky Tumor - Penalty Method)
+                // ========================================================
+                if (!_vbd_rigid_adhesions[vid].empty()) {
+                    
+                    for (const auto* c : _vbd_rigid_adhesions[vid]) {
+                         if (c->shouldBreak()) continue; 
+
+                         // Use compliance from constraint if available
+                         Real adhesion_k = 10000.0;
+                         if (c->alpha() > 1e-12) {
+                             adhesion_k = 1.0 / c->alpha();
+                         }
+
+                         const auto& positions = c->positions();
+                         int v1_idx = positions[0].index;
+                         int v2_idx = positions[1].index;
+                         int v3_idx = positions[2].index;
+                         
+                         const Vec3r& bary = c->barycentricCoords();
+                         
+                         Real weight = 0.0;
+                         if (vid == v1_idx) weight = bary[0];
+                         else if (vid == v2_idx) weight = bary[1];
+                         else if (vid == v3_idx) weight = bary[2];
+                         else continue;
+
+                         Vec3r p1 = _mesh->vertex(v1_idx);
+                         Vec3r p2 = _mesh->vertex(v2_idx);
+                         Vec3r p3 = _mesh->vertex(v3_idx);
+                         Vec3r p_tri = bary[0] * p1 + bary[1] * p2 + bary[2] * p3;
+                         
+                         const Sim::RigidObject* rigid_obj = c->rigidObject();
+                         Vec3r p_rigid = rigid_obj->bodyToGlobal(c->rigidBodyPoint());
+                         
+                         Vec3r diff = p_rigid - p_tri;
+                         Real dist = diff.norm();
+                         c->registerDistance(dist); // CRITICAL for breaking logic
+                         
+                         if (dist > 1e-12) {
+                             Vec3r n = diff / dist; 
+                             
+                             Real deformation = dist - c->getRestGap();
+                             
+                             if (deformation > 0) {
+                                  Vec3r F = adhesion_k * deformation * n;
+                                  
+                                  force += weight * F;
+                                  
+                                  Mat3r H = adhesion_k * (n * n.transpose());
+                                  hessian += (weight * weight) * H;
+                             }
+                         }
+                    }
+                }
+
+                // 8. Inter-Object Deformable Adhesion (VBD Implementation)
+                // ========================================================
+                if (!_vbd_inter_deform_adhesions[vid].empty()) {
+                     
+                     for (const auto* c : _vbd_inter_deform_adhesions[vid]) {
+                         // Skip broken bonds
+                         if (c->shouldBreak()) continue;
+                         
+                         // Calculate stiffness from constraint compliance (alpha)
+                         // k = 1 / alpha
+                         Real adhesion_k = 20000.0; // Default fallback
+                         if (c->alpha() > 1e-12) {
+                             adhesion_k = 1.0 / c->alpha();
+                         }
+
+                         // Evaluate constraint using current VBD positions
+                         // This automatically updates the internal breaking tracker
+                         Real C_val = 0.0;
+                         Real grads[12]; // 4 positions * 3 coords
+                         
+                         // Cast away constness to call evaluateWithGradient for VBD update
+                         auto* mutable_c = const_cast<Solver::InterDeformDeformAdhesionConstraint*>(c);
+                         mutable_c->evaluateWithGradient(&C_val, grads);
+                         
+                         // C_val > 0 means separation > rest_gap (adhesive tension)
+                         // VBD Penalty Logic: E = 0.5 * k * C(x)^2 for C > 0
+                         // force = -dE/dx = -k * C * dC/dx
+                         // hessian = k * (dC/dx * dC/dx^T + C * d2C/dx2)
+                         
+                         if (C_val > 0) {
+                             
+                             // 1. Check if strain exceeds break ratio
+                             // Using max_distance tracking inside constraint
+                             // If it breaks, we shouldn't apply force this step (or maybe apply one last time?)
+                             // Current impl applies force then breaks later.
+                             
+                             const auto& positions = c->positions();
+                             
+                             // Find my index (0..3) in the constraint
+                             int my_idx = -1;
+                             const Real* vid_ptr = _mesh->vertices().data() + vid * 3;
+                             
+                             for(int k=0; k<4; k++) {
+                                 if (positions[k].position_ptr == vid_ptr) {
+                                     my_idx = k;
+                                     break;
+                                 }
+                             }
+                             
+                             if (my_idx != -1) {
+                                  Vec3r grad_i(grads[my_idx*3+0], grads[my_idx*3+1], grads[my_idx*3+2]);
+                                  
+                                  // Force = -k * C * grad
+                                  Vec3r F = -adhesion_k * C_val * grad_i;
+                                  
+                                  // Hessian approximation: k * grad * grad^T
+                                  // Gauss-Newton approximation (ignoring 2nd derivative of C)
+                                  Mat3r H = adhesion_k * (grad_i * grad_i.transpose());
+                                  
+                                  // STABILITY FIX for Adhesion:
+                                  // Adhesion involves small triangles pulling a vertex.
+                                  // If the gradient is perpendicular to motion, H becomes singular (rank-1).
+                                  // We need 'isotropic' holding power to prevent the vertex from "sliding off" the adhesive bond laterally.
+                                  // Increasing stabilization from 1% to 10% prevents "exploding" when stretched.
+                                  Mat3r H_damp = (adhesion_k * 0.1) * Mat3r::Identity();
+
+                                  force += F;
+                                  hessian += (H + H_damp);
+                             }
+                         }
+                     }
+                }
+
+                // 9. Self-Collision (Deformable-Deformable)
+                // =========================================
+                if (!_vbd_self_collisions[vid].empty()) {
+                    const Real collision_k = 2e5; 
+                    const Real thickness = 0.001; // Reduced to 1mm
+                    const Real max_force_mag = 5000.0; 
+
+                    for (const auto* c : _vbd_self_collisions[vid]) {
+                        
+                        const auto& positions = c->positions();
+                        
+                        Eigen::Map<const Vec3r> q(positions[0].position_ptr);
+                        Eigen::Map<const Vec3r> p1(positions[1].position_ptr);
+                        Eigen::Map<const Vec3r> p2(positions[2].position_ptr);
+                        Eigen::Map<const Vec3r> p3(positions[3].position_ptr);
+                        
+                        // Ignore collisions where vertex is part of the triangle (topology check)
+                        // In self-collision, adjacent faces/vertices are often excluded by broadphase
+                        
+                        Vec3r cross_prod = (p2 - p1).cross(p3 - p1);
+                        Real area_sq = cross_prod.squaredNorm();
+                        if (area_sq < 1e-12) continue; 
+                        
+                        Vec3r n = cross_prod / std::sqrt(area_sq);
+                        
+                        Real dist = (q - p1).dot(n);
+                        
+                        if (dist < thickness) {
+                             Real penetration = thickness - dist;
+                             Real lambda = collision_k * penetration;
+                             if (lambda > max_force_mag) lambda = max_force_mag;
+
+                             const Real* vid_ptr = _mesh->vertices().data() + vid * 3;
+                             
+                             Real b_i = 0.0;
+                             Real sign = 0.0;
+                             
+                             if (positions[0].position_ptr == vid_ptr) {
+                                 b_i = 1.0;
+                                 sign = 1.0;
+                             } else {
+                                 // I am on the Triangle
+                                 Vec3r proj_q = q - dist * n;
+                                 Vec3r v0 = p2 - p1;
+                                 Vec3r v1 = p3 - p1;
+                                 Vec3r v2 = proj_q - p1;
+                                 
+                                 Real d00 = v0.dot(v0);
+                                 Real d01 = v0.dot(v1);
+                                 Real d11 = v1.dot(v1);
+                                 Real d20 = v2.dot(v0);
+                                 Real d21 = v2.dot(v1);
+                                 
+                                 Real denom = d00 * d11 - d01 * d01;
+                                 if (std::abs(denom) < 1e-12) continue;
+                                 
+                                 Real v = (d11 * d20 - d01 * d21) / denom;
+                                 Real w = (d00 * d21 - d01 * d20) / denom;
+                                 Real u = 1.0 - v - w;
+                                 
+                                 if (u < -0.1 || v < -0.1 || w < -0.1) continue;
+                                 
+                                 if (positions[1].position_ptr == vid_ptr) b_i = u;
+                                 else if (positions[2].position_ptr == vid_ptr) b_i = v;
+                                 else b_i = w;
+                                 
+                                 sign = -1.0; 
+                             }
+                             
+                             Vec3r F_collision = sign * b_i * lambda * n;
+                             Mat3r H_normal = collision_k * b_i * b_i * (n * n.transpose());
+                             Mat3r H_stabilize = (collision_k * 0.01) * Mat3r::Identity();
+                             
+                             force += F_collision;
+                             hessian += (H_normal + H_stabilize);
+                        }
+                    }
+                }
+
+                // 5. Solve for descent direction (like Gaia's CuMatrix::solve3x3_psd_stable)
                 if (force.squaredNorm() > 1e-12) {
                     Vec3r descentDirection;
                     bool solverSuccess = Utils::solve3x3PSD(hessian.data(), force.data(), descentDirection.data());
                     
                     // DEBUG: Print movement for first few vertices with attachments
-                    if (num_attachments_for_vertex > 0 && debug_frame % 60 == 0 && vid < 5) {
-                        std::cout << "[VBD DEBUG] Vertex " << vid 
-                                  << " | Total force: " << force.norm()
-                                  << " | Descent dir: " << descentDirection.norm()
-                                  << " | Step: " << (step_size * descentDirection).norm() << "\n";
-                    }
+                    // if (num_attachments_for_vertex > 0 && debug_frame % 60 == 0 && vid < 5) {
+                    //     std::cout << "[VBD DEBUG] Vertex " << vid 
+                    //               << " | Total force: " << force.norm()
+                    //               << " | Descent dir: " << descentDirection.norm()
+                    //               << " | Step: " << (step_size * descentDirection).norm() << "\n";
+                    // }
                     
                     if (solverSuccess) {
-                        // Apply step using config step size
+                        // STABILITY IMPROVEMENT: Enable line search for adaptive step sizing
+                        // This prevents overshooting in steep energy landscapes (especially during grasping)
+                        // #ifdef ENABLE_VBD_LINE_SEARCH
+                        // // Gaia-style backtracking line search
+                        // Real initialEnergy = _evaluateVertexEnergy(vid);
+                        // Real optimalStepSize = _vbdLineSearch(vid, descentDirection, initialEnergy, step_size);
+                        // 
+                        // // Apply optimal step found by line search
+                        // _mesh->setVertex(vid, _mesh->vertex(vid));  // Already set by line search
+                        // #else
+                        // Simple fixed step size (faster but less stable)
                         _mesh->displaceVertex(vid, step_size * descentDirection);
+                        // #endif
                     } else {
                         // Fallback: gradient descent when solver fails
                         _mesh->displaceVertex(vid, step_size * 0.1 * force.normalized());
@@ -1749,12 +2310,44 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 }
             }
         }
+
+        // ============================================================================
+        // CHEBYSHEV ACCELERATION STEP
+        // ============================================================================
+        // x_{k+1} = omega * (x_{k+1}^* - x_{k-1}) + x_{k-1}
+        // Where x_{k+1}^* is current _mesh->vertices()
+        // and x_{k-1} is _vbd_prev_iter_vertices
+        
+        if (omega != 1.0) {
+            #ifdef ENABLE_VBD_OPENMP
+            #pragma omp parallel for schedule(static)
+            #endif
+            for (int vid = 0; vid < num_verts; vid++) {
+                 if (vertexFixed(vid)) continue;
+                 
+                 Vec3r current_pos = _mesh->vertex(vid);
+                 const Vec3r& prev_iter_pos = _vbd_prev_iter_vertices.col(vid);
+                 
+                 // Apply Chebyshev formula:
+                 // pos = prev + omega * (current - prev)
+                 Vec3r new_pos = prev_iter_pos + omega * (current_pos - prev_iter_pos);
+                 
+                 _mesh->vertex(vid) = new_pos;
+            }
+        }
+        
+        // Update history: x_{k-1} for next iter becomes x_k (which we saved at start)
+        _vbd_prev_iter_vertices = _vbd_iter_start_vertices;
+
     }
     
     // NOTE: Do NOT reset fixed vertices to _previous_vertices!
     // Fixed vertices (from grasping) should stay at their CURRENT position,
     // not be pulled back to the position from BEFORE inertial motion.
     // The "continue" at line 1402 already handles skipping fixed vertices during VBD.
+
+    // Clear dirty flag after all processing
+    _vbd_constraints_dirty = false;
 }
 
 // ============================================================================
@@ -1870,34 +2463,55 @@ Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_v
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::velocityUpdate()
 {
-    // TODO: apply frictional forces
-    // we do this in the velocity update (i.e. after update() is finished) to ensure that all objects have had their constraints projected already
-    // for (const auto& c : _collision_constraints)
-    // {
-    //     const Real lam = _solver->constraintProjectors()[c.projector_index]->lambda()[0];
-    //     // only apply friction forces for this constraint if it was active (i.e. lambda > 0)
-    //     // if it was "inactive", there was no penetration and thus no contact and thus no friction
-    //     if (lam > 0)
-    //     {
-    //         c.constraint->applyFriction(lam, _material.muS(), _material.muK());
-    //     }
-    // }
+    // Check if using VBD or standard XPBD
+    bool use_vbd = (_sim->config()->solverType() == Config::SolverType::VBD);
+    const Real dt = _sim->dt();
 
-    // for (int i = 0; i < tetMesh()->numElements(); i++)
-    // {
-    //     Mat3r F = tetMesh()->elementDeformationGradient(i);
-    //     if (F.determinant() < 0)
-    //     {
-    //         std::cout << "det(F) < 0 for element " << i << std::endl;
-    //     }
-    // }
+    if constexpr (IsFirstOrder)
+    {
+        if (!use_vbd)
+        {
+            // For Quasi-Static simulation (FirstOrder without VBD), velocity is not tracked for dynamics.
+            // But we might want to update it for visualization or other logic.
+            // However, the "inertial update" uses _vertex_B (overdamping).
+            
+            // Standard FirstOrder update usually zeros velocity or sets it based on displacement.
+            // Setting it to (x_new - x_old)/dt is fine, but it shouldn't be used for next step's inertia
+            // unless we are in 2nd order mode.
+            _vertex_velocities = (_mesh->vertices() - _previous_vertices) / dt;
+            return;
+        }
+    }
 
     const Geometry::Mesh::VerticesMat& cur_vertices = _mesh->vertices();
     // velocities are simply (cur_pos - last_pos) / deltaT
-    _vertex_velocities = (cur_vertices - _previous_vertices) / _sim->dt();
+    _vertex_velocities = (cur_vertices - _previous_vertices) / dt;
     
-    // Very light velocity damping to preserve elasticity
-    const Real damping_factor = 0.998; // Only 0.2% reduction per timestep (was 0.995)
+    // Explicit Damping Control
+    // ========================
+    // If not using VBD (i.e. Standard XPBD), apply simpler damping.
+    // If using VBD, we might want cleaner damping control.
+    
+    Real damping_factor = 1.0;
+
+    if (use_vbd) {
+        // VBD damping controlled by config
+        // Default vbd-damping is 0.0 (no damping)
+        // Set vbd-damping: 0.01 in YAML for 1% damping per step
+        // CRITICAL FIX: Clamp input BEFORE calculation to prevent negative damping_factor
+        Real vbd_damping = _sim->config()->vbdDamping();
+        vbd_damping = std::clamp(vbd_damping, 0.0, 0.99);  // Limit to reasonable range [0%, 99%]
+        damping_factor = 1.0 - vbd_damping;
+        
+        // Safety clamp (should be unnecessary now, but kept for robustness)
+        if (damping_factor < 0.0) damping_factor = 0.0;
+        if (damping_factor > 1.0) damping_factor = 1.0;
+    } else {
+        // Standard XPBD damping
+        damping_factor = 0.998; 
+    }
+
+    // Apply global damping
     _vertex_velocities *= damping_factor;
 }
 
@@ -2101,6 +2715,75 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::selfCollisionCheck()
 {
     const Geometry::EmbreeScene* embree_scene = _sim->embreeScene();
+    
+    // Struct to hold collision data temporarily
+    struct SelfCollisionInfo {
+        int vertex_idx;
+        int face_idx; 
+        // We will fetch pointers/masses serially to be safe or parallel if careful, 
+        // but fetching indices is enough.
+    };
+
+    #ifdef ENABLE_VBD_OPENMP
+    
+    int max_threads = omp_get_max_threads();
+    std::vector<std::vector<SelfCollisionInfo>> thread_results(max_threads);
+    
+    // 1. Parallel Query (The Heavy Part)
+    #pragma omp parallel for schedule(dynamic, 64)
+    for (int i = 0; i < _mesh->numVertices(); i++)
+    {
+        if (!_mesh->vertexOnSurface(i))
+            continue;
+
+        std::set<Geometry::EmbreeHit> hits = embree_scene->tetMeshSelfCollisionQuery(i, this);
+        if (hits.size() > 0)
+        {
+            int face_index = _sdf->closestSurfaceFaceToPointInTet(_mesh->vertex(i), hits.begin()->prim_index);
+
+            if (face_index >= 0) {
+                int tid = omp_get_thread_num();
+                thread_results[tid].push_back({i, face_index});
+            }
+        }
+    }
+    
+    // 2. Serial Commit (Fast enough, avoids synchronization issues)
+    std::vector<Solver::DeformableDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::DeformableDeformableCollisionConstraint>();
+    bool any_added = false;
+
+    for (const auto& t_results : thread_results) {
+        for (const auto& info : t_results) {
+            int i = info.vertex_idx;
+            int face_idx = info.face_idx;
+            
+            const Eigen::Vector3i& face = _mesh->face(face_idx);
+
+            Real* q_ptr = _mesh->vertexPointer(i);
+            Real* p1_ptr = _mesh->vertexPointer(face[0]);
+            Real* p2_ptr = _mesh->vertexPointer(face[1]);
+            Real* p3_ptr = _mesh->vertexPointer(face[2]);
+
+            Real qm = vertexConstraintInertia(i);
+            Real p1m = vertexConstraintInertia(face[0]);
+            Real p2m = vertexConstraintInertia(face[1]);
+            Real p3m = vertexConstraintInertia(face[2]);
+
+            constraint_vec.emplace_back(i, q_ptr, qm, face[0], p1_ptr, p1m, face[1], p2_ptr, p2m, face[2], p3_ptr, p3m);
+
+            using ConstraintRefType = Solver::ConstraintReference<Solver::DeformableDeformableCollisionConstraint>;
+            _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
+            
+            any_added = true;
+        }
+    }
+    
+    if (any_added) {
+        _vbd_constraints_dirty = true;
+    }
+
+    #else
+    // Serial Fallback for non-OpenMP builds
     for (int i = 0; i < _mesh->numVertices(); i++)
     {
         if (!_mesh->vertexOnSurface(i))
@@ -2126,21 +2809,18 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::se
             Real p2m = vertexConstraintInertia(face[1]);
             Real p3m = vertexConstraintInertia(face[2]);
 
-            
-            // std::cout << "  SELF COLLISION WITH VERTEX " << i << " WITH FACE " << face_index << "!" << std::endl;
-            // std::cout << "  Tet indices: " << tetMesh()->element(hits.begin()->prim_index).transpose() << std::endl;
-            // std::cout << "  Face indices: " << face.transpose() << std::endl;
-            // std::cout << "  Vertex: " << _mesh->vertex(i).transpose() << 
-            //     "  Face:\n\t" << _mesh->vertex(face[0]).transpose() << ",\n\t" << _mesh->vertex(face[1]).transpose()  << ",\n\t" << _mesh->vertex(face[2]).transpose() << std::endl;
             std::vector<Solver::DeformableDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::DeformableDeformableCollisionConstraint>();
             constraint_vec.emplace_back(i, q_ptr, qm, face[0], p1_ptr, p1m, face[1], p2_ptr, p2m, face[2], p3_ptr, p3m);
 
             using ConstraintRefType = Solver::ConstraintReference<Solver::DeformableDeformableCollisionConstraint>;
             _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
+            
+            _vbd_constraints_dirty = true;
         }
     }
-    
+    #endif
 }
+
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 typename SolverType::projector_reference_container_type
@@ -2240,6 +2920,145 @@ const XPBDMeshObjectGPUResource* XPBDMeshObject_<IsFirstOrder, SolverType, TypeL
 }
 #endif
 
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_cacheCollisionConstraints()
+{
+    const int num_verts = _mesh->numVertices();
+    const Real* my_vertices_start = _mesh->vertices().data();
+    const Real* my_vertices_end = my_vertices_start + _mesh->vertices().size();
+
+    // Pre-compute Rigid-Deformable Collision Lookup
+    if (_vbd_rigid_collisions.size() != num_verts) _vbd_rigid_collisions.resize(num_verts);
+    for(auto& vec : _vbd_rigid_collisions) vec.clear();
+
+    using RigidCollisionProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>;
+    const auto& rigid_coll_projectors = _solver.template getConstraintProjectorsOfType<RigidCollisionProjectorType>();
+
+    for(const auto& projector : rigid_coll_projectors) {
+        if(!projector.isValid()) continue;
+        const auto* c = &projector.constraint().get(); 
+        if(!c) continue; 
+        
+        const auto& positions = c->positions();
+        for(const auto& pos_ref : positions) {
+            if(pos_ref.index < num_verts) {
+                _vbd_rigid_collisions[pos_ref.index].push_back(c);
+            }
+        }
+    }
+
+    // Pre-compute Static-Deformable Collision Lookup
+    if (_vbd_static_collisions.size() != num_verts) _vbd_static_collisions.resize(num_verts);
+    for(auto& vec : _vbd_static_collisions) vec.clear();
+
+    using StaticCollisionProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>;
+    const auto& static_coll_projectors = _solver.template getConstraintProjectorsOfType<StaticCollisionProjectorType>();
+
+    for(const auto& projector : static_coll_projectors) {
+        if(!projector.isValid()) continue;
+        const auto* c = &projector.constraint().get(); 
+        if(!c) continue; 
+        
+        const auto& positions = c->positions();
+        for(const auto& pos_ref : positions) {
+            if(pos_ref.index < num_verts) {
+                _vbd_static_collisions[pos_ref.index].push_back(c);
+            }
+        }
+    }
+
+    // Pre-compute Rigid-Deform Adhesion Lookup
+    if (_vbd_rigid_adhesions.size() != num_verts) _vbd_rigid_adhesions.resize(num_verts);
+    for(auto& vec : _vbd_rigid_adhesions) vec.clear();
+
+    using AdhesionProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
+    const auto& adhesion_projectors = _solver.template getConstraintProjectorsOfType<AdhesionProjectorType>();
+
+    for(const auto& projector : adhesion_projectors) {
+        if(!projector.isValid()) continue;
+        const auto* c = &projector.constraint().get(); 
+        if(!c) continue; 
+        
+        const auto& positions = c->positions();
+        for(const auto& pos_ref : positions) {
+            if(pos_ref.index < num_verts) {
+                _vbd_rigid_adhesions[pos_ref.index].push_back(c);
+            }
+        }
+    }
+
+    // Pre-compute Inter-Deformable Collision Lookup
+    if (_vbd_inter_deform_collisions.size() != num_verts) _vbd_inter_deform_collisions.resize(num_verts);
+    for(auto& vec : _vbd_inter_deform_collisions) vec.clear();
+
+    using InterDeformCollisionProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterObjectDeformableCollisionConstraint>;
+    const auto& inter_deform_coll_projectors = _solver.template getConstraintProjectorsOfType<InterDeformCollisionProjectorType>();
+
+    for(const auto& projector : inter_deform_coll_projectors) {
+        if(!projector.isValid()) continue;
+        const auto* c = &projector.constraint().get(); 
+        if(!c) continue; 
+        
+        const auto& positions = c->positions();
+        for(const auto& pos_ref : positions) {
+            const Real* ptr = pos_ref.position_ptr;
+            if(ptr >= my_vertices_start && ptr < my_vertices_end) {
+                if (pos_ref.index < num_verts) {
+                    _vbd_inter_deform_collisions[pos_ref.index].push_back(c);
+                }
+            }
+        }
+    }
+
+    // Pre-compute Inter-Deformable Adhesion Lookup
+    if (_vbd_inter_deform_adhesions.size() != num_verts) _vbd_inter_deform_adhesions.resize(num_verts);
+    for(auto& vec : _vbd_inter_deform_adhesions) vec.clear();
+
+    using InterDeformAdhesionProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
+    const auto& inter_deform_adhesion_projectors = _solver.template getConstraintProjectorsOfType<InterDeformAdhesionProjectorType>();
+
+    for(const auto& projector : inter_deform_adhesion_projectors) {
+        if(!projector.isValid()) continue;
+        const auto* c = &projector.constraint().get(); 
+        if(!c) continue; 
+        
+        const auto& positions = c->positions();
+        for(const auto& pos_ref : positions) {
+            const Real* ptr = pos_ref.position_ptr;
+            if(ptr >= my_vertices_start && ptr < my_vertices_end) {
+                if (pos_ref.index < num_verts) {
+                    _vbd_inter_deform_adhesions[pos_ref.index].push_back(c);
+                }
+            }
+        }
+    }
+
+    // Pre-compute Self-Collision Lookup
+    if (_vbd_self_collisions.size() != num_verts) _vbd_self_collisions.resize(num_verts);
+    for(auto& vec : _vbd_self_collisions) vec.clear();
+
+    using SelfCollisionProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::DeformableDeformableCollisionConstraint>;
+    const auto& self_coll_projectors = _solver.template getConstraintProjectorsOfType<SelfCollisionProjectorType>();
+
+    for(const auto& projector : self_coll_projectors) {
+        if(!projector.isValid()) continue;
+        const auto* c = &projector.constraint().get(); 
+        if(!c) continue; 
+        
+        const auto& positions = c->positions();
+        for(const auto& pos_ref : positions) {
+            const Real* ptr = pos_ref.position_ptr;
+            if(ptr >= my_vertices_start && ptr < my_vertices_end) {
+                if (pos_ref.index < num_verts) {
+                    _vbd_self_collisions[pos_ref.index].push_back(c);
+                }
+            }
+        }
+    }
+
+    _vbd_constraints_dirty = false;
+}
 // TODO: find a way to automate this!
 using SolverTypesStableNeohookean = XPBDObjectSolverTypes<false, typename XPBDMeshObjectConstraintConfigurations<false>::StableNeohookean::projector_type_list>;
 using SolverTypesStableNeohookeanCombined = XPBDObjectSolverTypes<false, typename XPBDMeshObjectConstraintConfigurations<false>::StableNeohookeanCombined::projector_type_list>;
@@ -2284,8 +3103,11 @@ template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombin
 using FirstOrderSolverTypesNerveOnly = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::projector_type_list>;
 using FirstOrderNerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::constraint_type_list;
 
+
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::GaussSeidel, FirstOrderNerveOnlyConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::Jacobi, FirstOrderNerveOnlyConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::ParallelJacobi, FirstOrderNerveOnlyConstraints>;
 
 } // namespace Sim
+
+

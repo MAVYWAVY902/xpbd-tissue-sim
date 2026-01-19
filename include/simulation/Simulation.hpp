@@ -83,6 +83,14 @@ class Simulation
         Real time() const { return _time; }
 
         Real dt() const { return _time_step; }
+
+        /** Accessor for collision scene */
+        CollisionScene* collisionScene() const { return _collision_scene.get(); }
+
+        /** Refresh the collision scene: Clear all constraints and re-detect collisions.
+         *  Used for intermediate collision detection inside solver loops.
+         */
+        void refreshCollisionScene();
         
         Real gAccel() const { return _g_accel; }
         
@@ -91,7 +99,6 @@ class Simulation
         const Graphics::GraphicsScene* graphicsScene() const { return _graphics_scene.get(); }
         const Geometry::EmbreeScene* embreeScene() const { return _embree_scene.get(); }
         void updateEmbreeScene() { _embree_scene->update(); }
-        const CollisionScene* collisionScene() const { return _collision_scene.get(); }
 
         const ObjectVectorType& objects() const { return _objects; }
         const ObjectVectorType& graphicsObjects() const { return _graphics_only_objects; }

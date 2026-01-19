@@ -97,6 +97,11 @@ class RigidDeformAdhesionConstraint : public Constraint, public RigidBodyConstra
      * @return true if bond should be broken and constraint removed
      */
     bool shouldBreak() const;
+
+    /** Getters for VBD Solver */
+    const Vec3r& barycentricCoords() const { return _bary_cached; }
+    const Vec3r& rigidBodyPoint() const { return _rigid_body_point; }
+    const Sim::RigidObject* rigidObject() const { return _rigid_bodies[0]; }
     
     /** Get current separation distance between rigid body point and triangle surface */
     Real getCurrentDistance() const;
@@ -111,6 +116,14 @@ class RigidDeformAdhesionConstraint : public Constraint, public RigidBodyConstra
     void resetMaxDistanceThisStep() const { 
         _max_distance_this_step = 0.0; 
         _cache_valid = false;  // Invalidate cache at start of new timestep
+    }
+
+    /** Manually update the maximum distance tracker (for VBD solver).
+     * This allows the VBD solver to report distances encountered during energy minimization,
+     * so that breakage logic works correctly without calling evaluate().
+     */
+    void registerDistance(Real dist) const {
+        _max_distance_this_step = std::max(_max_distance_this_step, dist);
     }
 
     protected:

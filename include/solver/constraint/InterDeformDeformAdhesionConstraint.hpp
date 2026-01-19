@@ -79,6 +79,16 @@ class InterDeformDeformAdhesionConstraint : public Constraint
 
     /** Get break ratio threshold */
     Real getBreakRatio() const { return _break_ratio; }
+
+    /** Returns effective compliance. Softens bond as health degrades. */
+    virtual Real alpha() const override {
+        // Effective compliance increases as bond health degrades
+        // alpha_effective = alpha_base / (health^2)
+        // If health=1.0, alpha=alpha_base. If health=0.5, alpha=4*alpha_base (softer).
+        // Clamp health to small non-zero value to avoid division by zero
+        Real h = std::max(_health, 0.01); 
+        return _alpha / (h * h);
+    }
     
     /** Check if adhesion bond should break based on strain ratio.
      * Bond breaks when max_distance_this_step / rest_gap > break_ratio
@@ -134,6 +144,10 @@ class InterDeformDeformAdhesionConstraint : public Constraint
     
     // Track maximum distance during projection (for breaking detection with fixed vertices)
     mutable Real _max_distance_this_step{0.0}; ///< Maximum distance reached during current step
+    // Continuous Degradation Model State
+    mutable Real _health{1.0};      ///< Bond health [0.0, 1.0], starts at 1.0
+    const Real _yield_ratio{1.2};   ///< Strain ratio where damage starts (e.g. 1.2x length)
+    const Real _decay_rate{0.90};   ///< Health decay factor per frame when over yield (e.g. 10% loss)
 };
 
 } // namespace Solver

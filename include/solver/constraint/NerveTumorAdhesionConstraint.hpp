@@ -74,6 +74,16 @@ class NerveTumorAdhesionConstraint : public Constraint
      * @return true if bond should be broken and constraint removed
      */
     bool shouldBreak() const;
+
+    /** Override PBD compliance alpha to be dynamic based on health.
+     * Implements "Progressive Damage Modeling":
+     * Alpha increases (softens) as health decreases upon strain.
+     */
+    Real alpha() const override {
+        // Base alpha / (health^2) -> Softens quadratically as health drops
+        // Added small epsilon to prevent division by zero
+        return _alpha / std::max(1e-4, (_health * _health)); 
+    }
     
     /** Get current separation distance between nerve and tumor surface */
     Real getCurrentDistance() const;
@@ -123,6 +133,11 @@ class NerveTumorAdhesionConstraint : public Constraint
     
     // Track maximum distance during projection (for breaking detection with fixed vertices)
     mutable Real _max_distance_this_step{0.0}; ///< Maximum distance reached during current step
+
+    // Continuous Degradation Model State
+    mutable Real _health{1.0};      ///< Bond health [0.0, 1.0], starts at 1.0
+    const Real _yield_ratio{1.2};   ///< Strain ratio where damage starts (e.g. 1.2x length)
+    const Real _decay_rate{0.90};   ///< Health decay factor per frame when over yield (e.g. 10% loss)
 };
 
 } // namespace Solver

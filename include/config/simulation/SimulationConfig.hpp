@@ -116,6 +116,7 @@ class SimulationConfig : public Config
         _extractParameter("vbd-iterations", node, _vbd_iterations);
         _extractParameter("vbd-use-full-hessian", node, _vbd_use_full_hessian);
         _extractParameter("vbd-step-size", node, _vbd_step_size);
+        _extractParameter("vbd-damping", node, _vbd_damping);
 
         // create a MeshObject for each object specified in the YAML file
         for (const auto& obj_node : node["objects"])
@@ -209,6 +210,7 @@ class SimulationConfig : public Config
     int vbdIterations() const { return _vbd_iterations.value; }
     bool vbdUseFullHessian() const { return _vbd_use_full_hessian.value; }
     Real vbdStepSize() const { return _vbd_step_size.value; }
+    Real vbdDamping() const { return _vbd_damping.value; }
 
     // get list of MeshObject configs that will be used to create MeshObjects
     const ConfigVectorType& objectConfigs() const { return _object_configs; }
@@ -243,6 +245,7 @@ class SimulationConfig : public Config
     ConfigParameter<int> _vbd_iterations = ConfigParameter<int>(5);    // VBD needs fewer
     ConfigParameter<bool> _vbd_use_full_hessian = ConfigParameter<bool>(false);  // Phase 1: Gauss-Newton
     ConfigParameter<Real> _vbd_step_size = ConfigParameter<Real>(1.0);  // VBD step size (can tune)
+    ConfigParameter<Real> _vbd_damping = ConfigParameter<Real>(0.0);    // VBD damping (default 0)
 
     // State recording parameters
     ConfigParameter<bool> _state_recording_enable = ConfigParameter<bool>(false);

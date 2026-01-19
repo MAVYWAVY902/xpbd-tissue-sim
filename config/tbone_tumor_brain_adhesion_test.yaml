@@ -94,7 +94,7 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision with brain
 
     ## XPBD-specific options
-    num-solver-iters: 35
+    num-solver-iters: 5
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
@@ -138,7 +138,7 @@ objects:
     inter-object-collisions: true
 
     ## XPBD-specific options
-    num-solver-iters: 35
+    num-solver-iters: 5
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"

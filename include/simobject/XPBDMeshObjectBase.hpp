@@ -116,6 +116,12 @@ public:
      * @returns the velocity of the vertex at the specified index
      */
     Vec3r vertexVelocity(int index) const { return _vertex_velocities.col(index); }
+    
+    /** Manually set the velocity of a vertex.
+     * @param index : the index of the vertex
+     * @param v : the new velocity vector
+     */
+    void setVertexVelocity(int index, const Vec3r& v) { _vertex_velocities.col(index) = v; }
 
     /** The previous position of the vertex at the specified index.
      * @param index : the index of the vertex

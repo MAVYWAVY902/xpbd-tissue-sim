@@ -213,6 +213,15 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
                                               int tri_v1, int tri_v2, int tri_v3, 
                                               Real rest_gap, Real break_ratio, Real alpha = 0.0);
 
+    /** Adds an inter-deform adhesion constraint where THIS object provides the vertex and OTHER object provides the triangle.
+     * Use this to register the constraint on the vertex-side object so its solver can apply forces.
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>>
+        addInterDeformDeformAdhesionConstraintAsVertex(XPBDMeshObject_Base_<IsFirstOrder>* other_obj, int vertex_v,
+                                              int tri_v1, int tri_v2, int tri_v3, 
+                                              Real rest_gap, Real break_ratio, Real alpha = 0.0);
+
     /** Adds a rigid-deformable adhesion constraint between a rigid body point and a face on this object.
      * This enables adhesion between a rigid object and a deformable mesh.
      * @param sdf - SDF of the rigid object
@@ -345,6 +354,10 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     typename SolverType::projector_reference_container_type _gatherProjectorsForLocalCollisionIterations();
 
     protected:
+    
+    /** Helper to cache collision constraints for VBD solver efficiency */
+    void _cacheCollisionConstraints();
+
     // fixed vertices specified in config (applied during setup)
     std::vector<int> _initial_fixed_vertices;
     /** The specific constraint configuration used to define internal constraints for the XPBD mesh. Set by the Config object
@@ -403,6 +416,52 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      * Optimization to avoid iterating all constraints for every vertex.
      */
     std::vector<std::vector<const Solver::AttachmentConstraint*>> _vbd_vertex_to_attachments;
+
+    /** For VBD: Pre-computed map of vertex to rigid-deformable collision constraints.
+     * Optimization to avoid iterating all constraints for every vertex.
+     */
+    std::vector<std::vector<const Solver::RigidDeformableCollisionConstraint*>> _vbd_rigid_collisions;
+
+    /** For VBD: Pre-computed map of vertex to static-deformable collision constraints.
+     * Optimization to avoid iterating all constraints for every vertex.
+     */
+    std::vector<std::vector<const Solver::StaticDeformableCollisionConstraint*>> _vbd_static_collisions;
+
+    /** For VBD: Pre-computed map of vertex to inter-object deformable collision constraints.
+     * Optimization to avoid iterating all constraints for every vertex.
+     */
+    std::vector<std::vector<const Solver::InterObjectDeformableCollisionConstraint*>> _vbd_inter_deform_collisions;
+
+    /** For VBD: Pre-computed map of vertex to rigid-deformable adhesion constraints.
+     * Optimization to avoid iterating all constraints for every vertex.
+     */
+    std::vector<std::vector<const Solver::RigidDeformAdhesionConstraint*>> _vbd_rigid_adhesions;
+
+    /** For VBD: Pre-computed map of vertex to inter-object deform-deform adhesion constraints.
+     * Optimization to avoid iterating all constraints for every vertex.
+     */
+    std::vector<std::vector<const Solver::InterDeformDeformAdhesionConstraint*>> _vbd_inter_deform_adhesions;
+
+    /** For VBD: Pre-computed map of vertex to self-collision constraints.
+     * Handles deformable mesh folding onto itself.
+     */
+    std::vector<std::vector<const Solver::DeformableDeformableCollisionConstraint*>> _vbd_self_collisions;
+    
+    /** Dirty flag to trigger VBD lookup table rebuild. */
+    bool _vbd_constraints_dirty = true;
+
+    /** For Chebyshev Acceleration: Positions from the previous VBD iteration (x_{k-1}). */
+    MatXr _vbd_prev_iter_vertices;
+    
+    /** For Chebyshev Acceleration: Backup of positions before the current VBD iteration update (x_k). */
+    MatXr _vbd_iter_start_vertices;
+    
+    /** Calculate Chebyshev omega parameter. */
+    static Real _getChebyshevOmega(int iter, Real rho, Real prevOmega) {
+        if (iter == 1) return 1.0;
+        if (iter == 2) return 2.0 / (2.0 - rho * rho);
+        return 4.0 / (4.0 - rho * rho * prevOmega);
+    }
 
     /** The number of local iterations for collision area.
      * Constraint projectors in the vicinity of active collision constraints (see _gatherProjectorsForLocalCollisionIterations) are assembled

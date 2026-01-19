@@ -1036,6 +1036,8 @@
 #include "geometry/TetMesh.hpp"
 
 #include <gmsh.h>
+#include <omp.h>
+#include <vector>
 #include <chrono>
 #include <thread>
 #include <iomanip>
@@ -2269,79 +2271,147 @@ void Simulation::setup()
             auto try_add_inter_deform = [&](auto* typed_cube2_ptr) -> bool {
                 if (!typed_cube2_ptr) return false;
                 
-                std::cout << "[inter-deform adhesion] Successfully cast Brain to typed pointer\n";
-                std::cout << "[inter-deform adhesion] Using EMBREE BVH for spatial acceleration\n";
+                // Try to cast cube1 to the same type (assuming same config)
+                using CubeType = std::remove_pointer_t<decltype(typed_cube2_ptr)>;
+                CubeType* typed_cube1_ptr = dynamic_cast<CubeType*>(cube1_ptr);
                 
-                // For each vertex in Tumor, find closest face in Brain using Embree BVH
-                for (int v = 0; v < cube1_nv; ++v) {
-                    vertices_checked++;
-                    const Vec3r cube1_vertex = cube1_mesh->vertex(v);
+                if (!typed_cube1_ptr) {
+                    std::cout << "[inter-deform adhesion] WARNING: cube1 (Tumor) has different type than cube2 (Brain). Skipping specific cast.\n";
+                    // If types differ, we'd need more complex casting logic. For now, assume consistent config.
+                    return false;
+                }
+
+                std::cout << "[inter-deform adhesion] Successfully cast Brain & Tumor to typed pointers\n";
+                // std::cout << "[inter-deform adhesion] Using EMBREE BVH for spatial acceleration\n";
+                std::cout << "[inter-deform adhesion] Using EMBREE BVH for spatial acceleration (Parallelized)\n";
+
+                struct AdhesionCandidate {
+                    int v;
+                    int f, v1, v2, v3;
+                    Real distance;
+                };
+                
+                std::vector<AdhesionCandidate> candidates;
+                
+                // Shared vars for reduction
+                int local_vertices_checked = 0;
+                int local_vertices_within_range = 0;
+                Real local_min_dist = std::numeric_limits<Real>::max();
+                Real local_max_dist = 0.0;
+                
+                #pragma omp parallel
+                {
+                    std::vector<AdhesionCandidate> thread_candidates;
+                    int t_vertices_checked = 0;
+                    int t_vertices_within_range = 0;
+                    Real t_min_dist = std::numeric_limits<Real>::max();
+                    Real t_max_dist = 0.0;
                     
-                    Real closest_distance = std::numeric_limits<Real>::max();
-                    int closest_face = -1;
-                    int closest_v1 = -1, closest_v2 = -1, closest_v3 = -1;
-                    
-                    // ✅ USE EMBREE BVH: Query nearby triangles within bond_distance
-                    std::set<Geometry::EmbreeHit> nearby_triangles = 
-                        _embree_scene->interObjectCollisionQuery(cube1_vertex, cube2_ptr, bond_distance);
-                    
-                    // Check ONLY the nearby triangles found by Embree (much faster than brute force!)
-                    for (const auto& hit : nearby_triangles) {
-                        const int f = hit.prim_index;
+                    #pragma omp for nowait
+                    for (int v = 0; v < cube1_nv; ++v) {
+                        t_vertices_checked++;
+                        const Vec3r cube1_vertex = cube1_mesh->vertex(v);
                         
-                        if (f < 0 || f >= cube2_nf) {
-                            std::cerr << "[ERROR] Invalid face index from Embree: " << f << std::endl;
-                            continue;
-                        }
+                        Real closest_distance = std::numeric_limits<Real>::max();
+                        int closest_face = -1;
+                        int closest_v1 = -1, closest_v2 = -1, closest_v3 = -1;
                         
-                        const auto face = cube2_mesh->face(f);
-                        const int v1 = face[0], v2 = face[1], v3 = face[2];
+                        // ✅ USE EMBREE BVH: Query nearby triangles within bond_distance
+                        std::set<Geometry::EmbreeHit> nearby_triangles = 
+                            _embree_scene->interObjectCollisionQuery(cube1_vertex, cube2_ptr, bond_distance);
                         
-                        const Vec3r tri_p1 = cube2_mesh->vertex(v1);
-                        const Vec3r tri_p2 = cube2_mesh->vertex(v2);
-                        const Vec3r tri_p3 = cube2_mesh->vertex(v3);
-                        
-                        // Compute point-to-triangle distance
-                        Vec3r closest_point, normal, bary_coords;
-                        Real distance = computePointTriangleDistance(cube1_vertex, tri_p1, tri_p2, tri_p3,
-                                                                    closest_point, normal, bary_coords);
-                        
-                        // Track closest triangle within bond distance
-                        if (distance <= bond_distance && distance < closest_distance) {
-                            closest_distance = distance;
-                            closest_face = f;
-                            closest_v1 = v1;
-                            closest_v2 = v2;
-                            closest_v3 = v3;
-                        }
-                    }
-                    
-                    // Track statistics
-                    if (closest_distance < std::numeric_limits<Real>::max()) {
-                        min_distance_found = std::min(min_distance_found, closest_distance);
-                        max_distance_found = std::max(max_distance_found, closest_distance);
-                        
-                        if (closest_distance <= bond_distance) {
-                            vertices_within_range++;
-                        }
-                    }
-                    
-                    // Create constraint if a close triangle was found
-                    if (closest_face >= 0) {
-                        try {
-                            typed_cube2_ptr->addInterDeformDeformAdhesionConstraint(
-                                cube1_ptr, v, closest_v1, closest_v2, closest_v3, rest_gap, break_ratio, alpha
-                            );
+                        // Check ONLY the nearby triangles found by Embree (much faster than brute force!)
+                        for (const auto& hit : nearby_triangles) {
+                            const int f = hit.prim_index;
                             
-                            ++constraints_added;
-                            // if (constraints_added <= 10) {
-                            //     std::cout << "[inter-deform adhesion] Added constraint: Cube1_v" << v 
-                            //               << " -> Cube2_face[" << closest_v1 << "," << closest_v2 << "," << closest_v3 
-                            //               << "] distance=" << closest_distance << "m\n";
-                            // }
-                        } catch (const std::exception& e) {
-                            std::cout << "[inter-deform adhesion] Failed to add constraint: " << e.what() << "\n";
+                            if (f < 0 || f >= cube2_nf) {
+                                // std::cerr << "[ERROR] Invalid face index from Embree: " << f << std::endl;
+                                continue;
+                            }
+                            
+                            const auto face = cube2_mesh->face(f);
+                            const int v1 = face[0], v2 = face[1], v3 = face[2];
+                            
+                            const Vec3r tri_p1 = cube2_mesh->vertex(v1);
+                            const Vec3r tri_p2 = cube2_mesh->vertex(v2);
+                            const Vec3r tri_p3 = cube2_mesh->vertex(v3);
+                            
+                            // Compute point-to-triangle distance
+                            Vec3r closest_point, normal, bary_coords;
+                            Real distance = computePointTriangleDistance(cube1_vertex, tri_p1, tri_p2, tri_p3,
+                                                                        closest_point, normal, bary_coords);
+                            
+                            // Track closest triangle within bond distance
+                            if (distance <= bond_distance && distance < closest_distance) {
+                                closest_distance = distance;
+                                closest_face = f;
+                                closest_v1 = v1;
+                                closest_v2 = v2;
+                                closest_v3 = v3;
+                            }
                         }
+                        
+                        // Track statistics
+                        if (closest_distance < std::numeric_limits<Real>::max()) {
+                            t_min_dist = std::min(t_min_dist, closest_distance);
+                            t_max_dist = std::max(t_max_dist, closest_distance);
+                            
+                            if (closest_distance <= bond_distance) {
+                                t_vertices_within_range++;
+                            }
+                        }
+                        
+                        // Create constraint if a close triangle was found
+                        if (closest_face >= 0) {
+                            thread_candidates.push_back({v, closest_face, closest_v1, closest_v2, closest_v3, closest_distance});
+                        }
+                    }
+                    
+                    #pragma omp critical
+                    {
+                        candidates.insert(candidates.end(), thread_candidates.begin(), thread_candidates.end());
+                        local_vertices_checked += t_vertices_checked;
+                        local_vertices_within_range += t_vertices_within_range;
+                        local_min_dist = std::min(local_min_dist, t_min_dist);
+                        local_max_dist = std::max(local_max_dist, t_max_dist);
+                    }
+                } // end parallel
+                
+                // Update stats
+                vertices_checked += local_vertices_checked;
+                vertices_within_range += local_vertices_within_range;
+                min_distance_found = std::min(min_distance_found, local_min_dist);
+                max_distance_found = std::max(max_distance_found, local_max_dist);
+                
+                // Serial application of constraints
+                for(const auto& c : candidates) {
+                    try {
+                        // STABILITY FIX: Use ACTUAL distance as rest gap to prevent explosive initial forces
+                        // If we use the configured rest_gap (e.g. 1.5mm) but the geometry is 5mm apart,
+                        // the high stiffness creates massive instant forces (Explosion).
+                        // Bonding at the current distance ensures stress-free initialization.
+                        Real effective_rest_gap = c.distance;
+
+                        // ROOT CAUSE FIX 2: Prevent "Constraint Fighting"
+                        // If Adhesion bonds at 0.5mm, but Collision pushes out to 1.0mm, they fight explosively.
+                        // Ensure Adhesion never tries to pull particles into the Collision Buffer.
+                        // Collision thickness is approx 0.001 (1mm). We set min adhesion to 1.2mm.
+                        const Real min_safe_gap = 0.0012; 
+                        if (effective_rest_gap < min_safe_gap) effective_rest_gap = min_safe_gap;
+
+                        // Add constraint to Brain (Triangle Side)
+                        typed_cube2_ptr->addInterDeformDeformAdhesionConstraint(
+                            cube1_ptr, c.v, c.v1, c.v2, c.v3, effective_rest_gap, break_ratio, alpha
+                        );
+                        
+                        // Add constraint to Tumor (Vertex Side) - CRITICAL for VBD!
+                        typed_cube1_ptr->addInterDeformDeformAdhesionConstraintAsVertex(
+                            cube2_ptr, c.v, c.v1, c.v2, c.v3, effective_rest_gap, break_ratio, alpha
+                        );
+                        
+                        ++constraints_added;
+                    } catch (const std::exception& e) {
+                        std::cout << "[inter-deform adhesion] Failed to add constraint: " << e.what() << "\n";
                     }
                 }
                 
@@ -2610,10 +2680,19 @@ void Simulation::setup()
                         const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(tri_center);
                         
                         try {
+                            // STABILITY FIX: Use ACTUAL distance as rest gap
+                            // This prevents "explosive" initialization where springs start pre-stretched by millimeters.
+                            // With k=1e6, a 1mm mismatch = 1000N force!
+                            Real effective_rest_gap = distance;
+
+                            // Prevent Constraint Fighting (Collision vs Adhesion)
+                            const Real min_safe_gap = 0.0012; 
+                            if (effective_rest_gap < min_safe_gap) effective_rest_gap = min_safe_gap;
+
                             typed_tissue_ptr->addRigidDeformAdhesionConstraint(
                                 sdf, rigid_obj_ptr, rigid_body_point,
                                 v1, v2, v3,
-                                rest_gap, break_ratio, alpha
+                                effective_rest_gap, break_ratio, alpha
                             );
                             
                             ++constraints_added;
@@ -3652,6 +3731,32 @@ int Simulation::run()
     {
         update_thread.join();
         return 0;
+    }
+}
+
+
+void Simulation::refreshCollisionScene()
+{
+    // Clear collision constraints for all supported objects
+    auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+    for (auto& obj : xpbd_mesh_objs) obj->clearCollisionConstraints();
+
+    auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+    for (auto& obj : fo_xpbd_mesh_objs) obj->clearCollisionConstraints();
+
+    auto& virtuoso_robots = _objects.get<std::unique_ptr<VirtuosoRobot>>();
+    for (auto& obj : virtuoso_robots)
+    {
+        if (obj->hasArm1()) obj->arm1()->clearCollisionConstraints();
+        if (obj->hasArm2()) obj->arm2()->clearCollisionConstraints();
+    }
+
+    auto& virtuoso_arms = _objects.get<std::unique_ptr<VirtuosoArm>>();
+    for (auto& obj : virtuoso_arms) obj->clearCollisionConstraints();
+
+    // Re-run collision detection
+    if (_collision_scene) {
+        _collision_scene->collideObjects();
     }
 }
 

@@ -67,7 +67,7 @@ class Constraint
     inline virtual int numCoordinates() const = 0;
     
     /** Returns the compliance for this constraint. */
-    Real alpha() const { return _alpha; }
+    virtual Real alpha() const { return _alpha; }
 
     /** Returns true if this constraints is an inequality, false otherwise.
      * Usually, this constraints are equalities, i.e. C(x) = 0, so by default it returns false.

@@ -95,6 +95,11 @@ class RigidDeformableCollisionConstraint : public CollisionConstraint, public Ri
      * @param mu_k - the coefficient of kinetic friction between the two bodies
      */
     inline virtual void applyFriction(Real, Real, Real) const override;
+
+    const Geometry::SDF* sdf() const { return _sdf; }
+    Real u() const { return _u; }
+    Real v() const { return _v; }
+    Real w() const { return _w; }
     // inline virtual void applyFriction(Real lam, Real mu_s, Real mu_k) const override
     // {
     //     // since we are colliding with a rigid body, we need to apply frictional forces to both the deformable body and the rigid body

@@ -308,6 +308,7 @@ void PushingSimulation::_applyPushingForces()
                 // DIRECT VERTEX DISPLACEMENT - NO ATTACHMENT CONSTRAINTS!
                 Vec3r new_position = vertex_pos + push_offset;
                 xpbd_mesh_obj->mesh()->setVertex(v, new_position);
+                xpbd_mesh_obj->setVertexVelocity(v, Vec3r::Zero());
                 
                 vertices_pushed++;
                 
@@ -372,6 +373,7 @@ void PushingSimulation::_applyPushingForces()
                 // DIRECT VERTEX DISPLACEMENT - NO ATTACHMENT CONSTRAINTS!
                 Vec3r new_position = vertex_pos + push_offset;
                 fo_xpbd_mesh_obj->mesh()->setVertex(v, new_position);
+                fo_xpbd_mesh_obj->setVertexVelocity(v, Vec3r::Zero());
                 
                 vertices_pushed++;
                 

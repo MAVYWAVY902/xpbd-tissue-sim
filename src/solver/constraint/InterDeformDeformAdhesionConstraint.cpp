@@ -253,43 +253,45 @@ Real InterDeformDeformAdhesionConstraint::computePointTriangleDistance(const Vec
 
 bool InterDeformDeformAdhesionConstraint::shouldBreak() const
 {
-    // DESIGN RATIONALE: Strain-based breaking with initial geometry as rest state
+    // PROGRESSIVE DAMAGE MODEL (Continuous Degradation)
     // 
-    // This constraint uses the same breaking logic as NerveTumorAdhesionConstraint:
-    // - Each constraint remembers its initial distance d_0 as rest_gap
-    // - Break when STRAIN RATIO exceeds threshold: (distance / d_0) > break_ratio
-    // - Example: break_ratio = 1.5 means bond breaks at 50% extension (d = 1.5 * d_0)
-    // - Physically correct: bonds break from relative stretch, not absolute distance
-    // 
-    // WHY USE _max_distance_this_step?
-    // The solver performs multiple Gauss-Seidel iterations to satisfy constraints.
-    // During these iterations, positions can be temporarily stretched far beyond their
-    // final converged state. We track the maximum distance seen across all solver
-    // iterations within this time step to detect bonds that should break.
-    // 
-    // CRITICAL: resetMaxDistanceThisStep() MUST be called at the start of each time step
-    // (done in XPBDMeshObject::update()), otherwise this becomes "max over entire simulation"
-    // and will trigger false positives forever.
-    
+    // Instead of snapping instantly when strain > break_ratio, we model
+    // adhesion health that degrades over time when strained.
+    //
+    // alpha_effective = alpha_base / (health^2)
+    // As health drops, alpha increases (constraint softens).
+    // When health hits 0, constraint is removed.
+
     // PHYSICS: Break when STRAIN RATIO exceeds threshold
-    // strain_ratio = max_distance_this_step / rest_gap
-    // Bond breaks when stretched beyond critical extension (e.g., 1.5 = 50% strain)
-    // 
-    // SPECIAL CASE: When rest_gap=0 (zero rest length), use absolute distance threshold
-    // instead of strain ratio to avoid division by zero.
     Real strain_ratio;
-    bool should_break;
     
+    // Calculate strain ratio
     if (_rest_gap > 1e-12) {
-        // Normal case: strain-based breaking
         strain_ratio = _max_distance_this_step / _rest_gap;
-        should_break = (strain_ratio > _break_ratio);
     } else {
         // rest_gap ≈ 0: Use absolute distance threshold
-        // break_ratio is reinterpreted as absolute distance in meters
-        strain_ratio = std::numeric_limits<Real>::infinity();  // for debug output
-        should_break = (_max_distance_this_step > _break_ratio * 0.01);  // break_ratio * 1cm
+        // Treat as if ratio is huge if absolute distance is large
+         if (_max_distance_this_step > _break_ratio * 0.01) { // 1cm
+             strain_ratio = 999.0; 
+         } else {
+             strain_ratio = 1.0;
+         }
     }
+    
+    // 1. DAMAGE ACCUMULATION
+    // If stretched beyond yield point (e.g. 1.2x), health degrades
+    if (strain_ratio > _yield_ratio) {
+        _health *= _decay_rate; // Decay per frame (e.g. 0.9x)
+    }
+    
+    // 2. CATASTROPHIC FAILURE
+    // If stretched way too far (instant snap limit), kill health
+    if (strain_ratio > _break_ratio) {
+        _health = 0.0;
+    }
+    
+    // 3. CHECK DEATH
+    bool should_break = (_health < 1e-3);
     
     // DEBUG: Print max distance info when checking breaking
     // Get vertex indices for identification
@@ -300,22 +302,28 @@ bool InterDeformDeformAdhesionConstraint::shouldBreak() const
     
     // Also compute current distance and ratio (not max) for comparison
     Real current_distance = getCurrentDistance();
-    Real current_ratio = current_distance / _rest_gap;
+    Real current_ratio = (_rest_gap > 1e-12) ? (current_distance / _rest_gap) : 0.0;
     
-    // If breaking, always print (important events)
-    // if (should_break) {
-    //     std::cout << "[INTER-DEFORM ADHESION BREAKING!] vertex_v=" << vertex_v 
-    //               << " tri=[" << tri_v1 << "," << tri_v2 << "," << tri_v3 << "]"
-    //               << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
-    //               << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
-    //               << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
-    // }
+    // If breaking or degrading, print info
+    if (should_break) {
+        std::cout << "[BREAKING InterDeform] vertex_v=" << vertex_v 
+                  << " tri=[" << tri_v1 << "," << tri_v2 << "," << tri_v3 << "]"
+                  << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
+                  << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
+                  << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio 
+                  << "\n  | FINAL HEALTH=" << _health << " (DIED)\n";
+    } else if (strain_ratio > _yield_ratio) {
+         // Only print degradation occasionally
+         static int log_counter = 0;
+         if (log_counter++ % 20 == 0) {
+             std::cout << "[DEGRADING InterDeform] vertex=" << vertex_v 
+                       << " | strain=" << strain_ratio 
+                       << " | yield=" << _yield_ratio
+                       << " | health=" << _health << " | alpha=" << alpha() << "\n";
+         }
+    }
     
     // NOTE: Do NOT reset _max_distance_this_step here! 
-    // Multiple constraints are checked during the same breaking phase, and resetting
-    // would cause all constraints after the first to see max_distance=0 and never break.
-    // The reset happens correctly in resetMaxDistanceThisStep() at the start of update().
-    
     return should_break;
 }
 
