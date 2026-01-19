@@ -397,6 +397,11 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      * This includes the effects of velocity and external forces (gravity).
      */
     MatXr _inertial_vertices;
+    
+    /** For VBD: store true previous frame position (before external manipulation).
+     * Used to handle PushingSimulation which modifies positions before update().
+     */
+    MatXr _vbd_true_previous;
 
     /** For VBD: store initial rest configuration (undeformed shape).
      * This is used to compute elastic restoring forces in VBD.
@@ -449,6 +454,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     
     /** Dirty flag to trigger VBD lookup table rebuild. */
     bool _vbd_constraints_dirty = true;
+    
+    /** Track attachment count to detect changes (grasping is dynamic). */
+    size_t _vbd_last_attachment_count = 0;
 
     /** For Chebyshev Acceleration: Positions from the previous VBD iteration (x_{k-1}). */
     MatXr _vbd_prev_iter_vertices;

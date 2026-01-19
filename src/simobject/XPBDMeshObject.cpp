@@ -1242,6 +1242,11 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
     
     auto end_reset = std::chrono::high_resolution_clock::now();
 
+    // CRITICAL FIX: Save true previous frame position BEFORE _previous_vertices is overwritten
+    // This handles the case where PushingSimulation modifies positions BEFORE update()
+    // We need a reference to the position from the END of the previous frame for VBD inertial term
+    const MatXr true_previous_vertices = _mesh->vertices();
+
     // set _x_prev to be ready for the next substep
     _previous_vertices = _mesh->vertices();
 
@@ -1253,6 +1258,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
     // VBD will minimize energy to find equilibrium near these inertial positions
     if (_sim->config()->solverType() == Config::SolverType::VBD) {
         _inertial_vertices = _mesh->vertices();
+        // Also save the true previous frame position for inertial reference
+        _vbd_true_previous = true_previous_vertices;
     }
     
     auto start_projection = std::chrono::high_resolution_clock::now();
@@ -1585,12 +1592,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
 
     static int debug_frame = 0;
     debug_frame++;
-    // if (debug_frame % 60 == 0) {
-    //     std::cout << "\n[VBD DEBUG] Frame " << debug_frame 
-    //               << " | Attachment constraints: " << attachment_constraints.size()
-    //               << " | Step size: " << step_size 
-    //               << " | Iterations: " << num_iters << "\n";
-    // }
+    if (debug_frame % 60 == 0) {
+        std::cout << "\n[VBD DEBUG] Frame " << debug_frame 
+                  << " | Attachment constraints: " << attachment_constraints.size()
+                  << " | Step size: " << step_size 
+                  << " | Iterations: " << num_iters << "\n";
+    }
     
     // 预计算Graph Coloring（只在第一次调用时）
     if (!_graph_coloring_computed) {
@@ -1717,7 +1724,18 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
     }
     
     // Always rebuild attachment lookup if dirty to capture new grasps
-    if (_vbd_constraints_dirty) {
+    // CRITICAL FIX: Also rebuild if attachment count changed (grasping is dynamic!)
+    const bool need_rebuild = _vbd_constraints_dirty || 
+                              (_vbd_last_attachment_count != attachment_constraints.size());
+    
+    if (debug_frame % 60 == 0) {
+        std::cout << "[VBD DEBUG] _vbd_constraints_dirty=" << _vbd_constraints_dirty 
+                  << " | attachment_constraints.size()=" << attachment_constraints.size()
+                  << " | last_count=" << _vbd_last_attachment_count
+                  << " | need_rebuild=" << need_rebuild << std::endl;
+    }
+    
+    if (need_rebuild) {
         // Clear old pointers (fast, doesn't deallocate)
         for(auto& vec : _vbd_vertex_to_attachments) vec.clear();
 
@@ -1727,7 +1745,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                     _vbd_vertex_to_attachments[constraint.vertexIndex()].push_back(&constraint);
                 }
             }
+            if (debug_frame % 60 == 0) {
+                std::cout << "[VBD DEBUG] Rebuilt attachment lookup: " << attachment_constraints.size() 
+                          << " constraints mapped to vertices" << std::endl;
+            }
         }
+        _vbd_last_attachment_count = attachment_constraints.size();
     }
     
     // 保存inertia位置（移动后的位置）
@@ -1750,6 +1773,11 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
     // ============================================================================
     // VBD外层循环：使用平衡并行组 (Gaia-style)
     // ============================================================================
+    if (debug_frame % 60 == 0 && has_attachments) {
+        std::cout << "[VBD LOOP START] Frame " << debug_frame << " | Starting VBD with " 
+                  << attachment_constraints.size() << " attachment constraints" << std::endl;
+    }
+    
     for (int iter = 0; iter < num_iters; iter++) {
         
         // GAIA-STYLE: Intermediate Collision Detection
@@ -1787,17 +1815,33 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 const Real dt = _sim->dt();
                 const Real mass = vertexMass(vid);
                 const Vec3r x_current = _mesh->vertex(vid);
-                const Vec3r x_inertia = _inertial_vertices.col(vid);  // Use saved inertial/predicted position
+                const Vec3r x_inertia = _inertial_vertices.col(vid);
+                const Vec3r x_true_prev = _vbd_true_previous.col(vid);
                 
                 Vec3r force = Vec3r::Zero();
                 Mat3r hessian = Mat3r::Zero();
                 
-                // 1. Inertia force and Hessian (like Gaia's accumlateInertiaForceAndHessian)
-                // Force is NEGATIVE gradient: -∇E = -m/(dt²)*(x-x_inertia) = m/(dt²)*(x_inertia-x)
-                // x_inertia is the predicted position (with velocity and gravity already applied)
-                // VBD brings vertices from current position back toward this inertial equilibrium
-                force = mass / (dt * dt) * (x_inertia - x_current);
-                hessian = (mass / (dt * dt)) * Mat3r::Identity();
+                // Check if this vertex has attachment constraints
+                bool has_attachment_here = (has_attachments && !_vbd_vertex_to_attachments[vid].empty());
+                
+                // Determine reference position for inertia
+                Vec3r x_reference;
+                if constexpr (IsFirstOrder) {
+                    x_reference = x_true_prev;
+                } else {
+                    x_reference = x_inertia;
+                }
+                
+                // 1. Inertia force and Hessian
+                // CRITICAL FIX: For vertices with attachment constraints, DON'T apply inertial resistance!
+                // The attachment constraint defines the target position, not the inertial prediction.
+                // Inertial force would fight against the attachment, preventing grasping from working.
+                if (!has_attachment_here) {
+                    // Normal inertial force for free vertices
+                    force = mass / (dt * dt) * (x_reference - x_current);
+                    hessian = (mass / (dt * dt)) * Mat3r::Identity();
+                }
+                // else: Skip inertial term for attached vertices - let attachment constraint dominate
                 
                 // 2. Elastic forces from Neo-Hookean energy (like Gaia's accumlateMaterialForceAndHessian)
                 // For each tetrahedron attached to this vertex, compute elastic restoring force
@@ -1836,7 +1880,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 
                 // DEBUG: Check elastic force magnitude
                 if (debug_frame % 60 == 0 && vid < 5 && attached_tets.size() > 0) {
-                    Vec3r inertia_force_vec = mass / (dt * dt) * (x_inertia - x_current);
+                    Vec3r inertia_force_vec = mass / (dt * dt) * (x_reference - x_current);
                     Vec3r elastic_force_vec = force - inertia_force_vec;
                     Real inertia_force_mag = inertia_force_vec.norm();
                     Real elastic_force_mag = elastic_force_vec.norm();
@@ -1851,6 +1895,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 // 3. Attachment constraint forces (for grasping)
                 // Optimized: Use pre-computed lookup table instead of iterating all constraints
                 int num_attachments_for_vertex = 0;
+                Real total_attachment_force_mag = 0.0;
                 
                 if (has_attachments && !_vbd_vertex_to_attachments[vid].empty()) {
                     for (const auto* constraint_ptr : _vbd_vertex_to_attachments[vid]) {
@@ -1863,21 +1908,38 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                         Vec3r target_pos = *attach_pos_ptr + offset;
                         
                         // Spring force: k * (target - current)
-                        // BALANCED: 5e4 provides strong grasp without instability (with line search enabled)
-                        // Combined with line search, this prevents overshooting while maintaining responsiveness
-                        const Real k_attachment = 5e4;  // 50,000 N/m
+                        // FIX: Use 1e7 to match M/dt^2 scale
+                        const Real k_attachment = 1e7;
                         Vec3r attachment_force = k_attachment * (target_pos - x_current);
-                        
-                        // DEBUG: Print first constraint for this vertex
-                        // if (num_attachments_for_vertex == 1 && debug_frame % 60 == 0 && vid < 10) {
-                        //     std::cout << "[VBD DEBUG] Vertex " << vid 
-                        //               << " | Target: (" << target_pos.transpose() << ")"
-                        //               << " | Current: (" << x_current.transpose() << ")"
-                        //               << " | Attach force: " << attachment_force.norm() << "\n";
-                        // }
+                        total_attachment_force_mag += attachment_force.norm();
                         
                         force += attachment_force;
                         hessian += k_attachment * Mat3r::Identity();
+                    }
+                    
+                    // DEBUG: Print for first attached vertex found
+                    if (debug_frame % 60 == 0 && num_attachments_for_vertex > 0 && iter == 0) {
+                        static int last_debug_frame = -1;
+                        static int print_count = 0;
+                        
+                        // Reset counter for new frame
+                        if (last_debug_frame != debug_frame) {
+                            last_debug_frame = debug_frame;
+                            print_count = 0;
+                        }
+                        
+                        if (print_count < 3) {
+                            const Vec3r* first_attach_pos = _vbd_vertex_to_attachments[vid][0]->attachmentPosition();
+                            const Vec3r& first_offset = _vbd_vertex_to_attachments[vid][0]->attachmentOffset();
+                            Vec3r first_target = *first_attach_pos + first_offset;
+                            Real distance = (first_target - x_current).norm();
+                            std::cout << "[ATTACH DEBUG] Iter=" << iter << " Vertex=" << vid 
+                                      << " | #Attach=" << num_attachments_for_vertex
+                                      << " | Distance=" << distance << "m"
+                                      << " | Total Force=" << total_attachment_force_mag << "N"
+                                      << " | Inertia disabled=" << has_attachment_here << std::endl;
+                            print_count++;
+                        }
                     }
                 }
                 
@@ -2281,13 +2343,25 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                     Vec3r descentDirection;
                     bool solverSuccess = Utils::solve3x3PSD(hessian.data(), force.data(), descentDirection.data());
                     
-                    // DEBUG: Print movement for first few vertices with attachments
-                    // if (num_attachments_for_vertex > 0 && debug_frame % 60 == 0 && vid < 5) {
-                    //     std::cout << "[VBD DEBUG] Vertex " << vid 
-                    //               << " | Total force: " << force.norm()
-                    //               << " | Descent dir: " << descentDirection.norm()
-                    //               << " | Step: " << (step_size * descentDirection).norm() << "\n";
-                    // }
+                    // DEBUG: Print movement for attached vertices
+                    if (num_attachments_for_vertex > 0 && debug_frame % 60 == 0 && iter == 0) {
+                        static int last_debug_frame = -1;
+                        static int move_print_count = 0;
+                        
+                        if (last_debug_frame != debug_frame) {
+                            last_debug_frame = debug_frame;
+                            move_print_count = 0;
+                        }
+                        
+                        if (move_print_count < 3) {
+                            std::cout << "[MOVE DEBUG] Iter=" << iter << " Vertex=" << vid 
+                                      << " | Force=" << force.norm() << "N"
+                                      << " | Descent=" << descentDirection.norm() << "m"
+                                      << " | Displacement=" << (step_size * descentDirection).norm() << "m"
+                                      << " | Solver OK=" << solverSuccess << std::endl;
+                            move_print_count++;
+                        }
+                    }
                     
                     if (solverSuccess) {
                         // STABILITY IMPROVEMENT: Enable line search for adaptive step sizing
