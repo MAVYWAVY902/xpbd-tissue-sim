@@ -58,7 +58,7 @@ rigid-deform-adhesion-break-ratio: 1.8         # Strain ratio threshold: breaks 
                                                # Increased from 1.3 to allow more realistic stretching
 rigid-deform-adhesion-alpha: 1e-6              # Base compliance (will be adjusted dynamically: 5e-4 to 1e-4)
                                                # This is mostly ignored as evaluate() sets it dynamically
-rigid-deform-adhesion-bond-distance: 0.005     # Maximum distance to create adhesion bond (m)
+rigid-deform-adhesion-bond-distance: 0.001     # Maximum distance to create adhesion bond (m)
 
 ## define elastic materials
 materials:
