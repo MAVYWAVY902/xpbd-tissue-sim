@@ -40,9 +40,11 @@ inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformabl
 ## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
 rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
 rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
-rigid-deform-adhesion-break-ratio: 1.5       # Break at 100% strain (separation = 2x rest_gap)
-rigid-deform-adhesion-alpha: 2e-6            # Compliance (lower = stiffer spring)
-rigid-deform-adhesion-bond-distance: 0.01    # 5mm - initial search radius for creating bonds
+rigid-deform-adhesion-break-ratio: 1.5       # Break at 50% strain (separation = 1.5x rest_gap)
+rigid-deform-adhesion-alpha: 1e-4            # Compliance (INCREASED from 2e-6 for stability)
+                                             # Softer compliance allows visible stretching
+                                             # alpha=1e-4 → spring stiffness k≈10000
+rigid-deform-adhesion-bond-distance: 0.01    # 10mm - initial search radius for creating bonds
 
 ## define elastic materials
 materials:
@@ -94,81 +96,81 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision with brain
 
     ## XPBD-specific options
-    num-solver-iters: 35
+    num-solver-iters: 5
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     damping-multiplier: 2000000  # Reduced from 5M (was too stiff)
 
 
-  ## ==================== DEFORMABLE BRAIN ====================
-  -
-    name: "Brain"
-    type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/brain_fixed/brain_MOD3.obj"
-
-    materials: ["Soft Tissue"]
-
-    ## visualization options
-    color: [0.0, 1.0, 1.0]  # Cyan - brain
-    draw-points: false
-    draw-edges: true
-    draw-faces: true
-
-    ## initial configuration
-    use-original-coords: true   # Center and scale mesh
-    max-size: 0.05               # Scale to 50mm (0.05m)
-    position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
-    velocity: [0.0, 0, 0.0]      # Stationary
-    rotation: [0, 0, 0]
-
-    ## ==================== BOUNDARY FIXING (Brain) ====================
-    ## Simulate brain stem connection - prevents whole-object translation
-    ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
-    ## WARNING: Fixing ALL 6 directions will completely freeze the object!
-    fix-min-z: true        # Fix BOTTOM (brain stem/posterior fossa)
-    # fix-max-z: false     # Fix TOP (superior)
-    # fix-min-y: false     # Fix BACK (posterior wall)
-    # fix-max-y: false     # Fix FRONT (anterior wall)
-    # fix-min-x: false     # Fix LEFT (lateral)
-    # fix-max-x: false     # Fix RIGHT (lateral)
-
-    ## collisions
-    collisions: true
-    inter-object-collisions: true
-
-    ## XPBD-specific options
-    num-solver-iters: 35
-    solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean-Combined"
-    residual-policy: "Never"
-    damping-multiplier: 2000000 
-
-
-  # ## ==================== RIGID TBONE ====================
+  # ## ==================== DEFORMABLE BRAIN ====================
   # -
-  #   name: "RigidBone"
-  #   type: "RigidMeshObject"
-  #   filename: "../resource/tbone_fixed/tbone_MOD.obj"
-  #   density: 1000
+  #   name: "Brain"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/brain_fixed/brain_MOD3.obj"
+
+  #   materials: ["Soft Tissue"]
 
   #   ## visualization options
-  #   color: [0.95, 0.92, 0.85]  # Bone white
+  #   color: [0.0, 1.0, 1.0]  # Cyan - brain
   #   draw-points: false
   #   draw-edges: true
   #   draw-faces: true
 
   #   ## initial configuration
   #   use-original-coords: true   # Center and scale mesh
-  #   max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
-  #   position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
-  #   rotation: [0, 0, 0]          # No rotation
-  #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
+  #   max-size: 0.05               # Scale to 50mm (0.05m)
+  #   position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
+  #   velocity: [0.0, 0, 0.0]      # Stationary
+  #   rotation: [0, 0, 0]
 
-  #   ## physics
-  #   collisions: true   # Enable collisions with deformable objects
-  #   fixed: true        # Keep bone stationary
+  #   ## ==================== BOUNDARY FIXING (Brain) ====================
+  #   ## Simulate brain stem connection - prevents whole-object translation
+  #   ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+  #   ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+  #   fix-min-z: true        # Fix BOTTOM (brain stem/posterior fossa)
+  #   # fix-max-z: false     # Fix TOP (superior)
+  #   # fix-min-y: false     # Fix BACK (posterior wall)
+  #   # fix-max-y: false     # Fix FRONT (anterior wall)
+  #   # fix-min-x: false     # Fix LEFT (lateral)
+  #   # fix-max-x: false     # Fix RIGHT (lateral)
+
+  #   ## collisions
+  #   collisions: true
+  #   inter-object-collisions: true
+
+  #   ## XPBD-specific options
+  #   num-solver-iters: 35
+  #   solver-type: "Gauss-Seidel"
+  #   constraint-type: "Stable-Neohookean-Combined"
+  #   residual-policy: "Never"
+  #   damping-multiplier: 2000000 
+
+
+  ## ==================== RIGID TBONE ====================
+  -
+    name: "RigidBone"
+    type: "RigidMeshObject"
+    filename: "../resource/tbone_fixed/tbone_MOD.obj"
+    density: 1000
+
+    ## visualization options
+    color: [0.95, 0.92, 0.85]  # Bone white
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
+    position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
+    rotation: [0, 0, 0]          # No rotation
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+
+    ## physics
+    collisions: true   # Enable collisions with deformable objects
+    fixed: true        # Keep bone stationary
 
 
 ## ==================== CONSTRAINT INFO ====================

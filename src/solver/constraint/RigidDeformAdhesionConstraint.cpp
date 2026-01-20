@@ -66,36 +66,27 @@ void RigidDeformAdhesionConstraint::evaluate(Real* C) const
     const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
     const Vec3r rigid_point_global = rigid_obj->bodyToGlobal(_rigid_body_point);
 
-    // PERFORMANCE OPTIMIZATION: Use cached barycentric coordinates!
-    // Reconstruct closest point on deformed triangle using cached barycentric coords
-    const Vec3r xs_current = _bary_cached[0] * tri_p1 + 
-                             _bary_cached[1] * tri_p2 + 
-                             _bary_cached[2] * tri_p3;
+    // CRITICAL FIX: Dynamically compute closest point on deformed triangle
+    // Do NOT use cached barycentric coordinates - they become incorrect as triangle deforms!
+    Vec3r closest_point, normal;
+    Vec3r bary_coords_current;  // Recompute for current configuration
     
-    // Recompute normal (must be updated as triangle deforms)
-    const Vec3r edge1 = tri_p2 - tri_p1;
-    const Vec3r edge2 = tri_p3 - tri_p1;
-    Vec3r normal = edge1.cross(edge2);
-    const Real normal_length = normal.norm();
+    const Real point_to_tri_distance = computePointTriangleDistance(
+        rigid_point_global, tri_p1, tri_p2, tri_p3,
+        closest_point, normal, bary_coords_current);
     
-    if (normal_length < 1e-12) {
-        *C = 0.0;  // Degenerate triangle
-        return;
-    }
-    normal /= normal_length;  // Normalize
+    // Use the dynamically computed distance
+    const Real separation_distance = point_to_tri_distance;
     
-    // Compute signed distance along normal direction
-    // Note: direction is from triangle surface to rigid body point
-    const Vec3r separation_vec = rigid_point_global - xs_current;
-    const Real separation_distance = normal.dot(separation_vec);
+    // Update cached values for gradient computation
+    _xs_cached = closest_point;
+    _n_cached = normal;
+    _bary_cached = bary_coords_current;  // Update for current state
     
     // Track maximum distance during this step's solver iterations (for breaking detection)
     _max_distance_this_step = std::max(_max_distance_this_step, std::abs(separation_distance));
     
-    // Cache the updated contact frame for gradient computation
-    _xs_cached = xs_current;
-    _n_cached = normal;
-    // _bary_cached stays unchanged - we reuse the initial barycentric coords
+    // Cache is already updated above (closest_point, normal, bary_coords_current)
     _cache_valid = true;
 
     // ✅ FIXED: Single-sided adhesion constraint (only attractive, no repulsion)

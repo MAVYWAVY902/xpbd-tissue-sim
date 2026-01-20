@@ -83,8 +83,8 @@ class RigidDeformAdhesionConstraint : public Constraint, public RigidBodyConstra
      */
     void evaluateWithGradient(Real* C, Real* grad) const override;
 
-    /** Returns false to act as equality constraint (but with max(0, ...) internally) */
-    inline bool isInequality() const override { return false; }
+    /** Returns true - this is a one-sided inequality constraint (only pulls when stretched) */
+    inline bool isInequality() const override { return true; }
 
     /** Get rest separation distance (initial d_0 for this constraint) */
     Real getRestGap() const { return _rest_gap; }

@@ -2609,18 +2609,28 @@ void Simulation::setup()
                         // The rigid body point is the position in body coordinates
                         const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(tri_center);
                         
+                        // CRITICAL FIX: Use ACTUAL distance as rest_gap for equilibrium!
+                        // Using a fixed rest_gap causes initial strain on all constraints
+                        Real effective_rest_gap = distance;
+                        
+                        // Optional: enforce minimum gap for numerical stability
+                        const Real min_numerical_gap = 0.0001;  // 0.1mm
+                        if (effective_rest_gap < min_numerical_gap) {
+                            effective_rest_gap = min_numerical_gap;
+                        }
+                        
                         try {
                             typed_tissue_ptr->addRigidDeformAdhesionConstraint(
                                 sdf, rigid_obj_ptr, rigid_body_point,
                                 v1, v2, v3,
-                                rest_gap, break_ratio, alpha
+                                effective_rest_gap, break_ratio, alpha  // Use actual distance!
                             );
                             
                             ++constraints_added;
                             if (constraints_added <= 10) {
                                 std::cout << "[rigid-deform adhesion] Added constraint: RigidBody -> Tissue_face[" 
                                           << v1 << "," << v2 << "," << v3 
-                                          << "] distance=" << distance << "m\n";
+                                          << "] distance=" << distance << "m, rest_gap=" << effective_rest_gap << "m\n";
                             }
                         } catch (const std::exception& e) {
                             std::cout << "[rigid-deform adhesion] Failed to add constraint: " << e.what() << "\n";
@@ -2690,7 +2700,8 @@ void Simulation::setup()
             }
             std::cout << "[rigid-deform adhesion] \n";
             std::cout << "[rigid-deform adhesion] Parameters used:\n";
-            std::cout << "[rigid-deform adhesion]   rest_gap = " << rest_gap << " m (" << (rest_gap*1000) << " mm)\n";
+            std::cout << "[rigid-deform adhesion]   rest_gap = DYNAMIC (uses actual distance per constraint)\n";
+            std::cout << "[rigid-deform adhesion]   rest_gap range: " << min_distance_found << " m to " << max_distance_found << " m\n";
             std::cout << "[rigid-deform adhesion]   break_ratio = " << break_ratio << "\n";
             std::cout << "[rigid-deform adhesion]   alpha = " << alpha << "\n";
             std::cout << "[rigid-deform adhesion]   bond_distance = " << bond_distance << " m (" << (bond_distance*1000) << " mm)\n";
