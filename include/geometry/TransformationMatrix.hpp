@@ -37,6 +37,13 @@ class TransformationMatrix
         _matrix *= other._matrix;
     }
 
+    Vec3r operator*(const Vec3r& point) const 
+    {
+        // Transform point: R*v + t
+        // (Assuming point has w=1)
+        return (_matrix.block<3, 3>(0, 0) * point) + _matrix.block<3, 1>(0, 3);
+    }
+    
     TransformationMatrix operator+(const TransformationMatrix& other) const
     {
         const Mat4r res = _matrix + other._matrix;

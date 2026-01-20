@@ -221,6 +221,13 @@ public:
     virtual void selfCollisionCheck() = 0;
 
 
+    /** Get visualization lines for adhesion constraints. 
+     * @param lines (OUTPUT) - vector of line segments (start, end)
+     */
+    virtual void getAdhesionConstraintLines(std::vector<std::pair<Vec3r, Vec3r>>& /*lines*/) const {
+        // Default implementation does nothing
+    }
+
     /** === Querying the solver === */
 
     /** @returns the most recently calculated primary residual from the solver object */

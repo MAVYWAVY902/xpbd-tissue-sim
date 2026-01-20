@@ -36,7 +36,7 @@ RigidDeformAdhesionConstraint::RigidDeformAdhesionConstraint(
     Eigen::Map<const Vec3r> tri_p3_init(tri_p3);
     
     Vec3r closest_point, normal;
-    computePointTriangleDistance(rigid_point_global, tri_p1_init, tri_p2_init, tri_p3_init,
+    _initial_distance = computePointTriangleDistance(rigid_point_global, tri_p1_init, tri_p2_init, tri_p3_init,
                                 closest_point, normal, _bary_cached);
     
     _cache_valid = true;  // Barycentric coords are now valid
@@ -102,15 +102,15 @@ void RigidDeformAdhesionConstraint::evaluate(Real* C) const
     *C = _constraint_value_cached;
     
     // DEBUG: Print every 1000 evaluations when constraint is active
-    // if (*C > 0 && eval_count % 1000 == 0) {
-    //     std::cout << "[RIGID-DEFORM ADHESION ACTIVE eval #" << eval_count << "] "
-    //               << "rigid_body=" << rigid_obj->name()
-    //               << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
-    //               << " | sep=" << separation_distance << "m"
-    //               << " | rest=" << _rest_gap << "m"
-    //               << " | C=" << *C << "m"
-    //               << " | alpha=" << this->alpha() << "\n";
-    // }
+    if (*C > 0 && eval_count % 1000 == 0) {
+        std::cout << "[RIGID-DEFORM ADHESION ACTIVE eval #" << eval_count << "] "
+                  << "rigid_body=" << rigid_obj->name()
+                  << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
+                  << " | sep=" << separation_distance << "m"
+                  << " | rest=" << _rest_gap << "m"
+                  << " | C=" << *C << "m"
+                  << " | alpha=" << this->alpha() << "\n";
+    }
 }
 
 void RigidDeformAdhesionConstraint::gradient(Real* grad) const
@@ -244,34 +244,33 @@ Real RigidDeformAdhesionConstraint::computePointTriangleDistance(
 
 bool RigidDeformAdhesionConstraint::shouldBreak() const
 {
-    // DESIGN RATIONALE: Strain-based breaking with initial geometry as rest state
-    // Same logic as InterDeformDeformAdhesionConstraint
+    // DESIGN RATIONALE: Breaking based on EXTENSION from initial position
+    // Break when: (current_distance - initial_distance) > (rest_gap * break_ratio)
+    // This ensures consistent behavior: always allow rest_gap * break_ratio stretch
+    // regardless of initial separation distance.
+    //
+    // Example: rest_gap=2mm, break_ratio=1.5
+    //   - If initial_distance=0mm, breaks at 3mm (stretched 3mm)
+    //   - If initial_distance=5mm, breaks at 8mm (stretched 3mm)
     
-    Real strain_ratio;
-    bool should_break;
+    Real extension = _max_distance_this_step - _initial_distance;
+    Real break_threshold = _rest_gap * _break_ratio;
     
-    if (_rest_gap > 1e-12) {
-        // Normal case: strain-based breaking
-        strain_ratio = _max_distance_this_step / _rest_gap;
-        should_break = (strain_ratio > _break_ratio);
-    } else {
-        // rest_gap ≈ 0: Use absolute distance threshold
-        strain_ratio = std::numeric_limits<Real>::infinity();
-        should_break = (_max_distance_this_step > _break_ratio * 0.01);  // break_ratio * 1cm
-    }
+    bool should_break = (extension > break_threshold);
+    Real strain_ratio = (_rest_gap > 1e-12) ? (extension / _rest_gap) : std::numeric_limits<Real>::infinity();
     
-    // // DEBUG: Print breaking info
-    // if (should_break) {
-    //     const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
-    //     Real current_distance = getCurrentDistance();
-    //     Real current_ratio = current_distance / _rest_gap;
+    // DEBUG: Print breaking info
+    if (should_break) {
+        const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
+        Real current_distance = getCurrentDistance();
+        Real current_ratio = (_rest_gap > 0) ? (current_distance / _rest_gap) : 0.0;
         
-    //     std::cout << "[RIGID-DEFORM ADHESION BREAKING!] rigid_body=" << rigid_obj->name()
-    //               << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
-    //               << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
-    //               << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
-    //               << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
-    // }
+        // std::cout << "[RIGID-DEFORM ADHESION BREAKING!] rigid_body=" << rigid_obj->name()
+        //           << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
+        //           << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
+        //           << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
+        //           << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
+    }
     
     return should_break;
 }

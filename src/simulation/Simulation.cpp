@@ -1240,7 +1240,7 @@ std::string Simulation::toString(const int indent) const
     ss << indent_str << "=====" << type() << " '" << _name << "'=====" << std::endl;
     ss << indent_str << "Time step: " << _time_step << " s" << std::endl;
     ss << indent_str << "End time: " << _end_time << " s" << std::endl;
-    ss << indent_str << "Gravity: " << _g_accel << " m/s2" << std::endl;
+    ss << indent_str << "Gravity: [" << _g_accel[0] << ", " << _g_accel[1] << ", " << _g_accel[2] << "] m/s2" << std::endl;
     return ss.str();
 }
 
@@ -2609,10 +2609,25 @@ void Simulation::setup()
                         // The rigid body point is the position in body coordinates
                         const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(tri_center);
                         
-                        // CRITICAL FIX: Use ACTUAL distance as rest_gap for equilibrium!
-                        // Using a fixed rest_gap causes initial strain on all constraints
-                        Real effective_rest_gap = distance;
+                        // CRITICAL FIX: Use config rest_gap as the SLACK LENGTH for breaking!
+                        // This means: adhesion can stretch by (rest_gap * break_ratio) from initial position
+                        // before breaking, regardless of initial distance.
+                        //
+                        // OLD BEHAVIOR (WRONG):
+                        //   effective_rest_gap = max(actual_distance, config_rest_gap)
+                        //   Breaking at: actual_distance * break_ratio
+                        //   Problem: If actual_distance=5mm, breaks at 7.5mm (only 2.5mm stretch!)
+                        //
+                        // NEW BEHAVIOR (CORRECT):
+                        //   rest_gap = config_rest_gap (fixed slack length)
+                        //   Breaking at: initial_distance + (rest_gap * break_ratio)
+                        //   Benefit: Consistent breaking behavior - always stretch by 3mm before breaking
                         
+                        Real effective_rest_gap = rest_gap;  // Use config value for consistent behavior
+                        
+                        // Store initial distance for constraint creation (informational only)
+                        const Real initial_distance = distance;
+
                         // Optional: enforce minimum gap for numerical stability
                         const Real min_numerical_gap = 0.0001;  // 0.1mm
                         if (effective_rest_gap < min_numerical_gap) {
@@ -2630,7 +2645,8 @@ void Simulation::setup()
                             if (constraints_added <= 10) {
                                 std::cout << "[rigid-deform adhesion] Added constraint: RigidBody -> Tissue_face[" 
                                           << v1 << "," << v2 << "," << v3 
-                                          << "] distance=" << distance << "m, rest_gap=" << effective_rest_gap << "m\n";
+                                          << "] initial_distance=" << initial_distance << "m, rest_gap=" << effective_rest_gap 
+                                          << "m, will_break_at=" << (initial_distance + effective_rest_gap * break_ratio) << "m\n";
                             }
                         } catch (const std::exception& e) {
                             std::cout << "[rigid-deform adhesion] Failed to add constraint: " << e.what() << "\n";

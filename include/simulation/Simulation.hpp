@@ -84,7 +84,7 @@ class Simulation
 
         Real dt() const { return _time_step; }
         
-        Real gAccel() const { return _g_accel; }
+        const Vec3r& gAccel() const { return _g_accel; }  // Returns 3D gravity vector
         
         const Config::SimulationConfig* config() const { return _config; }
 
@@ -277,8 +277,8 @@ class Simulation
         Real _end_time;
         /** Number of time steps taken */
         size_t _steps_taken;
-        /** Acceleration due to gravity */
-        Real _g_accel;
+        /** Acceleration due to gravity (3D vector) */
+        Vec3r _g_accel;
         /** Time to wait inbetween viewer updates (in ms). This is 1/fps */
         int _viewer_refresh_time;
         /** Time to wait inbetween collision checks (in seconds). This is 1/collision_rate */

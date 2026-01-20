@@ -22,9 +22,10 @@ namespace Solver
  * - Breaking when strain ratio exceeds break_ratio threshold
  * 
  * IMPORTANT: This behaves as a "soft inequality" constraint:
- * - Returns isInequality() = false (registered as equality constraint to solver)
+ * - Returns isInequality() = false (MUST be false to generate pull force!)
  * - But internally uses max(0, ...) to only activate when stretched beyond rest gap
  * - This makes it act like one-sided (tension-only) adhesion
+ * - Same design as InterDeformDeformAdhesionConstraint
  * 
  * RIGID BODY HANDLING:
  * - Inherits from both Constraint and RigidBodyConstraint
@@ -83,8 +84,11 @@ class RigidDeformAdhesionConstraint : public Constraint, public RigidBodyConstra
      */
     void evaluateWithGradient(Real* C, Real* grad) const override;
 
-    /** Returns true - this is a one-sided inequality constraint (only pulls when stretched) */
-    inline bool isInequality() const override { return true; }
+    /** CRITICAL: Returns false - registered as EQUALITY constraint to solver.
+     * We internally clamp C = max(0, ...) to create one-sided adhesion,
+     * but solver must treat it as equality to generate restoring force.
+     * If isInequality() = true, solver only acts when C < 0, so no pull force! */
+    inline bool isInequality() const override { return false; }
 
     /** Get rest separation distance (initial d_0 for this constraint) */
     Real getRestGap() const { return _rest_gap; }
@@ -112,6 +116,9 @@ class RigidDeformAdhesionConstraint : public Constraint, public RigidBodyConstra
         _max_distance_this_step = 0.0; 
         _cache_valid = false;  // Invalidate cache at start of new timestep
     }
+    
+    /** Get point on rigid body in body coordinates */
+    const Vec3r& rigidBodyPoint() const { return _rigid_body_point; }
 
     protected:
     /** Compute signed distance from rigid body point to triangle and closest point info
@@ -133,7 +140,8 @@ class RigidDeformAdhesionConstraint : public Constraint, public RigidBodyConstra
     private:
     const Geometry::SDF* _sdf;  ///< SDF of rigid object (optional, for advanced queries)
     Vec3r _rigid_body_point;     ///< Point on rigid body in body coordinates
-    Real _rest_gap;              ///< Rest separation distance d_0 (initial distance)
+    Real _rest_gap;              ///< Rest separation distance d_0 (slack length for adhesion)
+    Real _initial_distance;      ///< Initial distance at constraint creation
     Real _break_ratio;           ///< Strain ratio threshold for breaking
     
     // Cached values for frozen contact frame approach (mutable for const methods)

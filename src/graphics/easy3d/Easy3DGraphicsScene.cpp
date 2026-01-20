@@ -1,6 +1,7 @@
 #include "graphics/easy3d/Easy3DGraphicsScene.hpp"
 #include "graphics/easy3d/Easy3DMeshGraphicsObject.hpp"
 #include "graphics/easy3d/Easy3DSphereGraphicsObject.hpp"
+#include "simobject/XPBDMeshObjectBase.hpp"
 #include "graphics/easy3d/Easy3DBoxGraphicsObject.hpp"
 #include "graphics/easy3d/Easy3DCylinderGraphicsObject.hpp"
 #include "graphics/easy3d/Easy3DVirtuosoArmGraphicsObject.hpp"
@@ -81,8 +82,8 @@ int Easy3DGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectR
     if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(obj))
     {
         // create a new MeshGraphicsObject for visualizing this MeshObject
-        // std::unique_ptr<Easy3DMeshGraphicsObject> e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), mo_config);
-        auto e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), obj_config);
+        // Pass the MeshObject directly - it will handle both XPBD types internally
+        auto e3d_mgo = std::make_unique<Easy3DMeshGraphicsObject>(obj->name(), mo->mesh(), obj_config, mo);
         
         // Apply texture if specified in config
         if (obj_config.textureFile().has_value())

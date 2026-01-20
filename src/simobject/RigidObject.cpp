@@ -41,7 +41,7 @@ void RigidObject::update()
         return;
 
     // update positions inertially
-    const Vec3r f_ext({0,0,-_m*_sim->gAccel()});
+    const Vec3r f_ext = _m * _sim->gAccel();  // Gravity force: mass * gravity_vector
     _v = _v + _sim->dt() * f_ext / _m;
     _p = _p + _sim->dt() * _v;
 

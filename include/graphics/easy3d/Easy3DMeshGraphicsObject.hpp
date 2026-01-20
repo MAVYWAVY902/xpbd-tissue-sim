@@ -7,6 +7,10 @@
 #include <easy3d/core/types.h>
 #include <easy3d/core/model.h>
 
+namespace Sim {
+    class MeshObject;
+}
+
 namespace Graphics
 {
 
@@ -27,7 +31,7 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
      * @param mesh_object : the simulation MeshObject to get mesh information from
      * @param mesh_object_config : the MeshObjectConfig file to get additional parameters from
      */
-    explicit Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const Config::ObjectRenderConfig& render_config);
+    explicit Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh_object, const Config::ObjectRenderConfig& render_config, const Sim::MeshObject* sim_object = nullptr);
 
     virtual ~Easy3DMeshGraphicsObject();
 
@@ -77,6 +81,8 @@ class Easy3DMeshGraphicsObject : public MeshGraphicsObject, public easy3d::Model
      */
     std::vector<easy3d::vec3> _vertex_cache;
 
+    private:
+    const Sim::MeshObject* _sim_object = nullptr;
 };
 
 }

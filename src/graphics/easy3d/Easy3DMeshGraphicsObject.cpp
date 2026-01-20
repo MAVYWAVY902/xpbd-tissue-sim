@@ -7,12 +7,15 @@
 #include <easy3d/renderer/texture.h>
 #include <easy3d/util/resource.h>
 
+#include "simobject/MeshObject.hpp"
+#include "simobject/XPBDMeshObjectBase.hpp"
+
 #include <iostream>
 
 namespace Graphics {
 
-Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::ObjectRenderConfig& render_config)
-    : MeshGraphicsObject(name, mesh)
+Easy3DMeshGraphicsObject::Easy3DMeshGraphicsObject(const std::string& name, const Geometry::Mesh* mesh, const Config::ObjectRenderConfig& render_config, const Sim::MeshObject* sim_object)
+    : MeshGraphicsObject(name, mesh), _sim_object(sim_object)
 {
     std::cout << "[Easy3D] DEBUG: Creating MeshGraphicsObject '" << name << "' with " << mesh->numVertices() << " vertices, " 
               << mesh->numFaces() << " faces\n";
@@ -169,6 +172,77 @@ void Easy3DMeshGraphicsObject::update()
 {
     // update the vertex cache, which is what the renderer uses to update the vertex positions
     _updateVertexCache();
+
+    if (_sim_object) {
+        std::vector<std::pair<Vec3r, Vec3r>> lines;
+        
+        // Try both XPBD base types
+        if (const Sim::XPBDMeshObject_Base* xpbd = dynamic_cast<const Sim::XPBDMeshObject_Base*>(_sim_object)) {
+            xpbd->getAdhesionConstraintLines(lines);
+        } else if (const Sim::FirstOrderXPBDMeshObject_Base* first_order = dynamic_cast<const Sim::FirstOrderXPBDMeshObject_Base*>(_sim_object)) {
+            first_order->getAdhesionConstraintLines(lines);
+        }
+
+        static int debug_counter = 0;
+        if (debug_counter++ % 100 == 0) {  // Print every 100 frames
+            std::cout << "[ADHESION VIZ DEBUG] Object '" << GraphicsObject::name() << "': Found " << lines.size() << " adhesion lines\n";
+        }
+
+        const std::string drawable_name = "adhesion_lines";
+        easy3d::LinesDrawable* lines_dr = nullptr;
+        
+        // Safer approach: iterate currently registered line drawables to find ours
+        const auto& line_drawables = renderer()->lines_drawables();
+        for(const auto& d : line_drawables) {
+             if(d->name() == drawable_name) {
+                 lines_dr = d.get();
+                 break;
+             }
+        }
+
+        if (!lines.empty()) {
+            if (!lines_dr) {
+                // Create drawable but don't update buffer yet - let the renderer handle it
+                lines_dr = renderer()->add_lines_drawable(drawable_name);
+                lines_dr->set_line_width(5.0);
+                lines_dr->set_uniform_coloring(easy3d::vec4(1.0, 1.0, 0.0, 1.0)); // Yellow
+                lines_dr->set_visible(true);
+                
+                // Store the lines in a way the drawable can access them
+                // Set up the update function to populate vertex buffer when renderer is ready
+                lines_dr->set_update_func([this](easy3d::Model* m, easy3d::Drawable* d) {
+                    if (!_sim_object) return;
+                    
+                    std::vector<std::pair<Vec3r, Vec3r>> adhesion_lines;
+                    if (const Sim::XPBDMeshObject_Base* xpbd = dynamic_cast<const Sim::XPBDMeshObject_Base*>(_sim_object)) {
+                        xpbd->getAdhesionConstraintLines(adhesion_lines);
+                    } else if (const Sim::FirstOrderXPBDMeshObject_Base* first_order = dynamic_cast<const Sim::FirstOrderXPBDMeshObject_Base*>(_sim_object)) {
+                        first_order->getAdhesionConstraintLines(adhesion_lines);
+                    }
+                    
+                    if (!adhesion_lines.empty()) {
+                        std::vector<easy3d::vec3> points;
+                        points.reserve(adhesion_lines.size() * 2);
+                        for (const auto& line : adhesion_lines) {
+                            points.emplace_back(line.first.x(), line.first.y(), line.first.z());
+                            points.emplace_back(line.second.x(), line.second.y(), line.second.z());
+                        }
+                        d->update_vertex_buffer(points);
+                    } else {
+                        d->update_vertex_buffer({});
+                    }
+                });
+                
+                std::cout << "[ADHESION VIZ] Created adhesion_lines drawable for '" << GraphicsObject::name() << "' with " << lines.size() << " lines\n";
+            }
+        } else if (lines_dr) {
+            // Clear the drawable if no lines
+            lines_dr->set_update_func([](easy3d::Model* m, easy3d::Drawable* d) {
+                d->update_vertex_buffer({});
+            });
+        }
+    }
+
     // then call update on the renderer, which will invoke the Drawable update functions
     renderer()->update();
 }

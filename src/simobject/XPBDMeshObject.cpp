@@ -360,8 +360,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     // Skip if no adhesion constraints
     if (nerve_tumor_projectors.empty() && inter_deform_projectors.empty() && rigid_deform_projectors.empty()) return;
     
-    // Count active constraints and gather statistics every 3000 calls
-    if (call_count % 3000 == 0) {
+    // Count active constraints and gather statistics every 60 calls
+    if (call_count % 60 == 0) {
         int nerve_tumor_active = 0;
         int inter_deform_active = 0;
         int rigid_deform_active = 0;
@@ -570,12 +570,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     }
     
     // Print summary
-    // if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || !rigid_deform_to_invalidate.empty()) {
-    //     std::cout << "[adhesion BREAK] Object: " << this->name()
-    //               << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
-    //               << " + " << inter_deform_to_invalidate.size() << " inter-deform"
-    //               << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
-    // }
+    if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || !rigid_deform_to_invalidate.empty()) {
+        std::cout << "[adhesion BREAK] Object: " << this->name()
+                  << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
+                  << " + " << inter_deform_to_invalidate.size() << " inter-deform"
+                  << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
+    }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -1191,12 +1191,14 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_movePositionsInertially()
 {
     const Real dt = _sim->dt();
+    const Vec3r& g = _sim->gAccel();  // 3D gravity vector
+    
     if constexpr (IsFirstOrder)
     {
         for (int i = 0; i < _mesh->numVertices(); i++)
         {
-            const Real dz = -_sim->gAccel() * _vertex_masses[i] * dt / _vertex_B[i];
-            _mesh->displaceVertex(i, Vec3r(0,0,dz));
+            const Vec3r displacement = g * _vertex_masses[i] * dt / _vertex_B[i];
+            _mesh->displaceVertex(i, displacement);
         }
         
     }
@@ -1204,11 +1206,11 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_m
     {
         // move vertices according to their velocity
         _mesh->moveSeparate(dt*_vertex_velocities);
-        // external forces (right now just gravity, which acts in -z direction)
+        // external forces (gravity in 3D)
         for (int i = 0; i < _mesh->numVertices(); i++)
         {
-            const Real dz = -_sim->gAccel() * dt * dt;
-            _mesh->displaceVertex(i, Vec3r(0, 0, dz));
+            const Vec3r displacement = g * dt * dt;
+            _mesh->displaceVertex(i, displacement);
         }
     }
 }
@@ -1722,6 +1724,91 @@ template class XPBDMeshObject_<false, SolverTypesNerveOnly::ParallelJacobi, Nerv
 
 // First Order Nerve-Only constraint config
 using FirstOrderSolverTypesNerveOnly = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::projector_type_list>;
+
+template<bool IsFirstOrder, class SolverType, class... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::getAdhesionConstraintLines(std::vector<std::pair<Vec3r, Vec3r>>& lines) const
+{
+    static int debug_call_count = 0;
+    bool print_debug = (debug_call_count++ % 500 == 0);
+    
+    int active_rigid_deform = 0;
+    int total_rigid_deform = 0;
+    int active_inter_deform = 0;
+    int total_inter_deform = 0;
+    
+    // Rigid-Deform Adhesion - use projectors to check if active
+    if constexpr ((std::is_same_v<Solver::RigidDeformAdhesionConstraint, ConstraintTypes> || ...)) {
+        using RigidDeformAdhesionProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
+        const auto& projectors = _solver.template getConstraintProjectorsOfType<RigidDeformAdhesionProjectorType>();
+        
+        total_rigid_deform = projectors.size();
+        
+        for (const auto& projector : projectors) {
+            // Only show active (non-broken) constraints
+            if (!projector.isValid()) continue;
+            
+            active_rigid_deform++;
+            
+            const auto& constraint_ref = projector.constraint();
+            const auto& constraint = constraint_ref.get();
+            
+            // Rigid body point
+            if (constraint.rigidBodies().empty()) continue;
+            const auto* rigid_obj = constraint.rigidBodies()[0];
+            const Vec3r& local_pos = constraint.rigidBodyPoint();
+            Vec3r rigid_pos_world = rigid_obj->transform() * local_pos;
+
+            // Triangle center
+            const auto& positions = constraint.positions();
+            if (positions.size() < 3) continue;
+            Eigen::Map<const Vec3r> p0(positions[0].position_ptr);
+            Eigen::Map<const Vec3r> p1(positions[1].position_ptr);
+            Eigen::Map<const Vec3r> p2(positions[2].position_ptr);
+            Vec3r tri_pos = (p0 + p1 + p2) / 3.0;
+
+            lines.emplace_back(rigid_pos_world, tri_pos);
+        }
+    }
+
+    // Inter-Deform Adhesion - use projectors to check if active
+    if constexpr ((std::is_same_v<Solver::InterDeformDeformAdhesionConstraint, ConstraintTypes> || ...)) {
+        using InterDeformAdhesionProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
+        const auto& projectors = _solver.template getConstraintProjectorsOfType<InterDeformAdhesionProjectorType>();
+        
+        total_inter_deform = projectors.size();
+        
+        for (const auto& projector : projectors) {
+            // Only show active (non-broken) constraints
+            if (!projector.isValid()) continue;
+            
+            active_inter_deform++;
+            
+            const auto& constraint_ref = projector.constraint();
+            const auto& constraint = constraint_ref.get();
+            
+            const auto& positions = constraint.positions();
+            if (positions.size() < 4) continue;
+            
+            // Single vertex is positions[0]
+            Eigen::Map<const Vec3r> v_pos(positions[0].position_ptr);
+            
+            // Triangle is positions[1], [2], [3]
+            Eigen::Map<const Vec3r> p1(positions[1].position_ptr);
+            Eigen::Map<const Vec3r> p2(positions[2].position_ptr);
+            Eigen::Map<const Vec3r> p3(positions[3].position_ptr);
+            Vec3r tri_pos = (p1 + p2 + p3) / 3.0;
+            
+            lines.emplace_back(v_pos, tri_pos);
+        }
+    }
+    
+    if (print_debug) {
+        std::cout << "[ADHESION VIZ DATA] Rigid-deform: " << active_rigid_deform << "/" << total_rigid_deform 
+                  << " | Inter-deform: " << active_inter_deform << "/" << total_inter_deform
+                  << " | Total lines: " << lines.size() << "\n";
+    }
+}
+
 using FirstOrderNerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::constraint_type_list;
 
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::GaussSeidel, FirstOrderNerveOnlyConstraints>;

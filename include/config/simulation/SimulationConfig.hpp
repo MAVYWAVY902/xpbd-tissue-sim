@@ -88,7 +88,20 @@ class SimulationConfig : public Config
         _extractParameter("enable-mouse-interaction", node, _enable_mouse_interaction);
         _extractParameter("logging", node, _logging);
         _extractParameter("logging-output-folder", node, _logging_output_dir);
-        _extractParameter("g-accel", node, _g_accel);
+        
+        // Handle g-accel: support both scalar (backward compatibility) and vector [x,y,z] format
+        if (node["g-accel"]) {
+            const auto& g_node = node["g-accel"];
+            if (g_node.IsSequence() && g_node.size() == 3) {
+                // Vector format: g-accel: [x, y, z]
+                _g_accel.value = Vec3r(g_node[0].as<Real>(), g_node[1].as<Real>(), g_node[2].as<Real>());
+            } else if (g_node.IsScalar()) {
+                // Scalar format (backward compatibility): g-accel: 9.81 → (0, 0, -9.81)
+                Real g_scalar = g_node.as<Real>();
+                _g_accel.value = Vec3r(0, 0, -g_scalar);
+            }
+        }
+        
         _extractParameter("description", node, _description);
         _extractParameter("fps", node, _fps);
         _extractParameter("collision-rate", node, _collision_rate);
@@ -153,7 +166,7 @@ class SimulationConfig : public Config
         _description.value = description;
         _time_step.value = time_step;
         _end_time.value = end_time;
-        _g_accel.value = g_accel;
+        _g_accel.value = Vec3r(0, 0, -g_accel);  // Convert scalar to vector (backward compatibility)
         _sim_mode.value = sim_mode;
         _visualization.value = visualization;
         _enable_mouse_interaction.value = enable_mouse_interaction;
@@ -174,7 +187,7 @@ class SimulationConfig : public Config
     bool enableMouseInteraction() const { return _enable_mouse_interaction.value; }
     bool logging() const { return _logging.value; }
     std::string loggingOutputDir() const { return _logging_output_dir.value; }
-    Real gAccel() const { return _g_accel.value; }
+    Vec3r gAccel() const { return _g_accel.value; }  // Returns 3D gravity vector
     std::string description() const { return _description.value; }
     Real fps() const { return _fps.value; }
     Real collisionRate() const { return _collision_rate.value; }
@@ -202,7 +215,7 @@ class SimulationConfig : public Config
     ConfigParameter<bool> _enable_mouse_interaction = ConfigParameter<bool>(true);
     ConfigParameter<bool> _logging = ConfigParameter<bool>(false);
     ConfigParameter<std::string> _logging_output_dir = ConfigParameter<std::string>("../output/");
-    ConfigParameter<Real> _g_accel = ConfigParameter<Real>(9.81);
+    ConfigParameter<Vec3r> _g_accel = ConfigParameter<Vec3r>(Vec3r(0, 0, -9.81));  // Default gravity in -z direction
     ConfigParameter<Real> _fps = ConfigParameter<Real>(30.0);
     ConfigParameter<Real> _collision_rate = ConfigParameter<Real>(100);
     ConfigParameter<std::string> _collision_algorithm = ConfigParameter<std::string>("auto");

@@ -81,6 +81,8 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     using ConfigType =  typename Base::ConfigType;
 
     public:
+    virtual void getAdhesionConstraintLines(std::vector<std::pair<Vec3r, Vec3r>>& lines) const override;
+    
     /** Creates a new XPBDMeshObject from a YAML config node
      * @param name : the name of the new XPBDMeshObject
      * @param config : the YAML node dictionary describing the parameters for the new XPBDMeshObject

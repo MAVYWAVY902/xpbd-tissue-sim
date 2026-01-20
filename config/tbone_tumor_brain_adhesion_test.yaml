@@ -12,19 +12,19 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-g-accel: 0 # downward acceleration due to gravity [m/s2]
+g-accel: [-500, -500, -500] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 1e-4      # 0.5ms timestep
+time-step: 2e-4      # 0.5ms timestep
 collision-rate: 100  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
 end-time: 300        # test time [s]
 
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
-grasp-radius: 0.013   # Grasping tool radius: 13mm (default 100mm)
-tool-radius: 0.013    # Pushing tool radius: 13mm (default 200mm)
+grasp-radius: 0.005   # Grasping tool radius: 13mm (default 100mm)
+tool-radius: 0.005    # Pushing tool radius: 13mm (default 200mm)
 fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL objects (GraspingTest/PushingTest default=true)
 
 ## ==================== INTER-DEFORM ADHESION SETTINGS ====================
@@ -41,17 +41,17 @@ inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformabl
 rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
 rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
 rigid-deform-adhesion-break-ratio: 1.5       # Break at 50% strain (separation = 1.5x rest_gap)
-rigid-deform-adhesion-alpha: 1e-4            # Compliance (INCREASED from 2e-6 for stability)
+rigid-deform-adhesion-alpha: 1e-6            # Compliance (INCREASED from 2e-6 for stability)
                                              # Softer compliance allows visible stretching
                                              # alpha=1e-4 → spring stiffness k≈10000
-rigid-deform-adhesion-bond-distance: 0.01    # 10mm - initial search radius for creating bonds
+rigid-deform-adhesion-bond-distance: 0.08    # 10mm - initial search radius for creating bonds
 
 ## define elastic materials
 materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 8e4          # Young's modulus [Pa] - moderate stiffness
+    E: 5e4          # Young's modulus [Pa] - moderate stiffness
     nu: 0.45        # Poisson's ratio [-]
     mu-s: 0.0       # coefficient of static friction [-]
     mu-k: 0.0       # coefficient of kinetic friction [-]
@@ -100,7 +100,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 2000000  # Reduced from 5M (was too stiff)
+    damping-multiplier: 9000000  # Reduced from 5M (was too stiff)
 
 
   # ## ==================== DEFORMABLE BRAIN ====================
