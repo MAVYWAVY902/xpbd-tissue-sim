@@ -33,6 +33,7 @@ set(SOLVER_HEADERS
     ${SOLVER_INCLUDE_DIR}/constraint/NerveTumorBond.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/InterDeformDeformAdhesionConstraint.hpp
     ${SOLVER_INCLUDE_DIR}/constraint/RigidDeformAdhesionConstraint.hpp
+    ${SOLVER_INCLUDE_DIR}/constraint/RigidDeformStickyCollisionConstraint.hpp
 
     # Graph Coloring for VBD Gauss-Seidel
     ${SOLVER_INCLUDE_DIR}/GraphColoring.hpp
@@ -54,6 +55,7 @@ set(SOLVER_SOURCES
     ${SOLVER_SRC_DIR}/constraint/NerveTumorAdhesionConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/InterDeformDeformAdhesionConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/RigidDeformAdhesionConstraint.cpp
+    ${SOLVER_SRC_DIR}/constraint/RigidDeformStickyCollisionConstraint.cpp
 
     # Graph Coloring for VBD Gauss-Seidel
     ${SOLVER_SRC_DIR}/GraphColoring.cpp

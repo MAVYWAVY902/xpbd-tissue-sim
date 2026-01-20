@@ -12,6 +12,7 @@
 #include "solver/xpbd_projector/ConstraintProjectorReference.hpp"
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
+#include "solver/constraint/RigidDeformStickyCollisionConstraint.hpp"
 #include "solver/constraint/InterObjectDeformableCollisionConstraint.hpp"
 #include "solver/constraint/AttachmentConstraint.hpp"
 
@@ -169,6 +170,10 @@ public:
     virtual Solver::ConstraintProjectorReference<Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>>
     addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
         int face_ind, const Real u, const Real v, const Real w) = 0;
+
+    virtual Solver::ConstraintProjectorReference<Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformStickyCollisionConstraint>>
+    addRigidDeformStickyCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+        int face_ind, const Real u, const Real v, const Real w, Real rest_gap, Real break_ratio = 1.5) = 0;
 
     /** Adds a collision constraint between a vertex on this object and a face on another deformable object.
      * This is for INTER-OBJECT deformable-deformable collision (separate from self-collision).

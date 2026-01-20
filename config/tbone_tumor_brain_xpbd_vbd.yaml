@@ -16,21 +16,21 @@ g-accel: 0 # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 1e-3      # 0.5ms timestep
-collision-rate: 100  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
+time-step: 1e-4      # 0.5ms timestep
+collision-rate: 1000  # Hz: 1000 times per second = every step! (prevents tunneling/severe penetration)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
 end-time: 300        # test time [s]
 
 ## ==================== SOLVER SELECTION ====================
 ## Choose between XPBD (constraint projection) and VBD (energy minimization)
-solver-type: vbd              # Options: "xpbd" or "vbd"
+solver-type: xpbd              # Options: "xpbd" or "vbd"
 
 ## VBD-specific parameters (Tuned for oscillatory behavior with low damping)
-vbd-iterations: 3             # More iterations for better convergence with oscillations
+vbd-iterations: 3            # More iterations for convergence (Gaia default: 5-10)
 vbd-step-size: 1.0            # Standard step size
 vbd-use-full-hessian: true    # Use complete Hessian matrix
-vbd-damping: 0.4             # Very low damping (1% per step) for strong oscillations and quick spring-back
+vbd-damping: 0.02             # Rayleigh damping: 1% per step (Gaia typical: 0.0-0.05)
 
 ## XPBD-specific parameters (baseline for comparison)
 xpbd-iterations: 5           # XPBD iterations per timestep (baseline reference)
@@ -50,19 +50,22 @@ inter-deform-adhesion-bond-distance: 0.005
 inter-deform-adhesion-fixed-triangle-object: false
 
 ## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
-## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
+## Unified sticky collision constraint between rigid objects and deformable tissue (TBone ↔ Tumor)
+## Uses RigidDeformStickyCollisionConstraint (combines collision + adhesion in one constraint)
 rigid-deform-adhesion-enable: true
-rigid-deform-adhesion-rest-gap: 0.002
-rigid-deform-adhesion-break-ratio: 1.3        # Allow more stretch
-rigid-deform-adhesion-alpha: 1e-4             # Compliance: k = 100,000
-rigid-deform-adhesion-bond-distance: 0.005
+rigid-deform-adhesion-rest-gap: 0.002          # Equilibrium adhesive gap distance (m)
+rigid-deform-adhesion-break-ratio: 1.8         # Strain ratio threshold: breaks at 180% (allow 80% stretch)
+                                               # Increased from 1.3 to allow more realistic stretching
+rigid-deform-adhesion-alpha: 1e-6              # Base compliance (will be adjusted dynamically: 5e-4 to 1e-4)
+                                               # This is mostly ignored as evaluate() sets it dynamically
+rigid-deform-adhesion-bond-distance: 0.005     # Maximum distance to create adhesion bond (m)
 
 ## define elastic materials
 materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 5e4          # Increased from 5e4 to 5e5 to improve "Spring Back" speed
+    E: 1e5          # Increased from 5e4 to 1e6 (More rigid Tumor)
     nu: 0.4         # Slightly lower Poisson's ratio
     mu-s: 0.0       # coefficient of static friction [-]
     mu-k: 0.0       # coefficient of kinetic friction [-]
@@ -73,7 +76,7 @@ objects:
   ## ==================== DEFORMABLE TUMOR ====================
   -
     name: "Tumor"
-    type: "XPBDMeshObject"  # CHANGED: Second order for VBD compatibility
+    type: "FirstOrderXPBDMeshObject"  # CHANGED: Second order for VBD compatibility
     filename: "../resource/tumor_fixed/tumor_squeezed.obj"
 
     materials: ["Soft Tissue"]
@@ -111,7 +114,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    # damping-multiplier: 1000  # Removed: Second order doesn't use this parameter
+    damping-multiplier: 5000000  # Removed: Second order doesn't use this parameter
 
 
   # ## ==================== DEFORMABLE BRAIN ====================
@@ -158,46 +161,49 @@ objects:
   #   damping-multiplier: 1000 
 
 
-  # ## ==================== RIGID TBONE ====================
-  # -
-  #   name: "RigidBone"
-  #   type: "RigidMeshObject"
-  #   filename: "../resource/tbone_fixed/tbone_MOD.obj"
-  #   density: 1000
+  ## ==================== RIGID TBONE ====================
+  -
+    name: "RigidBone"
+    type: "RigidMeshObject"
+    filename: "../resource/tbone_fixed/tbone_MOD.obj"
+    density: 1000
 
-  #   ## visualization options
-  #   color: [0.95, 0.92, 0.85]  # Bone white
-  #   draw-points: false
-  #   draw-edges: true
-  #   draw-faces: true
+    ## visualization options
+    color: [0.95, 0.92, 0.85]  # Bone white
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
 
-  #   ## initial configuration
-  #   use-original-coords: true   # Center and scale mesh
-  #   max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
-  #   position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
-  #   rotation: [0, 0, 0]          # No rotation
-  #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
+    position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
+    rotation: [0, 0, 0]          # No rotation
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
 
-  #   ## physics
-  #   collisions: true   # Enable collisions with deformable objects
-  #   fixed: true        # Keep bone stationary
+    ## physics
+    collisions: true   # Enable collisions with deformable objects
+    fixed: true        # Keep bone stationary
 
 
 ## ==================== CONSTRAINT INFO ====================
 # Objects:
 #   Tumor - deformable
-#   Brain - deformable  
+#   Brain - deformable (currently commented out)
 #   RigidBone - rigid, fixed
 #
 # Constraints:
 #   1. Inter-deform adhesion: Tumor ↔ Brain
-#      Code: Simulation.cpp L2234 (looks for "Tumor" & "Brain")
-#      Vertex-to-face bonds when distance < 5mm, breaks at 50% strain
+#      Code: Simulation.cpp (looks for "Tumor" & "Brain")
+#      Vertex-to-face bonds when distance < bond_distance, breaks at strain > break_ratio
 #
-#   2. Rigid-deform adhesion: RigidBone ↔ Tumor
-#      Code: Simulation.cpp L2517 (rigid:"RigidBone" + deform:"Tumor"/"Brain"/"Tissue"/"DeformableMesh")
-#      Face centroid-to-SDF bonds when distance < 5mm, breaks at 100% strain
+#   2. Rigid-deform sticky collision: RigidBone ↔ Tumor
+#      Code: Simulation.cpp (uses RigidDeformStickyCollisionConstraint)
+#      Unified constraint: maintains rest_gap distance, breaks at strain > break_ratio
+#      Modes: 
+#        - Sticky (equality): C = distance - rest_gap = 0 (bi-directional force)
+#        - Broken (inequality): C = distance >= 0 (collision only, no adhesion)
 #
 #   3. Inter-object collision: Tumor ↔ Brain
 #      Embree BVH spatial acceleration, prevents interpenetration

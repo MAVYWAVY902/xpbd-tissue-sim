@@ -2675,31 +2675,67 @@ void Simulation::setup()
                     if (distance <= bond_distance) {
                         faces_within_range++;
                         
-                        // Create adhesion constraint
-                        // The rigid body point is the position in body coordinates
+                        // Create sticky collision constraint (combined collision + adhesion)
                         const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(tri_center);
                         
                         try {
-                            // STABILITY FIX: Use ACTUAL distance as rest gap
-                            // This prevents "explosive" initialization where springs start pre-stretched by millimeters.
-                            // With k=1e6, a 1mm mismatch = 1000N force!
+                            // CRITICAL: Use ACTUAL distance as rest gap for adhesion equilibrium
+                            // This ensures the constraint maintains current configuration without pushing/pulling initially
                             Real effective_rest_gap = distance;
 
-                            // Prevent Constraint Fighting (Collision vs Adhesion)
-                            const Real min_safe_gap = 0.0012; 
-                            if (effective_rest_gap < min_safe_gap) effective_rest_gap = min_safe_gap;
+                            // Only enforce MAXIMUM gap to prevent bonding overly distant faces
+                            // DO NOT enforce minimum gap - allow close contact adhesion
+                            const Real max_safe_gap = 0.0050;  // 5mm maximum (prevent overly large gaps)
+                            
+                            if (effective_rest_gap > max_safe_gap) {
+                                // Skip faces that are too far - they shouldn't have strong adhesion
+                                continue;
+                            }
+                            
+                            // For very close faces (< 0.1mm), use small but non-zero rest_gap to avoid numerical issues
+                            const Real min_numerical_gap = 0.0001;  // 0.1mm - only for numerical stability
+                            if (effective_rest_gap < min_numerical_gap) {
+                                effective_rest_gap = min_numerical_gap;
+                            }
 
-                            typed_tissue_ptr->addRigidDeformAdhesionConstraint(
-                                sdf, rigid_obj_ptr, rigid_body_point,
-                                v1, v2, v3,
-                                effective_rest_gap, break_ratio, alpha
+                            // Get collision normal for constraint direction
+                            const Vec3r collision_normal = sdf->gradient(tri_center);
+                            
+                            // Verify normal is valid (not zero)
+                            if (collision_normal.norm() < 1e-6) {
+                                if (constraints_added < 5) {
+                                    std::cout << "[sticky-collision] Skipping face with invalid normal\n";
+                                }
+                                continue;
+                            }
+                            
+                            // Verify initial constraint error is small
+                            Real initial_constraint_error = std::abs(distance - effective_rest_gap);
+                            if (initial_constraint_error > 0.001) {  // > 1mm initial error
+                                if (constraints_added < 5) {
+                                    std::cout << "[sticky-collision] WARNING: Large initial error " 
+                                              << initial_constraint_error*1000 << "mm for face " << f << "\n";
+                                }
+                            }
+                            
+                            // Create unified sticky collision constraint
+                            // Parameters:
+                            //   - rest_gap: equilibrium adhesive gap (current distance)
+                            //   - break_ratio: strain threshold (from config, e.g., 1.3-1.5)
+                            typed_tissue_ptr->addRigidDeformStickyCollisionConstraint(
+                                sdf, rigid_obj_ptr, tri_center, collision_normal,
+                                f, 1.0/3.0, 1.0/3.0, 1.0/3.0,
+                                effective_rest_gap,
+                                break_ratio
                             );
                             
                             ++constraints_added;
                             if (constraints_added <= 10) {
-                                std::cout << "[rigid-deform adhesion] Added constraint: RigidBody -> Tissue_face[" 
+                                std::cout << "[sticky-collision] Added unified constraint: RigidBody -> Tissue_face[" 
                                           << v1 << "," << v2 << "," << v3 
-                                          << "] distance=" << distance << "m\n";
+                                          << "] rest_gap=" << effective_rest_gap*1000 << "mm, "
+                                          << "break_ratio=" << break_ratio 
+                                          << ", initial_error=" << initial_constraint_error*1000 << "mm\n";
                             }
                         } catch (const std::exception& e) {
                             std::cout << "[rigid-deform adhesion] Failed to add constraint: " << e.what() << "\n";

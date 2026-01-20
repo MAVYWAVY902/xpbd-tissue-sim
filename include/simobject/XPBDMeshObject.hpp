@@ -131,6 +131,10 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
         int face_ind, const Real u, const Real v, const Real w) override;
 
+    virtual Solver::ConstraintProjectorReference<Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformStickyCollisionConstraint>>
+    addRigidDeformStickyCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+        int face_ind, const Real u, const Real v, const Real w, Real rest_gap, Real break_ratio = 1.5);
+
     /** Adds a collision constraint between a vertex on this object and a face on another deformable object.
      * This is for INTER-OBJECT deformable-deformable collision (separate from self-collision).
      * 
@@ -457,6 +461,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
     
     /** Track attachment count to detect changes (grasping is dynamic). */
     size_t _vbd_last_attachment_count = 0;
+    
+    /** VBD Rayleigh damping parameter (gamma). Set from config: vbd-damping. */
+    Real _vbd_damping = 0.0;
 
     /** For Chebyshev Acceleration: Positions from the previous VBD iteration (x_{k-1}). */
     MatXr _vbd_prev_iter_vertices;

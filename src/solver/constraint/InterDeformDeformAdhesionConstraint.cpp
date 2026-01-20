@@ -305,23 +305,23 @@ bool InterDeformDeformAdhesionConstraint::shouldBreak() const
     Real current_ratio = (_rest_gap > 1e-12) ? (current_distance / _rest_gap) : 0.0;
     
     // If breaking or degrading, print info
-    if (should_break) {
-        std::cout << "[BREAKING InterDeform] vertex_v=" << vertex_v 
-                  << " tri=[" << tri_v1 << "," << tri_v2 << "," << tri_v3 << "]"
-                  << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
-                  << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
-                  << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio 
-                  << "\n  | FINAL HEALTH=" << _health << " (DIED)\n";
-    } else if (strain_ratio > _yield_ratio) {
+    // if (should_break) {
+    //     std::cout << "[BREAKING InterDeform] vertex_v=" << vertex_v 
+    //               << " tri=[" << tri_v1 << "," << tri_v2 << "," << tri_v3 << "]"
+    //               << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
+    //               << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
+    //               << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio 
+    //               << "\n  | FINAL HEALTH=" << _health << " (DIED)\n";
+    // } else if (strain_ratio > _yield_ratio) {
          // Only print degradation occasionally
-         static int log_counter = 0;
-         if (log_counter++ % 20 == 0) {
-             std::cout << "[DEGRADING InterDeform] vertex=" << vertex_v 
-                       << " | strain=" << strain_ratio 
-                       << " | yield=" << _yield_ratio
-                       << " | health=" << _health << " | alpha=" << alpha() << "\n";
-         }
-    }
+        //  static int log_counter = 0;
+        //  if (log_counter++ % 20 == 0) {
+        //      std::cout << "[DEGRADING InterDeform] vertex=" << vertex_v 
+        //                << " | strain=" << strain_ratio 
+        //                << " | yield=" << _yield_ratio
+        //                << " | health=" << _health << " | alpha=" << alpha() << "\n";
+        //  }
+    // }
     
     // NOTE: Do NOT reset _max_distance_this_step here! 
     return should_break;

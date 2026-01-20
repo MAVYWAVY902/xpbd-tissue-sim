@@ -27,6 +27,7 @@
 #include "solver/constraint/NerveTumorAdhesionConstraint.hpp"
 #include "solver/constraint/InterDeformDeformAdhesionConstraint.hpp"
 #include "solver/constraint/RigidDeformAdhesionConstraint.hpp"
+#include "solver/constraint/RigidDeformStickyCollisionConstraint.hpp"
 
 // Graph Coloring for VBD Gauss-Seidel
 #include "solver/TetMeshVertexGraph.hpp"
@@ -299,10 +300,75 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addRigi
     Real m2 = vertexConstraintInertia(v2);
     Real m3 = vertexConstraintInertia(v3);
 
+    // [New Logic] Check if a persistent "Sticky" constraint exists for this face.
+    // If so, we still CREATE the collision constraint (to return a valid reference),
+    // but we immediately INVALIDATE it so it is ignored by the solver.
+    bool sticky_exists = false;
+    const std::vector<Solver::RigidDeformStickyCollisionConstraint>& sticky_vec = _constraints.template get<Solver::RigidDeformStickyCollisionConstraint>();
+    for (const auto& c : sticky_vec) {
+        const auto& positions = c.positions();
+        if (positions.size() >= 3 && 
+            positions[0].index == v1 && 
+            positions[1].index == v2 && 
+            positions[2].index == v3)
+        {
+             // Found sticky constraint
+             sticky_exists = true;
+             break;
+        }
+    }
+
     std::vector<Solver::RigidDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::RigidDeformableCollisionConstraint>();
     constraint_vec.emplace_back(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
 
     using ConstraintRefType = Solver::ConstraintReference<Solver::RigidDeformableCollisionConstraint>;
+    _vbd_constraints_dirty = true;
+    
+    auto proj_ref = _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
+    
+    if (sticky_exists) {
+        proj_ref->setValidity(false);
+    }
+
+    return proj_ref;
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformStickyCollisionConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addRigidDeformStickyCollisionConstraint(
+    const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, 
+    const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+    int face_ind, const Real u, const Real v, const Real w, 
+    Real rest_gap, Real break_ratio)
+{
+    const Eigen::Vector3i face = _mesh->face(face_ind);
+    int v1 = face[0];
+    int v2 = face[1];
+    int v3 = face[2];
+    
+    Real* v1_ptr = _mesh->vertexPointer(v1);
+    Real* v2_ptr = _mesh->vertexPointer(v2);
+    Real* v3_ptr = _mesh->vertexPointer(v3);
+
+    Real m1 = vertexConstraintInertia(v1);
+    Real m2 = vertexConstraintInertia(v2);
+    Real m3 = vertexConstraintInertia(v3);
+
+    std::vector<Solver::RigidDeformStickyCollisionConstraint>& constraint_vec = _constraints.template get<Solver::RigidDeformStickyCollisionConstraint>();
+    constraint_vec.emplace_back(sdf, rigid_obj, rigid_body_point, collision_normal, 
+                                v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, 
+                                u, v, w, rest_gap, break_ratio);
+    
+    // Configure constraint: Use initial compliance that will be adjusted dynamically
+    // Non-linear compliance (1e-4 to 1e-5) will be adjusted based on strain in evaluate()
+    // This provides STRONG adhesion resistance comparable to tissue elasticity
+    constraint_vec.back().setCompliance(1e-4);  // Start with strong stiffness
+    
+    // Optional: Enable dynamic normal updates for long-lasting adhesions
+    // Disable by default for performance, can enable if needed
+    // constraint_vec.back().setDynamicNormalUpdate(true);
+
+    using ConstraintRefType = Solver::ConstraintReference<Solver::RigidDeformStickyCollisionConstraint>;
     _vbd_constraints_dirty = true;
     return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
 }
@@ -391,14 +457,21 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     using RigidDeformAdhesionProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
     auto& rigid_deform_projectors = _solver.template getConstraintProjectorsOfType<RigidDeformAdhesionProjectorType>();
     
+    // Get rigid-deform STICKY collision constraint projectors (NEW unified constraint)
+    using RigidDeformStickyProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformStickyCollisionConstraint>;
+    auto& sticky_projectors = _solver.template getConstraintProjectorsOfType<RigidDeformStickyProjectorType>();
+    
     // Skip if no adhesion constraints
-    if (nerve_tumor_projectors.empty() && inter_deform_projectors.empty() && rigid_deform_projectors.empty()) return;
+    if (nerve_tumor_projectors.empty() && inter_deform_projectors.empty() && 
+        rigid_deform_projectors.empty() && sticky_projectors.empty()) return;
     
     // Count active constraints and gather statistics every 3000 calls
-    if (call_count % 3000 == 0) {
+    if (call_count % 1000 == 0) {  // More frequent reporting for sticky constraints
         int nerve_tumor_active = 0;
         int inter_deform_active = 0;
         int rigid_deform_active = 0;
+        int sticky_active = 0;  // NEW: Count sticky constraints
+        int sticky_broken = 0;  // NEW: Count broken sticky constraints
         Real min_distance = 1e6;
         Real max_distance = 0.0;
         Real avg_distance = 0.0;
@@ -479,6 +552,34 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             }
         }
         
+        // Count sticky collision constraints (NEW unified constraint)
+        for (size_t i = 0; i < sticky_projectors.size(); ++i) {
+            if (sticky_projectors[i].isValid()) {
+                const auto& constraint_ref = sticky_projectors[i].constraint();
+                const auto* constraint = &constraint_ref.get();
+                if (constraint) {
+                    if (!constraint->isBroken()) {
+                        sticky_active++;
+                        total_active++;
+                        
+                        Real dist = constraint->getCurrentDistance();
+                        Real rest_gap = constraint->getRestGap();
+                        Real ratio = constraint->getStrainRatio();
+                        
+                        min_distance = std::min(min_distance, dist);
+                        max_distance = std::max(max_distance, dist);
+                        avg_distance += dist;
+                        
+                        min_ratio = std::min(min_ratio, ratio);
+                        max_ratio = std::max(max_ratio, ratio);
+                        avg_ratio += ratio;
+                    } else {
+                        sticky_broken++;
+                    }
+                }
+            }
+        }
+        
         if (total_active > 0) {
             avg_distance /= total_active;
             avg_ratio /= total_active;
@@ -488,6 +589,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
                       << "\n  | Nerve-tumor: " << nerve_tumor_active << " / " << nerve_tumor_projectors.size()
                       << "\n  | Inter-deform: " << inter_deform_active << " / " << inter_deform_projectors.size()
                       << "\n  | Rigid-deform: " << rigid_deform_active << " / " << rigid_deform_projectors.size()
+                      << "\n  | Sticky (NEW): " << sticky_active << " active, " << sticky_broken << " broken / " << sticky_projectors.size() << " total"
                       << "\n  | Total active: " << total_active
                       << "\n  | Distances: min=" << min_distance << "m, max=" << max_distance 
                       << "m, avg=" << avg_distance << "m"
@@ -533,6 +635,44 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
         if (constraint && constraint->shouldBreak()) {
             rigid_deform_to_invalidate.push_back(static_cast<int>(i));
         }
+    }
+    
+    // Check and break sticky collision constraints (NEW unified constraint)
+    // These use strain-based breaking mechanism
+    std::vector<int> sticky_to_invalidate;
+    for (size_t i = 0; i < sticky_projectors.size(); ++i) {
+        auto& projector = sticky_projectors[i];
+        if (!projector.isValid()) continue;
+        
+        auto& constraint_ref = projector.constraint();
+        auto* constraint = &constraint_ref.get();
+        if (constraint && !constraint->isBroken()) {
+            Real strain_ratio = constraint->getStrainRatio();
+            Real break_ratio = constraint->getBreakRatio();
+            
+            // Check if strain exceeds breaking threshold
+            if (strain_ratio > break_ratio) {
+                sticky_to_invalidate.push_back(static_cast<int>(i));
+                
+                // Debug output for first few breaks
+                static int break_debug_count = 0;
+                if (break_debug_count < 5) {
+                    std::cout << "[StickyConstraint] Breaking adhesion: strain_ratio=" 
+                              << strain_ratio << " > break_ratio=" << break_ratio 
+                              << " (distance=" << constraint->getCurrentDistance()*1000 << "mm, rest_gap=" 
+                              << constraint->getRestGap()*1000 << "mm)\n";
+                    break_debug_count++;
+                }
+                
+                // Mark constraint as broken (for statistics tracking)
+                const_cast<Solver::RigidDeformStickyCollisionConstraint*>(constraint)->setBroken(true);
+            }
+        }
+    }
+    
+    // Invalidate sticky constraints that should break (CRITICAL: actually remove them!)
+    for (int idx : sticky_to_invalidate) {
+        _solver.template setProjectorValidity<RigidDeformStickyProjectorType>(idx, false);
     }
     
     // Invalidate nerve-tumor adhesion projectors that should break
@@ -610,6 +750,69 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     //               << " + " << inter_deform_to_invalidate.size() << " inter-deform"
     //               << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
     // }
+
+    // [New Logic] Check and update Sticky Collision constraints state
+    // Breaking mechanism based on strain ratio (current_distance / rest_gap)
+    std::vector<Solver::RigidDeformStickyCollisionConstraint>& sticky_constraints = _constraints.template get<Solver::RigidDeformStickyCollisionConstraint>();
+    
+    // Statistics for monitoring constraint health
+    static int check_count = 0;
+    check_count++;
+    
+    int active_sticky_count = 0;
+    int broken_count = 0;
+    Real max_strain = 0.0;
+    Real avg_strain = 0.0;
+    Real max_error = 0.0;
+    int total_error_count = 0;
+    
+    for (auto& constraint : sticky_constraints) {
+        if (!constraint.isBroken()) {
+            active_sticky_count++;
+            
+            // Evaluate constraint to get deviation from rest gap
+            // Note: In sticky mode, evaluate() returns (current_distance - rest_gap)
+            Real C_deviation;
+            constraint.evaluate(&C_deviation);
+            
+            // Get actual current distance by adding back the rest gap
+            Real current_distance = C_deviation + constraint.getRestGap();
+            
+            // Calculate strain ratio: how much stretched compared to rest length
+            Real strain_ratio = current_distance / constraint.getRestGap();
+            avg_strain += strain_ratio;
+            max_strain = std::max(max_strain, strain_ratio);
+            
+            // Track constraint errors
+            max_error = std::max(max_error, constraint.getMaxConstraintError());
+            total_error_count += constraint.getErrorCount();
+            
+            // Break if strain exceeds threshold (e.g., 1.5 = 150% of rest length)
+            if (strain_ratio > constraint.getBreakRatio()) {
+                constraint.setBroken(true);
+                std::cout << "[Sticky] Bond broken! "
+                          << "Distance=" << current_distance*1000 << "mm, "
+                          << "RestGap=" << constraint.getRestGap()*1000 << "mm, "
+                          << "Strain=" << strain_ratio << " > " << constraint.getBreakRatio() << "\n";
+            }
+        } else {
+            broken_count++;
+        }
+    }
+    
+    // Periodic health report
+    if (check_count % 1000 == 0 && !sticky_constraints.empty()) {
+        if (active_sticky_count > 0) {
+            avg_strain /= active_sticky_count;
+        }
+        std::cout << "[StickyConstraint Health] "
+                  << "Active=" << active_sticky_count 
+                  << ", Broken=" << broken_count
+                  << ", MaxStrain=" << max_strain
+                  << ", AvgStrain=" << avg_strain
+                  << ", MaxError=" << max_error*1000 << "mm"
+                  << ", TotalErrors=" << total_error_count << "\n";
+    }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -1577,6 +1780,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
     // 4. 每个顶点立即应用更新（不是批量）
     // ============================================================================
     
+    // Read VBD damping parameter from simulation config
+    _vbd_damping = _sim->config()->vbdDamping();
+    
     const int num_verts = _mesh->numVertices();
     const int num_iters = _sim->config()->vbdIterations();
     const Real step_size = _sim->config()->vbdStepSize();
@@ -1833,15 +2039,11 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 }
                 
                 // 1. Inertia force and Hessian
-                // CRITICAL FIX: For vertices with attachment constraints, DON'T apply inertial resistance!
-                // The attachment constraint defines the target position, not the inertial prediction.
-                // Inertial force would fight against the attachment, preventing grasping from working.
-                if (!has_attachment_here) {
-                    // Normal inertial force for free vertices
-                    force = mass / (dt * dt) * (x_reference - x_current);
-                    hessian = (mass / (dt * dt)) * Mat3r::Identity();
-                }
-                // else: Skip inertial term for attached vertices - let attachment constraint dominate
+                // CRITICAL: Always apply inertia! This is what causes spring-back.
+                // Gaia's VBDStepWithCollision always adds inertia for all vertices.
+                // Attachment constraint is ADDITIONAL force, not a replacement for inertia.
+                force = mass / (dt * dt) * (x_reference - x_current);
+                hessian = (mass / (dt * dt)) * Mat3r::Identity();
                 
                 // 2. Elastic forces from Neo-Hookean energy (like Gaia's accumlateMaterialForceAndHessian)
                 // For each tetrahedron attached to this vertex, compute elastic restoring force
@@ -1853,6 +2055,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 const Real lambda = material.lambda(); // Lamé second parameter (bulk modulus)
                 
                 // Use full material stiffness - PSD filtering in Hessian ensures stability
+                
+                // Save hessian before elastic to compute stiffness matrix K for damping
+                Mat3r hessian_before_elastic = hessian;
                 
                 for (int tet_idx : attached_tets) {
                     const auto& tet = tetMesh()->element(tet_idx);
@@ -1877,6 +2082,19 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                         force, hessian
                     );
                 }
+                
+                // 2.5. Rayleigh Damping (CRITICAL FOR STABILITY!)
+                // Gaia's approach: damping proportional to stiffness matrix K
+                // F_damp = -gamma * K * velocity
+                // H_damp = (gamma / dt) * K
+                const Mat3r K = hessian - hessian_before_elastic;  // Stiffness matrix from elastic
+                const Real gamma = _vbd_damping;  // From config: vbd-damping parameter
+                const Vec3r velocity = (x_current - _previous_vertices.col(vid)) / dt;
+                const Vec3r damping_force = -gamma * (K * velocity);
+                const Mat3r damping_hessian = (gamma / dt) * K;
+                
+                force += damping_force;
+                hessian += damping_hessian;
                 
                 // DEBUG: Check elastic force magnitude
                 if (debug_frame % 60 == 0 && vid < 5 && attached_tets.size() > 0) {
@@ -1946,7 +2164,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 // 4. Rigid-Deformable Collision (Penalty Method)
                 // ==============================================
                 if (!_vbd_rigid_collisions[vid].empty()) {
-                    const Real collision_k = 100000.0; 
+                    const Real collision_k = 1e6; // Increased stiffness for stability 
                     
                     for (const auto* c : _vbd_rigid_collisions[vid]) {
                          const auto& positions = c->positions();
@@ -1981,7 +2199,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 // 5. Static-Deformable Collision (Penalty Method)
                 // ===============================================
                 if (!_vbd_static_collisions[vid].empty()) {
-                    const Real collision_k = 100000.0;
+                    const Real collision_k = 1e6; // Increased stiffness
                     
                     for (const auto* c : _vbd_static_collisions[vid]) {
                          const auto& positions = c->positions();
@@ -2017,15 +2235,15 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 // =====================================================================
                 if (!_vbd_inter_deform_collisions[vid].empty()) {
                     
-                    // Stiffness: High to keep objects apart
-                    const Real collision_k = 2e5; 
+                    // Stiffness: Increased to 1e6 to prevent penetration with stiffer materials
+                    const Real collision_k = 1e6; 
                     
                     // Buffer zone: Reduced to 1mm to avoid fighting with Adhesion (rest_gap = 2mm)
                     // Previously 3mm -> caused oscillation in [2mm, 3mm] range
                     const Real thickness = 0.001; 
 
                     // Max correction per step: Safety clamp to prevent explosions
-                    const Real max_force_mag = 5000.0; 
+                    const Real max_force_mag = 50000.0; // Increased limit for stiffer response
 
                     for (const auto* c : _vbd_inter_deform_collisions[vid]) {
                         
@@ -2262,9 +2480,9 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                 // 9. Self-Collision (Deformable-Deformable)
                 // =========================================
                 if (!_vbd_self_collisions[vid].empty()) {
-                    const Real collision_k = 2e5; 
+                    const Real collision_k = 1e6;  // Increased from 5e4 for stability with stiffer materials
                     const Real thickness = 0.001; // Reduced to 1mm
-                    const Real max_force_mag = 5000.0; 
+                    const Real max_force_mag = 50000.0; 
 
                     for (const auto* c : _vbd_self_collisions[vid]) {
                         
@@ -2364,22 +2582,49 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
                     }
                     
                     if (solverSuccess) {
-                        // STABILITY IMPROVEMENT: Enable line search for adaptive step sizing
-                        // This prevents overshooting in steep energy landscapes (especially during grasping)
-                        // #ifdef ENABLE_VBD_LINE_SEARCH
-                        // // Gaia-style backtracking line search
-                        // Real initialEnergy = _evaluateVertexEnergy(vid);
-                        // Real optimalStepSize = _vbdLineSearch(vid, descentDirection, initialEnergy, step_size);
-                        // 
-                        // // Apply optimal step found by line search
-                        // _mesh->setVertex(vid, _mesh->vertex(vid));  // Already set by line search
-                        // #else
-                        // Simple fixed step size (faster but less stable)
-                        _mesh->displaceVertex(vid, step_size * descentDirection);
-                        // #endif
+                        // =========================================================================
+                        // LINE SEARCH vs DIRECT NEWTON STEP
+                        // =========================================================================
+                        // Gaia default implementation (VBD_NeoHookean.cpp) has Line Search DISABLED
+                        // (commented out via #define APPLY_LOCAL_LINE_SEARCH).
+                        //
+                        // REASON: 
+                        // 1. Line Search often rejects Valid Collision Resolutions because pushing 
+                        //    a vertex out of a collider increases Elastic Energy. 
+                        //    Unless the Collision Energy is perfectly continuous and balanced, 
+                        //    Line Search sees "Energy Increase" and blocks the movement.
+                        //    This leads to "Frozen" or "Jelly-like" behavior where collisions 
+                        //    are never resolved.
+                        //
+                        // 2. The constructed Hessian (PSD) already provides a safe, damped step.
+                        //    Using Gauss-Newton approximation plus regularization (0.1*k) 
+                        //    makes the energy landscape locally quadratic and convex.
+                        //
+                        // 3. Performance: Line search is expensive.
+                        // =========================================================================
+                        
+                        // Apply robust step clamping to prevent explosions
+                        // Max movement per step: e.g. 10% of scene size or 5cm
+                        Real max_disp = 0.05; 
+                        Vec3r step = step_size * descentDirection;
+                        Real step_len = step.norm();
+                        
+                        if (step_len > max_disp) {
+                            step *= (max_disp / step_len);
+                        }
+                        
+                        _mesh->displaceVertex(vid, step);
+
+                        /* 
+                        // --- UNUSED LINE SEARCH (Kept for reference) ---
+                        Real initialEnergy = _evaluateVertexEnergy(vid);
+                        Real optimalStepSize = _vbdLineSearch(vid, descentDirection, initialEnergy, step_size);
+                        _mesh->displaceVertex(vid, optimalStepSize * descentDirection);
+                        */
+                        
                     } else {
                         // Fallback: gradient descent when solver fails
-                        _mesh->displaceVertex(vid, step_size * 0.1 * force.normalized());
+                        _mesh->displaceVertex(vid, step_size * 0.01 * force.normalized());
                     }
                 }
             }
@@ -2425,60 +2670,189 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_s
 }
 
 // ============================================================================
-// VBD Line Search Implementation (Gaia-style)
+// VBD Line Search Implementation (Corrected & Optimized)
 // ============================================================================
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
-Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_evaluateVertexEnergy(int vertexId) const {
+Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::
+_evaluateVertexEnergy(int vertexId) const 
+{
     const Real dt = _sim->dt();
     Real total_energy = 0.0;
     
-    // 1. Inertia energy (matches Gaia's computeInertiaEnergy implementation)
+    // 1. Inertia Energy
+    // -----------------
     const Real mass = vertexMass(vertexId);
     const Vec3r x_current = _mesh->vertex(vertexId);
-    const Vec3r x_inertia = _previous_vertices.col(vertexId);  // Inertia position
     
-    Real inertia_energy = 0.5 * mass / (dt * dt) * (x_current - x_inertia).squaredNorm();
-    total_energy += inertia_energy;
-    
-    // 2. Elastic energy (approximate contribution from attached tetrahedra)
-    // For each tet containing this vertex, compute its elastic energy contribution
-    for (int tet_idx = 0; tet_idx < tetMesh()->numElements(); tet_idx++) {
-        const auto& tet = tetMesh()->element(tet_idx);
-        bool vertex_in_tet = false;
-        for (int i = 0; i < 4; i++) {
-            if (tet[i] == vertexId) {
-                vertex_in_tet = true;
-                break;
-            }
+    // Select correct inertia target based on Solver Order
+    Vec3r x_reference;
+    if constexpr (IsFirstOrder) {
+        // First Order: Reference represents quasi-static target (previous true position)
+        // We need to access _vbd_true_previous, but it's not member of this const function easily unless we stored it?
+        // In _solveVBD we have access. As a fallback/approximation for this function:
+        // If FirstOrder, target k*(x - x_prev)^2. 
+        // For line search to be valid, it MUST match the force derivation.
+        // Assuming _vbd_true_previous is correct:
+        if (_vbd_true_previous.cols() == _mesh->numVertices()) {
+             x_reference = _vbd_true_previous.col(vertexId); 
+        } else {
+             x_reference = _previous_vertices.col(vertexId); // Fallback
         }
-        
-        if (vertex_in_tet) {
-            // Simple approximation: 1/4 of the tet's elastic energy
-            // This is a reasonable approximation for line search purposes
-            Vec3r x0 = _mesh->vertex(tet[0]);
-            Vec3r x1 = _mesh->vertex(tet[1]);
-            Vec3r x2 = _mesh->vertex(tet[2]);
-            Vec3r x3 = _mesh->vertex(tet[3]);
-            
-            // Compute deformation gradient and simple elastic energy
-            // Using a simplified Neo-Hookean energy approximation
-            Mat3r F;
-            F.col(0) = x1 - x0;
-            F.col(1) = x2 - x0; 
-            F.col(2) = x3 - x0;
-            
-            Real det_F = F.determinant();
-            if (det_F > 1e-10) { // Avoid singularities
-                Real I1 = F.squaredNorm();
-                Real I3 = det_F * det_F;
-                
-                // Simplified Neo-Hookean energy (without proper material parameters)
-                Real elastic_contribution = 0.25 * (I1 + 1.0 / I3 - 3.0) * _tetVolumes[tet_idx];
-                total_energy += elastic_contribution * 0.25;  // 1/4 contribution per vertex
-            }
+    } else {
+        // Second Order: Reference is inertial prediction (x_n + v_n * dt)
+        // Saved in _inertial_vertices during update()
+        if (_inertial_vertices.cols() == _mesh->numVertices()) {
+            x_reference = _inertial_vertices.col(vertexId);
+        } else {
+            x_reference = _previous_vertices.col(vertexId); // Fallback
         }
     }
+    
+    Real inertia_energy = 0.5 * mass / (dt * dt) * (x_current - x_reference).squaredNorm();
+    total_energy += inertia_energy;
+    
+    // 2. Elastic Energy (Neo-Hookean)
+    // -------------------------------
+    const std::vector<int>& attached_tets = tetMesh()->vertexAttachedElements(vertexId);
+    
+    // Material parameters
+    const ElasticMaterial& material = _materials[0];
+    const Real mu = material.mu();
+    const Real lambda = material.lambda();
+    const Real alpha = 1.0 + mu / lambda; // Correction term for stable Neo-Hookean
+    
+    for (int tet_idx : attached_tets) {
+        // Optimization: Pre-computed DmInv and RestVolume
+        // Ensure these arrays are valid (computed in setup)
+        if (tet_idx >= _vbd_dm_inverses.size()) continue;
+
+        const Mat3r& DmInv = _vbd_dm_inverses[tet_idx];
+        const Real restVol = _vbd_rest_volumes[tet_idx];
+        
+        // Gather current positions
+        const auto& tet = tetMesh()->element(tet_idx);
+        Vec3r x0 = _mesh->vertex(tet[0]);
+        Vec3r x1 = _mesh->vertex(tet[1]);
+        Vec3r x2 = _mesh->vertex(tet[2]);
+        Vec3r x3 = _mesh->vertex(tet[3]);
+        
+        // Compute Deformation Gradient F = Ds * DmInv
+        Mat3r Ds;
+        Ds.col(0) = x0 - x3;
+        Ds.col(1) = x1 - x3;
+        Ds.col(2) = x2 - x3;
+        
+        Mat3r F = Ds * DmInv;
+        
+        // Stable Neo-Hookean Energy Density (Smith et al. 2018)
+        // Psi = (mu/2) * (Ic - 3) + (lambda/2) * (J - alpha)^2
+        // Tc = trace(F^T F)
+        
+        Real Ic = F.squaredNorm(); 
+        Real J = F.determinant();
+        
+        Real term1 = 0.5 * mu * (Ic - 3.0);
+        Real term2 = 0.5 * lambda * (J - alpha) * (J - alpha);
+        
+        Real element_energy = (term1 + term2) * restVol;
+        
+        total_energy += element_energy;
+    }
+
+    // 3. Collision/Adhesion Energy (Crucial for Penalty Methods!)
+    // ---------------------------------------------------------------------
+    // Without this, Line Search rejects collision resolution steps because 
+    // it sees them as "increasing elastic/inertia energy" without knowing 
+    // it's fixing a penetration.
+    
+    // 3a. Rigid Collision Energy (Penalty)
+    if (!_vbd_rigid_collisions[vertexId].empty()) {
+        const Real k = 1e6;
+        for (const auto* c : _vbd_rigid_collisions[vertexId]) {
+            // Simplified check: Use current distance
+            // We need to re-evaluate SDF at new position 'x_current'
+            // But how? We need weight...
+            // Approximate: assume vertex dominates motion?
+            // Correct way: Evaluate constraints fully.
+            
+             const auto& positions = c->positions();
+             int v1_idx = positions[0].index;
+             int v2_idx = positions[1].index;
+             int v3_idx = positions[2].index;
+             
+             Real weight = 0.0;
+             if (vertexId == v1_idx) weight = c->u();
+             else if (vertexId == v2_idx) weight = c->v();
+             else if (vertexId == v3_idx) weight = c->w();
+             else continue;
+             
+             // Reconstruct point P
+             Vec3r p1 = _mesh->vertex(v1_idx);
+             Vec3r p2 = _mesh->vertex(v2_idx);
+             Vec3r p3 = _mesh->vertex(v3_idx);
+             Vec3r p_cur = c->u() * p1 + c->v() * p2 + c->w() * p3;
+             
+             Real dist = c->sdf()->evaluate(p_cur);
+             if (dist < 0) {
+                 // E = 0.5 * k * dist^2 * weight? 
+                 // Force was F = -k * dist * n * weight
+                 // Potential is 0.5 * k * dist^2
+                 // We contribute weighted portion? 
+                 // Since we move ONE vertex, the energy change is proportional.
+                 // Let's just add full potential 0.5 * k * dist^2
+                 total_energy += 0.5 * k * dist * dist;
+             }
+        }
+    }
+
+    // 3b. Self/Iter-Deform Collision Energy (Penalty)
+    // Merged logic for all mesh-mesh collisions
+    auto addMeshCollisionEnergy = [&](const auto& collision_list) {
+        if (collision_list.empty()) return;
+        const Real k = 1e6;
+        const Real thickness = 0.001;
+        
+        for (const auto* c : collision_list) {
+            const auto& positions = c->positions();
+            Eigen::Map<const Vec3r> q(positions[0].position_ptr);
+            Eigen::Map<const Vec3r> p1(positions[1].position_ptr);
+            Eigen::Map<const Vec3r> p2(positions[2].position_ptr);
+            Eigen::Map<const Vec3r> p3(positions[3].position_ptr);
+            
+            Vec3r cross_prod = (p2 - p1).cross(p3 - p1);
+            Real area_sq = cross_prod.squaredNorm();
+            if (area_sq < 1e-12) continue;
+            Vec3r n = cross_prod / std::sqrt(area_sq);
+            Real dist = (q - p1).dot(n);
+            
+            if (dist < thickness) {
+                Real penetration = thickness - dist;
+                // Clamp like in force calc
+                if (penetration > thickness * 2.0) penetration = thickness * 2.0;
+                total_energy += 0.5 * k * penetration * penetration;
+            }
+        }
+    };
+    
+    if (vertexId < _vbd_inter_deform_collisions.size()) 
+        addMeshCollisionEnergy(_vbd_inter_deform_collisions[vertexId]);
+        
+    if (vertexId < _vbd_self_collisions.size())
+        addMeshCollisionEnergy(_vbd_self_collisions[vertexId]);
+     
+    // 3c. Rigid Adhesion Energy
+     if (!_vbd_rigid_adhesions[vertexId].empty()) {
+        for (const auto* c : _vbd_rigid_adhesions[vertexId]) {
+             if (c->shouldBreak()) continue;
+             Real k = 10000.0;
+             if (c->alpha() > 1e-12) k = 1.0 / c->alpha();
+             
+             // Simplified distance check (barycentric logic omitted for speed, approx ok)
+             // We need re-evaluation logic similar to collisions, but Adhesion is complex.
+             // Skipped for now - Collisions are the main "Jelly/Explosion" cause.
+        }
+     }
     
     return total_energy;
 }
@@ -2487,42 +2861,42 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_vbdLineSearch(
     int vertexId, const Vec3r& descentDirection, Real initialEnergy, Real maxStepSize) {
     
-    // Fast Line Search parameters for performance
-    const Real c = 0.1;           // Wolfe condition parameter
-    const Real tau = 0.7;         // Less aggressive reduction (was 0.5)
-    const int maxIters = 3;       // Minimal iterations for speed (was 8)
-    const Real minStepSize = 1e-4; // Larger minimum step (was 1e-6)
+    // Fast Line Search parameters
+    const Real c = 0.0;           // c=0: Simple decrease condition (Gaia uses 0.0) -> More robust for VBD
+    const Real tau = 0.5;         // Step reduction factor (Gaia uses 0.5)
+    const int maxIters = 5;       // Max iterations (Gaia uses 10, loose to 5 for speed)
+    const Real minStepSize = 1e-6; 
     
     const Vec3r originalPos = _mesh->vertex(vertexId);
+    
+    // Directional derivative term (for Wolfe condition if c > 0)
+    // For c=0, we just need E_new < E_old
     const Real m = descentDirection.squaredNorm();
+    const Real descent_term = -c * m; 
     
     Real alpha = maxStepSize;
     Real bestAlpha = 0.0;
-    Real bestEnergy = initialEnergy;
+    // Real bestEnergy = initialEnergy; // Not used if we break on first success
     
     for (int iter = 0; iter < maxIters; iter++) {
-        // Test this step size
+        // move vertex
         _mesh->setVertex(vertexId, originalPos + alpha * descentDirection);
         
         Real currentEnergy = _evaluateVertexEnergy(vertexId);
         
-        // Track best energy found
-        if (currentEnergy < bestEnergy) {
+        // Wolfe condition (sufficient decrease)
+        // If c=0, this just checks currentEnergy < initialEnergy
+        if (currentEnergy < initialEnergy + alpha * descent_term) {
+            // Found valid step!
             bestAlpha = alpha;
-            bestEnergy = currentEnergy;
-        }
-        
-        // Check Wolfe condition (sufficient decrease)
-        if (currentEnergy < initialEnergy - alpha * c * m) {
-            // Found good step size
-            break;
+            break; 
         }
         
         // Reduce step size
         alpha *= tau;
         
-        // Stop if step size too small
         if (alpha < minStepSize) {
+            bestAlpha = 0.0; // Failed to find better spot
             break;
         }
     }
@@ -2530,8 +2904,8 @@ Real XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::_v
     // Restore original position
     _mesh->setVertex(vertexId, originalPos);
     
-    // Return best step size found (fallback to small step if no improvement)
-    return (bestAlpha > 0) ? bestAlpha : minStepSize;
+    // Return best alpha. Caller must apply displacement!
+    return bestAlpha;
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
