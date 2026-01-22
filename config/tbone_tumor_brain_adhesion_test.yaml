@@ -12,12 +12,13 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-g-accel: [-500, -500, -500] # downward acceleration due to gravity [m/s2]
+g-accel: [-10, -10, -10] # downward acceleration due to gravity [m/s2]
+# g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
 time-step: 2e-4      # 0.5ms timestep
-collision-rate: 100  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
+collision-rate: 1000  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
 end-time: 300        # test time [s]
@@ -38,7 +39,7 @@ inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformabl
 
 ## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
-rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
+rigid-deform-adhesion-enable: false           # Enable rigid-deform adhesion
 rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
 rigid-deform-adhesion-break-ratio: 1.5       # Break at 50% strain (separation = 1.5x rest_gap)
 rigid-deform-adhesion-alpha: 1e-6            # Compliance (INCREASED from 2e-6 for stability)
@@ -63,15 +64,20 @@ objects:
   -
     name: "Tumor"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/tumor_fixed/tumor_squeezed.obj"
+    filename: "../resource/tumor_fixed/tumor_squeezed_uv.obj"
 
     materials: ["Soft Tissue"]
 
     ## visualization options
-    color: [1.0, 0.5, 0.0]  # Orange - tumor
+    # color: [1.0, 0.5, 0.0]  # Orange - tumor (used if texture fails to load)
     draw-points: false
-    draw-edges: true
+    draw-edges: false
     draw-faces: true
+    
+    ## texture mapping
+    texture-file: "../resource/textures/AlbedoFat.png"
+
+    use-texture: true
 
     ## initial configuration
     use-original-coords: true   # Center and scale mesh

@@ -4,7 +4,7 @@
 name: "Texture-Test"
 description: "Testing texture mapping with UV coordinates"
 
-visualization: "VTK"  # Use VTK for texture support
+visualization: "Easy3D"  # Use VTK for texture support
 g-accel: 0
 sim-mode: "Frame-by-frame"  # Press any key to advance frame
 time-step: 1e-3
