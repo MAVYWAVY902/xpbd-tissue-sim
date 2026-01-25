@@ -41,7 +41,8 @@ void SimulationStateRecorder::recordSnapshot(Real time, int frame_num, const Fra
     std::cout << "[StateRecorder] Recorded snapshot #" << _snapshots.size() 
               << " at t=" << time << "s"
               << " (frame " << frame_num << ")"
-              << " - " << snapshot.adhesion_states.size() << " adhesions";
+              << " - inter-deform: " << snapshot.inter_deform_adhesion_states.size()
+              << ", rigid-deform: " << snapshot.rigid_deform_adhesion_states.size();
     
     if (!snapshot.broken_adhesion_ids.empty())
     {
@@ -140,7 +141,41 @@ void SimulationStateRecorder::_writeBinary(std::ofstream& file, const FrameSnaps
         }
     }
     
-    // Write adhesion states
+    // Write inter-deformable adhesion states
+    uint32_t num_inter_deform_adhesions = snapshot.inter_deform_adhesion_states.size();
+    file.write(reinterpret_cast<const char*>(&num_inter_deform_adhesions), sizeof(num_inter_deform_adhesions));
+    
+    for (const auto& adhesion : snapshot.inter_deform_adhesion_states)
+    {
+        file.write(reinterpret_cast<const char*>(&adhesion.vertex_id), sizeof(adhesion.vertex_id));
+        file.write(reinterpret_cast<const char*>(&adhesion.triangle_id), sizeof(adhesion.triangle_id));
+        file.write(reinterpret_cast<const char*>(&adhesion.vertex_position), sizeof(adhesion.vertex_position));
+        file.write(reinterpret_cast<const char*>(&adhesion.contact_point), sizeof(adhesion.contact_point));
+        file.write(reinterpret_cast<const char*>(&adhesion.current_distance), sizeof(adhesion.current_distance));
+        file.write(reinterpret_cast<const char*>(&adhesion.rest_gap), sizeof(adhesion.rest_gap));
+        file.write(reinterpret_cast<const char*>(&adhesion.max_distance_seen), sizeof(adhesion.max_distance_seen));
+        file.write(reinterpret_cast<const char*>(&adhesion.is_broken), sizeof(adhesion.is_broken));
+        file.write(reinterpret_cast<const char*>(&adhesion.break_threshold), sizeof(adhesion.break_threshold));
+    }
+    
+    // Write rigid-deformable adhesion states
+    uint32_t num_rigid_deform_adhesions = snapshot.rigid_deform_adhesion_states.size();
+    file.write(reinterpret_cast<const char*>(&num_rigid_deform_adhesions), sizeof(num_rigid_deform_adhesions));
+    
+    for (const auto& adhesion : snapshot.rigid_deform_adhesion_states)
+    {
+        file.write(reinterpret_cast<const char*>(&adhesion.triangle_id), sizeof(adhesion.triangle_id));
+        file.write(reinterpret_cast<const char*>(&adhesion.rigid_point), sizeof(adhesion.rigid_point));
+        file.write(reinterpret_cast<const char*>(&adhesion.triangle_centroid), sizeof(adhesion.triangle_centroid));
+        file.write(reinterpret_cast<const char*>(&adhesion.contact_point), sizeof(adhesion.contact_point));
+        file.write(reinterpret_cast<const char*>(&adhesion.current_distance), sizeof(adhesion.current_distance));
+        file.write(reinterpret_cast<const char*>(&adhesion.rest_gap), sizeof(adhesion.rest_gap));
+        file.write(reinterpret_cast<const char*>(&adhesion.max_distance_seen), sizeof(adhesion.max_distance_seen));
+        file.write(reinterpret_cast<const char*>(&adhesion.is_broken), sizeof(adhesion.is_broken));
+        file.write(reinterpret_cast<const char*>(&adhesion.break_threshold), sizeof(adhesion.break_threshold));
+    }
+    
+    // Write legacy adhesion states (for backward compatibility)
     uint32_t num_adhesions = snapshot.adhesion_states.size();
     file.write(reinterpret_cast<const char*>(&num_adhesions), sizeof(num_adhesions));
     
@@ -265,7 +300,43 @@ SimulationStateRecorder::_readBinary(std::ifstream& file)
         }
     }
     
-    // Read adhesion states
+    // Read inter-deformable adhesion states
+    uint32_t num_inter_deform_adhesions;
+    file.read(reinterpret_cast<char*>(&num_inter_deform_adhesions), sizeof(num_inter_deform_adhesions));
+    snapshot.inter_deform_adhesion_states.resize(num_inter_deform_adhesions);
+    
+    for (auto& adhesion : snapshot.inter_deform_adhesion_states)
+    {
+        file.read(reinterpret_cast<char*>(&adhesion.vertex_id), sizeof(adhesion.vertex_id));
+        file.read(reinterpret_cast<char*>(&adhesion.triangle_id), sizeof(adhesion.triangle_id));
+        file.read(reinterpret_cast<char*>(&adhesion.vertex_position), sizeof(adhesion.vertex_position));
+        file.read(reinterpret_cast<char*>(&adhesion.contact_point), sizeof(adhesion.contact_point));
+        file.read(reinterpret_cast<char*>(&adhesion.current_distance), sizeof(adhesion.current_distance));
+        file.read(reinterpret_cast<char*>(&adhesion.rest_gap), sizeof(adhesion.rest_gap));
+        file.read(reinterpret_cast<char*>(&adhesion.max_distance_seen), sizeof(adhesion.max_distance_seen));
+        file.read(reinterpret_cast<char*>(&adhesion.is_broken), sizeof(adhesion.is_broken));
+        file.read(reinterpret_cast<char*>(&adhesion.break_threshold), sizeof(adhesion.break_threshold));
+    }
+    
+    // Read rigid-deformable adhesion states
+    uint32_t num_rigid_deform_adhesions;
+    file.read(reinterpret_cast<char*>(&num_rigid_deform_adhesions), sizeof(num_rigid_deform_adhesions));
+    snapshot.rigid_deform_adhesion_states.resize(num_rigid_deform_adhesions);
+    
+    for (auto& adhesion : snapshot.rigid_deform_adhesion_states)
+    {
+        file.read(reinterpret_cast<char*>(&adhesion.triangle_id), sizeof(adhesion.triangle_id));
+        file.read(reinterpret_cast<char*>(&adhesion.rigid_point), sizeof(adhesion.rigid_point));
+        file.read(reinterpret_cast<char*>(&adhesion.triangle_centroid), sizeof(adhesion.triangle_centroid));
+        file.read(reinterpret_cast<char*>(&adhesion.contact_point), sizeof(adhesion.contact_point));
+        file.read(reinterpret_cast<char*>(&adhesion.current_distance), sizeof(adhesion.current_distance));
+        file.read(reinterpret_cast<char*>(&adhesion.rest_gap), sizeof(adhesion.rest_gap));
+        file.read(reinterpret_cast<char*>(&adhesion.max_distance_seen), sizeof(adhesion.max_distance_seen));
+        file.read(reinterpret_cast<char*>(&adhesion.is_broken), sizeof(adhesion.is_broken));
+        file.read(reinterpret_cast<char*>(&adhesion.break_threshold), sizeof(adhesion.break_threshold));
+    }
+    
+    // Read legacy adhesion states (for backward compatibility)
     uint32_t num_adhesions;
     file.read(reinterpret_cast<char*>(&num_adhesions), sizeof(num_adhesions));
     snapshot.adhesion_states.resize(num_adhesions);

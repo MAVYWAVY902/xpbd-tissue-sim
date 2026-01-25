@@ -25,7 +25,7 @@ class CollisionConstraint : public Constraint
     inline virtual void applyFriction(Real lam, Real mu_s, Real mu_k) const = 0;
 
     protected:
-    Vec3r _collision_normal;  // the normal of the collision plane - also usually taken as the minimum separating vector
+    mutable Vec3r _collision_normal;  // the normal of the collision plane - mutable for dynamic updates
 };
 
 } // namespace Solver

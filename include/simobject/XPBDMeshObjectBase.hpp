@@ -19,6 +19,12 @@
 
 #include "common/XPBDEnumTypes.hpp"
 
+// Forward declarations for SimulationStateRecorder types
+namespace Sim {
+    struct InterDeformAdhesionState;
+    struct RigidDeformAdhesionState;
+}
+
 #include <variant>
 
 // TODO: resolve circular dependenciees! Too many bandaids everywhere
@@ -202,6 +208,16 @@ public:
      * the constraint forces (F = ∇C^T · λ / dt or λ / dt²) onto the affected vertices.
      */
     virtual void collectAdhesionForces(std::vector<Vec3r>& vertex_forces, int vertex_offset = 0) const = 0;
+    
+    /** Collects inter-deformable adhesion constraint states for offline analysis.
+     * @param adhesion_states (OUTPUT) - vector to append inter-deform adhesion states
+     */
+    virtual void collectInterDeformAdhesionStates(std::vector<Sim::InterDeformAdhesionState>& adhesion_states) const = 0;
+    
+    /** Collects rigid-deformable adhesion constraint states for offline analysis.
+     * @param adhesion_states (OUTPUT) - vector to append rigid-deform adhesion states
+     */
+    virtual void collectRigidDeformAdhesionStates(std::vector<Sim::RigidDeformAdhesionState>& adhesion_states) const = 0;
     
     /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
      * @param v_ind : the index of the vertex

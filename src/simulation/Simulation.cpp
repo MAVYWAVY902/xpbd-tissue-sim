@@ -2590,13 +2590,85 @@ void Simulation::setup()
                     const Vec3r tri_p2 = tissue_mesh->vertex(v2);
                     const Vec3r tri_p3 = tissue_mesh->vertex(v3);
                     
-                    // Compute triangle centroid
-                    const Vec3r tri_center = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+                    // ⚠️ CRITICAL FIX FOR BUG #3: Use RIGID POINT projection, not triangle centroid!
+                    // 
+                    // THE PROBLEM:
+                    // - Old code: Used triangle centroid to compute distance → d_centroid
+                    // - Constraint constructor: Uses rigid point projection to triangle → d_projection
+                    // - These can be VERY different! (e.g., centroid 5mm, projection 3mm)
+                    // - Breaking logic uses _initial_distance (from projection), but bonding uses d_centroid
+                    // - Result: Constraint created when far away, breaks too early!
+                    //
+                    // THE FIX:
+                    // Project the rigid point onto the triangle BEFORE checking bond_distance.
+                    // This ensures the distance used for "should I create?" matches "_initial_distance".
                     
-                    // Use SDF to get actual distance from triangle to rigid surface
-                    // SDF returns: negative if inside, positive if outside, 0 at surface
-                    const Real signed_distance = sdf->evaluate(tri_center);
-                    const Real distance = std::abs(signed_distance);  // Use absolute distance for bonding
+                    // Transform rigid object position to global space for distance calculation
+                    const Vec3r rigid_pos_global = rigid_obj_ptr->position();
+                    
+                    // Project rigid position onto triangle to get ACTUAL constraint distance
+                    // (This matches what the constraint constructor will compute as _initial_distance)
+                    const Vec3r edge1 = tri_p2 - tri_p1;
+                    const Vec3r edge2 = tri_p3 - tri_p1;
+                    const Vec3r triangle_normal = edge1.cross(edge2);
+                    const Real area = triangle_normal.norm();
+                    
+                    if (area < 1e-12) continue;  // Skip degenerate triangles
+                    
+                    const Vec3r normal = triangle_normal / area;
+                    Real signed_distance = (rigid_pos_global - tri_p1).dot(normal);
+                    
+                    // Flip normal to point toward rigid if needed
+                    Vec3r corrected_normal = normal;
+                    if (signed_distance < 0) {
+                        corrected_normal = -normal;
+                        signed_distance = -signed_distance;
+                    }
+                    
+                    // Project point onto plane
+                    const Vec3r projected_point = rigid_pos_global - signed_distance * corrected_normal;
+                    
+                    // Compute barycentric coordinates
+                    const Vec3r v0 = edge2;
+                    const Vec3r v1_bary = edge1;  
+                    const Vec3r v2_bary = projected_point - tri_p1;  // Renamed to avoid conflict with v2 vertex index
+                    
+                    const Real dot00 = v0.dot(v0);
+                    const Real dot01 = v0.dot(v1_bary);
+                    const Real dot02 = v0.dot(v2_bary);
+                    const Real dot11 = v1_bary.dot(v1_bary);
+                    const Real dot12 = v1_bary.dot(v2_bary);
+                    
+                    const Real inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+                    const Real u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+                    const Real v_coord = (dot00 * dot12 - dot01 * dot02) * inv_denom;
+                    
+                    // Determine closest point (inside or clamped to boundary)
+                    Vec3r closest_point;
+                    Real distance;
+                    if (u >= 0.0 && v_coord >= 0.0 && (u + v_coord) <= 1.0) {
+                        // Inside triangle
+                        closest_point = projected_point;
+                        distance = signed_distance;
+                    } else {
+                        // Outside - clamp to boundary
+                        Real u_clamp = std::max(0.0, std::min(1.0, u));
+                        Real v_clamp = std::max(0.0, std::min(1.0, v_coord));
+                        if (u_clamp + v_clamp > 1.0) {
+                            const Real scale = 1.0 / (u_clamp + v_clamp);
+                            u_clamp *= scale;
+                            v_clamp *= scale;
+                        }
+                        const Real w_clamp = 1.0 - u_clamp - v_clamp;
+                        closest_point = w_clamp * tri_p1 + v_clamp * tri_p2 + u_clamp * tri_p3;
+                        distance = (rigid_pos_global - closest_point).norm();
+                    }
+                    
+                    // Now use the ACTUAL distance (projection-based) for bonding decision
+                    // This matches _initial_distance that will be computed in constraint constructor!
+                    
+                    // Now use the ACTUAL distance (projection-based) for bonding decision
+                    // This matches _initial_distance that will be computed in constraint constructor!
                     
                     // Track statistics
                     min_distance_found = std::min(min_distance_found, distance);
@@ -2606,8 +2678,8 @@ void Simulation::setup()
                         faces_within_range++;
                         
                         // Create adhesion constraint
-                        // The rigid body point is the position in body coordinates
-                        const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(tri_center);
+                        // Use closest_point as the rigid body attachment point
+                        const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(closest_point);
                         
                         // CRITICAL FIX: Use config rest_gap as the SLACK LENGTH for breaking!
                         // This means: adhesion can stretch by (rest_gap * break_ratio) from initial position
@@ -3594,8 +3666,33 @@ void Simulation::_timeStep()
             snapshot.vertex_adhesion_force_magnitude[i] = vertex_adhesion_forces[i].norm();
         }
         
-        // Note: Adhesion states and deformation data collection
-        // will be added in next step when we add accessor methods
+        // Collect inter-deformable adhesion constraint states
+        for (const auto& obj : xpbd_objs_for_forces)
+        {
+            if (!obj || !obj->mesh()) continue;
+            obj->collectInterDeformAdhesionStates(snapshot.inter_deform_adhesion_states);
+        }
+        
+        for (const auto& obj : fo_xpbd_objs_for_forces)
+        {
+            if (!obj || !obj->mesh()) continue;
+            obj->collectInterDeformAdhesionStates(snapshot.inter_deform_adhesion_states);
+        }
+        
+        // Collect rigid-deformable adhesion constraint states
+        for (const auto& obj : xpbd_objs_for_forces)
+        {
+            if (!obj || !obj->mesh()) continue;
+            obj->collectRigidDeformAdhesionStates(snapshot.rigid_deform_adhesion_states);
+        }
+        
+        for (const auto& obj : fo_xpbd_objs_for_forces)
+        {
+            if (!obj || !obj->mesh()) continue;
+            obj->collectRigidDeformAdhesionStates(snapshot.rigid_deform_adhesion_states);
+        }
+        
+        // Note: Deformation data collection will be added in next step when we add accessor methods
         
         _state_recorder->recordSnapshot(_time, static_cast<int>(_steps_taken), snapshot);
     }

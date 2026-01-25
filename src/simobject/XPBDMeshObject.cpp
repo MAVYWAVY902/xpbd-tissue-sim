@@ -7,6 +7,7 @@
 
 #include "simobject/RigidObject.hpp"
 #include "simulation/Simulation.hpp"
+#include "simulation/SimulationStateRecorder.hpp"
 
 #include "solver/xpbd_solver/XPBDGaussSeidelSolver.hpp"
 #include "solver/xpbd_solver/XPBDJacobiSolver.hpp"
@@ -445,7 +446,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             }
         }
         
-        if (total_active > 0) {
+        if (total_active >= 0) {
             avg_distance /= total_active;
             avg_ratio /= total_active;
             
@@ -570,12 +571,12 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     }
     
     // Print summary
-    if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || !rigid_deform_to_invalidate.empty()) {
-        std::cout << "[adhesion BREAK] Object: " << this->name()
-                  << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
-                  << " + " << inter_deform_to_invalidate.size() << " inter-deform"
-                  << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
-    }
+    // if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || !rigid_deform_to_invalidate.empty()) {
+    //     std::cout << "[adhesion BREAK] Object: " << this->name()
+    //               << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
+    //               << " + " << inter_deform_to_invalidate.size() << " inter-deform"
+    //               << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
+    // }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -892,6 +893,104 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::co
                   << ", inter_deform_projectors: " << inter_deform_projectors.size()
                   << ", forces_collected: " << num_forces_collected
                   << ", max_force: " << max_force << std::endl;
+    }
+}
+
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::collectInterDeformAdhesionStates(
+    std::vector<Sim::InterDeformAdhesionState>& adhesion_states) const
+{
+    // Collect from InterDeformDeformAdhesionConstraint projectors
+    using InterDeformProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
+    const auto& inter_deform_projectors = _solver.template getConstraintProjectorsOfType<InterDeformProjectorType>();
+    
+    for (const auto& projector : inter_deform_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        const auto& constraint = projector.constraint().get();
+        const auto& positions = constraint.positions();
+        
+        // Create adhesion state record
+        Sim::InterDeformAdhesionState state;
+        
+        // Position 0 is the vertex, positions 1-3 are the triangle
+        if (positions.size() >= 4)
+        {
+            state.vertex_id = -1; // Can't get vertex ID from PositionReference
+            state.triangle_id = -1; // We don't store face ID in constraint, mark as unknown
+            
+            // Vertex position
+            state.vertex_position = Vec3r(positions[0].position_ptr[0], 
+                                         positions[0].position_ptr[1], 
+                                         positions[0].position_ptr[2]);
+            
+            // Compute triangle centroid as contact point approximation
+            Vec3r tri_p1(positions[1].position_ptr[0], positions[1].position_ptr[1], positions[1].position_ptr[2]);
+            Vec3r tri_p2(positions[2].position_ptr[0], positions[2].position_ptr[1], positions[2].position_ptr[2]);
+            Vec3r tri_p3(positions[3].position_ptr[0], positions[3].position_ptr[1], positions[3].position_ptr[2]);
+            state.contact_point = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+            
+            // Get constraint parameters
+            state.current_distance = constraint.getCurrentDistance();
+            state.rest_gap = constraint.getRestGap();
+            state.max_distance_seen = state.current_distance; // Approximate - actual max is tracked internally
+            state.is_broken = constraint.shouldBreak();
+            state.break_threshold = constraint.getRestGap() * constraint.getBreakRatio();
+            
+            adhesion_states.push_back(state);
+        }
+    }
+}
+
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::collectRigidDeformAdhesionStates(
+    std::vector<Sim::RigidDeformAdhesionState>& adhesion_states) const
+{
+    // Collect from RigidDeformAdhesionConstraint projectors
+    using RigidDeformProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
+    const auto& rigid_deform_projectors = _solver.template getConstraintProjectorsOfType<RigidDeformProjectorType>();
+    
+    for (const auto& projector : rigid_deform_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        const auto& constraint = projector.constraint().get();
+        const auto& positions = constraint.positions();
+        
+        // Create adhesion state record
+        Sim::RigidDeformAdhesionState state;
+        
+        // Positions 0-2 are the triangle vertices on the deformable object
+        // Rigid body point is handled separately
+        if (positions.size() >= 3)
+        {
+            state.triangle_id = -1; // We don't store face ID in constraint, mark as unknown
+            
+            // Compute triangle centroid
+            Vec3r tri_p1(positions[0].position_ptr[0], positions[0].position_ptr[1], positions[0].position_ptr[2]);
+            Vec3r tri_p2(positions[1].position_ptr[0], positions[1].position_ptr[1], positions[1].position_ptr[2]);
+            Vec3r tri_p3(positions[2].position_ptr[0], positions[2].position_ptr[1], positions[2].position_ptr[2]);
+            state.triangle_centroid = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+            
+            // Rigid body point (stored in body coordinates) - we'd need to transform it
+            // For now, use zero as placeholder since we don't have direct access
+            state.rigid_point = Vec3r::Zero();
+            
+            // Contact point approximation
+            state.contact_point = state.triangle_centroid;
+            
+            // Get constraint parameters
+            state.current_distance = constraint.getCurrentDistance();
+            state.rest_gap = constraint.getRestGap();
+            state.max_distance_seen = state.current_distance; // Approximate
+            state.is_broken = constraint.shouldBreak();
+            state.break_threshold = constraint.getRestGap() * constraint.getBreakRatio();
+            
+            adhesion_states.push_back(state);
+        }
     }
 }
 

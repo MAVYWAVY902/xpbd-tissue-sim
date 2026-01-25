@@ -10,6 +10,48 @@
 namespace Sim
 {
 
+// Inter-deformable adhesion state (vertex-to-triangle between two deformable objects)
+struct InterDeformAdhesionState
+{
+    int vertex_id;           // Vertex index on object A
+    int triangle_id;         // Triangle index on object B (face index)
+    Vec3r vertex_position;   // Current position of vertex
+    Vec3r contact_point;     // Current closest point on triangle
+    Real current_distance;   // Current separation distance
+    Real rest_gap;           // Rest gap d_0
+    Real max_distance_seen;  // Peak stretch during this timestep
+    bool is_broken;          // Whether bond is broken
+    Real break_threshold;    // Distance threshold for breaking
+};
+
+// Rigid-deformable adhesion state (rigid body point-to-triangle)
+struct RigidDeformAdhesionState
+{
+    int triangle_id;         // Triangle index on deformable object
+    Vec3r rigid_point;       // Attachment point on rigid body (body coords)
+    Vec3r triangle_centroid; // Centroid of triangle for visualization
+    Vec3r contact_point;     // Current closest point on triangle
+    Real current_distance;   // Current separation distance
+    Real rest_gap;           // Rest gap d_0
+    Real max_distance_seen;  // Peak stretch during this timestep
+    bool is_broken;          // Whether bond is broken
+    Real break_threshold;    // Distance threshold for breaking
+};
+
+// Legacy struct for backward compatibility (can be removed later)
+struct AdhesionState
+{
+    int nerve_vertex_id;
+    int tumor_face_id;
+    Vec3r nerve_position;
+    Vec3r tumor_contact_point;
+    Real current_distance;
+    Real rest_gap;
+    Real max_distance_seen;  // Peak stretch
+    bool is_broken;
+    Real break_threshold;
+};
+
 /**
  * @brief Records simulation state snapshots for offline analysis
  * 
@@ -24,19 +66,6 @@ namespace Sim
 class SimulationStateRecorder
 {
 public:
-    struct AdhesionState
-    {
-        int nerve_vertex_id;
-        int tumor_face_id;
-        Vec3r nerve_position;
-        Vec3r tumor_contact_point;
-        Real current_distance;
-        Real rest_gap;
-        Real max_distance_seen;  // Peak stretch
-        bool is_broken;
-        Real break_threshold;
-    };
-
     struct DeformationState
     {
         int element_id;
@@ -72,7 +101,13 @@ public:
         // Mesh topology (connectivity information)
         std::vector<MeshTopology> mesh_topologies;
         
-        // Adhesion data
+        // Inter-deformable adhesion data (vertex-to-face between deformables)
+        std::vector<InterDeformAdhesionState> inter_deform_adhesion_states;
+        
+        // Rigid-deformable adhesion data (rigid point-to-face)
+        std::vector<RigidDeformAdhesionState> rigid_deform_adhesion_states;
+        
+        // Legacy adhesion data (for backward compatibility with old analysis code)
         std::vector<AdhesionState> adhesion_states;
         
         // Deformation data (optional - can be computed offline)

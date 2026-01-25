@@ -26,8 +26,36 @@ import json
 
 
 @dataclass
+class InterDeformAdhesionState:
+    """Inter-deformable adhesion constraint state (vertex-to-triangle)"""
+    vertex_id: int
+    triangle_id: int
+    vertex_position: np.ndarray  # (3,)
+    contact_point: np.ndarray  # (3,)
+    current_distance: float
+    rest_gap: float
+    max_distance_seen: float
+    is_broken: bool
+    break_threshold: float
+
+
+@dataclass
+class RigidDeformAdhesionState:
+    """Rigid-deformable adhesion constraint state (rigid point-to-triangle)"""
+    triangle_id: int
+    rigid_point: np.ndarray  # (3,) in body coordinates
+    triangle_centroid: np.ndarray  # (3,)
+    contact_point: np.ndarray  # (3,)
+    current_distance: float
+    rest_gap: float
+    max_distance_seen: float
+    is_broken: bool
+    break_threshold: float
+
+
+@dataclass
 class AdhesionState:
-    """Adhesion constraint state"""
+    """Legacy adhesion constraint state (for backward compatibility)"""
     nerve_vertex_id: int
     tumor_face_id: int
     nerve_position: np.ndarray  # (3,)
@@ -68,7 +96,9 @@ class FrameSnapshot:
     vertex_velocities: np.ndarray  # (N, 3)
     vertex_adhesion_force_magnitude: np.ndarray  # (N,) - magnitude of adhesion constraint forces
     mesh_topologies: List[MeshTopology]  # Mesh connectivity information
-    adhesion_states: List[AdhesionState]
+    inter_deform_adhesion_states: List[InterDeformAdhesionState]  # Inter-deformable adhesions
+    rigid_deform_adhesion_states: List[RigidDeformAdhesionState]  # Rigid-deformable adhesions
+    adhesion_states: List[AdhesionState]  # Legacy adhesions
     deformation_states: List[DeformationState]
     broken_adhesion_ids: List[int]
 
@@ -154,9 +184,71 @@ class OfflineAnalyzer:
             )
             mesh_topologies.append(topo)
         
-        # Read adhesion states
+        # Read inter-deformable adhesion states
+        num_inter_deform_adhesions = struct.unpack('I', f.read(4))[0]
+        print(f"  [DEBUG] num_inter_deform_adhesions={num_inter_deform_adhesions}")
+        
+        if num_inter_deform_adhesions > 100000:  # Sanity check
+            raise ValueError(f"Invalid num_inter_deform_adhesions: {num_inter_deform_adhesions}. File format mismatch.")
+        
+        inter_deform_adhesion_states = []
+        for _ in range(num_inter_deform_adhesions):
+            vertex_id = struct.unpack('i', f.read(4))[0]
+            triangle_id = struct.unpack('i', f.read(4))[0]
+            vertex_pos = np.frombuffer(f.read(24), dtype=np.float64)
+            contact_pt = np.frombuffer(f.read(24), dtype=np.float64)
+            curr_dist = struct.unpack('d', f.read(8))[0]
+            rest_gap = struct.unpack('d', f.read(8))[0]
+            max_dist = struct.unpack('d', f.read(8))[0]
+            is_broken = struct.unpack('?', f.read(1))[0]
+            break_thresh = struct.unpack('d', f.read(8))[0]
+            
+            inter_deform_adhesion_states.append(InterDeformAdhesionState(
+                vertex_id=vertex_id,
+                triangle_id=triangle_id,
+                vertex_position=vertex_pos,
+                contact_point=contact_pt,
+                current_distance=curr_dist,
+                rest_gap=rest_gap,
+                max_distance_seen=max_dist,
+                is_broken=is_broken,
+                break_threshold=break_thresh
+            ))
+        
+        # Read rigid-deformable adhesion states
+        num_rigid_deform_adhesions = struct.unpack('I', f.read(4))[0]
+        print(f"  [DEBUG] num_rigid_deform_adhesions={num_rigid_deform_adhesions}")
+        
+        if num_rigid_deform_adhesions > 100000:  # Sanity check
+            raise ValueError(f"Invalid num_rigid_deform_adhesions: {num_rigid_deform_adhesions}. File format mismatch.")
+        
+        rigid_deform_adhesion_states = []
+        for _ in range(num_rigid_deform_adhesions):
+            triangle_id = struct.unpack('i', f.read(4))[0]
+            rigid_pt = np.frombuffer(f.read(24), dtype=np.float64)
+            tri_centroid = np.frombuffer(f.read(24), dtype=np.float64)
+            contact_pt = np.frombuffer(f.read(24), dtype=np.float64)
+            curr_dist = struct.unpack('d', f.read(8))[0]
+            rest_gap = struct.unpack('d', f.read(8))[0]
+            max_dist = struct.unpack('d', f.read(8))[0]
+            is_broken = struct.unpack('?', f.read(1))[0]
+            break_thresh = struct.unpack('d', f.read(8))[0]
+            
+            rigid_deform_adhesion_states.append(RigidDeformAdhesionState(
+                triangle_id=triangle_id,
+                rigid_point=rigid_pt,
+                triangle_centroid=tri_centroid,
+                contact_point=contact_pt,
+                current_distance=curr_dist,
+                rest_gap=rest_gap,
+                max_distance_seen=max_dist,
+                is_broken=is_broken,
+                break_threshold=break_thresh
+            ))
+        
+        # Read legacy adhesion states (for backward compatibility)
         num_adhesions = struct.unpack('I', f.read(4))[0]
-        print(f"  [DEBUG] num_adhesions={num_adhesions}")
+        print(f"  [DEBUG] num_legacy_adhesions={num_adhesions}")
         
         if num_adhesions > 100000:  # Sanity check
             raise ValueError(f"Invalid num_adhesions: {num_adhesions}. File format mismatch.")
@@ -228,6 +320,8 @@ class OfflineAnalyzer:
             vertex_velocities=vertex_velocities,
             vertex_adhesion_force_magnitude=vertex_adhesion_force_magnitude,
             mesh_topologies=mesh_topologies,
+            inter_deform_adhesion_states=inter_deform_adhesion_states,
+            rigid_deform_adhesion_states=rigid_deform_adhesion_states,
             adhesion_states=adhesion_states,
             deformation_states=deformation_states,
             broken_adhesion_ids=broken_adhesion_ids
@@ -286,19 +380,41 @@ class OfflineAnalyzer:
             print("  No snapshots available!")
             return
         
-        # Get number of adhesions (assume constant)
-        num_adhesions = len(self.snapshots[0].adhesion_states)
+        # Determine which adhesion type to use
+        num_inter = len(self.snapshots[0].inter_deform_adhesion_states)
+        num_rigid = len(self.snapshots[0].rigid_deform_adhesion_states)
+        num_legacy = len(self.snapshots[0].adhesion_states)
         
-        if num_adhesions == 0:
+        print(f"  Found: {num_inter} inter-deform, {num_rigid} rigid-deform, {num_legacy} legacy adhesions")
+        
+        if num_inter == 0 and num_rigid == 0 and num_legacy == 0:
             print("  No adhesion constraints found!")
             return
+        
+        # Use inter-deform adhesions if available, otherwise rigid-deform, otherwise legacy
+        if num_inter > 0:
+            num_adhesions = num_inter
+            adhesion_type = "inter-deform"
+        elif num_rigid > 0:
+            num_adhesions = num_rigid
+            adhesion_type = "rigid-deform"
+        else:
+            num_adhesions = num_legacy
+            adhesion_type = "legacy"
         
         # Build heatmap data: rows=time, cols=adhesion_id
         times = [s.time for s in self.snapshots]
         heatmap_data = np.zeros((len(self.snapshots), num_adhesions))
         
         for i, snapshot in enumerate(self.snapshots):
-            for j, adhesion in enumerate(snapshot.adhesion_states):
+            if adhesion_type == "inter-deform":
+                adhesions = snapshot.inter_deform_adhesion_states
+            elif adhesion_type == "rigid-deform":
+                adhesions = snapshot.rigid_deform_adhesion_states
+            else:
+                adhesions = snapshot.adhesion_states
+            
+            for j, adhesion in enumerate(adhesions):
                 # Use current_distance / rest_gap ratio as "strength" metric
                 # Higher value = more severe stretching
                 stretch_ratio = adhesion.current_distance / adhesion.rest_gap if adhesion.rest_gap > 0 else 1.0
@@ -310,14 +426,14 @@ class OfflineAnalyzer:
                       extent=[times[0], times[-1], 0, num_adhesions])
         
         ax.set_xlabel('Simulation Time (s)', fontsize=12)
-        ax.set_ylabel('Adhesion Constraint ID', fontsize=12)
-        ax.set_title('Adhesion Stretch Ratio Heatmap\n(Red = High Stretch, Dark = Low Stretch)', 
+        ax.set_ylabel(f'Adhesion Constraint ID ({adhesion_type})', fontsize=12)
+        ax.set_title(f'Adhesion Stretch Ratio Heatmap - {adhesion_type.upper()}\n(Red = High Stretch, Dark = Low Stretch)', 
                     fontsize=14, fontweight='bold')
         
         cbar = plt.colorbar(im, ax=ax)
         cbar.set_label('Stretch Ratio (current_dist / rest_gap)', fontsize=11)
         
-        output_path = output_dir / 'adhesion_strength_heatmap.png'
+        output_path = output_dir / f'adhesion_strength_heatmap_{adhesion_type}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"  Saved: {output_path}")
         plt.close()

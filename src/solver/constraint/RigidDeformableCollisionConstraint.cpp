@@ -32,6 +32,28 @@ void RigidDeformableCollisionConstraint::evaluate(Real* C) const
     
     // constraint value is the penetration distance, which we can get from the rigid body SDF
     *C = _sdf->evaluate(a);
+    
+    // ✅ BUG FIX #8: Update collision normal dynamically from current SDF gradient!
+    // Just like adhesion Bug #1, the collision normal can change as the rigid body rotates/moves.
+    // The helper uses this direction to compute rigid body position/orientation updates.
+    // If we use a stale normal, the rigid body gets pushed in the wrong direction → jiggling!
+    if (*C <= 0 && !_rigid_body_helpers.empty()) {  // Only update when penetrating
+        // Get current collision normal from SDF gradient at current position
+        Vec3r current_collision_normal = _sdf->gradient(a);
+        
+        // Update the rigid body helper with current normal
+        // Note: We pass -current_collision_normal because we want to push rigid body
+        // in the opposite direction of the SDF gradient (away from deformable)
+        auto* positional_helper = dynamic_cast<PositionalRigidBodyXPBDHelper*>(_rigid_body_helpers[0].get());
+        if (positional_helper) {
+            const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
+            const Vec3r rigid_point_global = rigid_obj->bodyToGlobal(_point_on_rigid_body);
+            *positional_helper = PositionalRigidBodyXPBDHelper(rigid_obj, -current_collision_normal, rigid_point_global);
+        }
+        
+        // Also update stored collision normal for gradient computation
+        _collision_normal = current_collision_normal;
+    }
 }
 
 void RigidDeformableCollisionConstraint::gradient(Real* delC) const

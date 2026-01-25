@@ -12,16 +12,22 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-g-accel: [-10, -10, -10] # downward acceleration due to gravity [m/s2]
+g-accel: [-200, -200, -200] # downward acceleration due to gravity [m/s2]
 # g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 2e-4      # 0.5ms timestep
-collision-rate: 1000  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
+time-step: 1e-4      # 0.5ms timestep
+collision-rate: 400  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
 end-time: 300        # test time [s]
+
+## ==================== STATE RECORDING CONFIGURATION ====================
+## Enable offline recording of simulation state for post-processing
+state-recording-enable: true
+state-recording-output-folder: "../output/adhesion_recording"
+state-recording-snapshot-interval: 0.01  # Record every 0.1 seconds (10 fps)
 
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
 grasp-radius: 0.005   # Grasping tool radius: 13mm (default 100mm)
@@ -30,7 +36,7 @@ fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL object
 
 ## ==================== INTER-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between two deformable objects (Tumor ↔ Brain)
-inter-deform-adhesion-enable: true
+inter-deform-adhesion-enable: false
 inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
 inter-deform-adhesion-break-ratio: 1.2       # Break at 50% strain
 inter-deform-adhesion-alpha: 1e-3            # Compliance (softer = more stable, was 5e-6)
@@ -39,13 +45,28 @@ inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformabl
 
 ## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
-rigid-deform-adhesion-enable: false           # Enable rigid-deform adhesion
-rigid-deform-adhesion-rest-gap: 0.002        # 2mm rest gap - target separation distance
-rigid-deform-adhesion-break-ratio: 1.5       # Break at 50% strain (separation = 1.5x rest_gap)
-rigid-deform-adhesion-alpha: 1e-6            # Compliance (INCREASED from 2e-6 for stability)
-                                             # Softer compliance allows visible stretching
-                                             # alpha=1e-4 → spring stiffness k≈10000
-rigid-deform-adhesion-bond-distance: 0.08    # 10mm - initial search radius for creating bonds
+rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
+# rigid-deform-adhesion-rest-gap: 0.0003        # 2mm rest gap - INCREASED to avoid collision conflicts
+# rigid-deform-adhesion-break-ratio: 2.5       # Break at 50% strain (separation = 1.5x rest_gap)
+# rigid-deform-adhesion-alpha: 5e-7            # Compliance - CRITICAL: increased for stability!
+#                                              # Was 5e-7 (way too stiff), now 1e-4 (200x softer)
+#                                              # alpha=1e-4 → spring stiffness k≈10000
+# rigid-deform-adhesion-bond-distance: 0.05   
+
+
+
+rigid-deform-adhesion-rest-gap: 0.005        # 5mm - Ensures ALL constraints activate (min distance is 18.9mm)
+                                             # Small enough that C > 0 for all faces
+                                             # C = max(0, distance - 5mm) → 13-41mm for our geometry
+rigid-deform-adhesion-break-ratio: 2.0      # Break at 10x rest_gap extension
+                                             # Allows ~50mm stretch before breaking
+                                             # Breaking at: initial_distance + 5mm × 10 ≈ 68-96mm
+rigid-deform-adhesion-alpha: 1e-5            # Compliance - CRITICAL for stability!
+                                             # Was 5e-7 (2000x too stiff!)
+                                             # Large alpha → soft spring → gentle forces
+                                             # Force ≈ C / (100 + 0.002) ≈ C/100 (manageable)
+rigid-deform-adhesion-bond-distance: 0.05 
+
 
 ## define elastic materials
 materials:
@@ -54,8 +75,8 @@ materials:
     density: 1000   # density [kg/m^3]
     E: 5e4          # Young's modulus [Pa] - moderate stiffness
     nu: 0.45        # Poisson's ratio [-]
-    mu-s: 0.0       # coefficient of static friction [-]
-    mu-k: 0.0       # coefficient of kinetic friction [-]
+    mu-s: 1.2       # coefficient of static friction [-]
+    mu-k: 0.8       # coefficient of kinetic friction [-]
 
 ## objects in the simulation
 objects:
@@ -102,11 +123,11 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision with brain
 
     ## XPBD-specific options
-    num-solver-iters: 5
+    num-solver-iters: 10            # INCREASED from 5 for constraint convergence
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 9000000  # Reduced from 5M (was too stiff)
+    damping-multiplier: 2000000      # REDUCED from 9M - was causing excessive damping
 
 
   # ## ==================== DEFORMABLE BRAIN ====================
@@ -158,7 +179,7 @@ objects:
     name: "RigidBone"
     type: "RigidMeshObject"
     filename: "../resource/tbone_fixed/tbone_MOD.obj"
-    density: 1000
+    density: 1000      # Normal bone density (not critical when fixed=true)
 
     ## visualization options
     color: [0.95, 0.92, 0.85]  # Bone white
@@ -176,8 +197,12 @@ objects:
 
     ## physics
     collisions: true   # Enable collisions with deformable objects
-    fixed: true        # Keep bone stationary
-
+    fixed: true        # ✅ Keep bone stationary (realistic for medical scenarios)
+                       # Adhesion will still work because:
+                       # 1. Bug #2 fix ensures rigid body weight is included in lambda calculation
+                       # 2. Deformable tissue receives correctly scaled force
+                       # 3. Modified breaking logic accounts for fixed bone
+                       # 4. Tissue can stretch toward bone without over-stretching
 
 ## ==================== CONSTRAINT INFO ====================
 # Objects:

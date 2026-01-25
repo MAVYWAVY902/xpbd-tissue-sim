@@ -166,6 +166,16 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      */
     virtual void collectAdhesionForces(std::vector<Vec3r>& vertex_forces, int vertex_offset = 0) const override;
     
+    /** Collects inter-deformable adhesion constraint states for offline analysis.
+     * @param adhesion_states (OUTPUT) - vector to append inter-deform adhesion states
+     */
+    virtual void collectInterDeformAdhesionStates(std::vector<Sim::InterDeformAdhesionState>& adhesion_states) const override;
+    
+    /** Collects rigid-deformable adhesion constraint states for offline analysis.
+     * @param adhesion_states (OUTPUT) - vector to append rigid-deform adhesion states
+     */
+    virtual void collectRigidDeformAdhesionStates(std::vector<Sim::RigidDeformAdhesionState>& adhesion_states) const override;
+    
     /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
      * @param v_ind : the index of the vertex
      * @param attach_pos_ptr : a pointer to the position for the vertex to be attached to

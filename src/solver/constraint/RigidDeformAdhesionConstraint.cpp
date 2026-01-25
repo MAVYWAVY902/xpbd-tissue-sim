@@ -83,6 +83,18 @@ void RigidDeformAdhesionConstraint::evaluate(Real* C) const
     _n_cached = normal;
     _bary_cached = bary_coords_current;  // Update for current state
     
+    // ✅ CRITICAL FIX: Update rigid body helper's direction with CURRENT normal!
+    // The helper uses a frozen direction for computing rigid body updates.
+    // If we don't update it, the rigid body gets pushed in the WRONG direction,
+    // causing severe oscillation and jiggling!
+    if (!_rigid_body_helpers.empty()) {
+        auto* positional_helper = dynamic_cast<PositionalRigidBodyXPBDHelper*>(_rigid_body_helpers[0].get());
+        if (positional_helper) {
+            // Update both direction and point to match current geometry
+            *positional_helper = PositionalRigidBodyXPBDHelper(rigid_obj, normal, rigid_point_global);
+        }
+    }
+    
     // Track maximum distance during this step's solver iterations (for breaking detection)
     _max_distance_this_step = std::max(_max_distance_this_step, std::abs(separation_distance));
     
@@ -102,15 +114,15 @@ void RigidDeformAdhesionConstraint::evaluate(Real* C) const
     *C = _constraint_value_cached;
     
     // DEBUG: Print every 1000 evaluations when constraint is active
-    if (*C > 0 && eval_count % 1000 == 0) {
-        std::cout << "[RIGID-DEFORM ADHESION ACTIVE eval #" << eval_count << "] "
-                  << "rigid_body=" << rigid_obj->name()
-                  << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
-                  << " | sep=" << separation_distance << "m"
-                  << " | rest=" << _rest_gap << "m"
-                  << " | C=" << *C << "m"
-                  << " | alpha=" << this->alpha() << "\n";
-    }
+    // if (*C > 0 && eval_count % 1000 == 0) {
+    //     std::cout << "[RIGID-DEFORM ADHESION ACTIVE eval #" << eval_count << "] "
+    //               << "rigid_body=" << rigid_obj->name()
+    //               << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
+    //               << " | sep=" << separation_distance << "m"
+    //               << " | rest=" << _rest_gap << "m"
+    //               << " | C=" << *C << "m"
+    //               << " | alpha=" << this->alpha() << "\n";
+    // }
 }
 
 void RigidDeformAdhesionConstraint::gradient(Real* grad) const
@@ -253,26 +265,67 @@ bool RigidDeformAdhesionConstraint::shouldBreak() const
     //   - If initial_distance=0mm, breaks at 3mm (stretched 3mm)
     //   - If initial_distance=5mm, breaks at 8mm (stretched 3mm)
     
-    Real extension = _max_distance_this_step - _initial_distance;
-    Real break_threshold = _rest_gap * _break_ratio;
+    const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
     
-    bool should_break = (extension > break_threshold);
-    Real strain_ratio = (_rest_gap > 1e-12) ? (extension / _rest_gap) : std::numeric_limits<Real>::infinity();
+    // ✅ CRITICAL FIX FOR FIXED RIGID BODIES:
+    // When rigid body is fixed, it cannot move to reduce the distance.
+    // The deformable tissue will be pulled toward the fixed bone position.
+    // In this case, we should check if the TISSUE is being over-stretched,
+    // not if the gap is closing.
+    //
+    // For fixed rigid bodies:
+    //   - Use CURRENT distance (not extension from initial)
+    //   - Break when current_distance > initial_distance + break_threshold
+    //   - This allows tissue to stretch by break_threshold before breaking
+    //
+    // For movable rigid bodies:
+    //   - Use EXTENSION (current - initial)
+    //   - Break when extension > break_threshold
+    //   - This ensures both objects move toward each other
     
-    // DEBUG: Print breaking info
-    if (should_break) {
-        const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
-        Real current_distance = getCurrentDistance();
-        Real current_ratio = (_rest_gap > 0) ? (current_distance / _rest_gap) : 0.0;
+    if (rigid_obj->isFixed()) {
+        // Fixed rigid body: Check if tissue is over-stretched
+        Real current_distance = _max_distance_this_step;
+        Real break_threshold = _rest_gap * _break_ratio;
+        Real max_allowed_distance = _initial_distance + break_threshold;
         
-        // std::cout << "[RIGID-DEFORM ADHESION BREAKING!] rigid_body=" << rigid_obj->name()
-        //           << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
-        //           << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
-        //           << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
-        //           << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
+        bool should_break = (current_distance > max_allowed_distance);
+        Real strain_ratio = (_rest_gap > 1e-12) ? ((current_distance - _initial_distance) / _rest_gap) : std::numeric_limits<Real>::infinity();
+        
+        // if (should_break) {
+        //     Real current_dist_now = getCurrentDistance();
+        //     std::cout << "[RIGID-DEFORM ADHESION BREAKING - FIXED BONE] rigid_body=" << rigid_obj->name()
+        //               << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
+        //               << "\n  | initial_dist=" << _initial_distance << "m"
+        //               << "\n  | current_dist=" << current_dist_now << "m"
+        //               << "\n  | max_dist_this_step=" << current_distance << "m"
+        //               << "\n  | stretch=" << (current_distance - _initial_distance) << "m"
+        //               << "\n  | max_allowed=" << max_allowed_distance << "m"
+        //               << "\n  | strain_ratio=" << strain_ratio << " (EXCEEDED)\n";
+        // }
+        
+        return should_break;
+    } else {
+        // Movable rigid body: Check extension from initial position (original logic)
+        Real extension = _max_distance_this_step - _initial_distance;
+        Real break_threshold = _rest_gap * _break_ratio;
+        
+        bool should_break = (extension > break_threshold);
+        Real strain_ratio = (_rest_gap > 1e-12) ? (extension / _rest_gap) : std::numeric_limits<Real>::infinity();
+        
+        // if (should_break) {
+        //     Real current_distance = getCurrentDistance();
+        //     Real current_ratio = (_rest_gap > 0) ? (current_distance / _rest_gap) : 0.0;
+            
+        //     std::cout << "[RIGID-DEFORM ADHESION BREAKING - MOVABLE BONE] rigid_body=" << rigid_obj->name()
+        //               << " tri=[" << _positions[0].index << "," << _positions[1].index << "," << _positions[2].index << "]"
+        //               << "\n  | current_dist=" << current_distance << "m, current_ratio=" << current_ratio
+        //               << "\n  | max_dist=" << _max_distance_this_step << "m, max_ratio=" << strain_ratio
+        //               << "\n  | rest_gap=" << _rest_gap << "m, break_ratio=" << _break_ratio << " (EXCEEDED)\n";
+        // }
+        
+        return should_break;
     }
-    
-    return should_break;
 }
 
 Real RigidDeformAdhesionConstraint::getCurrentDistance() const

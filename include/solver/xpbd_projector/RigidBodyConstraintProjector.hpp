@@ -115,13 +115,26 @@ class RigidBodyConstraintProjector
         }
 
         // calculate LHS of lambda update: delC^T * M^-1 * delC
+        // For rigid body constraints: LHS = alpha_tilde + w_deform + w_rigid
+        // where w_rigid comes from the RigidBodyXPBDHelper (includes mass + inertia)
         Real alpha_tilde = _constraint->alpha() / (_dt * _dt);
         Real LHS = alpha_tilde;
         const std::vector<PositionReference>& positions = _constraint->positions();
         
+        // Add deformable vertex contributions (standard XPBD formula)
         for (int i = 0; i < RBConstraint::NUM_POSITIONS; i++)
         {
             LHS += positions[i].inv_mass * (delC[3*i]*delC[3*i] + delC[3*i+1]*delC[3*i+1] + delC[3*i+2]*delC[3*i+2]);
+        }
+        
+        // ✅ BUG FIX: Add rigid body inertial weight contributions
+        // According to "Detailed Rigid Body Simulation with Extended Position Based Dynamics" (Muller 2020),
+        // the lambda update formula must include the rigid body's inertial weight.
+        // For positional constraints: w = 1/m + (r × n)^T * I^-1 * (r × n)
+        // Without this, the rigid body is treated as having infinite mass, causing instability!
+        for (int ri = 0; ri < _constraint->numRigidBodies(); ri++)
+        {
+            LHS += _constraint->rigidBodyHelpers()[ri]->weight();
         }
 
         // compute RHS of lambda update: -C - alpha_tilde*lambda
