@@ -14,8 +14,8 @@ SimulationStateRecorder::SimulationStateRecorder(const std::string& output_folde
     // Create output directory if it doesn't exist
     std::filesystem::create_directories(output_folder);
     
-    std::cout << "[StateRecorder] Initialized with output folder: " << output_folder 
-              << ", snapshot interval: " << snapshot_interval << "s\n";
+    // std::cout << "[StateRecorder] Initialized with output folder: " << output_folder 
+    //           << ", snapshot interval: " << snapshot_interval << "s\n";
 }
 
 SimulationStateRecorder::~SimulationStateRecorder()
@@ -23,7 +23,7 @@ SimulationStateRecorder::~SimulationStateRecorder()
     // Auto-save on destruction
     if (!_snapshots.empty())
     {
-        std::cout << "[StateRecorder] Auto-saving " << _snapshots.size() << " snapshots...\n";
+        // std::cout << "[StateRecorder] Auto-saving " << _snapshots.size() << " snapshots...\n";
         saveToFile();
     }
 }
@@ -38,11 +38,11 @@ void SimulationStateRecorder::recordSnapshot(Real time, int frame_num, const Fra
     _snapshots.push_back(snapshot);
     _last_snapshot_time = time;
     
-    std::cout << "[StateRecorder] Recorded snapshot #" << _snapshots.size() 
-              << " at t=" << time << "s"
-              << " (frame " << frame_num << ")"
-              << " - inter-deform: " << snapshot.inter_deform_adhesion_states.size()
-              << ", rigid-deform: " << snapshot.rigid_deform_adhesion_states.size();
+    // std::cout << "[StateRecorder] Recorded snapshot #" << _snapshots.size() 
+    //           << " at t=" << time << "s"
+    //           << " (frame " << frame_num << ")"
+    //           << " - inter-deform: " << snapshot.inter_deform_adhesion_states.size()
+    //           << ", rigid-deform: " << snapshot.rigid_deform_adhesion_states.size();
     
     if (!snapshot.broken_adhesion_ids.empty())
     {
@@ -58,7 +58,7 @@ void SimulationStateRecorder::saveToFile()
     
     if (!file.is_open())
     {
-        std::cerr << "[StateRecorder] ERROR: Could not open file for writing: " << filepath << "\n";
+        // std::cerr << "[StateRecorder] ERROR: Could not open file for writing: " << filepath << "\n";
         return;
     }
     
@@ -73,7 +73,7 @@ void SimulationStateRecorder::saveToFile()
     }
     
     file.close();
-    std::cout << "[StateRecorder] Saved " << num_snapshots << " snapshots to: " << filepath << "\n";
+    // std::cout << "[StateRecorder] Saved " << num_snapshots << " snapshots to: " << filepath << "\n";
     
     // Also save a human-readable summary
     std::string summary_path = _output_folder + "/summary.txt";
@@ -223,7 +223,7 @@ SimulationStateRecorder::loadFromFile(const std::string& filepath)
     
     if (!file.is_open())
     {
-        std::cerr << "[StateRecorder] ERROR: Could not open file for reading: " << filepath << "\n";
+        // std::cerr << "[StateRecorder] ERROR: Could not open file for reading: " << filepath << "\n";
         return snapshots;
     }
     
@@ -240,7 +240,7 @@ SimulationStateRecorder::loadFromFile(const std::string& filepath)
     }
     
     file.close();
-    std::cout << "[StateRecorder] Loaded " << num_snapshots << " snapshots from: " << filepath << "\n";
+    // std::cout << "[StateRecorder] Loaded " << num_snapshots << " snapshots from: " << filepath << "\n";
     
     return snapshots;
 }

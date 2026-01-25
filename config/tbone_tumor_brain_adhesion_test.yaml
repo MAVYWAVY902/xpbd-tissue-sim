@@ -12,8 +12,8 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-g-accel: [-200, -200, -200] # downward acceleration due to gravity [m/s2]
-# g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
+# g-accel: [-200, -200, -200] # downward acceleration due to gravity [m/s2]
+g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
@@ -55,13 +55,13 @@ rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
 
 
 
-rigid-deform-adhesion-rest-gap: 0.005        # 5mm - Ensures ALL constraints activate (min distance is 18.9mm)
+rigid-deform-adhesion-rest-gap: 0.0005        # 5mm - Ensures ALL constraints activate (min distance is 18.9mm)
                                              # Small enough that C > 0 for all faces
                                              # C = max(0, distance - 5mm) → 13-41mm for our geometry
-rigid-deform-adhesion-break-ratio: 2.0      # Break at 10x rest_gap extension
+rigid-deform-adhesion-break-ratio: 5.0      # Break at 10x rest_gap extension
                                              # Allows ~50mm stretch before breaking
                                              # Breaking at: initial_distance + 5mm × 10 ≈ 68-96mm
-rigid-deform-adhesion-alpha: 1e-5            # Compliance - CRITICAL for stability!
+rigid-deform-adhesion-alpha: 1e-6            # Compliance - CRITICAL for stability!
                                              # Was 5e-7 (2000x too stiff!)
                                              # Large alpha → soft spring → gentle forces
                                              # Force ≈ C / (100 + 0.002) ≈ C/100 (manageable)
