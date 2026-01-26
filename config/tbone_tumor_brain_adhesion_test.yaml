@@ -12,12 +12,12 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-# g-accel: [-200, -200, -200] # downward acceleration due to gravity [m/s2]
-g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
+g-accel: [-100, -100, -100] # downward acceleration due to gravity [m/s2]
+# g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 1e-4      # 0.5ms timestep
+time-step: 2e-4      # 0.5ms timestep
 collision-rate: 400  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
@@ -58,14 +58,14 @@ rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
 rigid-deform-adhesion-rest-gap: 0.0005        # 5mm - Ensures ALL constraints activate (min distance is 18.9mm)
                                              # Small enough that C > 0 for all faces
                                              # C = max(0, distance - 5mm) → 13-41mm for our geometry
-rigid-deform-adhesion-break-ratio: 5.0      # Break at 10x rest_gap extension
+rigid-deform-adhesion-break-ratio: 4.0      # Break at 10x rest_gap extension
                                              # Allows ~50mm stretch before breaking
                                              # Breaking at: initial_distance + 5mm × 10 ≈ 68-96mm
-rigid-deform-adhesion-alpha: 1e-6            # Compliance - CRITICAL for stability!
+rigid-deform-adhesion-alpha: 1e-5            # Compliance - CRITICAL for stability!
                                              # Was 5e-7 (2000x too stiff!)
                                              # Large alpha → soft spring → gentle forces
                                              # Force ≈ C / (100 + 0.002) ≈ C/100 (manageable)
-rigid-deform-adhesion-bond-distance: 0.05 
+rigid-deform-adhesion-bond-distance: 0.04 
 
 
 ## define elastic materials
@@ -127,7 +127,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 2000000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 5000000      # REDUCED from 9M - was causing excessive damping
 
 
   # ## ==================== DEFORMABLE BRAIN ====================
@@ -178,7 +178,7 @@ objects:
   -
     name: "RigidBone"
     type: "RigidMeshObject"
-    filename: "../resource/tbone_fixed/tbone_MOD.obj"
+    filename: "../resource/tbone_fixed/tbone_MOD2.obj"
     density: 1000      # Normal bone density (not critical when fixed=true)
 
     ## visualization options
