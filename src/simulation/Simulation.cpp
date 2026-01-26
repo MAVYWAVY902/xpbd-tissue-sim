@@ -2692,26 +2692,52 @@ void Simulation::setup()
                     if (distance <= bond_distance) {
                         faces_within_range++;
                         
-                        // Create adhesion constraint
-                        // Use closest_point as the rigid body attachment point
-                        const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(closest_point);
+                        // 🔧 CRITICAL FIX: Use rigid surface point, not triangle point!
+                        // OLD (WRONG): rigid_body_point = closest_point on triangle
+                        // NEW (CORRECT): rigid_body_point = closest point on rigid surface
+                        
+                        // Find closest point on rigid surface using SDF
+                        // Use triangle centroid as query point
+                        const Vec3r tri_centroid = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+                        
+                        // SDF gives: signed_distance + gradient (unit normal pointing outward)
+                        const Real signed_dist = sdf->evaluate(tri_centroid);
+                        const Vec3r grad = sdf->gradient(tri_centroid);  // unit normal
+                        
+                        // Closest point on rigid surface: move from query point along negative gradient
+                        // (gradient points outward, so -gradient points inward toward surface)
+                        const Vec3r closest_on_rigid_surface = tri_centroid - signed_dist * grad;
+                        
+                        // Convert to body coordinates
+                        const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(closest_on_rigid_surface);
+                        
+                        // Recompute initial distance using correct point pair
+                        // (rigid surface point → triangle surface point)
+                        const Real initial_distance = (closest_on_rigid_surface - closest_point).norm();
+                        
+                        // 🔍 DEBUG: Verify distance calculation consistency (first 3 constraints)
+                        static int creation_debug_count = 0;
+                        if (creation_debug_count < 3) {
+                            std::cout << "\n🔍📍 [CREATION DEBUG #" << creation_debug_count << "] FIXED VERSION" << std::endl;
+                            std::cout << "  Query: tri_centroid = " << tri_centroid.transpose() << std::endl;
+                            std::cout << "  SDF: signed_dist = " << signed_dist*1000 << " mm, grad = " << grad.transpose() << std::endl;
+                            std::cout << "  Rigid surface: closest_on_rigid_surface = " << closest_on_rigid_surface.transpose() << std::endl;
+                            std::cout << "  Triangle: closest_point = " << closest_point.transpose() << std::endl;
+                            std::cout << "  initial_distance (rigid_surf → tri_surf) = " << initial_distance*1000 << " mm" << std::endl;
+                            std::cout << "  ✅ This should match what evaluate() computes!" << std::endl;
+                            
+                            // Verify by transforming back
+                            const Vec3r rigid_attach_global = rigid_obj_ptr->bodyToGlobal(rigid_body_point);
+                            std::cout << "  Verification:" << std::endl;
+                            std::cout << "    rigid_body_point (body) = " << rigid_body_point.transpose() << std::endl;
+                            std::cout << "    rigid_body_point (global) = " << rigid_attach_global.transpose() << std::endl;
+                            std::cout << "    distance to triangle = " << (rigid_attach_global - closest_point).norm()*1000 << " mm" << std::endl;
+                            creation_debug_count++;
+                        }
                         
                         // CRITICAL FIX: Use config rest_gap as the SLACK LENGTH for breaking!
                         // This means: adhesion can stretch by (rest_gap * break_ratio) from initial position
                         // before breaking, regardless of initial distance.
-                        //
-                        // OLD BEHAVIOR (WRONG):
-                        //   effective_rest_gap = max(actual_distance, config_rest_gap)
-                        //   Breaking at: actual_distance * break_ratio
-                        //   Problem: If actual_distance=5mm, breaks at 7.5mm (only 2.5mm stretch!)
-                        //
-                        // NEW BEHAVIOR (CORRECT):
-                        //   rest_gap = config_rest_gap (fixed slack length)
-                        //   Breaking at: initial_distance + (rest_gap * break_ratio)
-                        //   Benefit: Consistent breaking behavior - always stretch by 3mm before breaking
-                        
-                        // Store initial distance for constraint creation (informational only)
-                        const Real initial_distance = distance;
                         
                         try {
                             if (interaction_type == "unified-distance") {

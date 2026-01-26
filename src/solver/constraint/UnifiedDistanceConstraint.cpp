@@ -39,6 +39,42 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
     _initial_distance(initial_distance),  // Use precomputed value
     _should_break(false)
 {
+    // 🔍 RUNTIME PARAMETER VERIFICATION (print first 3 constraints only)
+    static int constraint_count = 0;
+    if (constraint_count < 3) {
+        std::cout << "\n🔍 [CONSTRAINT #" << constraint_count << "] Runtime Parameters:" << std::endl;
+        std::cout << "  d_contact = " << _d_contact << " m (" << _d_contact*1000 << " mm)" << std::endl;
+        std::cout << "  d_rest = " << _d_rest << " m (" << _d_rest*1000 << " mm)" << std::endl;
+        std::cout << "  d_neutral_start = " << _d_neutral_start << " m (" << _d_neutral_start*1000 << " mm)" << std::endl;
+        std::cout << "  d_neutral_end = " << _d_neutral_end << " m (" << _d_neutral_end*1000 << " mm)" << std::endl;
+        std::cout << "  d_bond = " << _d_bond << " m (" << _d_bond*1000 << " mm)" << std::endl;
+        std::cout << "  EXP_GATE_WIDTH = " << EXP_GATE_WIDTH << " m (" << EXP_GATE_WIDTH*1000 << " mm)" << std::endl;
+        std::cout << "  EXP_SCALE_MARGIN = " << EXP_SCALE_MARGIN << std::endl;
+        std::cout << "  alpha = " << alpha << std::endl;
+        std::cout << "  break_ratio = " << _break_ratio << std::endl;
+        std::cout << "  initial_distance = " << initial_distance << " m (" << initial_distance*1000 << " mm)" << std::endl;
+        
+        // 🔍 VERTEX POSITION DEBUG - AT CREATION TIME
+        std::cout << "\n  📍 VERTEX POSITIONS AT CREATION:" << std::endl;
+        std::cout << "    tri_p1 ptr = " << (void*)tri_p1 << std::endl;
+        std::cout << "    tri_p2 ptr = " << (void*)tri_p2 << std::endl;
+        std::cout << "    tri_p3 ptr = " << (void*)tri_p3 << std::endl;
+        Eigen::Map<const Vec3r> p1_init(tri_p1);
+        Eigen::Map<const Vec3r> p2_init(tri_p2);
+        Eigen::Map<const Vec3r> p3_init(tri_p3);
+        std::cout << "    tri_p1 = " << p1_init.transpose() << std::endl;
+        std::cout << "    tri_p2 = " << p2_init.transpose() << std::endl;
+        std::cout << "    tri_p3 = " << p3_init.transpose() << std::endl;
+        std::cout << "    rigid_pt (body) = " << rigid_body_point.transpose() << std::endl;
+        const Vec3r rigid_global_init = rigid_obj->bodyToGlobal(rigid_body_point);
+        std::cout << "    rigid_pt (global) = " << rigid_global_init.transpose() << std::endl;
+        Vec3r edge1_init = p2_init - p1_init;
+        Vec3r edge2_init = p3_init - p1_init;
+        Real area_init = edge1_init.cross(edge2_init).norm() / 2.0;
+        std::cout << "    Triangle area = " << area_init << " m²" << std::endl;
+    }
+    constraint_count++;
+    
     // INITIALIZATION: Compute barycentric coordinates once at creation
     // Transform rigid body point to global coordinates at initialization
     const Vec3r rigid_point_global = rigid_obj->bodyToGlobal(rigid_body_point);
@@ -82,6 +118,27 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     // Get rigid body point in global coordinates (transforms with rigid body motion)
     const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
     const Vec3r rigid_point_global = rigid_obj->bodyToGlobal(_rigid_body_point);
+    
+    // 🔍 VERTEX POSITION DEBUG - AT EVALUATION TIME (first 3 constraints only)
+    static int eval_debug_count = 0;
+    if (eval_debug_count < 3) {
+        std::cout << "\n🔍🔍 [EVAL GEOMETRY DEBUG #" << eval_debug_count << "]" << std::endl;
+        std::cout << "  📍 VERTEX POSITIONS AT EVALUATION:" << std::endl;
+        std::cout << "    _positions[0].position_ptr = " << (void*)_positions[0].position_ptr << std::endl;
+        std::cout << "    _positions[1].position_ptr = " << (void*)_positions[1].position_ptr << std::endl;
+        std::cout << "    _positions[2].position_ptr = " << (void*)_positions[2].position_ptr << std::endl;
+        std::cout << "    tri_p1 = " << tri_p1.transpose() << std::endl;
+        std::cout << "    tri_p2 = " << tri_p2.transpose() << std::endl;
+        std::cout << "    tri_p3 = " << tri_p3.transpose() << std::endl;
+        std::cout << "    rigid_pt (body) = " << _rigid_body_point.transpose() << std::endl;
+        std::cout << "    rigid_pt (global) = " << rigid_point_global.transpose() << std::endl;
+        Vec3r edge1 = tri_p2 - tri_p1;
+        Vec3r edge2 = tri_p3 - tri_p1;
+        Real area = edge1.cross(edge2).norm() / 2.0;
+        std::cout << "    Triangle area = " << area << " m²" << std::endl;
+        std::cout << "    _cache_valid = " << _cache_valid << std::endl;
+        eval_debug_count++;
+    }
 
     // ✅ FROZEN FRAME: Only recompute geometry if cache is invalid (start of timestep)
     Real point_to_tri_distance;
@@ -119,6 +176,21 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     
     const Real d = point_to_tri_distance;
     
+    // 🛡️ PROTECTION: Check for abnormal d values before break check
+    if (!std::isfinite(d) || d > 1.0 || d < 1e-6) {  // d < 1μm is likely geometry error
+        static int abnormal_count = 0;
+        if (abnormal_count < 5) {
+            std::cout << "⚠️  [ABNORMAL DISTANCE] d=" << d*1000 << "mm, using initial_distance=" 
+                      << _initial_distance*1000 << "mm as fallback" << std::endl;
+            abnormal_count++;
+        }
+        // Use initial distance as fallback instead of returning 0
+        const Real d_safe = _initial_distance;
+        const Real d_target_safe = computeTargetDistance(d_safe);
+        *C = d_safe - d_target_safe;
+        return;
+    }
+    
     // Check breaking condition: if stretched beyond threshold, mark for removal
     const Real break_threshold = _initial_distance * _break_ratio;
     if (d > break_threshold) {
@@ -137,6 +209,20 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     
     const Real d_target = computeTargetDistance(d);
     const Real constraint_value = d - d_target;
+    
+    // 🔍 DEBUG: Print first few constraints at first evaluation
+    static int eval_count = 0;
+    static bool first_eval = true;
+    if (first_eval && eval_count < 5) {
+        std::cout << "🔍 [EVAL #" << eval_count << "] d=" << d*1000 << "mm, d*=" << d_target*1000 
+                  << "mm, C=" << constraint_value*1000 << "mm";
+        if (constraint_value > 0) std::cout << " (ATTRACTION ✅)";
+        else if (constraint_value < 0) std::cout << " (REPULSION ⚠️)";
+        else std::cout << " (EQUILIBRIUM)";
+        std::cout << std::endl;
+        eval_count++;
+        if (eval_count >= 5) first_eval = false;
+    }
     
     // Compute dC/dd = 1 - dd*/dd (needed for gradient scaling)
     const Real eps = 1e-8;

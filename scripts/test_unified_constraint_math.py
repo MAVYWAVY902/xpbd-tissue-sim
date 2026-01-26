@@ -14,13 +14,14 @@ import matplotlib.pyplot as plt
 # ⚠️ ALL VALUES IN METERS (SI units, matching your codebase convention)
 # 根据实际几何尺度（18.75-30mm）调整的参数
 
-# CURRENT: Scaled to match actual geometry (20mm equilibrium) - WIDENED TRANSITIONS
-D_CONTACT = 0.020         # 20mm - equilibrium point (matches your min geometry ~19mm)
-D_NEUTRAL_START = 0.036   # 36mm - WIDENED for stability (was 34mm)
-D_NEUTRAL_END = 0.040     # 40mm - neutral zone end
-D_BOND = 0.060            # 60mm - far adhesion target
-D_REST = 0.030            # 30mm - mid-range target (Δd=10mm, width=16mm > 1.5×10mm ✓)
-EXP_GATE_WIDTH = 0.004    # 4mm - smooth startup gate
+# CURRENT: Matches tbone_tumor_brain_adhesion_test.yaml (optimized for tumor-bone geometry)
+D_CONTACT = 0.016         # 16mm - equilibrium point (2.75mm margin below min_distance 18.75mm)
+D_NEUTRAL_START = 0.030   # 30mm - transition start
+D_NEUTRAL_END = 0.034     # 34mm - neutral zone end
+D_BOND = 0.052            # 52mm - far adhesion target (completes before ~60mm break)
+D_REST = 0.024            # 24mm - mid-range target (aligned with constraint range)
+EXP_GATE_WIDTH = 0.004    # 4mm - smooth startup gate (matches C++ EXP_GATE_WIDTH)
+EXP_SCALE_MARGIN = 1.2    # 20% margin for stability (matches C++ EXP_SCALE_MARGIN)
 
 # ==================== 核心函数 ====================
 
@@ -107,7 +108,7 @@ def compute_target_distance(d):
     
     # Stage 2: rest → bond (C¹ exponential, active AFTER D_NEUTRAL_END)
     # Use 1.2x margin to ensure max(dd*/dd) < 1 with numerical safety
-    s = 1.2 * max(D_BOND - D_REST, 1e-12)  # Scale parameter with margin
+    s = EXP_SCALE_MARGIN * max(D_BOND - D_REST, 1e-12)  # Scale parameter with margin
     blend2 = exp_blend(D_NEUTRAL_END, s, d, EXP_GATE_WIDTH)
     
     # Combine: use stage1 result + add stage2 contribution
