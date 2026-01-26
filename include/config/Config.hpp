@@ -120,10 +120,18 @@ class Config
         
         // load rigid-deform adhesion parameters (optional)
         _extractParameter("rigid-deform-adhesion-enable", node, _rigid_deform_adhesion_enable);
+        _extractParameter("rigid-deform-adhesion-interaction-type", node, _rigid_deform_adhesion_interaction_type);
         _extractParameter("rigid-deform-adhesion-rest-gap", node, _rigid_deform_adhesion_rest_gap);
         _extractParameter("rigid-deform-adhesion-break-ratio", node, _rigid_deform_adhesion_break_ratio);
         _extractParameter("rigid-deform-adhesion-alpha", node, _rigid_deform_adhesion_alpha);
         _extractParameter("rigid-deform-adhesion-bond-distance", node, _rigid_deform_adhesion_bond_distance);
+        
+        // load unified-distance curve parameters (optional)
+        _extractParameter("rigid-deform-adhesion-d-contact", node, _rigid_deform_adhesion_d_contact);
+        _extractParameter("rigid-deform-adhesion-d-rest", node, _rigid_deform_adhesion_d_rest);
+        _extractParameter("rigid-deform-adhesion-d-neutral-start", node, _rigid_deform_adhesion_d_neutral_start);
+        _extractParameter("rigid-deform-adhesion-d-neutral-end", node, _rigid_deform_adhesion_d_neutral_end);
+        _extractParameter("rigid-deform-adhesion-d-bond", node, _rigid_deform_adhesion_d_bond);
 
         std::cout << "\nExtracting parameters for object with name " << BOLD << name() << RST << "..." << std::endl;
     }
@@ -175,10 +183,18 @@ class Config
 
     // Rigid-deform adhesion getters
     bool rigidDeformAdhesionEnable() const { return _rigid_deform_adhesion_enable.value.value_or(false); }  // default false
+    std::string rigidDeformAdhesionInteractionType() const { return _rigid_deform_adhesion_interaction_type.value.value_or("adhesion"); }  // default "adhesion"
     Real rigidDeformAdhesionRestGap() const { return _rigid_deform_adhesion_rest_gap.value.value_or(0.005); }  // 5 mm rest gap
     Real rigidDeformAdhesionBreakRatio() const { return _rigid_deform_adhesion_break_ratio.value.value_or(1.5); }  // 50% strain breaks bond
     Real rigidDeformAdhesionAlpha() const { return _rigid_deform_adhesion_alpha.value.value_or(1e-6); }  // compliance
     Real rigidDeformAdhesionBondDistance() const { return _rigid_deform_adhesion_bond_distance.value.value_or(0.01); }  // 1 cm bond creation threshold
+    
+    // Unified-distance curve parameters getters
+    Real rigidDeformAdhesionDContact() const { return _rigid_deform_adhesion_d_contact.value.value_or(0.018); }  // 18mm equilibrium
+    Real rigidDeformAdhesionDRest() const { return _rigid_deform_adhesion_d_rest.value.value_or(0.028); }  // 28mm mid-range
+    Real rigidDeformAdhesionDNeutralStart() const { return _rigid_deform_adhesion_d_neutral_start.value.value_or(0.034); }  // 34mm transition start
+    Real rigidDeformAdhesionDNeutralEnd() const { return _rigid_deform_adhesion_d_neutral_end.value.value_or(0.038); }  // 38mm transition end
+    Real rigidDeformAdhesionDBond() const { return _rigid_deform_adhesion_d_bond.value.value_or(0.058); }  // 58mm saturation
 
     protected:
 
@@ -557,10 +573,18 @@ class Config
     
     /** Rigid-deform adhesion configuration parameters */
     ConfigParameter<std::optional<bool>> _rigid_deform_adhesion_enable = ConfigParameter<std::optional<bool>>(false);
+    ConfigParameter<std::optional<std::string>> _rigid_deform_adhesion_interaction_type = ConfigParameter<std::optional<std::string>>("adhesion");  // "adhesion" or "unified-distance"
     ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_rest_gap = ConfigParameter<std::optional<Real>>(0.005);  // 5 mm
     ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_break_ratio = ConfigParameter<std::optional<Real>>(1.5);  // 50% strain
     ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_alpha = ConfigParameter<std::optional<Real>>(1e-6);
     ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_bond_distance = ConfigParameter<std::optional<Real>>(0.01);  // 1 cm
+    
+    /** Unified-distance curve parameters (for "unified-distance" interaction type) */
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_d_contact = ConfigParameter<std::optional<Real>>(0.018);        // 18mm equilibrium
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_d_rest = ConfigParameter<std::optional<Real>>(0.028);           // 28mm mid-range
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_d_neutral_start = ConfigParameter<std::optional<Real>>(0.034);  // 34mm transition start
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_d_neutral_end = ConfigParameter<std::optional<Real>>(0.038);    // 38mm transition end
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_d_bond = ConfigParameter<std::optional<Real>>(0.058);           // 58mm saturation
 };
 
 

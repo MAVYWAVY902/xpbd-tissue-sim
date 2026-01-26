@@ -153,6 +153,9 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
 
     /** Clears all adhesion constraints that are on this object. */
     virtual void clearAdhesionConstraints() override;
+    
+    /** Clear all attachment constraints */
+    virtual void clearAttachmentConstraints();
 
     /** Checks and removes adhesion constraints that should break based on distance threshold. */
     virtual void checkAndBreakAdhesionConstraints(Real break_distance);
@@ -242,10 +245,34 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
                                         int tri_v1, int tri_v2, int tri_v3,
                                         Real rest_gap, Real break_ratio, Real alpha = 0.0);
 
-    /** Clears all attachment constraint that are on this object. */
-    virtual void clearAttachmentConstraints() override;
-
-    /** Checks if inter-object collision detection is enabled for this object. */
+    /** Add unified distance constraint (replaces separate collision + adhesion).
+     * This constraint smoothly transitions between repulsion, neutral, and attraction
+     * using a validated mathematical curve (no dead zones, monotonic).
+     * 
+     * @param sdf - SDF of rigid object
+     * @param rigid_obj - pointer to rigid object
+     * @param rigid_body_point - point on rigid body (body coordinates)
+     * @param tri_v1, tri_v2, tri_v3 - triangle vertex indices on THIS deformable object
+     * @param alpha - compliance parameter (stiffness control)
+     * @param break_ratio - break when distance > initial_distance * break_ratio
+     * @param initial_distance - precomputed initial distance
+     * @param d_contact, d_rest, d_neutral_start, d_neutral_end, d_bond - curve parameters
+     * @return Reference to the created constraint projector
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>>
+        addUnifiedDistanceConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj,
+                                     const Vec3r& rigid_body_point,
+                                     int tri_v1, int tri_v2, int tri_v3,
+                                     Real alpha = 0.0,
+                                     Real break_ratio = 3.0,  // Default: break at 200% strain (3x initial)
+                                     Real initial_distance = 0.0,  // Precomputed initial distance
+                                     Real d_contact = 0.018,  // Curve parameters with defaults
+                                     Real d_rest = 0.028,
+                                     Real d_neutral_start = 0.034,
+                                     Real d_neutral_end = 0.038,
+                                     Real d_bond = 0.058);
+    
     virtual bool interObjectCollisionsEnabled() const override { return _inter_object_collisions; }
 
     /** === Querying the solver === */

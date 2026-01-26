@@ -1,0 +1,51 @@
+# Test configuration for UnifiedDistanceConstraint
+# This replaces separate collision + adhesion with smooth unified constraint
+
+scene:
+  gravity: [0.0, -9.81, 0.0]
+  
+timestep:
+  dt: 0.001
+  num_substeps: 10
+
+rigid-objects:
+  - name: "bone"
+    mesh: "resource/bone/tbone_fixed.obj"
+    type: "fixed"
+    
+deformable-objects:
+  - name: "tissue"
+    mesh: "resource/tissue/tumor_tissue.obj"
+    material:
+      type: "stable-neohookean"
+      youngs-modulus: 5000.0
+      poissons-ratio: 0.45
+      density: 1000.0
+    
+# Unified distance constraint parameters
+# NOTE: These are BUILT INTO the constraint (D_CONTACT, D_REST, D_BOND, etc.)
+# No need for separate bond-distance or rest-gap parameters!
+# The constraint uses validated mathematical curve from Python script.
+
+rigid-deform-interactions:
+  - rigid: "bone"
+    deformable: "tissue"
+    interaction-type: "unified-distance"  # NEW: use unified constraint instead of "adhesion"
+    alpha: 1.0e-6  # Compliance (stiffness control)
+    # Optional: bond-distance for creating constraints (detection radius)
+    # If not specified, uses default from constraint (5mm = D_BOND)
+    bond-distance: 0.005  # 5mm - only used for constraint creation, not behavior
+
+# For comparison, old adhesion config would look like:
+# rigid-deform-interactions:
+#   - rigid: "bone"
+#     deformable: "tissue"  
+#     interaction-type: "adhesion"
+#     rest-gap: 0.001      # 1mm - had dead zone issues
+#     break-ratio: 2.0     # Breaking threshold
+#     bond-distance: 0.005 # 5mm - detection radius
+#     alpha: 1.0e-6
+
+simulation:
+  duration: 5.0
+  output-frequency: 0.01

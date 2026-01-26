@@ -12,12 +12,12 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-g-accel: [-100, -100, -100] # downward acceleration due to gravity [m/s2]
-# g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
+# g-accel: [-100, -100, -100] # downward acceleration due to gravity [m/s2]
+g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 2e-4      # 0.5ms timestep
+time-step: 1e-4      # 0.5ms timestep
 collision-rate: 400  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
@@ -45,27 +45,68 @@ inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformabl
 
 ## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
+## NOTE: Keep collisions=true even with unified-distance!
+##       - Unified distance: smooth adhesion forces (separation servo)
+##       - Collision: hard contact barrier (prevents penetration)
+##       They work together, not as replacements!
+
 rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
-# rigid-deform-adhesion-rest-gap: 0.0003        # 2mm rest gap - INCREASED to avoid collision conflicts
-# rigid-deform-adhesion-break-ratio: 2.5       # Break at 50% strain (separation = 1.5x rest_gap)
-# rigid-deform-adhesion-alpha: 5e-7            # Compliance - CRITICAL: increased for stability!
-#                                              # Was 5e-7 (way too stiff), now 1e-4 (200x softer)
-#                                              # alpha=1e-4 → spring stiffness k≈10000
-# rigid-deform-adhesion-bond-distance: 0.05   
+
+## ==================== INTERACTION TYPE ====================
+## "adhesion"         - OLD: separate collision/adhesion zones, dead zones, breaking logic
+## "unified-distance" - NEW: smooth signed-distance curve, no jiggling, mathematically validated
+
+rigid-deform-adhesion-interaction-type: "unified-distance"  # Switch to new smooth constraint!
 
 
+## ==================== UNIFIED-DISTANCE PARAMETERS ====================
 
-rigid-deform-adhesion-rest-gap: 0.0005        # 5mm - Ensures ALL constraints activate (min distance is 18.9mm)
-                                             # Small enough that C > 0 for all faces
-                                             # C = max(0, distance - 5mm) → 13-41mm for our geometry
-rigid-deform-adhesion-break-ratio: 4.0      # Break at 10x rest_gap extension
-                                             # Allows ~50mm stretch before breaking
-                                             # Breaking at: initial_distance + 5mm × 10 ≈ 68-96mm
-rigid-deform-adhesion-alpha: 1e-5            # Compliance - CRITICAL for stability!
-                                             # Was 5e-7 (2000x too stiff!)
-                                             # Large alpha → soft spring → gentle forces
-                                             # Force ≈ C / (100 + 0.002) ≈ C/100 (manageable)
-rigid-deform-adhesion-bond-distance: 0.04 
+rigid-deform-adhesion-alpha: 5e-5            # Compliance (stiffness control)
+                                             # Tumor: 31mm diameter, Bone: 66mm
+                                             # With ~250 constraints, use stiffer compliance
+                                             # 5e-5 = moderate stiffness for realistic feel
+                                             
+rigid-deform-adhesion-bond-distance: 0.022   # Detection radius (22mm)
+                                             # Tumor-bone distance: 18.75-46mm
+                                             # 22mm → binds only closest faces (18.75-22mm)
+                                             # Expected: ~200-300 constraints (vs 910 before)
+                                             # Creates localized adhesion, not full-surface
+
+rigid-deform-adhesion-break-ratio: 3.0       # Break at 3.0x initial distance
+                                             # Example: 20mm initial → breaks at 60mm (40mm stretch)
+                                             # Increased from 2.8x for more realistic toughness
+                                             # Allows ~200% strain before rupture
+
+## ==================== UNIFIED-DISTANCE CURVE PARAMETERS (YAML CONFIGURABLE!) ====================
+## These control the shape of the smooth adhesion curve d*(d)
+## CRITICAL: Set d-contact ≤ minimum actual distance to avoid initial repulsion!
+## OPTIMIZED for: Tumor (31mm) + Bone (66mm), distance range 18.75-22mm
+
+rigid-deform-adhesion-d-contact: 0.016       # Equilibrium distance (16mm)
+                                             # Safe margin: 18.75mm - 16mm = 2.75mm余量
+                                             # Prevents any risk of initial push-away
+                                             
+rigid-deform-adhesion-d-rest: 0.024          # Mid-range target (24mm)
+                                             # Within constraint range (18.75-22mm)
+                                             # Provides smooth transition in adhesion zone
+                                             
+rigid-deform-adhesion-d-neutral-start: 0.030 # Transition zone start (30mm)
+                                             # Begin blending toward far adhesion
+                                             
+rigid-deform-adhesion-d-neutral-end: 0.034   # Transition zone end (34mm)
+                                             # Complete transition to far adhesion
+                                             
+rigid-deform-adhesion-d-bond: 0.052          # Saturation distance (52mm)
+                                             # Curve completes before breaking (~57-60mm)
+                                             # Ensures smooth behavior until rupture
+
+
+## ==================== OLD ADHESION PARAMETERS (IGNORED for unified-distance) ====================
+## These are only used when interaction-type: "adhesion"
+## Kept here for comparison/switching back
+
+# rigid-deform-adhesion-rest-gap: 0.0005       # [IGNORED] Only for "adhesion" type
+# rigid-deform-adhesion-break-ratio: 1.0     # [MOVED ABOVE - now used by unified-distance too!] 
 
 
 ## define elastic materials
@@ -123,7 +164,7 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision with brain
 
     ## XPBD-specific options
-    num-solver-iters: 10            # INCREASED from 5 for constraint convergence
+    num-solver-iters: 5            # INCREASED from 5 for constraint convergence
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"

@@ -2448,14 +2448,29 @@ void Simulation::setup()
         std::cout << "[rigid-deform adhesion] *** RIGID-DEFORM ADHESION ENABLED *** Creating constraints...\n";
         
         // Get adhesion parameters from config
+        const std::string interaction_type = _config->rigidDeformAdhesionInteractionType();
         const Real rest_gap = _config->rigidDeformAdhesionRestGap();
         const Real break_ratio = _config->rigidDeformAdhesionBreakRatio();
         const Real alpha = _config->rigidDeformAdhesionAlpha();
         const Real bond_distance = _config->rigidDeformAdhesionBondDistance();
         
+        // Get unified-distance curve parameters (only used if interaction_type == "unified-distance")
+        const Real d_contact = _config->rigidDeformAdhesionDContact();
+        const Real d_rest = _config->rigidDeformAdhesionDRest();
+        const Real d_neutral_start = _config->rigidDeformAdhesionDNeutralStart();
+        const Real d_neutral_end = _config->rigidDeformAdhesionDNeutralEnd();
+        const Real d_bond = _config->rigidDeformAdhesionDBond();
+        
+        std::cout << "[rigid-deform adhesion] Interaction type: " << interaction_type << "\n";
         std::cout << "[rigid-deform adhesion] Parameters: rest_gap=" << rest_gap 
                   << ", break_ratio=" << break_ratio << ", alpha=" << alpha 
                   << ", bond_distance=" << bond_distance << "\n";
+        
+        if (interaction_type == "unified-distance") {
+            std::cout << "[rigid-deform adhesion] Curve parameters: d_contact=" << (d_contact*1000) << "mm"
+                      << ", d_rest=" << (d_rest*1000) << "mm"
+                      << ", d_bond=" << (d_bond*1000) << "mm\n";
+        }
         
         // Find rigid and deformable objects to pair
         // Example: Find object named "RigidBone" and "Tissue"
@@ -2695,30 +2710,58 @@ void Simulation::setup()
                         //   Breaking at: initial_distance + (rest_gap * break_ratio)
                         //   Benefit: Consistent breaking behavior - always stretch by 3mm before breaking
                         
-                        Real effective_rest_gap = rest_gap;  // Use config value for consistent behavior
-                        
                         // Store initial distance for constraint creation (informational only)
                         const Real initial_distance = distance;
-
-                        // Optional: enforce minimum gap for numerical stability
-                        const Real min_numerical_gap = 0.0001;  // 0.1mm
-                        if (effective_rest_gap < min_numerical_gap) {
-                            effective_rest_gap = min_numerical_gap;
-                        }
                         
                         try {
-                            typed_tissue_ptr->addRigidDeformAdhesionConstraint(
-                                sdf, rigid_obj_ptr, rigid_body_point,
-                                v1, v2, v3,
-                                effective_rest_gap, break_ratio, alpha  // Use actual distance!
-                            );
-                            
-                            ++constraints_added;
-                            if (constraints_added <= 10) {
-                                std::cout << "[rigid-deform adhesion] Added constraint: RigidBody -> Tissue_face[" 
-                                          << v1 << "," << v2 << "," << v3 
-                                          << "] initial_distance=" << initial_distance << "m, rest_gap=" << effective_rest_gap 
-                                          << "m, will_break_at=" << (initial_distance + effective_rest_gap * break_ratio) << "m\n";
+                            if (interaction_type == "unified-distance") {
+                                // Use new unified distance constraint (smooth signed-distance curve)
+                                typed_tissue_ptr->addUnifiedDistanceConstraint(
+                                    sdf, rigid_obj_ptr, rigid_body_point,
+                                    v1, v2, v3,
+                                    alpha,
+                                    break_ratio,  // Pass break_ratio from config
+                                    initial_distance,  // Pass precomputed initial distance (CRITICAL!)
+                                    d_contact,         // Pass curve parameters from YAML
+                                    d_rest,
+                                    d_neutral_start,
+                                    d_neutral_end,
+                                    d_bond
+                                );
+                                
+                                ++constraints_added;
+                                if (constraints_added <= 10) {
+                                    std::cout << "[rigid-deform adhesion] Added UNIFIED-DISTANCE constraint: RigidBody -> Tissue_face[" 
+                                              << v1 << "," << v2 << "," << v3 
+                                              << "] initial=" << (initial_distance*1000) << "mm";
+                                    std::cout << " (curve: " << (d_contact*1000) << "mm->" << (d_rest*1000) 
+                                              << "mm->" << (d_bond*1000) << "mm, breaks at " 
+                                              << ((initial_distance * break_ratio)*1000) << "mm = " 
+                                              << (initial_distance * break_ratio) << "m)\n";
+                                }
+                            } else {
+                                // Use traditional adhesion constraint (old behavior)
+                                Real effective_rest_gap = rest_gap;  // Use config value for consistent behavior
+                                
+                                // Optional: enforce minimum gap for numerical stability
+                                const Real min_numerical_gap = 0.0001;  // 0.1mm
+                                if (effective_rest_gap < min_numerical_gap) {
+                                    effective_rest_gap = min_numerical_gap;
+                                }
+                                
+                                typed_tissue_ptr->addRigidDeformAdhesionConstraint(
+                                    sdf, rigid_obj_ptr, rigid_body_point,
+                                    v1, v2, v3,
+                                    effective_rest_gap, break_ratio, alpha
+                                );
+                                
+                                ++constraints_added;
+                                if (constraints_added <= 10) {
+                                    std::cout << "[rigid-deform adhesion] Added ADHESION constraint: RigidBody -> Tissue_face[" 
+                                              << v1 << "," << v2 << "," << v3 
+                                              << "] initial_distance=" << initial_distance << "m, rest_gap=" << effective_rest_gap 
+                                              << "m, will_break_at=" << (initial_distance + effective_rest_gap * break_ratio) << "m\n";
+                                }
                             }
                         } catch (const std::exception& e) {
                             std::cout << "[rigid-deform adhesion] Failed to add constraint: " << e.what() << "\n";

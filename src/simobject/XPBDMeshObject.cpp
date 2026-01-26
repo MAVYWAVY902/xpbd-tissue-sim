@@ -2,6 +2,8 @@
 
 #include "common/colors.hpp"
 
+#include <iomanip>
+
 #include "config/simobject/XPBDMeshObjectConfig.hpp"
 #include "config/simobject/FirstOrderXPBDMeshObjectConfig.hpp"
 
@@ -358,14 +360,20 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     using RigidDeformAdhesionProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
     auto& rigid_deform_projectors = _solver.template getConstraintProjectorsOfType<RigidDeformAdhesionProjectorType>();
     
+    // Get unified distance constraint projectors (NEW)
+    using UnifiedDistanceProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>;
+    auto& unified_distance_projectors = _solver.template getConstraintProjectorsOfType<UnifiedDistanceProjectorType>();
+    
     // Skip if no adhesion constraints
-    if (nerve_tumor_projectors.empty() && inter_deform_projectors.empty() && rigid_deform_projectors.empty()) return;
+    if (nerve_tumor_projectors.empty() && inter_deform_projectors.empty() && 
+        rigid_deform_projectors.empty() && unified_distance_projectors.empty()) return;
     
     // Count active constraints and gather statistics every 60 calls
     if (call_count % 60 == 0) {
         int nerve_tumor_active = 0;
         int inter_deform_active = 0;
         int rigid_deform_active = 0;
+        int unified_distance_active = 0;
         Real min_distance = 1e6;
         Real max_distance = 0.0;
         Real avg_distance = 0.0;
@@ -446,6 +454,30 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             }
         }
         
+        // Count unified distance constraints (NEW)
+        for (size_t i = 0; i < unified_distance_projectors.size(); ++i) {
+            if (unified_distance_projectors[i].isValid()) {
+                unified_distance_active++;
+                total_active++;
+                
+                const auto& constraint_ref = unified_distance_projectors[i].constraint();
+                const auto* constraint = &constraint_ref.get();
+                if (constraint) {
+                    Real dist = constraint->getCurrentDistance();
+                    Real initial_dist = constraint->getInitialDistance();
+                    Real ratio = (initial_dist > 0) ? (dist / initial_dist) : 0.0;
+                    
+                    min_distance = std::min(min_distance, dist);
+                    max_distance = std::max(max_distance, dist);
+                    avg_distance += dist;
+                    
+                    min_ratio = std::min(min_ratio, ratio);
+                    max_ratio = std::max(max_ratio, ratio);
+                    avg_ratio += ratio;
+                }
+            }
+        }
+        
         if (total_active >= 0) {
             avg_distance /= total_active;
             avg_ratio /= total_active;
@@ -455,6 +487,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
                       << "\n  | Nerve-tumor: " << nerve_tumor_active << " / " << nerve_tumor_projectors.size()
                       << "\n  | Inter-deform: " << inter_deform_active << " / " << inter_deform_projectors.size()
                       << "\n  | Rigid-deform: " << rigid_deform_active << " / " << rigid_deform_projectors.size()
+                      << "\n  | Unified-distance: " << unified_distance_active << " / " << unified_distance_projectors.size()
                       << "\n  | Total active: " << total_active
                       << "\n  | Distances: min=" << min_distance << "m, max=" << max_distance 
                       << "m, avg=" << avg_distance << "m"
@@ -499,6 +532,40 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
         const auto* constraint = &constraint_ref.get();
         if (constraint && constraint->shouldBreak()) {
             rigid_deform_to_invalidate.push_back(static_cast<int>(i));
+        }
+    }
+    
+    // Check and break unified distance constraints (NEW)
+    std::vector<int> unified_distance_to_invalidate;
+    
+    // DEBUG: Verify this code path is being executed
+    static int check_counter = 0;
+    if (check_counter % 60 == 0 && !unified_distance_projectors.empty()) {
+        std::cout << "[DEBUG] checkAndBreakAdhesionConstraints() called | "
+                  << "Frame #" << check_counter 
+                  << " | Unified distance constraints: " << unified_distance_projectors.size() << std::endl;
+    }
+    check_counter++;
+    
+    for (size_t i = 0; i < unified_distance_projectors.size(); ++i) {
+        auto& projector = unified_distance_projectors[i];
+        if (!projector.isValid()) continue;
+        
+        const auto& constraint_ref = projector.constraint();
+        const auto* constraint = &constraint_ref.get();
+        if (constraint && constraint->shouldBreak()) {
+            // DEBUG: Print why this constraint is breaking
+            Real current_dist = constraint->getCurrentDistance();
+            Real initial_dist = constraint->getInitialDistance();
+            Real break_threshold = constraint->getBreakThreshold();
+            if (unified_distance_to_invalidate.size() < 3) {  // Only print first 3
+                std::cout << "[DEBUG BREAK] Constraint #" << i 
+                          << " | initial=" << initial_dist*1000 << "mm"
+                          << " | current=" << current_dist*1000 << "mm"
+                          << " | threshold=" << break_threshold*1000 << "mm"
+                          << " | ratio=" << (current_dist/initial_dist) << "x" << std::endl;
+            }
+            unified_distance_to_invalidate.push_back(static_cast<int>(i));
         }
     }
     
@@ -570,13 +637,37 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
         // std::cout << "[adhesion BREAK] Broke rigid-deform adhesion constraint #" << idx << "\n";
     }
     
-    // Print summary
-    // if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || !rigid_deform_to_invalidate.empty()) {
-    //     std::cout << "[adhesion BREAK] Object: " << this->name()
-    //               << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
-    //               << " + " << inter_deform_to_invalidate.size() << " inter-deform"
-    //               << " + " << rigid_deform_to_invalidate.size() << " rigid-deform adhesions\n";
-    // }
+    // Invalidate unified distance constraint projectors that should break (NEW)
+    for (int idx : unified_distance_to_invalidate) {
+        _solver.template setProjectorValidity<UnifiedDistanceProjectorType>(idx, false);
+    }
+    
+    // Print breaking summary for unified distance
+    if (!unified_distance_to_invalidate.empty()) {
+        // Count actually valid projectors AFTER invalidation
+        size_t remaining_valid = 0;
+        for (const auto& proj : unified_distance_projectors) {
+            if (proj.isValid()) remaining_valid++;
+        }
+        
+        std::cout << "\n╔════════════════════════════════════════╗\n";
+        std::cout << "║  🔥 ADHESION BREAKING EVENT 🔥       ║\n";
+        std::cout << "╠════════════════════════════════════════╣\n";
+        std::cout << "║  Constraints broken: " << std::setw(4) << unified_distance_to_invalidate.size() << "             ║\n";
+        std::cout << "║  Remaining active: " << std::setw(4) << remaining_valid << "               ║\n";
+        std::cout << "║  Total created:    " << std::setw(4) << unified_distance_projectors.size() << "               ║\n";
+        std::cout << "╚════════════════════════════════════════╝\n" << std::endl;
+    }
+    
+    // Log breaking summary
+    if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || 
+        !rigid_deform_to_invalidate.empty() || !unified_distance_to_invalidate.empty()) {
+        std::cout << "[adhesion BREAK] Object: " << this->name()
+                  << " | Broke " << nerve_tumor_to_invalidate.size() << " nerve-tumor"
+                  << " + " << inter_deform_to_invalidate.size() << " inter-deform"
+                  << " + " << rigid_deform_to_invalidate.size() << " rigid-deform"
+                  << " + " << unified_distance_to_invalidate.size() << " unified-distance adhesions\n";
+    }
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
@@ -796,6 +887,57 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
 
     // 3. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::RigidDeformAdhesionConstraint>;
+    return _solver.addConstraintProjector(
+        _sim->dt(),
+        RefType(vec, vec.size() - 1)
+    );
+}
+
+// NEW: addUnifiedDistanceConstraint
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+Solver::ConstraintProjectorReference<
+    Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>>
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
+    ::addUnifiedDistanceConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj,
+                                   const Vec3r& rigid_body_point,
+                                   int tri_v1, int tri_v2, int tri_v3,
+                                   Real alpha,
+                                   Real break_ratio,
+                                   Real initial_distance,
+                                   Real d_contact,
+                                   Real d_rest,
+                                   Real d_neutral_start,
+                                   Real d_neutral_end,
+                                   Real d_bond)
+{
+    // 1. Get triangle vertex position pointers and masses from THIS object
+    Real* tri_p1 = _mesh->vertexPointer(tri_v1);
+    Real* tri_p2 = _mesh->vertexPointer(tri_v2);
+    Real* tri_p3 = _mesh->vertexPointer(tri_v3);
+    
+    Real tri_m1 = vertexConstraintInertia(tri_v1);
+    Real tri_m2 = vertexConstraintInertia(tri_v2);
+    Real tri_m3 = vertexConstraintInertia(tri_v3);
+
+    // 2. Add to constraints array (pass precomputed initial_distance)
+    auto& vec = _constraints.template get<Solver::UnifiedDistanceConstraint>();
+    vec.emplace_back(
+        sdf, rigid_obj, rigid_body_point,
+        tri_v1, tri_p1, tri_m1,
+        tri_v2, tri_p2, tri_m2,
+        tri_v3, tri_p3, tri_m3,
+        alpha,
+        break_ratio,
+        initial_distance,  // Pass precomputed value from Simulation.cpp
+        d_contact,         // Curve parameters from YAML
+        d_rest,
+        d_neutral_start,
+        d_neutral_end,
+        d_bond
+    );
+
+    // 3. Tell solver about the new constraint
+    using RefType = Solver::ConstraintReference<Solver::UnifiedDistanceConstraint>;
     return _solver.addConstraintProjector(
         _sim->dt(),
         RefType(vec, vec.size() - 1)
