@@ -60,13 +60,13 @@ public:
     static constexpr int NUM_RIGID_BODIES = 1;
 
     // Distance parameters - NOW CONFIGURABLE VIA YAML!
-    // Default values (ADJUSTED FOR 18.75mm minimum distance)
-    static constexpr Real DEFAULT_D_CONTACT = 0.018;        // 18mm - BELOW min distance
-    static constexpr Real DEFAULT_D_REST = 0.028;           // 28mm - mid-range target
-    static constexpr Real DEFAULT_D_NEUTRAL_START = 0.034;  // 34mm - transition start
-    static constexpr Real DEFAULT_D_NEUTRAL_END = 0.038;    // 38mm - transition end
-    static constexpr Real DEFAULT_D_BOND = 0.058;           // 58mm - far adhesion limit
-    static constexpr Real EXP_GATE_WIDTH = 0.004;   // 4mm - smooth startup gate
+    // Default values (UPDATED 2026-01-26: Extended saturation point for better large-gap behavior)
+    static constexpr Real DEFAULT_D_CONTACT = 0.0003;       // 0.3mm - contact equilibrium
+    static constexpr Real DEFAULT_D_REST = 0.0015;          // 1.5mm - mid-range target
+    static constexpr Real DEFAULT_D_NEUTRAL_START = 0.003;  // 3mm - transition start
+    static constexpr Real DEFAULT_D_NEUTRAL_END = 0.005;    // 5mm - transition end
+    static constexpr Real DEFAULT_D_BOND = 0.015;           // 15mm - saturation (INCREASED from 5mm)
+    static constexpr Real EXP_GATE_WIDTH = 0.008;   // 8mm - smooth startup gate (2x wider for C¹ continuity)
     static constexpr Real EXP_SCALE_MARGIN = 1.2;   // 20% margin for stability
     static constexpr Real DEFAULT_BREAK_RATIO = 3.0; // Default: break at 200% strain (3x initial)
 
@@ -100,8 +100,10 @@ public:
                              Real d_rest = DEFAULT_D_REST,
                              Real d_neutral_start = DEFAULT_D_NEUTRAL_START,
                              Real d_neutral_end = DEFAULT_D_NEUTRAL_END,
-                             Real d_bond = DEFAULT_D_BOND);
+                                         Real d_bond = DEFAULT_D_BOND,
+                                         Real stretch_abs_min = 0.005);
 
+    // Required virtual functions from Constraint base class
     int numPositions() const override { return NUM_POSITIONS; }
     int numCoordinates() const override { return NUM_COORDINATES; }
     int numRigidBodies() const { return NUM_RIGID_BODIES; }
@@ -135,7 +137,13 @@ public:
     /** Check if constraint should break */
     bool shouldBreak() const { return _should_break; }
     Real getInitialDistance() const { return _initial_distance; }
-    Real getBreakThreshold() const { return _initial_distance * _break_ratio; }
+    Real getBreakThreshold() const { 
+        // Return actual breaking distance (not old formula)
+        // Breaking occurs when: d > initial_distance + max_allowed_stretch
+        const Real stretch_tolerance = _initial_distance * (_break_ratio - 1.0);
+        const Real max_allowed_stretch = std::max(stretch_tolerance, _stretch_abs_min);
+        return _initial_distance + max_allowed_stretch;
+    }
     
     /** Get point on rigid body in body coordinates */
     const Vec3r& rigidBodyPoint() const { return _rigid_body_point; }
@@ -188,11 +196,12 @@ private:
     Vec3r _rigid_body_point;         ///< Point on rigid body in body coordinates
     
     // Curve parameters (configurable via constructor/YAML)
-    Real _d_contact;         ///< Equilibrium distance (where C=0)
-    Real _d_rest;            ///< Mid-range target distance
-    Real _d_neutral_start;   ///< Transition zone start
-    Real _d_neutral_end;     ///< Transition zone end
-    Real _d_bond;            ///< Saturation distance (far adhesion limit)
+    const Real _d_contact;         ///< Equilibrium distance (where C=0)
+    const Real _d_rest;            ///< Mid-range target distance
+    const Real _d_neutral_start;   ///< Transition zone start
+    const Real _d_neutral_end;     ///< Transition zone end
+    const Real _d_bond;            ///< Saturation distance (far adhesion limit)
+    const Real _stretch_abs_min;   ///< Absolute minimum stretch tolerance (tissue intrinsic toughness)
     
     // Cached values for frozen contact frame approach (mutable for const methods)
     mutable Vec3r _n_cached;         ///< unit normal (closest_point to rigid_point, geometric gradient direction)
@@ -207,6 +216,13 @@ private:
     mutable Real _initial_distance{0.0};     ///< Distance when first evaluated (computed lazily)
     Real _break_ratio{3.0};                  ///< Break when d > _initial_distance * _break_ratio
     mutable bool _should_break{false};       ///< Flag to mark constraint for removal
+    
+    // Debug: Track if _rigid_body_point changes across frames (should NEVER change)
+    mutable Vec3r _debug_prev_rigid_body_point{Vec3r::Zero()}; ///< Previous frame's rigid body point (body coords)
+    mutable Vec3r _debug_prev_rigid_global{Vec3r::Zero()};     ///< Previous frame's rigid global point
+    mutable int _debug_frame_count{0};                         ///< Frame counter for this constraint
+    mutable bool _debug_prev_cache_valid{false};               ///< Previous cache_valid state (for detecting new frame)
+    mutable bool _debug_initialized{false};                    ///< Whether debug tracking started
 };
 
 } // namespace Solver

@@ -132,6 +132,7 @@ class Config
         _extractParameter("rigid-deform-adhesion-d-neutral-start", node, _rigid_deform_adhesion_d_neutral_start);
         _extractParameter("rigid-deform-adhesion-d-neutral-end", node, _rigid_deform_adhesion_d_neutral_end);
         _extractParameter("rigid-deform-adhesion-d-bond", node, _rigid_deform_adhesion_d_bond);
+        _extractParameter("rigid-deform-adhesion-stretch-abs-min", node, _rigid_deform_adhesion_stretch_abs_min);
 
         std::cout << "\nExtracting parameters for object with name " << BOLD << name() << RST << "..." << std::endl;
     }
@@ -195,6 +196,7 @@ class Config
     Real rigidDeformAdhesionDNeutralStart() const { return _rigid_deform_adhesion_d_neutral_start.value.value_or(0.034); }  // 34mm transition start
     Real rigidDeformAdhesionDNeutralEnd() const { return _rigid_deform_adhesion_d_neutral_end.value.value_or(0.038); }  // 38mm transition end
     Real rigidDeformAdhesionDBond() const { return _rigid_deform_adhesion_d_bond.value.value_or(0.058); }  // 58mm saturation
+    Real rigidDeformAdhesionStretchAbsMin() const { return _rigid_deform_adhesion_stretch_abs_min.value.value_or(0.005); }  // 5mm intrinsic toughness
 
     protected:
 
@@ -585,6 +587,7 @@ class Config
     ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_d_neutral_start = ConfigParameter<std::optional<Real>>(0.034);  // 34mm transition start
     ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_d_neutral_end = ConfigParameter<std::optional<Real>>(0.038);    // 38mm transition end
     ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_d_bond = ConfigParameter<std::optional<Real>>(0.058);           // 58mm saturation
+    ConfigParameter<std::optional<Real>> _rigid_deform_adhesion_stretch_abs_min = ConfigParameter<std::optional<Real>>(0.005);  // 5mm intrinsic toughness
 };
 
 

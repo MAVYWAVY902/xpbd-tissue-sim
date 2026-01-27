@@ -12,12 +12,12 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-# g-accel: [-100, -100, -100] # downward acceleration due to gravity [m/s2]
-g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
+g-accel: [-100, -100, -100] # downward acceleration due to gravity [m/s2]
+# g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 1e-4      # 0.5ms timestep
+time-step: 4e-4      # 0.5ms timestep
 collision-rate: 400  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
@@ -30,8 +30,8 @@ state-recording-output-folder: "../output/adhesion_recording"
 state-recording-snapshot-interval: 0.01  # Record every 0.1 seconds (10 fps)
 
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
-grasp-radius: 0.005   # Grasping tool radius: 13mm (default 100mm)
-tool-radius: 0.005    # Pushing tool radius: 13mm (default 200mm)
+grasp-radius: 0.007   # Grasping tool radius: 13mm (default 100mm)
+tool-radius: 0.007    # Pushing tool radius: 13mm (default 200mm)
 fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL objects (GraspingTest/PushingTest default=true)
 
 ## ==================== INTER-DEFORM ADHESION SETTINGS ====================
@@ -61,44 +61,78 @@ rigid-deform-adhesion-interaction-type: "unified-distance"  # Switch to new smoo
 
 ## ==================== UNIFIED-DISTANCE PARAMETERS ====================
 
-rigid-deform-adhesion-alpha: 5e-5            # Compliance (stiffness control)
-                                             # Tumor: 31mm diameter, Bone: 66mm
-                                             # With ~250 constraints, use stiffer compliance
-                                             # 5e-5 = moderate stiffness for realistic feel
+rigid-deform-adhesion-alpha: 5e-7             # Compliance (INCREASED 100x!)
+                                             # REASON: Prevent over-compression of large-gap constraints
+                                             # Old 5e-6: Constraint too stiff, forces 2mm gaps to compress to 0.3mm
+                                             # New 5e-4: Softer constraint, allows natural gap distribution
+                                             # Trade-off: Slower response, but more realistic adhesion feel
                                              
-rigid-deform-adhesion-bond-distance: 0.022   # Detection radius (22mm)
-                                             # Tumor-bone distance: 18.75-46mm
-                                             # 22mm → binds only closest faces (18.75-22mm)
-                                             # Expected: ~200-300 constraints (vs 910 before)
-                                             # Creates localized adhesion, not full-surface
+rigid-deform-adhesion-bond-distance: 0.034   # 25mm - 创建约束的最大初始距离 (ABSOLUTE)
+                                             # 任何 d0 <= 25mm 的约束都会被创建
 
-rigid-deform-adhesion-break-ratio: 3.0       # Break at 3.0x initial distance
-                                             # Example: 20mm initial → breaks at 60mm (40mm stretch)
-                                             # Increased from 2.8x for more realistic toughness
-                                             # Allows ~200% strain before rupture
+rigid-deform-adhesion-break-ratio: 1.5       # STRETCH-BASED breaking (RATIO for large gaps)
+                                             # 断裂公式：stretch = d - d0
+                                             #   当 stretch > max_stretch 时断裂
+                                             #   max_stretch = max(d0*(ratio-1), stretch_abs_min)
+                                             # 
+                                             # 作用：
+                                             #   - 对于小gap约束(d0<5mm)：绝对阈值(5mm)主导
+                                             #   - 对于大gap约束(d0>5mm)：此ratio主导
+                                             # 
+                                             # ratio=2.0 → 允许 100% 拉伸 (d=2*d0)
+                                             # ratio=3.0 → 允许 200% 拉伸 (d=3*d0)
+
+rigid-deform-adhesion-stretch-abs-min: 0.005 # Absolute minimum stretch tolerance (5mm)
+                                             # Physical meaning: Intrinsic tissue toughness
+                                             # - Like rope breaking elongation ("breaks after 5mm stretch")
+                                             # - Represents collagen fiber rupture (~10-20% strain)
+                                             # - Independent of initial gap (prevents fragility)
+                                             # 
+                                             # Example: d0=1mm → max_stretch=max(2mm, 5mm)=5mm
+                                             #          breaks at d=1+5=6mm (tissue stretched 5mm)
+                                             # Example: d0=3mm → max_stretch=max(6mm, 5mm)=6mm  
+                                             #          breaks at d=3+6=9mm (tissue stretched 6mm)
+                                             #
+                                             # Tuning guide:
+                                             # - 3mm: Fragile (cascade breaking during grasp)
+                                             # - 5mm: Moderate (current setting, good balance)
+                                             # - 8mm: Tough (requires aggressive pulling to break)
+                                             #
+                                             # 
+                                             # Example: d0=1mm → max_stretch=max(2mm, 5mm)=5mm
+                                             #          breaks at d=1+5=6mm (tissue stretched 5mm)
+                                             # Example: d0=3mm → max_stretch=max(6mm, 5mm)=6mm  
+                                             #          breaks at d=3+6=9mm (tissue stretched 6mm)
+                                             #
+                                             # WHY BETTER: Measures actual tissue damage (elongation),
+                                             #             not absolute distance. 5mm abs_min prevents
+                                             #             clustering that caused cascade breaking.
 
 ## ==================== UNIFIED-DISTANCE CURVE PARAMETERS (YAML CONFIGURABLE!) ====================
 ## These control the shape of the smooth adhesion curve d*(d)
 ## CRITICAL: Set d-contact ≤ minimum actual distance to avoid initial repulsion!
-## OPTIMIZED for: Tumor (31mm) + Bone (66mm), distance range 18.75-22mm
+## 
+## DESIGN GOAL: Push saturation point further out so large-gap constraints have strong pull-back force
+##              Old d_bond=5mm caused early saturation → weak forces for initial=3-4mm constraints
 
-rigid-deform-adhesion-d-contact: 0.016       # Equilibrium distance (16mm)
-                                             # Safe margin: 18.75mm - 16mm = 2.75mm余量
-                                             # Prevents any risk of initial push-away
+rigid-deform-adhesion-d-contact: 0.0003       # Equilibrium distance (0.3mm)
+                                             # Minimum contact point
                                              
-rigid-deform-adhesion-d-rest: 0.024          # Mid-range target (24mm)
-                                             # Within constraint range (18.75-22mm)
-                                             # Provides smooth transition in adhesion zone
+rigid-deform-adhesion-d-rest: 0.004           # Mid-range target (3mm) - INCREASED from 1.5mm
+                                             # REASON: Prevent over-compression of 2-3mm constraints
+                                             # With d_rest=3mm, constraints around 2-3mm won't be
+                                             # forced down to 0.3mm (more natural behavior)
                                              
-rigid-deform-adhesion-d-neutral-start: 0.030 # Transition zone start (30mm)
-                                             # Begin blending toward far adhesion
+rigid-deform-adhesion-d-neutral-start: 0.005  # Transition zone start (5mm) - ADJUSTED
+                                             # Begin exponential blend to far adhesion
                                              
-rigid-deform-adhesion-d-neutral-end: 0.034   # Transition zone end (34mm)
-                                             # Complete transition to far adhesion
+rigid-deform-adhesion-d-neutral-end: 0.005    # Transition zone end (5mm)
+                                             # Exponential component starts here
                                              
-rigid-deform-adhesion-d-bond: 0.052          # Saturation distance (52mm)
-                                             # Curve completes before breaking (~57-60mm)
-                                             # Ensures smooth behavior until rupture
+rigid-deform-adhesion-d-bond: 0.005           # Saturation distance (15mm) ← INCREASED!
+                                             # NOW: Constraints with initial=5-10mm have strong forces
+                                             # Example: d=8mm → d*(8)≈10mm → C=-2mm (strong attraction!)
+                                             # Old: d=8mm → d*(8)≈5mm → C=+3mm (weak/wrong direction)
 
 
 ## ==================== OLD ADHESION PARAMETERS (IGNORED for unified-distance) ====================
@@ -132,7 +166,7 @@ objects:
 
     ## visualization options
     # color: [1.0, 0.5, 0.0]  # Orange - tumor (used if texture fails to load)
-    draw-points: false
+    draw-points: false    # ENABLE to visualize active adhesion constraints (green=active, black=inactive)
     draw-edges: false
     draw-faces: true
     
@@ -168,7 +202,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 5000000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 6000000      # REDUCED from 9M - was causing excessive damping
 
 
   # ## ==================== DEFORMABLE BRAIN ====================

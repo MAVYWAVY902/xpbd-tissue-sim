@@ -78,9 +78,21 @@ class PositionalRigidBodyXPBDHelper : public RigidBodyXPBDHelper
      * 
      * where m is the mass, r is the point on the rigid body (in the body frame), n is the direction of the correction (in the body frame), and I is the moment of inertia matrix
      * in the rest state.
+     * 
+     * CRITICAL FIX: For FIXED rigid bodies (immovable), return weight = 0!
+     * - Fixed bodies don't move, so they shouldn't contribute to lambda denominator
+     * - This ensures deformable objects receive FULL constraint forces
+     * - Without this fix, fixed bodies with large mass dominate lambda calculation,
+     *   making dlam tiny and constraint forces invisibly weak!
      */
     virtual Real weight() const override
     {
+        // ✅ FIX: Fixed rigid bodies have zero inertial weight
+        // They act as immovable walls that don't reduce constraint forces
+        if (_rigid_obj->isFixed()) {
+            return 0.0;
+        }
+        
         // calculate the point on the rigid body in the body frame
         const Vec3r r_body = _rigid_obj->globalToBody(_point_on_body);
         // calculate the direction of the correction in the body frame
@@ -133,6 +145,15 @@ class PositionalRigidBodyXPBDHelper : public RigidBodyXPBDHelper
 
     }
 
+    /** Update internal state (avoid memory reallocation)
+     * @param direction new direction of correction
+     * @param point_on_body new point on body
+     */
+    void updateState(const Vec3r& direction, const Vec3r& point_on_body) {
+        _direction = direction;
+        _point_on_body = point_on_body;
+    }
+
     protected:
     Vec3r _direction;     // direction of correction in the global frame
     Vec3r _point_on_body; // the point on the rigid body in the global frame
@@ -160,9 +181,16 @@ class AngularRigidBodyXPBDHelper : public RigidBodyXPBDHelper
      * w = n^T * I^-1 * n
      * 
      * where n is the rotation axis (in the body frame), and I is the moment of inertia matrix in the rest state (i.e. body frame).
+     * 
+     * CRITICAL FIX: For FIXED rigid bodies (immovable), return weight = 0!
      */
     virtual Real weight() const override
     {
+        // ✅ FIX: Fixed rigid bodies have zero inertial weight
+        if (_rigid_obj->isFixed()) {
+            return 0.0;
+        }
+        
         // compute rotation axis in the body frame
         const Vec3r rot_axis_body = GeometryUtils::rotateVectorByQuat(_rot_axis, GeometryUtils::inverseQuat(_rigid_obj->orientation()));
         // compute weight based on above formula

@@ -48,9 +48,9 @@ class RigidDeformableCollisionConstraint : public CollisionConstraint, public Ri
      * @param u,v,w : the barycentric coordinates of the the colliding point on the colliding face of the deformable object
      */
     RigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
-                                       int v1, Real* p1, Real m1,
-                                       int v2, Real* p2, Real m2,
-                                       int v3, Real* p3, Real m3,
+                                       int v1, Real* p1, Real* prev_p1, Real m1,
+                                       int v2, Real* p2, Real* prev_p2, Real m2,
+                                       int v3, Real* p3, Real* prev_p3, Real m3,
                                         Real u, Real v, Real w);
 
     int numPositions() const override { return NUM_POSITIONS; }
@@ -218,6 +218,11 @@ class RigidDeformableCollisionConstraint : public CollisionConstraint, public Ri
     Real _u;  // barycentric coordinates of point on deformable body
     Real _v;  // the vertices themselves are stored in the _positions vector defined in the Constraint base class
     Real _w;
+
+    // Previous position pointers for friction
+    Real* _prev_p1;
+    Real* _prev_p2;
+    Real* _prev_p3;
 
 
 };

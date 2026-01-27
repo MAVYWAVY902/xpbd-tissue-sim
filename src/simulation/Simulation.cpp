@@ -2460,6 +2460,7 @@ void Simulation::setup()
         const Real d_neutral_start = _config->rigidDeformAdhesionDNeutralStart();
         const Real d_neutral_end = _config->rigidDeformAdhesionDNeutralEnd();
         const Real d_bond = _config->rigidDeformAdhesionDBond();
+        const Real stretch_abs_min = _config->rigidDeformAdhesionStretchAbsMin();
         
         std::cout << "[rigid-deform adhesion] Interaction type: " << interaction_type << "\n";
         std::cout << "[rigid-deform adhesion] Parameters: rest_gap=" << rest_gap 
@@ -2469,7 +2470,8 @@ void Simulation::setup()
         if (interaction_type == "unified-distance") {
             std::cout << "[rigid-deform adhesion] Curve parameters: d_contact=" << (d_contact*1000) << "mm"
                       << ", d_rest=" << (d_rest*1000) << "mm"
-                      << ", d_bond=" << (d_bond*1000) << "mm\n";
+                      << ", d_bond=" << (d_bond*1000) << "mm"
+                      << ", stretch_abs_min=" << (stretch_abs_min*1000) << "mm\n";
         }
         
         // Find rigid and deformable objects to pair
@@ -2685,41 +2687,50 @@ void Simulation::setup()
                     // Now use the ACTUAL distance (projection-based) for bonding decision
                     // This matches _initial_distance that will be computed in constraint constructor!
                     
-                    // Track statistics
-                    min_distance_found = std::min(min_distance_found, distance);
-                    max_distance_found = std::max(max_distance_found, distance);
+                    // NOTE: Do NOT track statistics here - this 'distance' is object-to-triangle,
+                    // not the surface-to-surface distance used by constraints.
+                    // Statistics will be tracked after computing actual initial_distance below.
                     
                     if (distance <= bond_distance) {
                         faces_within_range++;
                         
                         // 🔧 CRITICAL FIX: Use rigid surface point, not triangle point!
-                        // OLD (WRONG): rigid_body_point = closest_point on triangle
-                        // NEW (CORRECT): rigid_body_point = closest point on rigid surface
+                        // OLD (WRONG): rigid_body_point = SDF query from tri_centroid (moves with tissue!)
+                        // NEW (CORRECT): rigid_body_point = SDF query from closest_point on triangle
+                        //
+                        // WHY THIS MATTERS:
+                        // - closest_point is on the TISSUE triangle (deformable, moves)
+                        // - We need to find the corresponding point on RIGID bone surface
+                        // - Query SDF with closest_point (initial tissue position)
+                        // - Project onto rigid surface → gives fixed point on bone
+                        // - Store in body coordinates → stays fixed as bone rotates/translates
                         
                         // Find closest point on rigid surface using SDF
-                        // Use triangle centroid as query point
-                        const Vec3r tri_centroid = (tri_p1 + tri_p2 + tri_p3) / 3.0;
-                        
-                        // SDF gives: signed_distance + gradient (unit normal pointing outward)
-                        const Real signed_dist = sdf->evaluate(tri_centroid);
-                        const Vec3r grad = sdf->gradient(tri_centroid);  // unit normal
+                        // ✅ Use closest_point (on tissue) as query, not tri_centroid!
+                        // This ensures we get the rigid point that's actually closest to the tissue
+                        const Real signed_dist = sdf->evaluate(closest_point);
+                        const Vec3r grad = sdf->gradient(closest_point);  // unit normal (points outward from bone)
                         
                         // Closest point on rigid surface: move from query point along negative gradient
-                        // (gradient points outward, so -gradient points inward toward surface)
-                        const Vec3r closest_on_rigid_surface = tri_centroid - signed_dist * grad;
+                        // (gradient points outward from bone, so -gradient points toward bone surface)
+                        const Vec3r closest_on_rigid_surface = closest_point - signed_dist * grad;
                         
-                        // Convert to body coordinates
+                        // Convert to body coordinates (THIS IS THE FIXED ATTACHMENT POINT ON BONE!)
                         const Vec3r rigid_body_point = rigid_obj_ptr->globalToBody(closest_on_rigid_surface);
                         
                         // Recompute initial distance using correct point pair
                         // (rigid surface point → triangle surface point)
                         const Real initial_distance = (closest_on_rigid_surface - closest_point).norm();
                         
+                        // ✅ Track ACTUAL constraint distance statistics (surface-to-surface)
+                        min_distance_found = std::min(min_distance_found, initial_distance);
+                        max_distance_found = std::max(max_distance_found, initial_distance);
+                        
                         // 🔍 DEBUG: Verify distance calculation consistency (first 3 constraints)
                         static int creation_debug_count = 0;
                         if (creation_debug_count < 3) {
                             std::cout << "\n🔍📍 [CREATION DEBUG #" << creation_debug_count << "] FIXED VERSION" << std::endl;
-                            std::cout << "  Query: tri_centroid = " << tri_centroid.transpose() << std::endl;
+                            std::cout << "  Query: closest_point (on triangle) = " << closest_point.transpose() << std::endl;
                             std::cout << "  SDF: signed_dist = " << signed_dist*1000 << " mm, grad = " << grad.transpose() << std::endl;
                             std::cout << "  Rigid surface: closest_on_rigid_surface = " << closest_on_rigid_surface.transpose() << std::endl;
                             std::cout << "  Triangle: closest_point = " << closest_point.transpose() << std::endl;
@@ -2752,7 +2763,8 @@ void Simulation::setup()
                                     d_rest,
                                     d_neutral_start,
                                     d_neutral_end,
-                                    d_bond
+                                    d_bond,
+                                    stretch_abs_min    // Pass stretch absolute minimum from YAML
                                 );
                                 
                                 ++constraints_added;
@@ -2848,17 +2860,18 @@ void Simulation::setup()
             std::cout << "[rigid-deform adhesion] Total constraints created: " << constraints_added << "\n";
             std::cout << "[rigid-deform adhesion] Between " << rigid_obj_ptr->name() << " and " << tissue_ptr->name() << " (" << tissue_nf << " faces)\n";
             std::cout << "[rigid-deform adhesion] \n";
-            std::cout << "[rigid-deform adhesion] Distance statistics:\n";
+            std::cout << "[rigid-deform adhesion] Distance statistics (SURFACE-TO-SURFACE):\n";
             std::cout << "[rigid-deform adhesion]   Faces checked: " << faces_checked << "\n";
             std::cout << "[rigid-deform adhesion]   Faces within bond_distance: " << faces_within_range << "\n";
             if (min_distance_found < std::numeric_limits<Real>::max()) {
-                std::cout << "[rigid-deform adhesion]   Min distance found: " << min_distance_found << " m (" << (min_distance_found*1000) << " mm)\n";
-                std::cout << "[rigid-deform adhesion]   Max distance found: " << max_distance_found << " m (" << (max_distance_found*1000) << " mm)\n";
+                std::cout << "[rigid-deform adhesion]   Min initial_distance: " << min_distance_found << " m (" << (min_distance_found*1000) << " mm)\n";
+                std::cout << "[rigid-deform adhesion]   Max initial_distance: " << max_distance_found << " m (" << (max_distance_found*1000) << " mm)\n";
+                std::cout << "[rigid-deform adhesion]   NOTE: These are the ACTUAL constraint distances (rigid surface -> triangle surface)\n";
             }
             std::cout << "[rigid-deform adhesion] \n";
             std::cout << "[rigid-deform adhesion] Parameters used:\n";
-            std::cout << "[rigid-deform adhesion]   rest_gap = DYNAMIC (uses actual distance per constraint)\n";
-            std::cout << "[rigid-deform adhesion]   rest_gap range: " << min_distance_found << " m to " << max_distance_found << " m\n";
+            std::cout << "[rigid-deform adhesion]   initial_distance = PRECOMPUTED (surface-to-surface per constraint)\n";
+            std::cout << "[rigid-deform adhesion]   initial_distance range: " << (min_distance_found*1000) << " mm to " << (max_distance_found*1000) << " mm\n";
             std::cout << "[rigid-deform adhesion]   break_ratio = " << break_ratio << "\n";
             std::cout << "[rigid-deform adhesion]   alpha = " << alpha << "\n";
             std::cout << "[rigid-deform adhesion]   bond_distance = " << bond_distance << " m (" << (bond_distance*1000) << " mm)\n";
@@ -3100,13 +3113,7 @@ void Simulation::_timeStep()
             }
         }
 
-        static bool warned_pre = false;
-        // if (!printed && !warned_pre) {
-        //     std::cout << "[pre] WARNING: s_edge_initialized=true but couldn't read vertices; "
-        //                  "template combo at runtime didn't match. Check setup prints."
-        //               << std::endl;
-        //     warned_pre = true;
-        // }
+        // Note: warned_pre removed as it was unused (debug code commented out)
     }
 
     // —— PRE: read current curvature of the picked triplet —— //
@@ -3292,6 +3299,20 @@ void Simulation::_timeStep()
             for (auto& obj : fo_xpbd_mesh_objs) {
                 obj->checkAndBreakAdhesionConstraints(0.0);
             }
+        }
+    }
+    
+    // Update visualization markers for active adhesion constraints EVERY FRAME (green for active, black for inactive)
+    // This is outside the should_check_breaking block to ensure smooth visual updates
+    if (_config->rigidDeformAdhesionEnable()) {
+        auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
+        for (auto& obj : xpbd_mesh_objs) {
+            obj->updateAdhesionVisualizationMarkers();
+        }
+
+        auto& fo_xpbd_mesh_objs = _objects.get<std::unique_ptr<FirstOrderXPBDMeshObject_Base>>();
+        for (auto& obj : fo_xpbd_mesh_objs) {
+            obj->updateAdhesionVisualizationMarkers();
         }
     }
 

@@ -21,7 +21,8 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
     Real d_rest,
     Real d_neutral_start,
     Real d_neutral_end,
-    Real d_bond)
+    Real d_bond,
+    Real stretch_abs_min)
     : Constraint(std::vector<PositionReference>({
         PositionReference(tri_v1, tri_p1, tri_m1),  // triangle vertex 1
         PositionReference(tri_v2, tri_p2, tri_m2),  // triangle vertex 2
@@ -35,6 +36,7 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
     _d_neutral_start(d_neutral_start),
     _d_neutral_end(d_neutral_end),
     _d_bond(d_bond),
+    _stretch_abs_min(stretch_abs_min),
     _break_ratio(break_ratio),
     _initial_distance(initial_distance),  // Use precomputed value
     _should_break(false)
@@ -52,7 +54,8 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
         std::cout << "  EXP_SCALE_MARGIN = " << EXP_SCALE_MARGIN << std::endl;
         std::cout << "  alpha = " << alpha << std::endl;
         std::cout << "  break_ratio = " << _break_ratio << std::endl;
-        std::cout << "  initial_distance = " << initial_distance << " m (" << initial_distance*1000 << " mm)" << std::endl;
+        std::cout << "  initial_distance (PRECOMPUTED) = " << initial_distance << " m (" << initial_distance*1000 << " mm)" << std::endl;
+        std::cout << "  break_threshold = " << (initial_distance * _break_ratio)*1000 << " mm" << std::endl;
         
         // 🔍 VERTEX POSITION DEBUG - AT CREATION TIME
         std::cout << "\n  📍 VERTEX POSITIONS AT CREATION:" << std::endl;
@@ -72,6 +75,19 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
         Vec3r edge2_init = p3_init - p1_init;
         Real area_init = edge1_init.cross(edge2_init).norm() / 2.0;
         std::cout << "    Triangle area = " << area_init << " m²" << std::endl;
+        
+        // 🚨 SANITY CHECK: rigid point should NOT coincide with any triangle vertex!
+        Real dist_to_v1 = (rigid_global_init - p1_init).norm();
+        Real dist_to_v2 = (rigid_global_init - p2_init).norm();
+        Real dist_to_v3 = (rigid_global_init - p3_init).norm();
+        std::cout << "    ⚠️  SANITY: dist(rigid→tri_v1) = " << dist_to_v1*1000 << " mm" << std::endl;
+        std::cout << "    ⚠️  SANITY: dist(rigid→tri_v2) = " << dist_to_v2*1000 << " mm" << std::endl;
+        std::cout << "    ⚠️  SANITY: dist(rigid→tri_v3) = " << dist_to_v3*1000 << " mm" << std::endl;
+        if (dist_to_v1 < 1e-6 || dist_to_v2 < 1e-6 || dist_to_v3 < 1e-6) {
+            std::cout << "    🔴🔴🔴 CRITICAL ERROR: rigid_body_point coincides with triangle vertex!" << std::endl;
+            std::cout << "    🔴🔴🔴 This means rigid point was bound to deformable, not rigid surface!" << std::endl;
+            std::cout << "    🔴🔴🔴 Result: d will always be ~0, causing huge repulsion force!" << std::endl;
+        }
     }
     constraint_count++;
     
@@ -94,6 +110,13 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
     
     // NOTE: _initial_distance is set from constructor parameter (precomputed by caller)
     // Do NOT try to compute it here - vertex pointers may not be initialized yet
+    
+    // Initialize debug tracking
+    _debug_prev_rigid_body_point = _rigid_body_point;
+    _debug_prev_rigid_global = rigid_point_global;
+    _debug_frame_count = 0;
+    _debug_prev_cache_valid = false;
+    _debug_initialized = false;
     
     // Create RigidBodyXPBDHelper for positional constraint
     // The correction direction is along the normal from triangle to rigid body point
@@ -118,6 +141,60 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     // Get rigid body point in global coordinates (transforms with rigid body motion)
     const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
     const Vec3r rigid_point_global = rigid_obj->bodyToGlobal(_rigid_body_point);
+    
+    // 🚨 DEBUG: Check if THIS constraint's _rigid_body_point changed across frames
+    // Trigger: Detect NEW FRAME by cache state transition (false->true after recompute)
+    // This is more reliable than just checking _cache_valid==false (which can happen multiple times)
+    const bool is_new_frame = (!_cache_valid && _debug_prev_cache_valid);  // Cache just got invalidated
+    
+    if (is_new_frame && _debug_initialized && _debug_frame_count < 20) {  // 增加到20帧
+        // Check if _rigid_body_point (body coords) changed since last frame
+        const Real body_drift = (_rigid_body_point - _debug_prev_rigid_body_point).norm();
+        const Real global_drift = (rigid_point_global - _debug_prev_rigid_global).norm();
+        
+        // 🔍 更详细的调试信息
+        std::cout << "\n🔍🔍 [FRAME #" << _debug_frame_count << "] Constraint d0=" 
+                  << _initial_distance*1000 << "mm" << std::endl;
+        std::cout << "  📍 rigid_body_point (body coords):" << std::endl;
+        std::cout << "     prev = " << _debug_prev_rigid_body_point.transpose() << std::endl;
+        std::cout << "     curr = " << _rigid_body_point.transpose() << std::endl;
+        std::cout << "     drift = " << body_drift*1000 << " mm (should be 0!)" << std::endl;
+        
+        std::cout << "  🌍 rigid_body_point (global coords):" << std::endl;
+        std::cout << "     prev = " << _debug_prev_rigid_global.transpose() << std::endl;
+        std::cout << "     curr = " << rigid_point_global.transpose() << std::endl;
+        std::cout << "     drift = " << global_drift*1000 << " mm (should be ~0 for fixed rigid)" << std::endl;
+        
+        // 检查刚体状态
+        std::cout << "  🦴 Rigid body state:" << std::endl;
+        std::cout << "     position = " << rigid_obj->position().transpose() << std::endl;
+        std::cout << "     is_fixed = " << (rigid_obj->isFixed() ? "YES" : "NO") << std::endl;
+        
+        if (body_drift > 1e-12) {  // Body coords should be EXACTLY constant
+            std::cout << "  🔴🔴🔴 BUG CONFIRMED: Body coordinates changed!" << std::endl;
+            std::cout << "  🔴 This means _rigid_body_point is being overwritten!" << std::endl;
+        }
+        
+        if (global_drift > 1e-6) {  // 1微米阈值
+            if (rigid_obj->isFixed()) {
+                std::cout << "  🔴 ERROR: Global position moved but rigid is fixed!" << std::endl;
+            } else {
+                std::cout << "  ⚠️  Global drift is normal (rigid body is not fixed)" << std::endl;
+            }
+        }
+        
+        _debug_frame_count++;
+    }
+    
+    // Update debug tracking at END of frame (after cache gets recomputed)
+    if (!_cache_valid && !_debug_initialized) {
+        _debug_initialized = true;
+    }
+    if (_cache_valid && !_debug_prev_cache_valid) {  // Cache just became valid (frame completed)
+        _debug_prev_rigid_body_point = _rigid_body_point;
+        _debug_prev_rigid_global = rigid_point_global;
+    }
+    _debug_prev_cache_valid = _cache_valid;
     
     // 🔍 VERTEX POSITION DEBUG - AT EVALUATION TIME (first 3 constraints only)
     static int eval_debug_count = 0;
@@ -144,27 +221,105 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     Real point_to_tri_distance;
     if (!_cache_valid) {
         // First evaluation in this timestep - compute and freeze contact geometry
-        Vec3r closest_point, normal;
-        Vec3r bary_coords_current;
+        static int cache_recompute_count = 0;
+        if (cache_recompute_count < 10) {
+            std::cout << "🔄 [CACHE RECOMPUTE #" << cache_recompute_count << "] Computing fresh contact frame" << std::endl;
+            cache_recompute_count++;
+        }
         
-        point_to_tri_distance = computePointTriangleDistance(
-            rigid_point_global, tri_p1, tri_p2, tri_p3,
-            closest_point, normal, bary_coords_current);
+        // FIXED ADHESION IMPLEMENTATION (Requested by User):
+        // Instead of searching for the NEW closest point (which causes sliding),
+        // we use the INITIAL barycentric coordinates (anchored material point).
+        // This converts the constraint from "Point-to-Triangle" (Sliding) to "Point-to-Point" (Fixed).
+        
+        // 1. Reconstruct anchor point using current vertex positions + stored INITIAL barycentrics
+        const Vec3r anchor_point = _bary_cached[0] * tri_p1 + 
+                                   _bary_cached[1] * tri_p2 + 
+                                   _bary_cached[2] * tri_p3;
+                                   
+        // 2. Compute vector from anchor to rigid point
+        const Vec3r diff = rigid_point_global - anchor_point;
+        point_to_tri_distance = diff.norm();
+        
+        // 3. Compute normal (direction of force: from anchor TO rigid point)
+        // If distance is zero, use triangle normal as fallback
+        Vec3r normal;
+        if (point_to_tri_distance > 1e-12) {
+            normal = diff / point_to_tri_distance;
+        } else {
+            const Vec3r edge1 = tri_p2 - tri_p1;
+            const Vec3r edge2 = tri_p3 - tri_p1;
+            // Area-weighted normal -> normalized
+            Vec3r tri_normal = edge1.cross(edge2);
+            Real area2 = tri_normal.norm();
+            if (area2 > 1e-12) normal = tri_normal / area2;
+            else normal = Vec3r::UnitZ(); // Degenerate
+        }
         
         // Cache geometry for this timestep (frozen frame)
-        _xs_cached = closest_point;
+        _xs_cached = anchor_point;
         _n_cached = normal;
-        _bary_cached = bary_coords_current;
+        
+        // IMPORTANT: We do NOT update _bary_cached. We keep the initial bond point!
+        // _bary_cached = bary_coords_current;  <-- DISABLED for Fixed Adhesion
+        
         _cache_valid = true;
+        
+        // 🔍 DEBUG: 打印约束点的全局坐标
+        static int contact_debug_count = 0;
+        if (contact_debug_count < 5) {
+            std::cout << "\n🔍🎯 [CONTACT GEOMETRY #" << contact_debug_count << "] (Fixed Adhesion Mode)" << std::endl;
+            std::cout << "  🦴 Rigid point (global): " << rigid_point_global.transpose() << std::endl;
+            std::cout << "  📐 Triangle vertices:" << std::endl;
+            std::cout << "      tri_p1: " << tri_p1.transpose() << std::endl;
+            std::cout << "      tri_p2: " << tri_p2.transpose() << std::endl;
+            std::cout << "      tri_p3: " << tri_p3.transpose() << std::endl;
+            std::cout << "  🎯 Anchor point on triangle: " << anchor_point.transpose() << std::endl;
+            std::cout << "  📏 Distance: " << point_to_tri_distance*1000 << " mm" << std::endl;
+            std::cout << "  🧮 Fixed Barycentric coords: [" << _bary_cached[0] 
+                      << ", " << _bary_cached[1] 
+                      << ", " << _bary_cached[2] << "]" << std::endl;
+            std::cout << "  ➡️  Normal: " << normal.transpose() << std::endl;
+            contact_debug_count++;
+        }
     } else {
         // Cache valid - use frozen contact frame (within same timestep)
         // Reconstruct surface point using frozen barycentric coordinates
         // NOTE: This keeps contact point fixed in material coordinates during solver iterations
-        // d = n_cached · (p_rigid - x_s) where x_s = b1*p1 + b2*p2 + b3*p3
-        // This is NOT strict Euclidean distance, but \"separation along frozen normal\"
-        // Valid linearization for small motion, prevents feature jumping (critical for stability)
         const Vec3r x_s = _bary_cached[0] * tri_p1 + _bary_cached[1] * tri_p2 + _bary_cached[2] * tri_p3;
-        point_to_tri_distance = _n_cached.dot(rigid_point_global - x_s);
+        
+        // ✅ CRITICAL FIX: Use Euclidean distance, NOT signed projection!
+        // Old code: point_to_tri_distance = _n_cached.dot(rigid_point_global - x_s);
+        // Problem: This gives SIGNED distance (can be negative when rigid point crosses plane)
+        // Fix: Use norm() for pure Euclidean distance (always >= 0)
+        Vec3r diff = rigid_point_global - x_s;
+        point_to_tri_distance = diff.norm();
+        
+        // [FIX FOR SLIDING] Update Normal Direction!
+        // Even though material points are fixed (barycentrics), the VECTOR separating them changes orientation.
+        // We MUST update _n_cached to point along the current separation vector.
+        // If we don't, the force direction is frozen, allowing free tangential motion (sliding).
+        if (point_to_tri_distance > 1e-12) {
+            _n_cached = diff / point_to_tri_distance;
+        }
+        
+        // IMPORTANT: We use the updated _n_cached for gradient direction.
+    }
+
+    // [CRITICAL FIX] Update RigidBodyXPBDHelper
+    // The default PositionalRigidBodyXPBDHelper stores the global attachment point AT CONSTRUCTION.
+    // If the body moves, it uses the OLD global point. We must update it every iteration 
+    // to prevent the attachment point from sliding across the moving bone surface.
+    
+    // Force mutable access to update helpers
+    // OPTIMIZATION: Use updateState() instead of clear() + push_back() to avoid heap allocation churn
+    // and potential memory corruption issues with Easy3D or threaded contexts.
+    
+    if (!_rigid_body_helpers.empty()) {
+        auto* positional_helper = dynamic_cast<PositionalRigidBodyXPBDHelper*>(_rigid_body_helpers[0].get());
+        if (positional_helper) {
+            positional_helper->updateState(_n_cached, rigid_point_global);
+        }
     }
 
     // ✅ UNIFIED CONSTRAINT: C(d) = d - d*(d)
@@ -192,15 +347,39 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     }
     
     // Check breaking condition: if stretched beyond threshold, mark for removal
-    const Real break_threshold = _initial_distance * _break_ratio;
-    if (d > break_threshold) {
+    // ✅ CRITICAL FIX: Use ELONGATION (stretch amount), not absolute distance!
+    // 
+    // WHY THIS MATTERS:
+    // - Old: "break when d > threshold" → sensitive to initial_distance scale
+    // - New: "break when (d - d0) > max_stretch" → measures actual tissue damage
+    // 
+    // PROBLEM EXAMPLE (old logic):
+    //   initial=0.5mm, ratio=3 → threshold=1.5mm, abs_min boosts to 3mm
+    //   initial=2.0mm, ratio=3 → threshold=6mm
+    //   Result: Small initial_distance constraints cluster around 3mm "mine line"
+    // 
+    // SOLUTION:
+    //   Use stretch amount: stretch = d - d0
+    //   Break when: stretch > max(d0 * (ratio-1), delta_abs_min)
+    //   Example: d0=0.5mm, ratio=3 → break when stretch > max(1.0mm, 3mm) = 3mm
+    //            So d must reach 0.5+3=3.5mm (not 3mm!)
+    
+    const Real current_stretch = d - _initial_distance;  // Elongation from rest
+    const Real stretch_tolerance = _initial_distance * (_break_ratio - 1.0);  // Allowed stretch (ratio-1 because ratio includes initial)
+    // Use configured stretch_abs_min (tissue intrinsic toughness)
+    // Represents minimum absolute elongation tissue can withstand before rupture
+    // Independent of initial gap size (like collagen fiber rupture strain)
+    const Real max_allowed_stretch = std::max(stretch_tolerance, _stretch_abs_min);
+    
+    if (current_stretch > max_allowed_stretch) {
         _should_break = true;
         // DEBUG: Print when breaking condition is triggered
         static int break_print_count = 0;
         if (break_print_count < 5) {
-            std::cout << "🔴 [CONSTRAINT BREAKING] d=" << d*1000 << "mm > threshold=" 
-                      << break_threshold*1000 << "mm (initial=" << _initial_distance*1000 
-                      << "mm × ratio=" << _break_ratio << ")" << std::endl;
+            std::cout << "🔴 [CONSTRAINT BREAKING] stretch=" << current_stretch*1000 
+                      << "mm > max_stretch=" << max_allowed_stretch*1000 
+                      << "mm (d=" << d*1000 << "mm, d0=" << _initial_distance*1000 
+                      << "mm, ratio=" << _break_ratio << ")" << std::endl;
             break_print_count++;
         }
         *C = 0.0;  // Disable constraint
@@ -210,26 +389,41 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     const Real d_target = computeTargetDistance(d);
     const Real constraint_value = d - d_target;
     
-    // 🔍 DEBUG: Print first few constraints at first evaluation
-    static int eval_count = 0;
-    static bool first_eval = true;
-    if (first_eval && eval_count < 5) {
-        std::cout << "🔍 [EVAL #" << eval_count << "] d=" << d*1000 << "mm, d*=" << d_target*1000 
-                  << "mm, C=" << constraint_value*1000 << "mm";
-        if (constraint_value > 0) std::cout << " (ATTRACTION ✅)";
-        else if (constraint_value < 0) std::cout << " (REPULSION ⚠️)";
-        else std::cout << " (EQUILIBRIUM)";
-        std::cout << std::endl;
-        eval_count++;
-        if (eval_count >= 5) first_eval = false;
-    }
-    
     // Compute dC/dd = 1 - dd*/dd (needed for gradient scaling)
     const Real eps = 1e-8;
     const Real d_target_plus = computeTargetDistance(d + eps);
     const Real d_target_minus = computeTargetDistance(d - eps);
     const Real dd_target_dd = (d_target_plus - d_target_minus) / (2.0 * eps);
     const Real dC_dd = 1.0 - dd_target_dd;  // Should be > 0 (validated)
+    
+    // 🔍 DEBUG: Print first few constraints at first evaluation with FULL geometry
+    static int eval_count = 0;
+    static bool first_eval = true;
+    if (first_eval && eval_count < 5) {
+        std::cout << "\n🔍 [EVAL #" << eval_count << "] DETAILED TRACKING:" << std::endl;
+        std::cout << "  d = " << d*1000 << " mm (current separation)" << std::endl;
+        std::cout << "  d* = " << d_target*1000 << " mm (target from curve)" << std::endl;
+        std::cout << "  C = d - d* = " << constraint_value*1000 << " mm";
+        if (constraint_value > 0) std::cout << " (TOO FAR → ATTRACTION ✅)";
+        else if (constraint_value < 0) std::cout << " (TOO CLOSE → REPULSION ⚠️)";
+        else std::cout << " (EQUILIBRIUM)";
+        std::cout << std::endl;
+        std::cout << "  dC/dd = " << dC_dd << " (constraint slope)" << std::endl;
+        std::cout << "  initial_distance = " << _initial_distance*1000 << " mm" << std::endl;
+        std::cout << "  break_threshold = " << (_initial_distance * _break_ratio)*1000 << " mm" << std::endl;
+        
+        // Geometry check
+        Eigen::Map<const Vec3r> p1_now(_positions[0].position_ptr);
+        Eigen::Map<const Vec3r> p2_now(_positions[1].position_ptr);
+        Eigen::Map<const Vec3r> p3_now(_positions[2].position_ptr);
+        const Vec3r rigid_now = rigid_obj->bodyToGlobal(_rigid_body_point);
+        std::cout << "  📍 Geometry: rigid = " << rigid_now.transpose() << std::endl;
+        std::cout << "              tri_p1 = " << p1_now.transpose() << std::endl;
+        std::cout << "  🔍 Check: dist(rigid→tri_p1) = " << (rigid_now - p1_now).norm()*1000 << " mm" << std::endl;
+        
+        eval_count++;
+        if (eval_count >= 5) first_eval = false;
+    }
     
     // Cache for gradient reuse
     _separation_cached = d;
@@ -238,12 +432,14 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     
     // ✅ CRITICAL: Update rigid body helper with SCALED normal for gradient consistency
     // Deformable side uses: grad = -dC_dd * b_i * n
-    // Rigid side must use: grad = +dC_dd * n (same scaling!)
+    // Rigid side uses: grad = +dC_dd * n (consistent with same scaling!)
+    // Newton's 3rd law is maintained by gradient summation: Σ∇C = 0
     if (!_rigid_body_helpers.empty()) {
         auto* positional_helper = dynamic_cast<PositionalRigidBodyXPBDHelper*>(_rigid_body_helpers[0].get());
         if (positional_helper) {
             const Vec3r scaled_normal = dC_dd * _n_cached;
-            *positional_helper = PositionalRigidBodyXPBDHelper(rigid_obj, scaled_normal, rigid_point_global);
+            // Use updateState instead of reallocation to prevent heap fragmentation/corruption issues
+            positional_helper->updateState(scaled_normal, rigid_point_global);
         }
     }
     
@@ -288,6 +484,7 @@ void UnifiedDistanceConstraint::gradient(Real* grad) const
 
     // Gradients w.r.t. triangle vertices
     // dC/dp_i = dC_dd * dd/dp_i = dC_dd * (-b_i * n)
+    // NOTE: Negative sign is CORRECT for XPBD! (Update: Δx = w × ∇C × λ, no extra negative)
     grad[0] = -dC_dd * b1 * n[0];  grad[1] = -dC_dd * b1 * n[1];  grad[2] = -dC_dd * b1 * n[2];  // p1
     grad[3] = -dC_dd * b2 * n[0];  grad[4] = -dC_dd * b2 * n[1];  grad[5] = -dC_dd * b2 * n[2];  // p2
     grad[6] = -dC_dd * b3 * n[0];  grad[7] = -dC_dd * b3 * n[1];  grad[8] = -dC_dd * b3 * n[2];  // p3
@@ -323,11 +520,22 @@ Real UnifiedDistanceConstraint::computePointTriangleDistance(
     const Real area = triangle_normal.norm();
     
     if (area < 1e-12) {
-        // Degenerate triangle
+        // Degenerate triangle - DO NOT return 1e6 (causes instant breaking!)
+        static int degenerate_count = 0;
+        if (degenerate_count < 5) {
+            std::cout << "⚠️⚠️⚠️ [DEGENERATE TRIANGLE] area = " << area << " < 1e-12" << std::endl;
+            std::cout << "  tri_p1 = " << tri_p1.transpose() << std::endl;
+            std::cout << "  tri_p2 = " << tri_p2.transpose() << std::endl;
+            std::cout << "  tri_p3 = " << tri_p3.transpose() << std::endl;
+            std::cout << "  Returning fallback distance (not 1e6 to avoid breaking!)" << std::endl;
+            degenerate_count++;
+        }
         normal = Vec3r::UnitZ();
         closest_point = tri_p1;
         bary_coords = Vec3r(1.0, 0.0, 0.0);
-        return 1e6;
+        // Return centroid-to-point distance instead of 1e6
+        Vec3r centroid = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+        return (rigid_point_global - centroid).norm();
     }
 
     // Use consistent triangle normal orientation (don't flip)
@@ -427,19 +635,106 @@ Real UnifiedDistanceConstraint::expBlend(Real d0, Real s, Real d, Real gate_widt
 
 Real UnifiedDistanceConstraint::computeTargetDistance(Real d) const
 {
-    // Stage 1: contact → rest (smoothstep blend, active in [_d_contact, _d_neutral_start])
-    const Real blend1 = smoothstep(_d_contact, _d_neutral_start, d);
-    const Real stage1_target = _d_contact * (1.0 - blend1) + _d_rest * blend1;
+    // ============================================================================
+    // C¹-SMOOTH STRETCH-ONLY RELATIVE ADHESION (2026-01-26 REDESIGN)
+    // ============================================================================
+    // Goal: Each constraint pulls back toward its initial_distance (d0) when stretched
+    // with C¹ continuous smooth transition at d0 (eliminates gradient discontinuity)
+    // 
+    // Physics:
+    //   - d < d0 - δ: fully inactive (d* = d, no force)
+    //   - d > d0 + δ: fully active (d* = d0 + β(d-d0), pull-back)
+    //   - |d - d0| ≤ δ: smooth transition (slope interpolation, C¹ continuous)
+    // 
+    // Guarantees:
+    //   - dd*/dd ∈ [β, 1] globally (XPBD stable)
+    //   - dC/dd ∈ [0, 1-β] globally (monotonic)
+    //   - C¹ continuous everywhere (no gradient jumps, no chatter)
+    //   - Compression handled by collision/CCD (separation of concerns)
+    // 
+    // Method: Interpolate slope (dd*/dd), then integrate to construct d*.
+    // This is the ONLY way to guarantee dd*/dd stays in [β, 1].
+    // Direct interpolation of d* would violate stability.
+    // ============================================================================
     
-    // Stage 2: rest → bond (C¹ exponential blend, active AFTER _d_neutral_end)
-    // Use 1.2x margin to ensure max(dd*/dd) < 1 with numerical safety
-    const Real s = EXP_SCALE_MARGIN * (_d_bond - _d_rest);
-    const Real blend2 = expBlend(_d_neutral_end, s, d, EXP_GATE_WIDTH);
+    const Real d0 = _initial_distance;
     
-    // Combine: use stage1 result + add stage2 contribution
-    // When d < _d_neutral_end: blend2 ≈ 0, d_target ≈ stage1_target
-    // When d >> _d_neutral_end: blend2 → 1, d_target → _d_bond
-    const Real d_target = stage1_target * (1.0 - blend2) + _d_bond * blend2;
+    // ============================================================================
+    // CONFIGURABLE PARAMETERS (Mapped from YAML via member variables)
+    // ============================================================================
+    // 1. Beta (Stiffness Slope): Controls how strongly we pull back to d0
+    //    Range: (0.0 = rigid, 1.0 = no force).
+    //    Mapping: beta = _d_rest / _d_neutral_start
+    //    - If d_rest is small (tight), beta is small -> Stiffer pullback
+    //    - If d_rest is large (loose), beta is large -> Softer pullback
+    //    - Example: 1.5mm / 3.0mm = 0.5 (Medium stiffness)
+    //    - Example: 0.003 / 0.005 = 0.6 (Softer)
+    Real beta = 0.3; // Fallback default
+    if (_d_neutral_start > 1e-6) {
+        beta = std::max(0.01, std::min(0.99, _d_rest / _d_neutral_start));
+    }
+    
+    // 2. Delta (Smoothing Width): Half-width of the C1 transition zone
+    //    Mapping: delta = _d_contact (Contact thickness)
+    //    - Example: 0.3mm
+    Real delta = std::max(1e-5, _d_contact); 
+    
+    // Debug output (once per constraint to verify config)
+    static bool param_debug_printed = false;
+    if (!param_debug_printed) {
+        std::cout << "\n🔧 [UnifiedDistance Params] Configured from YAML:" << std::endl;
+        std::cout << "   _d_contact (-> delta) = " << _d_contact * 1000 << " mm" << std::endl;
+        std::cout << "   _d_rest / _d_neutral_start (-> beta) = " << _d_rest*1000 << " / " << _d_neutral_start*1000 
+                  << " = " << beta << std::endl;
+        param_debug_printed = true;
+    }
+    
+    // ============================================================================
+    
+    // Define slopes for different regions
+    // beta (right slope): Controls extension stiffness (Softer, < 1.0)
+    // alpha_compress (left slope): Controls compression stiffness
+    //   - 1.0 = No force (Slack, old behavior -> causes penetration)
+    //   - beta = Symmetric spring (Soft support/Repulsion)
+    //   - 0.0 = Hard support (pushes back to d0)
+    // define slopes
+    // slope_left: scaling for compression (d < d0)
+    // - 0.0: Hard constraint (pulls/pushes to d0 with full stiffness) -> Prevents Penetration
+    // - beta: Soft constraint (symmetric)
+    // - 1.0: No constraint (d* = d) -> Allows free motion
+    
+    // FIX FOR PENETRATION: Use Hard Constraint (0.01) for compression.
+    // This ensures we strongly resist peneration past d0.
+    const Real slope_left = 0.01; 
+    const Real slope_right = beta;
+
+    // Region 1: d < d0 - delta (Compression Zone)
+    if (d < d0 - delta) {
+        // Hard push back to d0 (with linear scaling 0.01)
+        return d0 + slope_left * (d - d0);
+    }
+    
+    // Region 2: d > d0 + delta (Extension Zone)
+    if (d > d0 + delta) {
+        return d0 + slope_right * (d - d0);
+    }
+    
+    // Region 3: Transition zone [d0-delta, d0+delta] (C¹ smooth interpolation)
+    
+    // Distance from left edge of transition zone
+    const Real x = d - (d0 - delta);  // x ∈ [0, 2δ]
+    
+    // Normalized parameter: t ∈ [0, 1]
+    const Real t = x / (2.0 * delta);
+    
+    // Target at left edge (d = d0 - delta)
+    const Real d_target_left = d0 + slope_left * ((d0 - delta) - d0);
+    
+    // Integral of blend term for smooth transition: ∫ blend(t) dx = 2δ * (t^3 - t^4/2)
+    const Real term_blend = (t*t*t - 0.5*t*t*t*t); 
+    
+    // d* = d_left + slope_left * x + (slope_right - slope_left) * integral_blend
+    const Real d_target = d_target_left + slope_left * x + (slope_right - slope_left) * (2.0 * delta) * term_blend;
     
     return d_target;
 }

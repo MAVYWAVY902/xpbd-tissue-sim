@@ -113,34 +113,57 @@ void Easy3DMeshGraphicsObject::_init(const Config::ObjectRenderConfig& config, b
                 // update the vertex buffer with the vertices of the mesh
                 d->update_vertex_buffer(m->points(), true);
                 
-                // Check if we have adhesion constraint markers and apply per-vertex coloring
-                // std::cout << "[viz] Graphics update - checking mesh " << mo->_mesh << " for adhesion property\n";
-                if (mo->_mesh->template hasVertexProperty<bool>("has_adhesion_constraint")) {
-                    const auto& adhesion_prop = mo->_mesh->template getVertexProperty<bool>("has_adhesion_constraint");
-                    std::vector<easy3d::vec3> colors;
-                    colors.reserve(mo->_mesh->numVertices());
+                // Check if we have RIGID-DEFORM adhesion markers and apply per-vertex coloring
+                
+                std::vector<easy3d::vec3> colors;
+                colors.reserve(mo->_mesh->numVertices());
+                
+                if (mo->_mesh->template hasVertexProperty<bool>("has_rigid_adhesion")) {
+                    const auto& adhesion_prop = mo->_mesh->template getVertexProperty<bool>("has_rigid_adhesion");
                     
                     int adhesion_count = 0;
+                    int first_green_idx = -1;
                     for (int i = 0; i < mo->_mesh->numVertices(); ++i) {
                         if (adhesion_prop.get(i)) {
-                            // Bright cyan color for vertices with adhesion constraints  
-                            colors.emplace_back(0.0f, 1.0f, 1.0f); // Bright cyan
+                            // Bright green color for ACTIVE adhesion vertices  
+                            colors.emplace_back(0.0f, 1.0f, 0.0f); // Bright green
+                            if (first_green_idx < 0) first_green_idx = i;
                             adhesion_count++;
                         } else {
-                            // Darker color for contrast
-                            colors.emplace_back(0.2f, 0.2f, 0.2f); // Dark gray
+                            // WHITE for inactive vertices (more visible than black)
+                            colors.emplace_back(1.0f, 1.0f, 1.0f); // White
                         }
                     }
-                    // std::cout << "[viz] Applied per-vertex coloring: " << adhesion_count << "/" << mo->_mesh->numVertices() << " vertices have adhesion constraints (blue)\n";
-                    d->update_color_buffer(colors);
+                    // Print EVERY frame for debugging
+                    std::cout << "[GRAPHICS-VIZ] Active (green): " << adhesion_count << "/" 
+                              << mo->_mesh->numVertices() << " | Inactive (white): " << (mo->_mesh->numVertices() - adhesion_count)
+                              << " | First green at idx:" << first_green_idx << std::endl;
                 } else {
-                    // std::cout << "[viz] No adhesion constraint property found, using default coloring\n";
+                    std::cout << "[GRAPHICS-VIZ] Object does NOT have has_rigid_adhesion property!" << std::endl;
+                    // No adhesion property - use default gray for all vertices
+                    for (int i = 0; i < mo->_mesh->numVertices(); ++i) {
+                        colors.emplace_back(0.5f, 0.5f, 0.5f); // Gray
+                    }
+                }
+                
+                // ALWAYS update color buffer (even with default colors)
+                d->update_color_buffer(colors);
+                
+                // CRITICAL: Disable uniform coloring AFTER updating color buffer
+                // to ensure per-vertex colors take effect
+                easy3d::PointsDrawable* pts = dynamic_cast<easy3d::PointsDrawable*>(d);
+                if (pts) {
+                    pts->set_uniform_coloring(easy3d::vec4(-1, -1, -1, -1)); // Disable uniform, use per-vertex
                 }
             }
         });
         
-        // Set a point size for rod vertices (green vertices)
-        points_drawable->set_point_size(5.0f);
+        // Configure point rendering for maximum visibility
+        points_drawable->set_point_size(10.0f);
+        points_drawable->set_impostor_type(easy3d::PointsDrawable::SPHERE);
+        
+        // DON'T set uniform coloring here - let the update_func handle per-vertex colors
+        // points_drawable->set_uniform_coloring(...) is intentionally omitted
     }
 
     if (config.drawEdges() || force_draw_edges)

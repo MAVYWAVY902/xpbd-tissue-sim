@@ -265,13 +265,18 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::addRigi
     Real* v1_ptr = _mesh->vertexPointer(v1);
     Real* v2_ptr = _mesh->vertexPointer(v2);
     Real* v3_ptr = _mesh->vertexPointer(v3);
+    
+    // Get previous position pointers directly from the previous vertices matrix column
+    Real* v1_prev_ptr = const_cast<Real*>(_previous_vertices.col(v1).data());
+    Real* v2_prev_ptr = const_cast<Real*>(_previous_vertices.col(v2).data());
+    Real* v3_prev_ptr = const_cast<Real*>(_previous_vertices.col(v3).data());
 
     Real m1 = vertexConstraintInertia(v1);
     Real m2 = vertexConstraintInertia(v2);
     Real m3 = vertexConstraintInertia(v3);
 
     std::vector<Solver::RigidDeformableCollisionConstraint>& constraint_vec = _constraints.template get<Solver::RigidDeformableCollisionConstraint>();
-    constraint_vec.emplace_back(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, m1, v2, v2_ptr, m2, v3, v3_ptr, m3, u, v, w);
+    constraint_vec.emplace_back(sdf, rigid_obj, rigid_body_point, collision_normal, v1, v1_ptr, v1_prev_ptr, m1, v2, v2_ptr, v2_prev_ptr, m2, v3, v3_ptr, v3_prev_ptr, m3, u, v, w);
 
     using ConstraintRefType = Solver::ConstraintReference<Solver::RigidDeformableCollisionConstraint>;
     return _solver.addConstraintProjector(_sim->dt(), ConstraintRefType(constraint_vec, constraint_vec.size()-1));
@@ -595,7 +600,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             
             if (!has_active) {
                 adhesion_prop.set(vertex_v, false);
-                std::cout << "[viz] Removed nerve-tumor adhesion marker from vertex " << vertex_v << "\n";
+                // std::cout << "[viz] Removed nerve-tumor adhesion marker from vertex " << vertex_v << "\n";
             }
         }
     }
@@ -640,6 +645,43 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     // Invalidate unified distance constraint projectors that should break (NEW)
     for (int idx : unified_distance_to_invalidate) {
         _solver.template setProjectorValidity<UnifiedDistanceProjectorType>(idx, false);
+        
+        // Update visualization properties - remove green color from broken constraint vertices
+        auto& projector = unified_distance_projectors[idx];
+        const auto& constraint_ref = projector.constraint();
+        const auto* constraint = &constraint_ref.get();
+        if (constraint && this->mesh()->template hasVertexProperty<bool>("has_rigid_adhesion")) {
+            // Get the three triangle vertices involved in this constraint
+            int tri_v1 = constraint->positions()[0].index;
+            int tri_v2 = constraint->positions()[1].index;
+            int tri_v3 = constraint->positions()[2].index;
+            
+            auto& adhesion_prop = this->mesh()->template getVertexProperty<bool>("has_rigid_adhesion");
+            
+            // For each vertex, check if it has any remaining active unified distance constraints
+            for (int vertex_v : {tri_v1, tri_v2, tri_v3}) {
+                bool has_active = false;
+                for (size_t j = 0; j < unified_distance_projectors.size(); ++j) {
+                    if (j != static_cast<size_t>(idx) && unified_distance_projectors[j].isValid()) {
+                        const auto& other_ref = unified_distance_projectors[j].constraint();
+                        const auto& other_constraint = other_ref.get();
+                        // Check if this vertex appears in any triangle of other active constraints
+                        if (other_constraint.positions()[0].index == vertex_v ||
+                            other_constraint.positions()[1].index == vertex_v ||
+                            other_constraint.positions()[2].index == vertex_v) {
+                            has_active = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Only remove green marker if vertex has NO remaining active constraints
+                if (!has_active) {
+                    adhesion_prop.set(vertex_v, false);
+                    // std::cout << "[viz] Removed rigid-adhesion marker from vertex " << vertex_v << "\n";
+                }
+            }
+        }
     }
     
     // Print breaking summary for unified distance
@@ -908,7 +950,8 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
                                    Real d_rest,
                                    Real d_neutral_start,
                                    Real d_neutral_end,
-                                   Real d_bond)
+                                   Real d_bond,
+                                   Real stretch_abs_min)
 {
     // 1. Get triangle vertex position pointers and masses from THIS object
     Real* tri_p1 = _mesh->vertexPointer(tri_v1);
@@ -933,10 +976,22 @@ XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>
         d_rest,
         d_neutral_start,
         d_neutral_end,
-        d_bond
+        d_bond,
+        stretch_abs_min
     );
 
-    // 3. Tell solver about the new constraint
+    // 3. Mark triangle vertices as having RIGID-DEFORM adhesion constraint for visualization
+    if (!_mesh->template hasVertexProperty<bool>("has_rigid_adhesion")) {
+        _mesh->template addVertexProperty<bool>("has_rigid_adhesion", false);
+        std::cout << "[viz] Created rigid-deform adhesion property for mesh " << _mesh.get() << "\n";
+    }
+    auto& adhesion_prop = _mesh->template getVertexProperty<bool>("has_rigid_adhesion");
+    adhesion_prop.set(tri_v1, true);
+    adhesion_prop.set(tri_v2, true);
+    adhesion_prop.set(tri_v3, true);
+    // std::cout << "[viz] Marked triangle vertices (" << tri_v1 << ", " << tri_v2 << ", " << tri_v3 << ") as having rigid-deform adhesion\n";
+
+    // 4. Tell solver about the new constraint
     using RefType = Solver::ConstraintReference<Solver::UnifiedDistanceConstraint>;
     return _solver.addConstraintProjector(
         _sim->dt(),
@@ -1145,6 +1200,65 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
     _solver.template clearProjectorsOfType<AttachmentConstraintProjType>();
     // clear constraints
     _constraints.template clear<Solver::AttachmentConstraint>();
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::updateAdhesionVisualizationMarkers()
+{
+    // Ensure property exists
+    if (!_mesh->template hasVertexProperty<bool>("has_rigid_adhesion")) {
+        _mesh->template addVertexProperty<bool>("has_rigid_adhesion", false);
+        std::cout << "[VIZ] Created has_rigid_adhesion property for " << this->name() << std::endl;
+    }
+    
+    auto& adhesion_prop = _mesh->template getVertexProperty<bool>("has_rigid_adhesion");
+    
+    // Reset all vertices to inactive (false/black)
+    for (int i = 0; i < _mesh->numVertices(); ++i) {
+        adhesion_prop.set(i, false);
+    }
+    
+    // Get unified distance constraint projectors
+    using UnifiedDistanceProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>;
+    auto& unified_distance_projectors = _solver.template getConstraintProjectorsOfType<UnifiedDistanceProjectorType>();
+    
+    int active_count = 0;
+    int valid_constraint_count = 0;
+    int total_vertex_marks = 0;
+    
+    // Mark vertices involved in ACTIVE unified distance constraints
+    for (size_t proj_idx = 0; proj_idx < unified_distance_projectors.size(); ++proj_idx) {
+        const auto& projector = unified_distance_projectors[proj_idx];
+        if (!projector.isValid()) continue;  // Skip inactive/broken constraints
+        
+        valid_constraint_count++;
+        const auto& constraint_ref = projector.constraint();
+        const auto& positions = constraint_ref.get().positions();
+        
+        // Positions 0-2 are the triangle vertices on the deformable object
+        for (size_t i = 0; i < 3 && i < positions.size(); ++i) {
+            const Real* pos_ptr = positions[i].position_ptr;
+            const Real* base_ptr = _mesh->vertices().data();
+            int vertex_idx = (pos_ptr - base_ptr) / 3;  // Each vertex has 3 coordinates
+            
+            if (vertex_idx >= 0 && vertex_idx < _mesh->numVertices()) {
+                if (!adhesion_prop.get(vertex_idx)) {
+                    active_count++;  // Count unique vertices
+                }
+                adhesion_prop.set(vertex_idx, true);
+                total_vertex_marks++;
+            }
+        }
+    }
+    
+    // Debug output - print ALWAYS for now to debug
+    static int update_count = 0;
+    update_count++;
+    // std::cout << "[VIZ-ADHESION] Frame:" << update_count << " Object:" << this->name()
+    //           << " | Total projectors:" << unified_distance_projectors.size()
+    //           << " | Valid:" << valid_constraint_count
+    //           << " | Unique vertices marked:" << active_count
+    //           << " | Total marks:" << total_vertex_marks << std::endl;
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>

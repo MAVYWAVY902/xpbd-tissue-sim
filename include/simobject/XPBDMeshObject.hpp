@@ -271,7 +271,14 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
                                      Real d_rest = 0.028,
                                      Real d_neutral_start = 0.034,
                                      Real d_neutral_end = 0.038,
-                                     Real d_bond = 0.058);
+                                     Real d_bond = 0.058,
+                                     Real stretch_abs_min = 0.005);  // Absolute minimum stretch tolerance
+    
+    /** Updates vertex properties to mark which vertices have ACTIVE adhesion constraints.
+     * This enables per-vertex color visualization in the graphics system.
+     * Active vertices are marked green, inactive vertices become black.
+     */
+    virtual void updateAdhesionVisualizationMarkers() override;
     
     virtual bool interObjectCollisionsEnabled() const override { return _inter_object_collisions; }
 

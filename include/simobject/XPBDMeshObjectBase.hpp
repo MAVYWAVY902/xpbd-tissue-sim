@@ -244,6 +244,12 @@ public:
         // Default implementation does nothing
     }
 
+    /** Updates vertex properties to mark which vertices have ACTIVE adhesion constraints.
+     * This enables per-vertex color visualization in the graphics system.
+     * Active vertices are marked green, inactive vertices become black.
+     */
+    virtual void updateAdhesionVisualizationMarkers() = 0;
+
     /** === Querying the solver === */
 
     /** @returns the most recently calculated primary residual from the solver object */
