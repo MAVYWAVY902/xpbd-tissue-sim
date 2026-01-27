@@ -12,7 +12,7 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-g-accel: [-100, -100, -100] # downward acceleration due to gravity [m/s2]
+g-accel: [-200, -200, -100] # downward acceleration due to gravity [m/s2]
 # g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
@@ -61,13 +61,13 @@ rigid-deform-adhesion-interaction-type: "unified-distance"  # Switch to new smoo
 
 ## ==================== UNIFIED-DISTANCE PARAMETERS ====================
 
-rigid-deform-adhesion-alpha: 5e-7             # Compliance (INCREASED 100x!)
+rigid-deform-adhesion-alpha: 9e-7             # Compliance (INCREASED 100x!)
                                              # REASON: Prevent over-compression of large-gap constraints
                                              # Old 5e-6: Constraint too stiff, forces 2mm gaps to compress to 0.3mm
                                              # New 5e-4: Softer constraint, allows natural gap distribution
                                              # Trade-off: Slower response, but more realistic adhesion feel
                                              
-rigid-deform-adhesion-bond-distance: 0.034   # 25mm - 创建约束的最大初始距离 (ABSOLUTE)
+rigid-deform-adhesion-bond-distance: 0.0367   # 25mm - 创建约束的最大初始距离 (ABSOLUTE)
                                              # 任何 d0 <= 25mm 的约束都会被创建
 
 rigid-deform-adhesion-break-ratio: 1.5       # STRETCH-BASED breaking (RATIO for large gaps)
@@ -118,7 +118,7 @@ rigid-deform-adhesion-stretch-abs-min: 0.005 # Absolute minimum stretch toleranc
 rigid-deform-adhesion-d-contact: 0.0003       # Equilibrium distance (0.3mm)
                                              # Minimum contact point
                                              
-rigid-deform-adhesion-d-rest: 0.004           # Mid-range target (3mm) - INCREASED from 1.5mm
+rigid-deform-adhesion-d-rest: 0.0032           # Mid-range target (3mm) - INCREASED from 1.5mm
                                              # REASON: Prevent over-compression of 2-3mm constraints
                                              # With d_rest=3mm, constraints around 2-3mm won't be
                                              # forced down to 0.3mm (more natural behavior)
@@ -160,7 +160,7 @@ objects:
   -
     name: "Tumor"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/tumor_fixed/tumor_squeezed_uv.obj"
+    filename: "../resource/tumor_fixed/tumor_squeezed_uv03.obj"
 
     materials: ["Soft Tissue"]
 
@@ -253,7 +253,7 @@ objects:
   -
     name: "RigidBone"
     type: "RigidMeshObject"
-    filename: "../resource/tbone_fixed/tbone_MOD2.obj"
+    filename: "../resource/tbone_fixed/tbone_MOD4.obj"
     density: 1000      # Normal bone density (not critical when fixed=true)
 
     ## visualization options
