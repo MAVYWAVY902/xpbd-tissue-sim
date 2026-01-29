@@ -50,18 +50,18 @@ inter-deform-adhesion-interaction-type: "unified-distance"  # Use new smooth con
 inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
 inter-deform-adhesion-break-ratio: 1.2       # Break at 50% strain
 inter-deform-adhesion-alpha: 1e-5            # Compliance (softer = more stable, was 5e-6)
-inter-deform-adhesion-bond-distance: 0.003   # 3mm bond distance (reduced to minimize constraint count)
+inter-deform-adhesion-bond-distance: 0.002   # 3mm bond distance (reduced to minimize constraint count)
 inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformable
 
 ## ==================== UNIFIED-DISTANCE PARAMETERS (for "unified-distance" type) ====================
 inter-deform-unified-alpha: 4e-5                     # Compliance (INCREASED for stability with larger timestep)
-inter-deform-unified-bond-distance: 0.003            # 10mm - INCREASED to catch collisions early (Simulates collision detection)
+inter-deform-unified-bond-distance: 0.002            # 10mm - INCREASED to catch collisions early (Simulates collision detection)
 inter-deform-unified-break-ratio: 1.5                # Stretch-based breaking ratio
 inter-deform-unified-stretch-abs-min: 0.003          # 3mm absolute minimum stretch tolerance
 
 ## Curve shape parameters (defines d* target curve)
-inter-deform-unified-d-contact: 0.0005               # 0.5mm - contact equilibrium (thickened for safety)
-inter-deform-unified-d-rest: 0.0020                  # 2.0mm - mid-range target
+inter-deform-unified-d-contact: 0.0003               # 0.5mm - contact equilibrium (thickened for safety)
+inter-deform-unified-d-rest: 0.0015                  # 2.0mm - mid-range target
 inter-deform-unified-d-neutral-start: 0.003          # 3mm - transition zone start
 inter-deform-unified-d-neutral-end: 0.005            # 5mm - transition zone end
 inter-deform-unified-d-bond: 0.015                   # 15mm - saturation distance
