@@ -84,7 +84,7 @@ rigid-deform-adhesion-interaction-type: "unified-distance"  # Switch to new smoo
 
 ## ==================== UNIFIED-DISTANCE PARAMETERS ====================
 
-rigid-deform-adhesion-alpha: 2e-7             # Compliance
+rigid-deform-adhesion-alpha: 1e-7             # Compliance
                                              
 rigid-deform-adhesion-bond-distance: 0.0367   # construct adhesion within this radious
 
