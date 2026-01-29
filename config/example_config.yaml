@@ -165,26 +165,26 @@ objects:
   #   fixed: true
 
   # rigid mesh
-  - 
-    name: "RigidBone"
-    type: "RigidMeshObject"
-    filename: "../resource/tbone_fixed/tbone_ds06.obj"  # Reformatted to match working tbone_800 format
-    density: 100
+  # - 
+  #   name: "RigidBone"
+  #   type: "RigidMeshObject"
+  #   filename: "../resource/tbone_fixed/tbone_ds06.obj"  # Reformatted to match working tbone_800 format
+  #   density: 100
     
-    ## visualization options
-    color: [0.95, 0.92, 0.85]  # COMMENTED OUT - Using MTL file material instead
-    draw-points: false
-    draw-edges: true
-    draw-faces: true
+  #   ## visualization options
+  #   color: [0.95, 0.92, 0.85]  # COMMENTED OUT - Using MTL file material instead
+  #   draw-points: false
+  #   draw-edges: true
+  #   draw-faces: true
     
-    use-original-coords: true   # Let system rescale and center the mesh
-    max-size: 0.05               # Scale to 50mm max dimension (same as deformable mesh)
-    position: [0.0, -0.0, 0.0]  # Offset to align with tumor center
-    rotation: [0, 0, 0]          # No rotation
-    velocity: [0, 0, 0]
-    angular-velocity: [0, 0, 0]
-    collisions: true   # ENABLED: Detect collisions with deformable objects
-    fixed: true
+  #   use-original-coords: true   # Let system rescale and center the mesh
+  #   max-size: 0.05               # Scale to 50mm max dimension (same as deformable mesh)
+  #   position: [0.0, -0.0, 0.0]  # Offset to align with tumor center
+  #   rotation: [0, 0, 0]          # No rotation
+  #   velocity: [0, 0, 0]
+  #   angular-velocity: [0, 0, 0]
+  #   collisions: true   # ENABLED: Detect collisions with deformable objects
+  #   fixed: true
 
 
   ## ============================================================

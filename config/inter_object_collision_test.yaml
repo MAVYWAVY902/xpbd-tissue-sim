@@ -21,6 +21,8 @@ end-time: 200 # test time
 grasp-radius: 0.013   # Grasping tool radius: 13mm (default 100mm)
 tool-radius: 0.013    # Pushing tool radius: 13mm (default 200mm)
 
+fix-min-z: false 
+
 ## define elastic materials
 materials:
   -

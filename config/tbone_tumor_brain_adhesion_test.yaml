@@ -12,12 +12,12 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
 
-g-accel: [-200, -200, -100] # downward acceleration due to gravity [m/s2]
+g-accel: [-300, -300, -100] # downward acceleration due to gravity [m/s2]
 # g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 4e-4      # 0.5ms timestep
+time-step: 8e-4      # 0.5ms timestep
 collision-rate: 400  # Hz: 100 times per second = every 0.01s (was 10 = every 0.1s, too sparse!)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
@@ -61,26 +61,12 @@ rigid-deform-adhesion-interaction-type: "unified-distance"  # Switch to new smoo
 
 ## ==================== UNIFIED-DISTANCE PARAMETERS ====================
 
-rigid-deform-adhesion-alpha: 9e-7             # Compliance (INCREASED 100x!)
-                                             # REASON: Prevent over-compression of large-gap constraints
-                                             # Old 5e-6: Constraint too stiff, forces 2mm gaps to compress to 0.3mm
-                                             # New 5e-4: Softer constraint, allows natural gap distribution
-                                             # Trade-off: Slower response, but more realistic adhesion feel
+rigid-deform-adhesion-alpha: 9e-6             # Compliance
                                              
-rigid-deform-adhesion-bond-distance: 0.0367   # 25mm - 创建约束的最大初始距离 (ABSOLUTE)
-                                             # 任何 d0 <= 25mm 的约束都会被创建
+rigid-deform-adhesion-bond-distance: 0.0367   # construct adhesion within this radious
 
 rigid-deform-adhesion-break-ratio: 1.5       # STRETCH-BASED breaking (RATIO for large gaps)
-                                             # 断裂公式：stretch = d - d0
-                                             #   当 stretch > max_stretch 时断裂
-                                             #   max_stretch = max(d0*(ratio-1), stretch_abs_min)
-                                             # 
-                                             # 作用：
-                                             #   - 对于小gap约束(d0<5mm)：绝对阈值(5mm)主导
-                                             #   - 对于大gap约束(d0>5mm)：此ratio主导
-                                             # 
-                                             # ratio=2.0 → 允许 100% 拉伸 (d=2*d0)
-                                             # ratio=3.0 → 允许 200% 拉伸 (d=3*d0)
+                                        
 
 rigid-deform-adhesion-stretch-abs-min: 0.005 # Absolute minimum stretch tolerance (5mm)
                                              # Physical meaning: Intrinsic tissue toughness
@@ -108,7 +94,7 @@ rigid-deform-adhesion-stretch-abs-min: 0.005 # Absolute minimum stretch toleranc
                                              #             not absolute distance. 5mm abs_min prevents
                                              #             clustering that caused cascade breaking.
 
-## ==================== UNIFIED-DISTANCE CURVE PARAMETERS (YAML CONFIGURABLE!) ====================
+## ==================== UNIFIED-DISTANCE CURVE PARAMETERS====================
 ## These control the shape of the smooth adhesion curve d*(d)
 ## CRITICAL: Set d-contact ≤ minimum actual distance to avoid initial repulsion!
 ## 
@@ -202,7 +188,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 6000000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 9000000      # REDUCED from 9M - was causing excessive damping
 
 
   # ## ==================== DEFORMABLE BRAIN ====================
@@ -259,7 +245,7 @@ objects:
     ## visualization options
     color: [0.95, 0.92, 0.85]  # Bone white
     draw-points: false
-    draw-edges: true
+    draw-edges: false
     draw-faces: true
 
     ## initial configuration
@@ -272,7 +258,7 @@ objects:
 
     ## physics
     collisions: true   # Enable collisions with deformable objects
-    fixed: true        # ✅ Keep bone stationary (realistic for medical scenarios)
+    fixed: true        # Keep bone stationary (realistic for medical scenarios)
                        # Adhesion will still work because:
                        # 1. Bug #2 fix ensures rigid body weight is included in lambda calculation
                        # 2. Deformable tissue receives correctly scaled force

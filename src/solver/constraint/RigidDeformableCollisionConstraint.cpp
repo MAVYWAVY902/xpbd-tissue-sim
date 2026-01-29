@@ -18,7 +18,7 @@ RigidDeformableCollisionConstraint::RigidDeformableCollisionConstraint(const Geo
     // Set compliance for collision constraint to prevent infinite stiffness
     // Small compliance value (1e-8 to 1e-6) provides regularization and prevents severe penetration
     // Larger values = softer collision response, smaller = harder (but more stable than alpha=0)
-    _alpha = 1e-8;  // Compliance parameter for collision constraint
+    _alpha = 5e-7;  // Compliance parameter for collision constraint
     
     // create the Helper class that will evaluate the rigid body "weight" and the rigid body update when this constraint is projected
     // it is created here because the Helper needs info from the collision itself, such as the normal and the point on the rigid body
