@@ -122,6 +122,7 @@ class Config
         // load inter-deform unified-distance curve parameters (optional)
         _extractParameter("inter-deform-unified-alpha", node, _inter_deform_unified_alpha);
         _extractParameter("inter-deform-unified-break-ratio", node, _inter_deform_unified_break_ratio);
+        _extractParameter("inter-deform-unified-bond-distance", node, _inter_deform_unified_bond_distance);
         _extractParameter("inter-deform-unified-d-contact", node, _inter_deform_unified_d_contact);
         _extractParameter("inter-deform-unified-d-rest", node, _inter_deform_unified_d_rest);
         _extractParameter("inter-deform-unified-d-neutral-start", node, _inter_deform_unified_d_neutral_start);
@@ -197,6 +198,7 @@ class Config
     // Inter-deform unified-distance curve parameters getters
     Real interDeformUnifiedAlpha() const { return _inter_deform_unified_alpha.value.value_or(1e-6); }  // compliance
     Real interDeformUnifiedBreakRatio() const { return _inter_deform_unified_break_ratio.value.value_or(3.0); }  // 200% strain
+    Real interDeformUnifiedBondDistance() const { return _inter_deform_unified_bond_distance.value.value_or(0.010); }  // 10mm bond creation threshold
     Real interDeformUnifiedDContact() const { return _inter_deform_unified_d_contact.value.value_or(0.0003); }  // 0.3mm
     Real interDeformUnifiedDRest() const { return _inter_deform_unified_d_rest.value.value_or(0.0015); }  // 1.5mm
     Real interDeformUnifiedDNeutralStart() const { return _inter_deform_unified_d_neutral_start.value.value_or(0.003); }  // 3mm
@@ -599,6 +601,7 @@ class Config
     /** Inter-deform unified-distance curve parameters */
     ConfigParameter<std::optional<Real>> _inter_deform_unified_alpha = ConfigParameter<std::optional<Real>>(1e-6);
     ConfigParameter<std::optional<Real>> _inter_deform_unified_break_ratio = ConfigParameter<std::optional<Real>>(3.0);  // 200% strain
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_bond_distance = ConfigParameter<std::optional<Real>>(0.010);  // 10mm
     ConfigParameter<std::optional<Real>> _inter_deform_unified_d_contact = ConfigParameter<std::optional<Real>>(0.0003);  // 0.3mm
     ConfigParameter<std::optional<Real>> _inter_deform_unified_d_rest = ConfigParameter<std::optional<Real>>(0.0015);  // 1.5mm
     ConfigParameter<std::optional<Real>> _inter_deform_unified_d_neutral_start = ConfigParameter<std::optional<Real>>(0.003);  // 3mm

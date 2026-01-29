@@ -17,7 +17,7 @@ g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 2e-4      # 1.0ms timestep (INCREASED for performance)
+time-step: 8e-5      # 1.0ms timestep (INCREASED for performance)
 collision-rate: 100    # Hz: Check every 0.5s (Reduced to eliminate stutter, rely on unified constraint for collision)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
@@ -54,8 +54,8 @@ inter-deform-adhesion-bond-distance: 0.003   # 3mm bond distance (reduced to min
 inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformable
 
 ## ==================== UNIFIED-DISTANCE PARAMETERS (for "unified-distance" type) ====================
-inter-deform-unified-alpha: 3e-5                     # Compliance (INCREASED for stability with larger timestep)
-inter-deform-unified-bond-distance: 0.010            # 10mm - INCREASED to catch collisions early (Simulates collision detection)
+inter-deform-unified-alpha: 4e-5                     # Compliance (INCREASED for stability with larger timestep)
+inter-deform-unified-bond-distance: 0.003            # 10mm - INCREASED to catch collisions early (Simulates collision detection)
 inter-deform-unified-break-ratio: 1.5                # Stretch-based breaking ratio
 inter-deform-unified-stretch-abs-min: 0.003          # 3mm absolute minimum stretch tolerance
 
@@ -211,7 +211,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 9000000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 6000000      # REDUCED from 9M - was causing excessive damping
 
 
   # ## ==================== DEFORMABLE BRAIN ====================
@@ -255,7 +255,7 @@ objects:
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 9000000 
+    damping-multiplier: 6000000 
 
 
   ## ==================== RIGID TBONE ====================

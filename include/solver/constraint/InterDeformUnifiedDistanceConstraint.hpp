@@ -153,6 +153,10 @@ private:
     // Breaking logic
     mutable Real _initial_distance{0.0};     ///< Distance when first evaluated
     Real _break_ratio{3.0};                  ///< Break when d > initial * break_ratio
+    
+    // Default Compliance (Soft) - stored to allow switching to Hard compliance for collision
+    Real _default_alpha{0.0};
+
     mutable bool _should_break{false};       ///< Flag to mark constraint for removal
     
     // Debug tracking

@@ -2226,7 +2226,13 @@ void Simulation::setup()
         std::cout << "[inter-deform adhesion] Interaction type: " << interaction_type << "\n";
         
         // Get adhesion parameters from config
-        const Real bond_distance = _config->interDeformAdhesionBondDistance();
+        // CRITICAL FIX: Use correct bond_distance parameter based on interaction type
+        Real bond_distance;
+        if (interaction_type == "unified-distance") {
+            bond_distance = _config->interDeformUnifiedBondDistance();  // Use unified parameter (10mm)
+        } else {
+            bond_distance = _config->interDeformAdhesionBondDistance();  // Use standard parameter (3mm)
+        }
         
         // Get parameters based on interaction type
         Real alpha, break_ratio, rest_gap;

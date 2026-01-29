@@ -36,6 +36,7 @@ InterDeformUnifiedDistanceConstraint::InterDeformUnifiedDistanceConstraint(
     _stretch_abs_min(stretch_abs_min),
     _break_ratio(break_ratio),
     _initial_distance(initial_distance),  // Use precomputed value
+    _default_alpha(alpha),              // Store original compliance
     _should_break(false)
 {
     // 🔍 RUNTIME PARAMETER VERIFICATION (print first 3 constraints only)
@@ -106,17 +107,39 @@ void InterDeformUnifiedDistanceConstraint::evaluate(Real* C) const
         const Vec3r diff = vertex_pos - anchor_point;
         point_to_tri_distance = diff.norm();
         
-        // 3. Compute normal (direction of force: from anchor TO vertex)
+        // 3. Compute normal (direction of force)
         Vec3r normal;
-        if (point_to_tri_distance > 1e-12) {
-            normal = diff / point_to_tri_distance;
-        } else {
+        
+        // COLLISION ROBUSTNESS: 
+        // If we are very close (collision zone), prefer the Triangle Face Normal.
+        // This prevents the "vector flip" issue if a vertex slightly penetrates/tunnels.
+        // It ensures we always push OUT of the volume.
+        bool use_face_normal = (point_to_tri_distance < _d_contact);
+        
+        if (use_face_normal) {
             const Vec3r edge1 = tri_p2 - tri_p1;
             const Vec3r edge2 = tri_p3 - tri_p1;
             Vec3r tri_normal = edge1.cross(edge2);
             Real area2 = tri_normal.norm();
-            if (area2 > 1e-12) normal = tri_normal / area2;
-            else normal = Vec3r::UnitZ(); // Degenerate
+            if (area2 > 1e-12) {
+                 normal = tri_normal / area2;
+                 
+                 // Ensure normal points towards vertex (if vertex is on "front" side)
+                 // But for collision, we usually implicitly trust Face Normal is "Out".
+                 // Let's dot with diff to be consistent with current side constraint
+                 if (diff.dot(normal) < 0) {
+                     // Vertex is behind? If so, push it OUT (along normal)
+                     // But diff points In.
+                     // We want to increase signed distance.
+                 }
+            } else {
+                 normal = Vec3r::UnitZ(); // Degenerate fallback
+            }
+        } else if (point_to_tri_distance > 1e-12) {
+            // Adhesion zone: Point-to-Point direction is stable
+            normal = diff / point_to_tri_distance;
+        } else {
+            normal = Vec3r::UnitZ();
         }
         
         // Cache geometry for this timestep (frozen frame)
@@ -163,8 +186,31 @@ void InterDeformUnifiedDistanceConstraint::evaluate(Real* C) const
     // ✅ UNIFIED CONSTRAINT: C(d) = d - d*(d)
     const Real d = point_to_tri_distance;
     
+    // =========================================================================
+    // DYNAMIC COMPLIANCE ADJUSTMENT
+    // Key Concept: "Soft for Adhesion, Hard for Collision"
+    // - If d <= d_contact: Act as a Collision Constraint (Hard, Alpha ≈ 0)
+    // - If d > d_contact: Act as an Adhesion Constraint (Soft, Alpha = Config)
+    // 
+    // This allows InterDeformUnifiedDistanceConstraint to serve double duty
+    // when inter-object-collisions are disabled for performance.
+    // =========================================================================
+    
+    // We use const_cast because evaluate() is const but we need to update state
+    // This is safe because _alpha is used by the Solver *after* evaluate()
+    Real& mutable_alpha = const_cast<Real&>(_alpha);
+    
+    if (d <= _d_contact) {
+        mutable_alpha = 1e-9; // Almost zero compliance = Hard constraint
+    } else {
+        mutable_alpha = _default_alpha; // Restore configured soft compliance
+    }
+    
     // 🛡️ PROTECTION: Check for abnormal d values before break check
-    if (!std::isfinite(d) || d > 1.0 || d < 1e-6) {
+    // FIX: Removed "|| d < 1e-6" check. 
+    // This safety check was previously disabling the constraint exactly when 
+    // it was most needed (at d=0 collision), causing penetration.
+    if (!std::isfinite(d) || d > 1.0) {
         static int abnormal_count = 0;
         if (abnormal_count < 5) {
             std::cout << "⚠️  [INTER-DEFORM ABNORMAL DISTANCE] d=" << d*1000 << "mm, using initial_distance=" 
