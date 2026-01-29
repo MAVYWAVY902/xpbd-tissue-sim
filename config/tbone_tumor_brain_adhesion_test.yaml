@@ -17,7 +17,7 @@ g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
-time-step: 8e-5      # 1.0ms timestep (INCREASED for performance)
+time-step: 5e-4      # 8e-5 for brain-tumor
 collision-rate: 100    # Hz: Check every 0.5s (Reduced to eliminate stutter, rely on unified constraint for collision)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
@@ -38,7 +38,7 @@ fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL object
 
 ## ==================== INTER-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between two deformable objects (Tumor ↔ Brain)
-inter-deform-adhesion-enable: true
+inter-deform-adhesion-enable: false
 
 ## ==================== INTERACTION TYPE ====================
 ## "adhesion"         - OLD: max(0, d - rest_gap) tension-only, simple breaking
@@ -73,7 +73,7 @@ inter-deform-unified-d-bond: 0.015                   # 15mm - saturation distanc
 ##       - Collision: hard contact barrier (prevents penetration)
 ##       They work together, not as replacements!
 
-rigid-deform-adhesion-enable: false           # Enable rigid-deform adhesion
+rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
 
 ## ==================== INTERACTION TYPE ====================
 ## "adhesion"         - OLD: separate collision/adhesion zones, dead zones, breaking logic
@@ -84,7 +84,7 @@ rigid-deform-adhesion-interaction-type: "unified-distance"  # Switch to new smoo
 
 ## ==================== UNIFIED-DISTANCE PARAMETERS ====================
 
-rigid-deform-adhesion-alpha: 9e-6             # Compliance
+rigid-deform-adhesion-alpha: 2e-7             # Compliance
                                              
 rigid-deform-adhesion-bond-distance: 0.0367   # construct adhesion within this radious
 
@@ -207,86 +207,86 @@ objects:
     inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
 
     ## XPBD-specific options
-    num-solver-iters: 2            # REDUCED to 1 for maximum performance
+    num-solver-iters: 5            # REDUCED to 1 for maximum performance
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 6000000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 4000000      # REDUCED from 9M - was causing excessive damping
 
 
-  # ## ==================== DEFORMABLE BRAIN ====================
-  -
-    name: "Brain"
-    type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/brain_fixed/brain_MOD3.obj"
-    materials: ["Soft Tissue"]
-
-
-    ## visualization options
-    color: [0.0, 1.0, 1.0]  # Cyan - brain
-    draw-points: false
-    draw-edges: true
-    draw-faces: true
-
-    ## initial configuration
-    use-original-coords: true   # Center and scale mesh
-    max-size: 0.05               # Scale to 50mm (0.05m)
-    position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
-    velocity: [0.0, 0, 0.0]      # Stationary
-    rotation: [0, 0, 0]
-
-    ## ==================== BOUNDARY FIXING (Brain) ====================
-    ## Simulate brain stem connection - prevents whole-object translation
-    ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
-    ## WARNING: Fixing ALL 6 directions will completely freeze the object!
-    fix-min-z: true        # Fix BOTTOM (brain stem/posterior fossa)
-    # fix-max-z: false     # Fix TOP (superior)
-    # fix-min-y: false     # Fix BACK (posterior wall)
-    # fix-max-y: false     # Fix FRONT (anterior wall)
-    # fix-min-x: false     # Fix LEFT (lateral)
-    # fix-max-x: false     # Fix RIGHT (lateral)
-
-    ## collisions
-    collisions: true
-    inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
-
-    ## XPBD-specific options
-    num-solver-iters: 2            # REDUCED to 1 for maximum performance
-    solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean-Combined"
-    residual-policy: "Never"
-    damping-multiplier: 6000000 
-
-
-  ## ==================== RIGID TBONE ====================
+  # # ## ==================== DEFORMABLE BRAIN ====================
   # -
-  #   name: "RigidBone"
-  #   type: "RigidMeshObject"
-  #   filename: "../resource/tbone_fixed/tbone_MOD4.obj"
-  #   density: 1000      # Normal bone density (not critical when fixed=true)
+  #   name: "Brain"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/brain_fixed/brain_MOD3.obj"
+  #   materials: ["Soft Tissue"]
+
 
   #   ## visualization options
-  #   color: [0.95, 0.92, 0.85]  # Bone white
+  #   color: [0.0, 1.0, 1.0]  # Cyan - brain
   #   draw-points: false
-  #   draw-edges: false
+  #   draw-edges: true
   #   draw-faces: true
 
   #   ## initial configuration
   #   use-original-coords: true   # Center and scale mesh
-  #   max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
-  #   position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
-  #   rotation: [0, 0, 0]          # No rotation
-  #   velocity: [0, 0, 0]
-  #   angular-velocity: [0, 0, 0]
+  #   max-size: 0.05               # Scale to 50mm (0.05m)
+  #   position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
+  #   velocity: [0.0, 0, 0.0]      # Stationary
+  #   rotation: [0, 0, 0]
 
-  #   ## physics
-  #   collisions: true   # Enable collisions with deformable objects
-  #   fixed: true        # Keep bone stationary (realistic for medical scenarios)
-  #                      # Adhesion will still work because:
-  #                      # 1. Bug #2 fix ensures rigid body weight is included in lambda calculation
-  #                      # 2. Deformable tissue receives correctly scaled force
-  #                      # 3. Modified breaking logic accounts for fixed bone
-  #                      # 4. Tissue can stretch toward bone without over-stretching
+  #   ## ==================== BOUNDARY FIXING (Brain) ====================
+  #   ## Simulate brain stem connection - prevents whole-object translation
+  #   ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+  #   ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+  #   fix-min-z: true        # Fix BOTTOM (brain stem/posterior fossa)
+  #   # fix-max-z: false     # Fix TOP (superior)
+  #   # fix-min-y: false     # Fix BACK (posterior wall)
+  #   # fix-max-y: false     # Fix FRONT (anterior wall)
+  #   # fix-min-x: false     # Fix LEFT (lateral)
+  #   # fix-max-x: false     # Fix RIGHT (lateral)
+
+  #   ## collisions
+  #   collisions: true
+  #   inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
+
+  #   ## XPBD-specific options
+  #   num-solver-iters: 2            # REDUCED to 1 for maximum performance
+  #   solver-type: "Gauss-Seidel"
+  #   constraint-type: "Stable-Neohookean-Combined"
+  #   residual-policy: "Never"
+  #   damping-multiplier: 6000000 
+
+
+  # ==================== RIGID TBONE ====================
+  -
+    name: "RigidBone"
+    type: "RigidMeshObject"
+    filename: "../resource/tbone_fixed/tbone_MOD4.obj"
+    density: 1000      # Normal bone density (not critical when fixed=true)
+
+    ## visualization options
+    color: [0.95, 0.92, 0.85]  # Bone white
+    draw-points: false
+    draw-edges: false
+    draw-faces: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
+    position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
+    rotation: [0, 0, 0]          # No rotation
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+
+    ## physics
+    collisions: true   # Enable collisions with deformable objects
+    fixed: true        # Keep bone stationary (realistic for medical scenarios)
+                       # Adhesion will still work because:
+                       # 1. Bug #2 fix ensures rigid body weight is included in lambda calculation
+                       # 2. Deformable tissue receives correctly scaled force
+                       # 3. Modified breaking logic accounts for fixed bone
+                       # 4. Tissue can stretch toward bone without over-stretching
 
 ## ==================== CONSTRAINT INFO ====================
 # Objects:
