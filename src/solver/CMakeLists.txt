@@ -53,6 +53,7 @@ set(SOLVER_SOURCES
     ${SOLVER_SRC_DIR}/constraint/InterDeformDeformAdhesionConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/RigidDeformAdhesionConstraint.cpp
     ${SOLVER_SRC_DIR}/constraint/UnifiedDistanceConstraint.cpp
+    ${SOLVER_SRC_DIR}/constraint/InterDeformUnifiedDistanceConstraint.cpp
 
 
 )

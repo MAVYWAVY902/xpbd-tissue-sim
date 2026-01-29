@@ -2221,15 +2221,44 @@ void Simulation::setup()
     if (_config->interDeformAdhesionEnable()) {
         std::cout << "[inter-deform adhesion] *** INTER-DEFORM ADHESION ENABLED *** Creating constraints...\n";
         
+        // Get interaction type
+        const std::string interaction_type = _config->interDeformAdhesionInteractionType();
+        std::cout << "[inter-deform adhesion] Interaction type: " << interaction_type << "\n";
+        
         // Get adhesion parameters from config
-        const Real rest_gap = _config->interDeformAdhesionRestGap();
-        const Real break_ratio = _config->interDeformAdhesionBreakRatio();
-        const Real alpha = _config->interDeformAdhesionAlpha();
         const Real bond_distance = _config->interDeformAdhesionBondDistance();
         
-        std::cout << "[inter-deform adhesion] Parameters: rest_gap=" << rest_gap 
-                  << ", break_ratio=" << break_ratio << ", alpha=" << alpha 
-                  << ", bond_distance=" << bond_distance << "\n";
+        // Get parameters based on interaction type
+        Real alpha, break_ratio, rest_gap;
+        Real d_contact, d_rest, d_neutral_start, d_neutral_end, d_bond, stretch_abs_min;
+        
+        if (interaction_type == "unified-distance") {
+            // Use unified-distance parameters
+            alpha = _config->interDeformUnifiedAlpha();
+            break_ratio = _config->interDeformUnifiedBreakRatio();
+            d_contact = _config->interDeformUnifiedDContact();
+            d_rest = _config->interDeformUnifiedDRest();
+            d_neutral_start = _config->interDeformUnifiedDNeutralStart();
+            d_neutral_end = _config->interDeformUnifiedDNeutralEnd();
+            d_bond = _config->interDeformUnifiedDBond();
+            stretch_abs_min = _config->interDeformUnifiedStretchAbsMin();
+            
+            std::cout << "[inter-deform adhesion] Unified-distance parameters:\n"
+                      << "  alpha=" << alpha << ", break_ratio=" << break_ratio 
+                      << ", bond_distance=" << bond_distance << "\n"
+                      << "  d_contact=" << d_contact*1000 << "mm, d_rest=" << d_rest*1000 << "mm\n"
+                      << "  d_neutral_start=" << d_neutral_start*1000 << "mm, d_neutral_end=" << d_neutral_end*1000 << "mm\n"
+                      << "  d_bond=" << d_bond*1000 << "mm, stretch_abs_min=" << stretch_abs_min*1000 << "mm\n";
+        } else {
+            // Use regular adhesion parameters
+            alpha = _config->interDeformAdhesionAlpha();
+            break_ratio = _config->interDeformAdhesionBreakRatio();
+            rest_gap = _config->interDeformAdhesionRestGap();
+            
+            std::cout << "[inter-deform adhesion] Standard adhesion parameters:\n"
+                      << "  rest_gap=" << rest_gap << ", break_ratio=" << break_ratio 
+                      << ", alpha=" << alpha << ", bond_distance=" << bond_distance << "\n";
+        }
         
         // Find objects named "Tumor" and "Brain"
         FirstOrderXPBDMeshObject_Base* cube1_ptr = nullptr;
@@ -2329,9 +2358,19 @@ void Simulation::setup()
                     // Create constraint if a close triangle was found
                     if (closest_face >= 0) {
                         try {
-                            typed_cube2_ptr->addInterDeformDeformAdhesionConstraint(
-                                cube1_ptr, v, closest_v1, closest_v2, closest_v3, rest_gap, break_ratio, alpha
-                            );
+                            if (interaction_type == "unified-distance") {
+                                // Use unified-distance constraint
+                                typed_cube2_ptr->addInterDeformUnifiedDistanceConstraint(
+                                    cube1_ptr, v, closest_v1, closest_v2, closest_v3,
+                                    alpha, break_ratio, closest_distance,  // initial_distance
+                                    d_contact, d_rest, d_neutral_start, d_neutral_end, d_bond, stretch_abs_min
+                                );
+                            } else {
+                                // Use standard adhesion constraint
+                                typed_cube2_ptr->addInterDeformDeformAdhesionConstraint(
+                                    cube1_ptr, v, closest_v1, closest_v2, closest_v3, rest_gap, break_ratio, alpha
+                                );
+                            }
                             
                             ++constraints_added;
                             // if (constraints_added <= 10) {

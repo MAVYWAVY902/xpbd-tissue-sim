@@ -113,10 +113,21 @@ class Config
         
         // load inter-deform-deform adhesion parameters (optional)
         _extractParameter("inter-deform-adhesion-enable", node, _inter_deform_adhesion_enable);
+        _extractParameter("inter-deform-adhesion-interaction-type", node, _inter_deform_adhesion_interaction_type);
         _extractParameter("inter-deform-adhesion-rest-gap", node, _inter_deform_adhesion_rest_gap);
         _extractParameter("inter-deform-adhesion-break-ratio", node, _inter_deform_adhesion_break_ratio);
         _extractParameter("inter-deform-adhesion-alpha", node, _inter_deform_adhesion_alpha);
         _extractParameter("inter-deform-adhesion-bond-distance", node, _inter_deform_adhesion_bond_distance);
+        
+        // load inter-deform unified-distance curve parameters (optional)
+        _extractParameter("inter-deform-unified-alpha", node, _inter_deform_unified_alpha);
+        _extractParameter("inter-deform-unified-break-ratio", node, _inter_deform_unified_break_ratio);
+        _extractParameter("inter-deform-unified-d-contact", node, _inter_deform_unified_d_contact);
+        _extractParameter("inter-deform-unified-d-rest", node, _inter_deform_unified_d_rest);
+        _extractParameter("inter-deform-unified-d-neutral-start", node, _inter_deform_unified_d_neutral_start);
+        _extractParameter("inter-deform-unified-d-neutral-end", node, _inter_deform_unified_d_neutral_end);
+        _extractParameter("inter-deform-unified-d-bond", node, _inter_deform_unified_d_bond);
+        _extractParameter("inter-deform-unified-stretch-abs-min", node, _inter_deform_unified_stretch_abs_min);
         
         // load rigid-deform adhesion parameters (optional)
         _extractParameter("rigid-deform-adhesion-enable", node, _rigid_deform_adhesion_enable);
@@ -177,10 +188,21 @@ class Config
     
     // Inter-deform-deform adhesion getters
     bool interDeformAdhesionEnable() const { return _inter_deform_adhesion_enable.value.value_or(false); }  // default false
+    std::string interDeformAdhesionInteractionType() const { return _inter_deform_adhesion_interaction_type.value.value_or("adhesion"); }  // default "adhesion"
     Real interDeformAdhesionRestGap() const { return _inter_deform_adhesion_rest_gap.value.value_or(0.005); }  // 5 mm rest gap
     Real interDeformAdhesionBreakRatio() const { return _inter_deform_adhesion_break_ratio.value.value_or(1.5); }  // 50% strain breaks bond
     Real interDeformAdhesionAlpha() const { return _inter_deform_adhesion_alpha.value.value_or(1e-6); }  // compliance
     Real interDeformAdhesionBondDistance() const { return _inter_deform_adhesion_bond_distance.value.value_or(0.01); }  // 1 cm bond creation threshold
+    
+    // Inter-deform unified-distance curve parameters getters
+    Real interDeformUnifiedAlpha() const { return _inter_deform_unified_alpha.value.value_or(1e-6); }  // compliance
+    Real interDeformUnifiedBreakRatio() const { return _inter_deform_unified_break_ratio.value.value_or(3.0); }  // 200% strain
+    Real interDeformUnifiedDContact() const { return _inter_deform_unified_d_contact.value.value_or(0.0003); }  // 0.3mm
+    Real interDeformUnifiedDRest() const { return _inter_deform_unified_d_rest.value.value_or(0.0015); }  // 1.5mm
+    Real interDeformUnifiedDNeutralStart() const { return _inter_deform_unified_d_neutral_start.value.value_or(0.003); }  // 3mm
+    Real interDeformUnifiedDNeutralEnd() const { return _inter_deform_unified_d_neutral_end.value.value_or(0.005); }  // 5mm
+    Real interDeformUnifiedDBond() const { return _inter_deform_unified_d_bond.value.value_or(0.015); }  // 15mm
+    Real interDeformUnifiedStretchAbsMin() const { return _inter_deform_unified_stretch_abs_min.value.value_or(0.003); }  // 3mm
 
     // Rigid-deform adhesion getters
     bool rigidDeformAdhesionEnable() const { return _rigid_deform_adhesion_enable.value.value_or(false); }  // default false
@@ -568,10 +590,21 @@ class Config
     
     /** Inter-deform-deform adhesion configuration parameters */
     ConfigParameter<std::optional<bool>> _inter_deform_adhesion_enable = ConfigParameter<std::optional<bool>>(false);
+    ConfigParameter<std::optional<std::string>> _inter_deform_adhesion_interaction_type = ConfigParameter<std::optional<std::string>>("adhesion");  // "adhesion" or "unified-distance"
     ConfigParameter<std::optional<Real>> _inter_deform_adhesion_rest_gap = ConfigParameter<std::optional<Real>>(0.005);  // 5 mm
     ConfigParameter<std::optional<Real>> _inter_deform_adhesion_break_ratio = ConfigParameter<std::optional<Real>>(1.5);  // 50% strain
     ConfigParameter<std::optional<Real>> _inter_deform_adhesion_alpha = ConfigParameter<std::optional<Real>>(1e-6);
     ConfigParameter<std::optional<Real>> _inter_deform_adhesion_bond_distance = ConfigParameter<std::optional<Real>>(0.01);  // 1 cm
+    
+    /** Inter-deform unified-distance curve parameters */
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_alpha = ConfigParameter<std::optional<Real>>(1e-6);
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_break_ratio = ConfigParameter<std::optional<Real>>(3.0);  // 200% strain
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_d_contact = ConfigParameter<std::optional<Real>>(0.0003);  // 0.3mm
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_d_rest = ConfigParameter<std::optional<Real>>(0.0015);  // 1.5mm
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_d_neutral_start = ConfigParameter<std::optional<Real>>(0.003);  // 3mm
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_d_neutral_end = ConfigParameter<std::optional<Real>>(0.005);  // 5mm
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_d_bond = ConfigParameter<std::optional<Real>>(0.015);  // 15mm
+    ConfigParameter<std::optional<Real>> _inter_deform_unified_stretch_abs_min = ConfigParameter<std::optional<Real>>(0.003);  // 3mm
     
     /** Rigid-deform adhesion configuration parameters */
     ConfigParameter<std::optional<bool>> _rigid_deform_adhesion_enable = ConfigParameter<std::optional<bool>>(false);

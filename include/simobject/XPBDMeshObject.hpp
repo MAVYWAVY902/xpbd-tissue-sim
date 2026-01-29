@@ -8,6 +8,7 @@
 #include "simobject/ElasticMaterial.hpp"
 #include "common/XPBDTypedefs.hpp"
 #include "solver/constraint/NerveStretchConstraint.hpp"
+#include "solver/constraint/InterDeformUnifiedDistanceConstraint.hpp"
 
 // #include "solver/XPBDSolverUpdates.hpp"
 
@@ -273,6 +274,40 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
                                      Real d_neutral_end = 0.038,
                                      Real d_bond = 0.058,
                                      Real stretch_abs_min = 0.005);  // Absolute minimum stretch tolerance
+    
+    /** Adds a unified distance constraint between deformable objects (vertex-to-triangle).
+     * Similar to rigid-deform UnifiedDistanceConstraint but for deform-deform pairs.
+     * Uses smooth curve (hard repulsion → smooth blending → exponential approach → bond)
+     * with point-to-point fixation (frozen barycentric coordinates).
+     * 
+     * @param other_obj : Pointer to the other deformable object (contains the vertex)
+     * @param vertex_v : Vertex index on the other object
+     * @param tri_v1, tri_v2, tri_v3 : Triangle vertex indices on THIS object
+     * @param alpha : Constraint stiffness/compliance parameter
+     * @param break_ratio : Strain ratio at which constraint breaks (e.g., 3.0 = 200% strain)
+     * @param initial_distance : Precomputed initial distance at constraint creation
+     * @param d_contact : Hard contact distance (repulsion zone)
+     * @param d_rest : Rest distance (target equilibrium)
+     * @param d_neutral_start : Start of neutral zone
+     * @param d_neutral_end : End of neutral zone
+     * @param d_bond : Maximum bond distance
+     * @param stretch_abs_min : Absolute minimum stretch tolerance before breaking
+     * @return Reference to the created constraint projector
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformUnifiedDistanceConstraint>>
+        addInterDeformUnifiedDistanceConstraint(XPBDMeshObject_Base_<IsFirstOrder>* other_obj,
+                                                int vertex_v,
+                                                int tri_v1, int tri_v2, int tri_v3,
+                                                Real alpha = 0.0,
+                                                Real break_ratio = 3.0,
+                                                Real initial_distance = 0.0,
+                                                Real d_contact = 0.0003,
+                                                Real d_rest = 0.0015,
+                                                Real d_neutral_start = 0.003,
+                                                Real d_neutral_end = 0.005,
+                                                Real d_bond = 0.015,
+                                                Real stretch_abs_min = 0.003);
     
     /** Updates vertex properties to mark which vertices have ACTIVE adhesion constraints.
      * This enables per-vertex color visualization in the graphics system.
