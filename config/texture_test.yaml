@@ -28,10 +28,10 @@ objects:
     type: "RigidMeshObject"
     
     ## Mesh file with UV coordinates (exported from Blender with "Include UVs")
-    filename: "../resource/tumor_fixed/tumor_fixed01_with_uv.obj"
+    filename: "../resource/tumor_fixed/tumor_squeezed_uv04.obj"
     
     ## PNG texture file
-    texture-file: "../resource/textures/AlbedoLiver2.png"
+    texture-file: "../resource/textures/AlbedoFat.png"
     
     ## Visualization
     draw-points: false

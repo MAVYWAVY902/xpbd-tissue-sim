@@ -27,9 +27,9 @@ end-time: 300        # test time [s]
 ## Enable offline recording of simulation state for post-processing
 ## WARNING: State recording significantly slows down real-time performance!
 ##          Only enable for offline analysis, not for interactive testing.
-state-recording-enable: false  # DISABLED for real-time performance
+state-recording-enable: true  # DISABLED for real-time performance
 state-recording-output-folder: "../output/adhesion_recording"
-state-recording-snapshot-interval: 0.1  # Record every 0.1 seconds (10 fps) when enabled
+state-recording-snapshot-interval: 0.05  # Record every 0.1 seconds (10 fps) when enabled
 
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
 grasp-radius: 0.007   # Grasping tool radius: 13mm (default 100mm)
@@ -221,9 +221,12 @@ objects:
   #   filename: "../resource/brain_fixed/brain_MOD3.obj"
   #   materials: ["Soft Tissue"]
 
+  ## texture mapping
+  # texture-file: "../resource/textures/brain.png"
+  # use-texture: true
 
   #   ## visualization options
-  #   color: [0.0, 1.0, 1.0]  # Cyan - brain
+  ##   color: [0.0, 1.0, 1.0]  # Cyan - brain
   #   draw-points: false
   #   draw-edges: true
   #   draw-faces: true
@@ -268,7 +271,7 @@ objects:
     ## visualization options
     color: [0.95, 0.92, 0.85]  # Bone white
     draw-points: false
-    draw-edges: false
+    draw-edges: true
     draw-faces: true
 
     ## initial configuration

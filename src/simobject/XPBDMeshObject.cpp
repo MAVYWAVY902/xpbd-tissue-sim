@@ -583,11 +583,11 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
     
     // DEBUG: Verify this code path is being executed
     static int check_counter = 0;
-    if (check_counter % 60 == 0 && !unified_distance_projectors.empty()) {
-        std::cout << "[DEBUG] checkAndBreakAdhesionConstraints() called | "
-                  << "Frame #" << check_counter 
-                  << " | Unified distance constraints: " << unified_distance_projectors.size() << std::endl;
-    }
+    // if (check_counter % 60 == 0 && !unified_distance_projectors.empty()) {
+    //     std::cout << "[DEBUG] checkAndBreakAdhesionConstraints() called | "
+    //               << "Frame #" << check_counter 
+    //               << " | Unified distance constraints: " << unified_distance_projectors.size() << std::endl;
+    // }
     check_counter++;
     
     for (size_t i = 0; i < unified_distance_projectors.size(); ++i) {
@@ -1229,16 +1229,112 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::co
         }
     }
     
+    // ⭐ NEW: Collect forces from InterDeformUnifiedDistanceConstraint projectors
+    using InterDeformUnifiedProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformUnifiedDistanceConstraint>;
+    const auto& inter_deform_unified_projectors = _solver.template getConstraintProjectorsOfType<InterDeformUnifiedProjectorType>();
+    
+    for (const auto& projector : inter_deform_unified_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        const auto forces = projector.constraintForces();
+        const auto& positions = projector.constraint()->positions();
+        
+        for (size_t i = 0; i < forces.size() && i < positions.size(); ++i)
+        {
+            const Real* pos_ptr = positions[i].position_ptr;
+            const Real* base_ptr = this->_mesh->vertices().data();
+            int local_vertex_idx = (pos_ptr - base_ptr) / 3;
+            
+            if (local_vertex_idx >= 0 && local_vertex_idx < this->_mesh->numVertices())
+            {
+                int global_vertex_idx = vertex_offset + local_vertex_idx;
+                if (global_vertex_idx >= 0 && global_vertex_idx < static_cast<int>(vertex_forces.size()))
+                {
+                    vertex_forces[global_vertex_idx] += forces[i];
+                    Real force_mag = forces[i].norm();
+                    if (force_mag > max_force) max_force = force_mag;
+                    num_forces_collected++;
+                }
+            }
+        }
+    }
+    
+    // ⭐ NEW: Collect forces from RigidDeformAdhesionConstraint projectors (old type)
+    using RigidDeformProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
+    const auto& rigid_deform_projectors = _solver.template getConstraintProjectorsOfType<RigidDeformProjectorType>();
+    
+    for (const auto& projector : rigid_deform_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        const auto forces = projector.constraintForces();
+        const auto& positions = projector.constraint().get().positions();
+        
+        // Forces on deformable side (triangle vertices)
+        for (size_t i = 0; i < forces.size() && i < positions.size(); ++i)
+        {
+            const Real* pos_ptr = positions[i].position_ptr;
+            const Real* base_ptr = this->_mesh->vertices().data();
+            int local_vertex_idx = (pos_ptr - base_ptr) / 3;
+            
+            if (local_vertex_idx >= 0 && local_vertex_idx < this->_mesh->numVertices())
+            {
+                int global_vertex_idx = vertex_offset + local_vertex_idx;
+                if (global_vertex_idx >= 0 && global_vertex_idx < static_cast<int>(vertex_forces.size()))
+                {
+                    vertex_forces[global_vertex_idx] += forces[i];
+                    Real force_mag = forces[i].norm();
+                    if (force_mag > max_force) max_force = force_mag;
+                    num_forces_collected++;
+                }
+            }
+        }
+    }
+    
+    // ⭐ NEW: Collect forces from UnifiedDistanceConstraint projectors (new type)
+    using UnifiedProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>;
+    const auto& unified_projectors = _solver.template getConstraintProjectorsOfType<UnifiedProjectorType>();
+    
+    for (const auto& projector : unified_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        const auto forces = projector.constraintForces();
+        const auto& positions = projector.constraint().get().positions();
+        
+        // Forces on deformable side (triangle vertices)
+        for (size_t i = 0; i < forces.size() && i < positions.size(); ++i)
+        {
+            const Real* pos_ptr = positions[i].position_ptr;
+            const Real* base_ptr = this->_mesh->vertices().data();
+            int local_vertex_idx = (pos_ptr - base_ptr) / 3;
+            
+            if (local_vertex_idx >= 0 && local_vertex_idx < this->_mesh->numVertices())
+            {
+                int global_vertex_idx = vertex_offset + local_vertex_idx;
+                if (global_vertex_idx >= 0 && global_vertex_idx < static_cast<int>(vertex_forces.size()))
+                {
+                    vertex_forces[global_vertex_idx] += forces[i];
+                    Real force_mag = forces[i].norm();
+                    if (force_mag > max_force) max_force = force_mag;
+                    num_forces_collected++;
+                }
+            }
+        }
+    }
+    
     // Debug output (only once every 100 calls to avoid spam)
     static int call_count = 0;
     call_count++;
-    if (call_count % 100 == 0)
-    {
-        std::cout << "[collectAdhesionForces] nerve_tumor_projectors: " << nerve_tumor_projectors.size()
-                  << ", inter_deform_projectors: " << inter_deform_projectors.size()
-                  << ", forces_collected: " << num_forces_collected
-                  << ", max_force: " << max_force << std::endl;
-    }
+    // if (call_count % 100 == 0)
+    // {
+    //     std::cout << "[collectAdhesionForces] nerve_tumor_projectors: " << nerve_tumor_projectors.size()
+    //               << ", inter_deform_projectors: " << inter_deform_projectors.size()
+    //               << ", unified_projectors: " << unified_projectors.size()
+    //               << ", forces_collected: " << num_forces_collected
+    //               << ", max_force: " << max_force << std::endl;
+    // }
 }
 
 
@@ -1246,7 +1342,7 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::collectInterDeformAdhesionStates(
     std::vector<Sim::InterDeformAdhesionState>& adhesion_states) const
 {
-    // Collect from InterDeformDeformAdhesionConstraint projectors
+    // Collect from OLD InterDeformDeformAdhesionConstraint projectors
     using InterDeformProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>;
     const auto& inter_deform_projectors = _solver.template getConstraintProjectorsOfType<InterDeformProjectorType>();
     
@@ -1287,6 +1383,48 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::co
             adhesion_states.push_back(state);
         }
     }
+    
+    // ⭐ NEW: Collect from NEW InterDeformUnifiedDistanceConstraint projectors (unified-distance type)
+    using InterDeformUnifiedProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformUnifiedDistanceConstraint>;
+    const auto& unified_projectors = _solver.template getConstraintProjectorsOfType<InterDeformUnifiedProjectorType>();
+    
+    for (const auto& projector : unified_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        const auto& constraint = projector.constraint().get();
+        const auto& positions = constraint.positions();
+        
+        // Create adhesion state record
+        Sim::InterDeformAdhesionState state;
+        
+        // Position 0 is the vertex, positions 1-3 are the triangle
+        if (positions.size() >= 4)
+        {
+            state.vertex_id = -1;
+            state.triangle_id = -1;
+            
+            // Vertex position
+            state.vertex_position = Vec3r(positions[0].position_ptr[0], 
+                                         positions[0].position_ptr[1], 
+                                         positions[0].position_ptr[2]);
+            
+            // Compute triangle centroid as contact point approximation
+            Vec3r tri_p1(positions[1].position_ptr[0], positions[1].position_ptr[1], positions[1].position_ptr[2]);
+            Vec3r tri_p2(positions[2].position_ptr[0], positions[2].position_ptr[1], positions[2].position_ptr[2]);
+            Vec3r tri_p3(positions[3].position_ptr[0], positions[3].position_ptr[1], positions[3].position_ptr[2]);
+            state.contact_point = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+            
+            // Get constraint parameters (UnifiedDistanceConstraint has same interface)
+            state.current_distance = constraint.getCurrentDistance();
+            state.rest_gap = constraint.getInitialDistance();
+            state.max_distance_seen = state.current_distance;
+            state.is_broken = constraint.shouldBreak();
+            state.break_threshold = constraint.getBreakThreshold();
+            
+            adhesion_states.push_back(state);
+        }
+    }
 }
 
 
@@ -1294,7 +1432,7 @@ template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::collectRigidDeformAdhesionStates(
     std::vector<Sim::RigidDeformAdhesionState>& adhesion_states) const
 {
-    // Collect from RigidDeformAdhesionConstraint projectors
+    // Collect from OLD RigidDeformAdhesionConstraint projectors
     using RigidDeformProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>;
     const auto& rigid_deform_projectors = _solver.template getConstraintProjectorsOfType<RigidDeformProjectorType>();
     
@@ -1333,6 +1471,48 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::co
             state.max_distance_seen = state.current_distance; // Approximate
             state.is_broken = constraint.shouldBreak();
             state.break_threshold = constraint.getRestGap() * constraint.getBreakRatio();
+            
+            adhesion_states.push_back(state);
+        }
+    }
+    
+    // ⭐ NEW: Collect from NEW UnifiedDistanceConstraint projectors (unified-distance type)
+    using UnifiedProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>;
+    const auto& unified_projectors = _solver.template getConstraintProjectorsOfType<UnifiedProjectorType>();
+    
+    for (const auto& projector : unified_projectors)
+    {
+        if (!projector.isValid()) continue;
+        
+        const auto& constraint = projector.constraint().get();
+        const auto& positions = constraint.positions();
+        
+        // Create adhesion state record
+        Sim::RigidDeformAdhesionState state;
+        
+        // Positions 0-2 are the triangle vertices on the deformable object
+        if (positions.size() >= 3)
+        {
+            state.triangle_id = -1;
+            
+            // Compute triangle centroid
+            Vec3r tri_p1(positions[0].position_ptr[0], positions[0].position_ptr[1], positions[0].position_ptr[2]);
+            Vec3r tri_p2(positions[1].position_ptr[0], positions[1].position_ptr[1], positions[1].position_ptr[2]);
+            Vec3r tri_p3(positions[2].position_ptr[0], positions[2].position_ptr[1], positions[2].position_ptr[2]);
+            state.triangle_centroid = (tri_p1 + tri_p2 + tri_p3) / 3.0;
+            
+            // Rigid body point
+            state.rigid_point = Vec3r::Zero();
+            
+            // Contact point approximation
+            state.contact_point = state.triangle_centroid;
+            
+            // Get constraint parameters (UnifiedDistanceConstraint has same interface)
+            state.current_distance = constraint.getCurrentDistance();
+            state.rest_gap = constraint.getInitialDistance();
+            state.max_distance_seen = state.current_distance;
+            state.is_broken = constraint.shouldBreak();
+            state.break_threshold = constraint.getBreakThreshold();
             
             adhesion_states.push_back(state);
         }
