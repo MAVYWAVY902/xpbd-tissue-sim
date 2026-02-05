@@ -147,6 +147,13 @@ target_link_libraries(InitialDeformationSimulation Config Simulation)
 add_executable(Test src/exec/main.cpp)
 target_link_libraries(Test Simulation ${VTK_LIBRARIES})
 
+# Graph Coloring Unit Test
+add_executable(TestGraphColoring src/exec/test_graph_coloring.cpp)
+target_link_libraries(TestGraphColoring Solver Eigen3::Eigen)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(TestGraphColoring OpenMP::OpenMP_CXX)
+endif()
+
 add_executable(BeamTest src/exec/beam_test_main.cpp)
 target_link_libraries(BeamTest BeamSimulation)
 
