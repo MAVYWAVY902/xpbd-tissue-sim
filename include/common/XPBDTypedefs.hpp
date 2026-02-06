@@ -24,6 +24,7 @@
 #include "solver/xpbd_solver/XPBDGaussSeidelSolver.hpp"
 #include "solver/xpbd_solver/XPBDJacobiSolver.hpp"
 #include "solver/xpbd_solver/XPBDParallelJacobiSolver.hpp"
+#include "solver/xpbd_solver/XPBDColoredGaussSeidelSolver.hpp"  // NEW: Graph coloring solver
 
 #include "common/TypeList.hpp"
 
@@ -115,9 +116,10 @@ struct XPBDObjectSolverTypes<IsFirstOrder, TypeList<Projectors...>>
     using GaussSeidel = Solver::XPBDGaussSeidelSolver<IsFirstOrder, Projectors...>;
     using Jacobi = Solver::XPBDJacobiSolver<IsFirstOrder, Projectors...>;
     using ParallelJacobi = Solver::XPBDParallelJacobiSolver<IsFirstOrder, Projectors...>;
+    using ColoredGaussSeidel = Solver::XPBDColoredGaussSeidelSolver<IsFirstOrder, Projectors...>;  // NEW: Graph coloring solver
 
-    using type_list = TypeList<GaussSeidel, Jacobi, ParallelJacobi>;
-    using variant_type = std::variant<GaussSeidel, Jacobi, ParallelJacobi>;
+    using type_list = TypeList<GaussSeidel, Jacobi, ParallelJacobi, ColoredGaussSeidel>;
+    using variant_type = std::variant<GaussSeidel, Jacobi, ParallelJacobi, ColoredGaussSeidel>;
 };
 
 // template<typename ProjectorTypeList> struct FirstOrderXPBDObjectSolverTypes;

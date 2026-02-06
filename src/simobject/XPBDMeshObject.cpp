@@ -14,6 +14,7 @@
 #include "solver/xpbd_solver/XPBDGaussSeidelSolver.hpp"
 #include "solver/xpbd_solver/XPBDJacobiSolver.hpp"
 #include "solver/xpbd_solver/XPBDParallelJacobiSolver.hpp"
+#include "solver/xpbd_solver/XPBDColoredGaussSeidelSolver.hpp"  // NEW: Graph coloring solver
 #include "solver/constraint/StaticDeformableCollisionConstraint.hpp"
 #include "solver/constraint/RigidDeformableCollisionConstraint.hpp"
 #include "solver/constraint/DeformableDeformableCollisionConstraint.hpp"
@@ -2379,11 +2380,13 @@ using StableNeohookeanCombinedConstraints = typename XPBDMeshObjectConstraintCon
 template class XPBDMeshObject_<false, SolverTypesStableNeohookean::GaussSeidel, StableNeohookeanConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookean::Jacobi, StableNeohookeanConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookean::ParallelJacobi, StableNeohookeanConstraints>;
+template class XPBDMeshObject_<false, SolverTypesStableNeohookean::ColoredGaussSeidel, StableNeohookeanConstraints>;
 
 // Stable Neohookean Combined constraint config
 template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::GaussSeidel, StableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::Jacobi, StableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::ParallelJacobi, StableNeohookeanCombinedConstraints>;
+template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::ColoredGaussSeidel, StableNeohookeanCombinedConstraints>;
 
 using FirstOrderSolverTypesStableNeohookean = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookean::projector_type_list>;
 using FirstOrderSolverTypesStableNeohookeanCombined = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookeanCombined::projector_type_list>;
@@ -2392,10 +2395,12 @@ using FirstOrderStableNeohookeanCombinedConstraints = typename XPBDMeshObjectCon
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::GaussSeidel, FirstOrderStableNeohookeanConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::Jacobi, FirstOrderStableNeohookeanConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::ParallelJacobi, FirstOrderStableNeohookeanConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::ColoredGaussSeidel, FirstOrderStableNeohookeanConstraints>;
 
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::GaussSeidel, FirstOrderStableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::Jacobi, FirstOrderStableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::ParallelJacobi, FirstOrderStableNeohookeanCombinedConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::ColoredGaussSeidel, FirstOrderStableNeohookeanCombinedConstraints>;
 
 // Nerve-Only constraint config
 using SolverTypesNerveOnly = XPBDObjectSolverTypes<false, typename XPBDMeshObjectConstraintConfigurations<false>::NerveOnly::projector_type_list>;
@@ -2404,6 +2409,7 @@ using NerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigurations<fal
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::GaussSeidel, NerveOnlyConstraints>;
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::Jacobi, NerveOnlyConstraints>;
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::ParallelJacobi, NerveOnlyConstraints>;
+template class XPBDMeshObject_<false, SolverTypesNerveOnly::ColoredGaussSeidel, NerveOnlyConstraints>;
 
 // First Order Nerve-Only constraint config
 using FirstOrderSolverTypesNerveOnly = XPBDObjectSolverTypes<true, typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::projector_type_list>;
@@ -2497,6 +2503,7 @@ using FirstOrderNerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigur
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::GaussSeidel, FirstOrderNerveOnlyConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::Jacobi, FirstOrderNerveOnlyConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::ParallelJacobi, FirstOrderNerveOnlyConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::ColoredGaussSeidel, FirstOrderNerveOnlyConstraints>;
 
 // CTAD
 // template<typename SolverType, typename ...ConstraintTypes> XPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const XPBDMeshObjectConfig* config)

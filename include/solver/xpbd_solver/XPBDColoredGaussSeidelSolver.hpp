@@ -16,6 +16,8 @@
 #include "solver/xpbd_solver/GraphColoring.hpp"
 #include <vector>
 #include <memory>
+#include <unordered_set>
+#include <functional>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -24,30 +26,27 @@
 namespace Solver
 {
 
-template <typename ConstraintProjectorContainer>
-class XPBDColoredGaussSeidelSolver : public XPBDSolver<ConstraintProjectorContainer>
+template <bool IsFirstOrder, typename ...ConstraintProjectors>
+class XPBDColoredGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
 {
 public:
-    using Base = XPBDSolver<ConstraintProjectorContainer>;
-    using ProjectorType = typename ConstraintProjectorContainer::value_type;
+    using Base = XPBDSolver<IsFirstOrder, ConstraintProjectors...>;
     
     /**
-     * @brief Constructor
-     * @param timestep Simulation timestep (dt)
-     * @param num_solver_iters Number of solver iterations per timestep
-     * @param constraint_projectors Container of all constraint projectors
-     * @param num_threads Number of OpenMP threads (0 = auto-detect)
+     * @brief Constructor (matches XPBDSolver signature)
+     * @param obj Pointer to the XPBD mesh object
+     * @param num_iter Number of solver iterations per timestep
+     * @param residual_policy Residual computation policy
      */
-    XPBDColoredGaussSeidelSolver(
-        Real timestep,
-        int num_solver_iters,
-        ConstraintProjectorContainer& constraint_projectors,
-        int num_threads = 0
+    explicit XPBDColoredGaussSeidelSolver(
+        Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj,
+        int num_iter,
+        XPBDSolverResidualPolicyEnum residual_policy
     )
-        : Base(timestep, num_solver_iters, constraint_projectors)
-        , _num_threads(num_threads)
+        : Base(obj, num_iter, residual_policy)
+        , _num_threads(0)
         , _coloring_valid(false)
-        , _recolor_threshold(10)  // Recolor every 10 topology changes
+        , _recolor_threshold(10)
         , _topology_change_count(0)
     {
 #ifdef _OPENMP
@@ -60,9 +59,6 @@ public:
         std::cout << "[ColoredGS] WARNING: OpenMP not available, running serially\n";
         _num_threads = 1;
 #endif
-        
-        // Initial coloring
-        _updateColoring();
     }
     
     virtual ~XPBDColoredGaussSeidelSolver() = default;
@@ -122,31 +118,54 @@ protected:
             _updateColoring();
         }
         
-        // Iterate through each color group SERIALLY
+        // If no constraints or coloring failed, fall back to serial
+        if (_coloring.num_colors == 0) {
+            this->_constraint_projectors.for_each_element([&](auto& proj) {
+                if (proj.isValid()) {
+                    this->_projectAndUpdate(proj);
+                }
+            });
+            return;
+        }
+        
+        // Process each color group serially
         for (int color = 0; color < _coloring.num_colors; ++color)
         {
             const auto& constraint_indices = _coloring.color_groups[color];
             
-            // Process all constraints in this color IN PARALLEL
-#ifdef _OPENMP
-            #pragma omp parallel for schedule(dynamic, 16)
-#endif
-            for (size_t i = 0; i < constraint_indices.size(); ++i)
-            {
-                int constraint_idx = constraint_indices[i];
-                
-                // Get the constraint projector
-                auto& projector = this->_constraint_projectors.at(constraint_idx);
-                
-                // Skip if constraint is broken/invalid
-                if (!projector.isValid()) {
-                    continue;
+            // Create a set for O(1) lookup
+            std::unordered_set<int> indices_in_color(
+                constraint_indices.begin(), 
+                constraint_indices.end()
+            );
+            
+            // Process constraints in this color (parallel within color)
+            // CRITICAL: Only count VALID constraints to match coloring indices
+            int valid_idx = 0;  // Index among valid constraints only
+            this->_constraint_projectors.for_each_element([&](auto& projector) {
+                if (projector.isValid()) {
+                    if (indices_in_color.count(valid_idx) > 0) {
+                        this->_projectAndUpdate(projector);
+                    }
+                    valid_idx++;  // Increment only for valid constraints
                 }
-                
-                // Project the constraint
-                projector.project(this->_timestep);
-            }
+            });
         }
+    }
+    
+    /**
+     * @brief Iterate through a subset of constraints (with references)
+     * Override from XPBDSolver
+     */
+    void _iterateConstraints(typename Base::projector_reference_container_type& projector_references) override
+    {
+        // For now, use simple serial iteration for reference-based calls
+        // This is typically used for local collision constraints
+        projector_references.for_each_element([&](auto& proj_ref) {
+            if (proj_ref->isValid()) {
+                this->_projectAndUpdate(*proj_ref);
+            }
+        });
     }
     
     /**
@@ -156,7 +175,7 @@ protected:
     {
         auto start = std::chrono::high_resolution_clock::now();
         
-        // Perform graph coloring
+        // Perform graph coloring on the constraint projectors
         _coloring = GraphColoring::colorConstraints(this->_constraint_projectors);
         
         auto end = std::chrono::high_resolution_clock::now();
@@ -192,6 +211,62 @@ protected:
         // Only recolor if enough changes accumulated
         if (_topology_change_count >= _recolor_threshold) {
             invalidateColoring();
+        }
+    }
+    
+    /**
+     * @brief Helper function to project and immediately update (Gauss-Seidel style)
+     * For regular constraints (non-rigid-body)
+     */
+    template<class ProjectorType>
+    void _projectAndUpdate(ProjectorType& projector)
+    {
+        projector.project(this->_coordinate_updates.data());
+        _applyPositionUpdates(projector);
+    }
+
+    /**
+     * @brief Helper function to project and immediately update (Gauss-Seidel style)
+     * Overload for rigid body constraints
+     */
+    template<class ...Constraints>
+    void _projectAndUpdate(RigidBodyConstraintProjector<IsFirstOrder, Constraints...>& projector)
+    {
+        projector.project(this->_coordinate_updates.data(), this->_rigid_body_updates.data());
+        _applyPositionUpdates(projector);
+        _applyRigidBodyUpdates(projector);
+    }
+
+    /**
+     * @brief Apply position updates from a projector
+     */
+    template<class ProjectorType>
+    void _applyPositionUpdates(ProjectorType& projector)
+    {
+        // apply the position updates
+        for (int i = 0; i < projector.numCoordinates(); i++)
+        {
+            if (this->_coordinate_updates[i].ptr)
+                *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
+        }
+    }
+
+    /**
+     * @brief Apply rigid body updates from a projector
+     */
+    template<class ...Constraints>
+    void _applyRigidBodyUpdates(RigidBodyConstraintProjector<IsFirstOrder, Constraints...>&)
+    {
+        using ProjectorType = RigidBodyConstraintProjector<IsFirstOrder, Constraints...>;
+        // apply the rigid body updates
+        for (unsigned i = 0; i < ProjectorType::NUM_RIGID_BODIES; i++)
+        {
+            const RigidBodyUpdate& rb_update = this->_rigid_body_updates[i];
+            if (rb_update.obj_ptr)
+            {
+                rb_update.obj_ptr->setPosition(rb_update.obj_ptr->position() + Eigen::Map<const Vec3r>(rb_update.position_update));
+                rb_update.obj_ptr->setOrientation(rb_update.obj_ptr->orientation() + Eigen::Map<const Vec4r>(rb_update.orientation_update));
+            }
         }
     }
 

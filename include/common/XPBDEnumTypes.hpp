@@ -7,7 +7,8 @@ enum class XPBDObjectSolverTypeEnum
 {
     GAUSS_SEIDEL,
     JACOBI,
-    PARALLEL_JACOBI
+    PARALLEL_JACOBI,
+    COLORED_GAUSS_SEIDEL  // NEW: Graph coloring + OpenMP parallel solver
 };
 
 enum class XPBDMeshObjectConstraintConfigurationEnum
