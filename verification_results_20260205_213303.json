@@ -1,0 +1,26 @@
+{
+  "correctness": {
+    "Gauss-Seidel": {
+      "passed": false,
+      "error": "./GraspingTest: error while loading shared libraries: libeasy3d_viewer.so.2: cannot open shared object file: No such file or directory\n"
+    },
+    "Colored-Gauss-Seidel": {
+      "passed": false,
+      "error": "./GraspingTest: error while loading shared libraries: libeasy3d_viewer.so.2: cannot open shared object file: No such file or directory\n"
+    }
+  },
+  "determinism": {
+    "passed": false
+  },
+  "coloring_quality": {
+    "passed": false
+  },
+  "stability": {
+    "Gauss-Seidel": {
+      "passed": false
+    },
+    "Colored-Gauss-Seidel": {
+      "passed": false
+    }
+  }
+}

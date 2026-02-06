@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-02-05T21:08:58.733218",
+  "config": "config/tumor_brain_adhesion_test.yaml",
+  "runs": [
+    {
+      "success": false,
+      "elapsed_time": 0.0006539821624755859,
+      "coloring_times": [],
+      "estimated_speedup": [],
+      "num_colors": [],
+      "output_sample": "./GraspingTest: error while loading shared libraries: libeasy3d_viewer.so.2: cannot open shared object file: No such file or directory\n"
+    },
+    {
+      "success": false,
+      "elapsed_time": 0.0005350112915039062,
+      "coloring_times": [],
+      "estimated_speedup": [],
+      "num_colors": [],
+      "output_sample": "./GraspingTest: error while loading shared libraries: libeasy3d_viewer.so.2: cannot open shared object file: No such file or directory\n"
+    },
+    {
+      "success": false,
+      "elapsed_time": 0.0005292892456054688,
+      "coloring_times": [],
+      "estimated_speedup": [],
+      "num_colors": [],
+      "output_sample": "./GraspingTest: error while loading shared libraries: libeasy3d_viewer.so.2: cannot open shared object file: No such file or directory\n"
+    }
+  ]
+}

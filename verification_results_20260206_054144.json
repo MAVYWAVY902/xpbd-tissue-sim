@@ -1,0 +1,26 @@
+{
+  "correctness": {
+    "Gauss-Seidel": {
+      "passed": false,
+      "error": "timeout"
+    },
+    "Colored-Gauss-Seidel": {
+      "passed": false,
+      "error": "timeout"
+    }
+  },
+  "determinism": {
+    "passed": false
+  },
+  "coloring_quality": {
+    "passed": false
+  },
+  "stability": {
+    "Gauss-Seidel": {
+      "passed": false
+    },
+    "Colored-Gauss-Seidel": {
+      "passed": false
+    }
+  }
+}

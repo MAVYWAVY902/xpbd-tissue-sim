@@ -48,6 +48,7 @@ public:
         , _coloring_valid(false)
         , _recolor_threshold(10)
         , _topology_change_count(0)
+        , _last_constraint_count(0)
     {
 #ifdef _OPENMP
         if (_num_threads <= 0) {
@@ -113,7 +114,21 @@ protected:
      */
     void _iterateConstraints() override
     {
-        // Update coloring if needed (topology changed)
+        // Count current valid constraints
+        int current_constraint_count = 0;
+        this->_constraint_projectors.for_each_element([&](const auto& proj) {
+            if (proj.isValid()) current_constraint_count++;
+        });
+        
+        // Check if constraints were added/removed (e.g., grasping added attachment constraints)
+        if (current_constraint_count != _last_constraint_count) {
+            std::cout << "[ColoredGS] Constraint count changed: " << _last_constraint_count 
+                      << " → " << current_constraint_count << ", recoloring...\n";
+            _coloring_valid = false;
+            _last_constraint_count = current_constraint_count;
+        }
+        
+        // Update coloring if needed (topology changed or first time)
         if (!_coloring_valid) {
             _updateColoring();
         }
@@ -276,6 +291,7 @@ private:
     bool _coloring_valid;                      ///< Whether coloring is up-to-date
     int _recolor_threshold;                    ///< Recolor after N topology changes
     int _topology_change_count;                ///< Current topology change count
+    int _last_constraint_count;                ///< Track constraint count changes (e.g., grasping)
 };
 
 } // namespace Solver

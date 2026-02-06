@@ -1,0 +1,26 @@
+{
+  "correctness": {
+    "Gauss-Seidel": {
+      "passed": false,
+      "error": "terminate called after throwing an instance of 'YAML::ParserException'\n  what():  yaml-cpp: error at line 211, column 3: end of map not found\n"
+    },
+    "Colored-Gauss-Seidel": {
+      "passed": false,
+      "error": "terminate called after throwing an instance of 'YAML::ParserException'\n  what():  yaml-cpp: error at line 211, column 3: end of map not found\n"
+    }
+  },
+  "determinism": {
+    "passed": false
+  },
+  "coloring_quality": {
+    "passed": false
+  },
+  "stability": {
+    "Gauss-Seidel": {
+      "passed": false
+    },
+    "Colored-Gauss-Seidel": {
+      "passed": false
+    }
+  }
+}
