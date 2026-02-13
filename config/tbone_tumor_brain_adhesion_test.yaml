@@ -17,6 +17,7 @@ g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
+# time-step: 3e-4      # 8e-5 for brain-tumor
 time-step: 3e-4      # 8e-5 for brain-tumor
 collision-rate: 100    # Hz: Check every 0.5s (Reduced to eliminate stutter, rely on unified constraint for collision)
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
