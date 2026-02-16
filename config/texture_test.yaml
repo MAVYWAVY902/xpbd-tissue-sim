@@ -28,10 +28,10 @@ objects:
     type: "RigidMeshObject"
     
     ## Mesh file with UV coordinates (exported from Blender with "Include UVs")
-    filename: "../resource/tumor_fixed/tumor_squeezed_uv04.obj"
+    filename: "../resource/tools/convex_knife.obj"
     
     ## PNG texture file
-    texture-file: "../resource/textures/AlbedoFat.png"
+    # texture-file: "../resource/textures/AlbedoFat.png"
     
     ## Visualization
     draw-points: false
@@ -39,7 +39,7 @@ objects:
     draw-faces: true
     
     ## Transform
-    use-original-coords: true
+    use-original-coords: false
     max-size: 1.0
     position: [0, 0, 0]
     rotation: [0, 0, 0]
@@ -47,7 +47,7 @@ objects:
     angular-velocity: [0, 0, 0]
     
     ## Physics
-    density: 100
+    density: 1000
     collisions: false
     fixed: true
 

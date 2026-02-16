@@ -266,7 +266,8 @@ objects:
   -
     name: "RigidBone"
     type: "RigidMeshObject"
-    filename: "../resource/tbone_fixed/tbone_MOD4.obj"
+    # filename: "../resource/tbone_fixed/tbone_MOD4.obj"
+    filename: "../resource/tools/convex_knife_scaled.obj"
     density: 1000      # Normal bone density (not critical when fixed=true)
 
     ## visualization options
