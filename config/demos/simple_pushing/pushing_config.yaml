@@ -31,7 +31,9 @@ materials:
     mu-k: 0.0 # coefficient of kinetic friction [-]
 
 ## PushingSimulation-specific parameters
-tool-radius: 0.1        # initial tool radius [m]
+## NOTE: The knife tool mesh will be scaled so its largest dimension equals tool-radius
+tool-radius: 0.1        # Knife tool scale [m] - controls the size of the knife mesh
+                        # Examples: 0.05 = 50mm knife, 0.1 = 100mm knife, 0.2 = 200mm knife
 push-stiffness: 50.0   # increased for more responsive pushing (was 100)
 max-push-force: 20.0    # increased for stronger pushing effect (was 10)
 fix-min-z: true         # whether or not to fix all vertices that have the mesh's minimum z-coordinate
@@ -49,9 +51,9 @@ objects:
 
     ## filename to load from
     # filename: "../resource/tissue/neuroma_segmentation_decimated.msh"
-    # filename: "../resource/cube/cube8.msh"  # Use this for testing instead    materials: ["Soft Tissue"]
+    filename: "../resource/tumor_fixed/tumor_squeezed_uv03.obj"
     # filename: "../resource/cube/cube16.msh"
-    filename: "../resource/tissue/neuroma_segmentation_decimated_2000.obj"
+    # filename: "../resource/tissue/neuroma_segmentation_decimated_2000.obj"
 
 
     materials: ["Soft Tissue"]

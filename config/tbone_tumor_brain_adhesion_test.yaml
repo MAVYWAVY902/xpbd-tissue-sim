@@ -33,8 +33,23 @@ state-recording-output-folder: "../output/adhesion_recording"
 state-recording-snapshot-interval: 0.05  # Record every 0.1 seconds (10 fps) when enabled
 
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
-grasp-radius: 0.007   # Grasping tool radius: 13mm (default 100mm)
-tool-radius: 0.007    # Pushing tool radius: 13mm (default 200mm)
+grasp-radius: 0.065   # Grasping tool radius: 7mm (default 100mm)
+tool-radius: 0.065    # Pushing knife tool scale: 7mm (controls knife mesh size)
+                      # The knife mesh will be scaled so its largest dimension = tool-radius
+#                       # Examples: 0.005 = 5mm knife, 0.01 = 10mm knife, 0.02 = 20mm knife
+# knife-scale-x: 0.05  # Make knife 8cm wide in X direction
+# knife-scale-y: 0.05  # Make knife 2cm thin in Y direction  
+# knife-scale-z: 0.05  # Make knife 5cm tall in Z direction
+
+push-stiffness: 1000.0  # Base stiffness for pushing forces [N/m]
+                        # Higher = stronger push, but may cause oscillations
+                        # Press Q/A during simulation to adjust in real-time
+push-damping: 0.7       # Damping coefficient to prevent oscillations (0-1)
+                        # 0 = no damping (oscillations at high stiffness)
+                        # 0.5 = moderate damping (default, good balance)
+                        # 1 = maximum damping (very stable, less responsive)
+                        # Increase this if you see jiggling at high stiffness
+
 fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL objects (GraspingTest/PushingTest default=true)
 
 ## ==================== INTER-DEFORM ADHESION SETTINGS ====================
@@ -89,8 +104,11 @@ rigid-deform-adhesion-alpha: 1e-7             # Compliance
                                              
 rigid-deform-adhesion-bond-distance: 0.0348   # construct adhesion within this radious [0.0348]
 
-rigid-deform-adhesion-break-ratio: 1.27       # STRETCH-BASED breaking (RATIO for large gaps)
+# rigid-deform-adhesion-break-ratio: 1.27       # STRETCH-BASED breaking (RATIO for large gaps)
+rigid-deform-adhesion-break-ratio: 1.13       # for knife
                                         
+
+rigid-deform-adhesion-stretch-abs-min: 0.002 # for knife
 
 rigid-deform-adhesion-stretch-abs-min: 0.005 # Absolute minimum stretch tolerance (5mm)
                                              # Physical meaning: Intrinsic tissue toughness
@@ -262,12 +280,11 @@ objects:
   #   damping-multiplier: 6000000 
 
 
-  # ==================== RIGID TBONE ====================
+  # # ==================== RIGID TBONE ====================
   -
     name: "RigidBone"
     type: "RigidMeshObject"
-    # filename: "../resource/tbone_fixed/tbone_MOD4.obj"
-    filename: "../resource/tools/convex_knife_scaled.obj"
+    filename: "../resource/tbone_fixed/tbone_MOD4.obj"
     density: 1000      # Normal bone density (not critical when fixed=true)
 
     ## visualization options

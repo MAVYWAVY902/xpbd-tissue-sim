@@ -1,4 +1,6 @@
 #include "simulation/PushingSimulation.hpp"
+#include "config/simobject/RigidMeshObjectConfig.hpp"
+#include "simobject/RigidMeshObject.hpp"
 #include <cstdio>
 
 namespace Sim
@@ -9,9 +11,13 @@ PushingSimulation::PushingSimulation(const Config::PushingSimulationConfig* conf
 {
     _tool_radius = config->toolRadius();
     _push_stiffness = config->pushStiffness();
+    _push_damping = config->pushDamping();
     _max_push_force = config->maxPushForce();
     _fix_min_z = config->fixMinZ();
     _fix_max_z = config->fixMaxZ();
+    _knife_scale_x = config->knifeScaleX();
+    _knife_scale_y = config->knifeScaleY();
+    _knife_scale_z = config->knifeScaleZ();
 
     // Pre-allocate space for push targets to guarantee pointer stability
     _push_targets.reserve(kMaxPushedVertices);
@@ -80,13 +86,71 @@ void PushingSimulation::setup()
         fix_top_vertices(fo_xpbd_mesh_objs);
     }
 
-    // create a visual representation of the tool tip
-    Config::RigidSphereConfig cursor_config("pushing_tool", Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0), Vec3r(0,0,0),
-        1.0, _tool_radius, false, true, false, Config::ObjectRenderConfig());
+    // create a visual representation of the knife tool
+    std::cout << "[PushingSimulation] Creating knife tool..." << std::endl;
+    
+    // Graphics-only knife - no collision, controlled manually
+    Vec3r knife_initial_position(0.15, 0.0, 0.05);
+    
+    // Determine scaling mode: directional or uniform
+    std::optional<Real> max_size_param = std::nullopt;
+    std::optional<Vec3r> size_param = std::nullopt;
+    
+    if (_knife_scale_x > 0 || _knife_scale_y > 0 || _knife_scale_z > 0) {
+        // Directional scaling mode
+        Real scale_x = (_knife_scale_x > 0) ? _knife_scale_x : _tool_radius;
+        Real scale_y = (_knife_scale_y > 0) ? _knife_scale_y : _tool_radius;
+        Real scale_z = (_knife_scale_z > 0) ? _knife_scale_z : _tool_radius;
+        size_param = Vec3r(scale_x, scale_y, scale_z);
+        std::cout << "[PushingSimulation] Knife directional scale: (" 
+                  << scale_x << ", " << scale_y << ", " << scale_z << ") m" << std::endl;
+    } else {
+        // Uniform scaling mode (default)
+        max_size_param = _tool_radius;
+        std::cout << "[PushingSimulation] Knife uniform scale: " << _tool_radius << " m" << std::endl;
+    }
+    
+    Config::RigidMeshObjectConfig cursor_config(
+        "pushing_tool",                                    // name
+        knife_initial_position,                            // initial position (away from objects)
+        Vec3r(0,0,0),                                      // initial rotation
+        Vec3r(0,0,0),                                      // initial velocity
+        Vec3r(0,0,0),                                      // initial angular velocity
+        1.0,                                               // density
+        false,                                             // collisions (DISABLED - knife is graphics only)
+        true,                                              // graphics_only (TRUE = no physics collision)
+        false,                                             // fixed (allow manual movement)
+        "../resource/tools/convex_knife_scaled.obj",      // filename
+        max_size_param,                                    // max_size (uniform scaling)
+        size_param,                                        // size (directional scaling)
+        false,                                             // draw_points
+        true,                                              // draw_edges
+        true,                                              // draw_faces
+        Vec4r(0.8, 0.8, 0.8, 1.0),                        // color (silver/gray for knife)
+        std::nullopt,                                      // sdf_filename
+        Config::ObjectRenderConfig()                       // render_config
+    );
     _cursor = _addObjectFromConfig(&cursor_config);
     assert(_cursor);
     
-    // Note: RigidSphere doesn't have setColor method, so we can't change color dynamically
+    // Store initial position for reset functionality
+    _knife_initial_position = Vec3r(0.01, 0.0, 0.01);
+    
+    // Generate SDF for accurate distance queries
+    std::cout << "[PushingSimulation] Creating SDF for knife tool..." << std::endl;
+    _cursor->createSDF();
+    std::cout << "[PushingSimulation] Knife tool SDF created successfully!" << std::endl;
+    
+    // Report actual knife dimensions
+    Geometry::AABB knife_bbox = _cursor->boundingBox();
+    Vec3r bbox_size = knife_bbox.max - knife_bbox.min;
+    Real bbox_radius = bbox_size.norm() / 2.0;
+    std::cout << "[PushingSimulation] Knife scaled to max dimension: " << _tool_radius << " m" << std::endl;
+    std::cout << "[PushingSimulation] Knife bounding box size: (" 
+              << bbox_size.x() << ", " << bbox_size.y() << ", " << bbox_size.z() << ") m" << std::endl;
+    std::cout << "[PushingSimulation] Knife bounding box diagonal: " << bbox_radius * 2.0 << " m" << std::endl;
+    
+    // Note: RigidMeshObject doesn't have setColor method, so color is set in config
 }
 
 void PushingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
@@ -110,9 +174,9 @@ void PushingSimulation::notifyMouseMoved(double x, double y)
     // Move cursor when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
-    // Increase sensitivity: more world motion per pixel; still slow down when pushing
-    const Real base_scaling = _tool_radius / 30.0; // was /50.0 (≈3.3x more sensitive)
-    const Real scaling = _pushing_enabled ? base_scaling * 0.35 : base_scaling; // was 0.2
+    // Reduced sensitivity for better control: less world motion per pixel
+    const Real base_scaling = _tool_radius / 100.0; // Reduced from /30.0 for finer control
+    const Real scaling = _pushing_enabled ? base_scaling * 0.35 : base_scaling; // Slower when pushing
 
         Real dx = x - _last_mouse_pos[0];
         Real dy = y - _last_mouse_pos[1];
@@ -141,6 +205,18 @@ void PushingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInp
     if (key == SimulationInput::Key::SPACE) {
         // printf("DEBUG: Spacebar event: action=%d\n", static_cast<int>(action));
     }
+    
+    // Reset knife to initial position when 'o' key is pressed
+    if (key == SimulationInput::Key::O && action == SimulationInput::KeyAction::PRESS)
+    {
+        if (_cursor) {
+            _cursor->setPosition(_knife_initial_position);
+            std::cout << "[PushingSimulation] Knife reset to initial position: (" 
+                      << _knife_initial_position.x() << ", " 
+                      << _knife_initial_position.y() << ", " 
+                      << _knife_initial_position.z() << ")" << std::endl;
+        }
+    }
 
     // Update key held state
     auto it = _keys_held.find(key);
@@ -157,9 +233,9 @@ void PushingSimulation::notifyMouseScrolled(double dx, double dy)
     // Mouse scrolling moves the tool tip in/out when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
-    // Increase scroll sensitivity; still slow down when pushing
-    const Real base_scaling = _tool_radius / 1.0; // was /2.0 (2x more sensitive)
-    const Real scaling = _pushing_enabled ? base_scaling * 0.5 : base_scaling; // was 0.3
+    // Reduced scroll sensitivity for better depth control
+    const Real base_scaling = _tool_radius / 3.0; // Reduced from /1.0 for finer control
+    const Real scaling = _pushing_enabled ? base_scaling * 0.5 : base_scaling; // Slower when pushing
 
         // Limit scroll delta to prevent explosive motion
         const Real limited_dy = std::max(-2.0, std::min(2.0, dy));
@@ -174,9 +250,22 @@ void PushingSimulation::notifyMouseScrolled(double dx, double dy)
 
 void PushingSimulation::_moveCursor(const Vec3r& dp)
 {
-    // move the tool cursor
+    // Move the tool cursor - force update even if it's marked as fixed
+    // This allows kinematic control (we move it, but it still has collision)
     const Vec3r current_position = _cursor->position();
-    _cursor->setPosition(current_position + dp);
+    const Vec3r new_position = current_position + dp;
+    
+    // Directly set position, bypassing the fixed check
+    // This is necessary for kinematic rigid bodies
+    _cursor->setPosition(new_position);
+    
+    // If setPosition didn't work (because fixed=true), access the member directly
+    // Note: This is a workaround - ideally we'd have a "kinematic" rigid body type
+    if (_cursor->position() == current_position && dp.norm() > 1e-10) {
+        // Position didn't update, probably because it's fixed
+        // We need to force the update for kinematic control
+        std::cout << "[PushingSimulation] Warning: Knife is fixed, position update may not work properly" << std::endl;
+    }
 }
 
 void PushingSimulation::_timeStep()
@@ -205,11 +294,23 @@ void PushingSimulation::_timeStep()
 
     _tool_radius = std::max(0.01, _tool_radius + radius_change);
     _push_stiffness = std::max(1.0, _push_stiffness + stiffness_change);
-    _cursor->setRadius(_tool_radius);
+    
+    // For mesh-based tools, we scale the mesh instead of setting radius
+    // Note: Scaling a mesh is complex and requires mesh reconstruction
+    // For now, we just update the internal radius value for interaction distance
+    // TODO: Implement proper mesh scaling if needed
+    if (radius_change != 0.0) {
+        std::cout << "[PushingSimulation] Tool radius updated to: " << _tool_radius << " m" << std::endl;
+        std::cout << "[PushingSimulation] Note: Visual mesh size not changed (requires mesh scaling)" << std::endl;
+    }
 
     // Apply pushing forces if pushing is enabled
     if (_pushing_enabled)
     {
+        // Check if knife is cutting adhesion constraints
+        _checkKnifeAdhesionInterference();
+        
+        // Apply pushing forces for tissue interaction
         _applyPushingForces();
     }
 
@@ -242,8 +343,15 @@ void PushingSimulation::_applyPushingForces()
     const Vec3r tool_center = _cursor->position();
     int vertices_contacted = 0;
     int vertices_pushed = 0;
+    
+    // Get knife SDF for accurate distance queries
+    const Geometry::MeshSDF* knife_sdf = _cursor->SDF();
+    if (!knife_sdf) {
+        std::cerr << "[PushingSimulation] ERROR: Knife SDF not available!" << std::endl;
+        return;
+    }
 
-    // printf("DEBUG: === PUSHING FRAME START ===\n");
+    // printf("DEBUG: === PUSHING FRAME START (Using Knife SDF) ===\n");
     // printf("DEBUG: Tool center at (%.3f, %.3f, %.3f), radius: %.3f\n", 
     //        tool_center.x(), tool_center.y(), tool_center.z(), _tool_radius);
 
@@ -267,38 +375,60 @@ void PushingSimulation::_applyPushingForces()
             if (xpbd_mesh_obj->vertexFixed(v)) continue;
 
             const Vec3r vertex_pos = xpbd_mesh_obj->mesh()->vertex(v);
-            Real distance = (vertex_pos - tool_center).norm();
+            
+            // Use SDF to get signed distance (negative = inside knife, positive = outside)
+            Real signed_distance = knife_sdf->evaluate(vertex_pos);
             
             // Debug: Show vertices near tool
-            if (distance <= _tool_radius * 1.2) // Slightly larger radius for debug
+            if (signed_distance <= _tool_radius * 0.2) // Within 20% of tool radius
             {
                 vertices_contacted++;
-                // printf("DEBUG: Vertex %d at distance %.4f (tool_radius=%.4f)\n", v, distance, _tool_radius);
+                // printf("DEBUG: Vertex %d at signed distance %.4f\n", v, signed_distance);
             }
             
-            // Apply pushing if vertex is within tool radius (PENETRATION)
-            if (distance < _tool_radius)
+            // Apply pushing if vertex is penetrating the knife (negative distance)
+            // or very close to it (small positive distance for soft contact)
+            Real contact_threshold = 0.001; // 1mm soft contact zone
+            if (signed_distance < contact_threshold)
             {
-                Real penetration = _tool_radius - distance;
+                Real penetration = contact_threshold - signed_distance;
                 // printf("DEBUG: PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
                 
-                // Calculate push direction (away from tool center)
-                Vec3r displacement = vertex_pos - tool_center;
+                // Get push direction from SDF gradient
+                // SDF gradient points in direction of increasing distance (away from knife surface)
+                Vec3r sdf_grad = knife_sdf->gradient(vertex_pos);
                 Vec3r push_direction;
                 
-                if (displacement.norm() < 1e-6) // Handle zero displacement
+                if (sdf_grad.norm() < 1e-6) // Handle zero gradient
                 {
-                    push_direction = Vec3r(0, 0, 1); // Push upward if at center
-                    // printf("DEBUG: Zero displacement - pushing upward\n");
+                    // Fallback: push away from tool center
+                    Vec3r displacement = vertex_pos - tool_center;
+                    if (displacement.norm() < 1e-6) {
+                        push_direction = Vec3r(0, 0, 1); // Push upward
+                    } else {
+                        push_direction = displacement.normalized();
+                    }
+                    // printf("DEBUG: Zero gradient - using fallback direction\n");
                 }
                 else
                 {
-                    push_direction = displacement.normalized();
+                    push_direction = sdf_grad.normalized();
                 }
                 
-                // Calculate push offset - this is the key for proper pushing!
-                Real push_magnitude = penetration * (_push_stiffness / 600.0); // 10x stronger to prevent penetration
-                push_magnitude = std::min(push_magnitude, _tool_radius * 0.3); // Limit to 50% of radius (5x larger)
+                // Calculate push offset - stronger for deeper penetration
+                Real push_magnitude = penetration * (_push_stiffness / 600.0);
+                push_magnitude = std::min(push_magnitude, _tool_radius * 0.3);
+                
+                // Apply damping based on vertex velocity to prevent oscillations
+                Vec3r vertex_velocity = xpbd_mesh_obj->vertexVelocity(v);
+                Real velocity_along_push = vertex_velocity.dot(push_direction);
+                
+                // Reduce push if vertex is already moving in push direction (damping)
+                // This prevents overshoot and oscillations
+                if (velocity_along_push > 0) {
+                    Real damping_reduction = _push_damping * velocity_along_push * dt();
+                    push_magnitude = std::max(0.0, push_magnitude - damping_reduction);
+                }
                 
                 Vec3r push_offset = push_direction * push_magnitude;
                 
@@ -331,38 +461,59 @@ void PushingSimulation::_applyPushingForces()
             if (fo_xpbd_mesh_obj->vertexFixed(v)) continue;
 
             const Vec3r vertex_pos = fo_xpbd_mesh_obj->mesh()->vertex(v);
-            Real distance = (vertex_pos - tool_center).norm();
+            
+            // Use SDF to get signed distance (negative = inside knife, positive = outside)
+            Real signed_distance = knife_sdf->evaluate(vertex_pos);
             
             // Debug: Show vertices near tool
-            if (distance <= _tool_radius * 1.2) // Slightly larger radius for debug
+            if (signed_distance <= _tool_radius * 0.2) // Within 20% of tool radius
             {
                 vertices_contacted++;
-                // printf("DEBUG: FO Vertex %d at distance %.4f (tool_radius=%.4f)\n", v, distance, _tool_radius);
+                // printf("DEBUG: FO Vertex %d at signed distance %.4f\n", v, signed_distance);
             }
             
-            // Apply pushing if vertex is within tool radius (PENETRATION)
-            if (distance < _tool_radius)
+            // Apply pushing if vertex is penetrating the knife
+            Real contact_threshold = 0.001; // 1mm soft contact zone
+            if (signed_distance < contact_threshold)
             {
-                Real penetration = _tool_radius - distance;
+                Real penetration = contact_threshold - signed_distance;
                 // printf("DEBUG: FO PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
                 
-                // Calculate push direction (away from tool center)
-                Vec3r displacement = vertex_pos - tool_center;
+                // Get push direction from SDF gradient
+                // SDF gradient points in direction of increasing distance (away from knife surface)
+                Vec3r sdf_grad = knife_sdf->gradient(vertex_pos);
                 Vec3r push_direction;
                 
-                if (displacement.norm() < 1e-6) // Handle zero displacement
+                if (sdf_grad.norm() < 1e-6) // Handle zero gradient
                 {
-                    push_direction = Vec3r(0, 0, 1); // Push upward if at center
-                    // printf("DEBUG: FO Zero displacement - pushing upward\n");
+                    // Fallback: push away from tool center
+                    Vec3r displacement = vertex_pos - tool_center;
+                    if (displacement.norm() < 1e-6) {
+                        push_direction = Vec3r(0, 0, 1); // Push upward
+                    } else {
+                        push_direction = displacement.normalized();
+                    }
+                    // printf("DEBUG: FO Zero gradient - using fallback direction\n");
                 }
                 else
                 {
-                    push_direction = displacement.normalized();
+                    push_direction = sdf_grad.normalized();
                 }
                 
                 // Calculate push offset
-                Real push_magnitude = penetration * (_push_stiffness / 600.0); // 10x stronger to prevent penetration
-                push_magnitude = std::min(push_magnitude, _tool_radius * 0.3); // Limit to 50% of radius (5x larger)
+                Real push_magnitude = penetration * (_push_stiffness / 600.0);
+                push_magnitude = std::min(push_magnitude, _tool_radius * 0.3);
+                
+                // Apply damping based on vertex velocity to prevent oscillations
+                Vec3r vertex_velocity = fo_xpbd_mesh_obj->vertexVelocity(v);
+                Real velocity_along_push = vertex_velocity.dot(push_direction);
+                
+                // Reduce push if vertex is already moving in push direction (damping)
+                // This prevents overshoot and oscillations
+                if (velocity_along_push > 0) {
+                    Real damping_reduction = _push_damping * velocity_along_push * dt();
+                    push_magnitude = std::max(0.0, push_magnitude - damping_reduction);
+                }
                 
                 Vec3r push_offset = push_direction * push_magnitude;
                 
@@ -387,6 +538,45 @@ void PushingSimulation::_applyPushingForces()
 
     // printf("DEBUG: Frame summary - Vertices contacted: %d, Vertices pushed: %d\n", vertices_contacted, vertices_pushed);
     // printf("DEBUG: === PUSHING FRAME END ===\n\n");
+}
+
+void PushingSimulation::_checkKnifeAdhesionInterference()
+{
+    // Get knife SDF for interference detection
+    const Geometry::MeshSDF* knife_sdf = _cursor->SDF();
+    if (!knife_sdf) {
+        return; // No SDF available, skip interference check
+    }
+    
+    // Define interference threshold - if knife is within this distance of attachment point, break constraint
+    const Real interference_threshold = 0.003; // 3mm - knife is "cutting" the adhesion
+    
+    int total_broken = 0;
+    
+    // Check FirstOrderXPBDMeshObject objects
+    std::vector<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>& fo_xpbd_mesh_objs = 
+        _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+    
+    for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs)
+    {
+        int broken = fo_xpbd_mesh_obj->checkAndBreakConstraintsNearSDF(knife_sdf, interference_threshold);
+        total_broken += broken;
+    }
+    
+    // Check XPBDMeshObject objects
+    std::vector<std::unique_ptr<Sim::XPBDMeshObject_Base>>& xpbd_mesh_objs = 
+        _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
+    
+    for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
+    {
+        int broken = xpbd_mesh_obj->checkAndBreakConstraintsNearSDF(knife_sdf, interference_threshold);
+        total_broken += broken;
+    }
+    
+    // Report cutting activity (only if constraints were broken)
+    if (total_broken > 0) {
+        std::cout << "[PushingSimulation] Knife cut " << total_broken << " adhesion constraints" << std::endl;
+    }
 }
 
 Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec3r& tool_center, Real tool_radius)

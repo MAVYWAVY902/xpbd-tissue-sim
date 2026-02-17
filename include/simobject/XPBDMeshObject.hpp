@@ -17,6 +17,7 @@
 
 #include "geometry/AABB.hpp"
 #include "geometry/Mesh.hpp"
+#include "geometry/MeshSDF.hpp"
 
 #ifdef HAVE_CUDA
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
@@ -160,6 +161,14 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
 
     /** Checks and removes adhesion constraints that should break based on distance threshold. */
     virtual void checkAndBreakAdhesionConstraints(Real break_distance);
+    
+    /** Check if any adhesion constraints have attachment points near/inside an SDF and break them
+     * This is used for knife cutting - when knife penetrates near the rigid body attachment point, break the constraint
+     * @param sdf - SDF of the cutting tool (e.g., knife)
+     * @param threshold - distance threshold for breaking (e.g., 3mm)
+     * @return number of constraints broken
+     */
+    virtual int checkAndBreakConstraintsNearSDF(const Geometry::MeshSDF* sdf, Real threshold);
     
     /** @returns the number of inter-deform adhesion constraints currently active on this object */
     virtual int numInterDeformAdhesionConstraints() const override;

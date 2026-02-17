@@ -147,6 +147,11 @@ public:
     
     /** Get point on rigid body in body coordinates */
     const Vec3r& rigidBodyPoint() const { return _rigid_body_point; }
+    
+    /** Mark constraint for breaking (can be called externally for geometric interference)
+     * This allows external logic (e.g., cutting tools) to break adhesion constraints
+     */
+    void markForBreaking() { _should_break = true; }
 
 protected:
     /** Compute signed distance from rigid body point to triangle

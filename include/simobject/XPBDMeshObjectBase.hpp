@@ -19,6 +19,11 @@
 
 #include "common/XPBDEnumTypes.hpp"
 
+// Forward declarations
+namespace Geometry {
+    class MeshSDF;
+}
+
 // Forward declarations for SimulationStateRecorder types
 namespace Sim {
     struct InterDeformAdhesionState;
@@ -196,6 +201,14 @@ public:
 
     /** Checks and removes adhesion constraints that should break based on distance threshold. */
     virtual void checkAndBreakAdhesionConstraints(Real break_distance) = 0;
+    
+    /** Check if any adhesion constraints have attachment points near/inside an SDF and break them
+     * This is used for knife cutting - when knife penetrates near the rigid body attachment point, break the constraint
+     * @param sdf - SDF of the cutting tool (e.g., knife)
+     * @param threshold - distance threshold for breaking (e.g., 3mm)
+     * @return number of constraints broken
+     */
+    virtual int checkAndBreakConstraintsNearSDF(const Geometry::MeshSDF* sdf, Real threshold) = 0;
     
     /** @returns the number of inter-deform adhesion constraints currently active on this object */
     virtual int numInterDeformAdhesionConstraints() const = 0;

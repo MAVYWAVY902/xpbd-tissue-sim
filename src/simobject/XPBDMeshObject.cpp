@@ -350,6 +350,89 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::cl
 }
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::checkAndBreakConstraintsNearSDF(
+    const Geometry::MeshSDF* sdf, Real threshold)
+{
+    if (!sdf) {
+        return 0;
+    }
+    
+    int constraints_broken = 0;
+    
+    // Get unified distance constraint projectors (rigid-deform adhesion)
+    using UnifiedDistanceProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>;
+    auto& unified_distance_projectors = _solver.template getConstraintProjectorsOfType<UnifiedDistanceProjectorType>();
+    
+    // Check each constraint
+    for (size_t i = 0; i < unified_distance_projectors.size(); ++i)
+    {
+        if (!unified_distance_projectors[i].isValid()) {
+            continue;
+        }
+        
+        auto& constraint_ref = unified_distance_projectors[i].constraint();
+        // Need to cast away const to call markForBreaking()
+        auto& constraint = const_cast<Solver::UnifiedDistanceConstraint&>(constraint_ref.get());
+        
+        // Skip if already marked for breaking
+        if (constraint.shouldBreak()) {
+            continue;
+        }
+        
+        // Get rigid body attachment point in global coordinates
+        const Vec3r& body_point = constraint.rigidBodyPoint();
+        Sim::RigidObject* rigid_obj = constraint.rigidBodies()[0];
+        Vec3r bone_attach_point = rigid_obj->bodyToGlobal(body_point);
+        
+        // PRIORITY 1: Check if knife is near the bone attachment point
+        Real knife_to_bone_distance = sdf->evaluate(bone_attach_point);
+        
+        bool should_break = false;
+        std::string break_reason;
+        
+        // If knife is close to or penetrating the attachment point, it's "cutting" the adhesion
+        if (knife_to_bone_distance < threshold)
+        {
+            should_break = true;
+            break_reason = "knife near bone attachment";
+        }
+        else
+        {
+            // PRIORITY 2: Check if gap between bone and tumor has increased too much
+            // Get current distance between bone and tumor
+            Real current_gap = constraint.getCurrentDistance();
+            Real initial_gap = constraint.getInitialDistance();
+            Real gap_increase = current_gap - initial_gap;
+            
+            // If gap increased significantly (e.g., >5mm), knife may have pushed them apart
+            const Real gap_increase_threshold = 0.005; // 5mm gap increase
+            if (gap_increase > gap_increase_threshold)
+            {
+                should_break = true;
+                break_reason = "excessive gap increase";
+            }
+        }
+        
+        if (should_break)
+        {
+            constraint.markForBreaking();
+            constraints_broken++;
+            
+            // Debug output for first few breaks
+            if (constraints_broken <= 3) {
+                std::cout << "[XPBDMeshObject] Knife cutting adhesion (" << break_reason << ")! "
+                          << "Knife-to-bone: " << knife_to_bone_distance * 1000.0 << "mm at (" 
+                          << bone_attach_point.x() << ", "
+                          << bone_attach_point.y() << ", "
+                          << bone_attach_point.z() << ")" << std::endl;
+            }
+        }
+    }
+    
+    return constraints_broken;
+}
+
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
 void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::checkAndBreakAdhesionConstraints(Real break_distance)
 {
     static int call_count = 0;
