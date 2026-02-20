@@ -22,6 +22,7 @@
 #include "solver/constraint/InterDeformUnifiedDistanceConstraint.hpp"
 
 #include "solver/xpbd_solver/XPBDGaussSeidelSolver.hpp"
+#include "solver/xpbd_solver/XPBDColoredGaussSeidelSolver.hpp"
 #include "solver/xpbd_solver/XPBDJacobiSolver.hpp"
 #include "solver/xpbd_solver/XPBDParallelJacobiSolver.hpp"
 
@@ -113,11 +114,12 @@ struct XPBDObjectSolverTypes<IsFirstOrder, TypeList<Projectors...>>
     // check and make sure all projector types are NOT 1st order projectors
     static_assert( ( (Projectors::is_first_order == IsFirstOrder) && ...) );
     using GaussSeidel = Solver::XPBDGaussSeidelSolver<IsFirstOrder, Projectors...>;
+    using ColoredGaussSeidel = Solver::XPBDColoredGaussSeidelSolver<IsFirstOrder, Projectors...>;
     using Jacobi = Solver::XPBDJacobiSolver<IsFirstOrder, Projectors...>;
     using ParallelJacobi = Solver::XPBDParallelJacobiSolver<IsFirstOrder, Projectors...>;
 
-    using type_list = TypeList<GaussSeidel, Jacobi, ParallelJacobi>;
-    using variant_type = std::variant<GaussSeidel, Jacobi, ParallelJacobi>;
+    using type_list = TypeList<GaussSeidel, ColoredGaussSeidel, Jacobi, ParallelJacobi>;
+    using variant_type = std::variant<GaussSeidel, ColoredGaussSeidel, Jacobi, ParallelJacobi>;
 };
 
 // template<typename ProjectorTypeList> struct FirstOrderXPBDObjectSolverTypes;

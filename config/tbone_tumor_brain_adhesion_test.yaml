@@ -41,6 +41,13 @@ tool-radius: 0.065    # Pushing knife tool scale: 7mm (controls knife mesh size)
 # knife-scale-y: 0.05  # Make knife 2cm thin in Y direction  
 # knife-scale-z: 0.05  # Make knife 5cm tall in Z direction
 
+# knife-rotation: [0, 0, 90]   # Rotate knife in degrees [rx, ry, rz]
+                               # Examples:
+                               # [0, 0, 90]  = 90° rotation around Z-axis
+                               # [90, 0, 0]  = 90° rotation around X-axis
+                               # [0, 90, 0]  = 90° rotation around Y-axis
+                               # [45, 0, 0]  = 45° rotation around X-axis
+
 push-stiffness: 1000.0  # Base stiffness for pushing forces [N/m]
                         # Higher = stronger push, but may cause oscillations
                         # Press Q/A during simulation to adjust in real-time
@@ -105,7 +112,7 @@ rigid-deform-adhesion-alpha: 1e-7             # Compliance
 rigid-deform-adhesion-bond-distance: 0.0348   # construct adhesion within this radious [0.0348]
 
 # rigid-deform-adhesion-break-ratio: 1.27       # STRETCH-BASED breaking (RATIO for large gaps)
-rigid-deform-adhesion-break-ratio: 1.13       # for knife
+rigid-deform-adhesion-break-ratio: 1.27       # for knife
                                         
 
 rigid-deform-adhesion-stretch-abs-min: 0.002 # for knife
@@ -227,7 +234,9 @@ objects:
 
     ## XPBD-specific options
     num-solver-iters: 5            # REDUCED to 1 for maximum performance
-    solver-type: "Gauss-Seidel"
+    # solver-type: "Gauss-Seidel"
+    solver-type: "Colored-Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
+
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     damping-multiplier: 7500000      # REDUCED from 9M - was causing excessive damping

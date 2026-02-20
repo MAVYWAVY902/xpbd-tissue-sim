@@ -14,8 +14,14 @@
 
 #include "solver/xpbd_solver/XPBDSolver.hpp"
 #include "solver/xpbd_solver/GraphColoring.hpp"
+#include "solver/xpbd_projector/RigidBodyConstraintProjector.hpp"
+#include "solver/xpbd_projector/CombinedConstraintProjector.hpp"
+#include "solver/xpbd_solver/XPBDSolverUpdates.hpp"
+#include "solver/constraint/HydrostaticConstraint.hpp"
+#include "solver/constraint/DeviatoricConstraint.hpp"
+#include "common/TypeList.hpp"
 #include <vector>
-#include <memory>
+#include <iostream>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -24,183 +30,223 @@
 namespace Solver
 {
 
-template <typename ConstraintProjectorContainer>
-class XPBDColoredGaussSeidelSolver : public XPBDSolver<ConstraintProjectorContainer>
+template <bool IsFirstOrder, typename ...ConstraintProjectors>
+class XPBDColoredGaussSeidelSolver : public XPBDSolver<IsFirstOrder, ConstraintProjectors...>
 {
 public:
-    using Base = XPBDSolver<ConstraintProjectorContainer>;
-    using ProjectorType = typename ConstraintProjectorContainer::value_type;
+    using Base = XPBDSolver<IsFirstOrder, ConstraintProjectors...>;
+    using projector_reference_container_type = typename Base::projector_reference_container_type;
+
+    /// "Supernode" elastic projector: one per tet, Dev+Hyd solved as a 2×2 system
+    using DevHydProjType = CombinedConstraintProjector<IsFirstOrder,
+        DeviatoricConstraint, HydrostaticConstraint>;
+
+    /// True when this solver instance contains the DevHyd combined projector
+    static constexpr bool HAS_DEVHYD =
+        type_list_contains_v<DevHydProjType, TypeList<ConstraintProjectors...>>;
     
     /**
-     * @brief Constructor
-     * @param timestep Simulation timestep (dt)
-     * @param num_solver_iters Number of solver iterations per timestep
-     * @param constraint_projectors Container of all constraint projectors
-     * @param num_threads Number of OpenMP threads (0 = auto-detect)
+     * @brief Constructor (matches XPBDGaussSeidelSolver signature)
+     * @param obj Pointer to the XPBD mesh object
+     * @param num_iter Number of solver iterations per timestep
+     * @param residual_policy Residual computation policy
      */
-    XPBDColoredGaussSeidelSolver(
-        Real timestep,
-        int num_solver_iters,
-        ConstraintProjectorContainer& constraint_projectors,
-        int num_threads = 0
+    explicit XPBDColoredGaussSeidelSolver(
+        Sim::XPBDMeshObject_Base_<IsFirstOrder>* obj,
+        int num_iter,
+        XPBDSolverResidualPolicyEnum residual_policy
     )
-        : Base(timestep, num_solver_iters, constraint_projectors)
-        , _num_threads(num_threads)
-        , _coloring_valid(false)
-        , _recolor_threshold(10)  // Recolor every 10 topology changes
-        , _topology_change_count(0)
+        : Base(obj, num_iter, residual_policy)
+        , _num_threads(1)
+        , _devhyd_coloring_valid(false)
     {
 #ifdef _OPENMP
-        if (_num_threads <= 0) {
-            _num_threads = omp_get_max_threads();
-        }
-        omp_set_num_threads(_num_threads);
-        std::cout << "[ColoredGS] Using " << _num_threads << " OpenMP threads\n";
+        _num_threads = omp_get_max_threads();
+        std::cout << "[Colored Gauss-Seidel Solver] Initialized with "
+                  << _num_threads << " OpenMP threads";
+        if constexpr (HAS_DEVHYD)
+            std::cout << " (DevHyd parallel coloring ACTIVE)";
+        else
+            std::cout << " (no DevHyd projector – serial fallback)";
+        std::cout << std::endl;
 #else
-        std::cout << "[ColoredGS] WARNING: OpenMP not available, running serially\n";
-        _num_threads = 1;
+        std::cout << "[Colored Gauss-Seidel Solver] OpenMP not available, running serially" << std::endl;
 #endif
-        
-        // Initial coloring
-        _updateColoring();
     }
     
     virtual ~XPBDColoredGaussSeidelSolver() = default;
     
-    /**
-     * @brief Force recoloring on next iteration
-     * Call this when constraint topology changes (e.g., adhesion breaks)
-     */
+    /** Force rebuild of the coloring on the next iteration (e.g. after topology change) */
     void invalidateColoring() {
-        _coloring_valid = false;
-    }
-    
-    /**
-     * @brief Get coloring statistics
-     */
-    struct ColoringStats {
-        int num_colors;
-        int max_color_size;
-        int min_color_size;
-        double avg_color_size;
-        double parallelization_efficiency;  // Ideal=1.0, actual=[0,1]
-    };
-    
-    ColoringStats getColoringStats() const {
-        if (!_coloring_valid) {
-            return {0, 0, 0, 0.0, 0.0};
-        }
-        
-        ColoringStats stats;
-        stats.num_colors = _coloring.num_colors;
-        stats.max_color_size = 0;
-        stats.min_color_size = INT_MAX;
-        int total_constraints = 0;
-        
-        for (const auto& color_group : _coloring.color_groups) {
-            int size = color_group.size();
-            stats.max_color_size = std::max(stats.max_color_size, size);
-            stats.min_color_size = std::min(stats.min_color_size, size);
-            total_constraints += size;
-        }
-        
-        stats.avg_color_size = static_cast<double>(total_constraints) / stats.num_colors;
-        stats.parallelization_efficiency = stats.avg_color_size / stats.max_color_size;
-        
-        return stats;
+        _devhyd_coloring_valid = false;
     }
 
 protected:
-    /**
-     * @brief Core iteration logic: iterate through colored constraint groups
-     * Override from XPBDSolver
-     */
-    void _iterateConstraints() override
+    // ────────────────────────────────────────────────────────────────
+    // Main iteration: DevHyd constraints in parallel (colored GS),
+    // all other constraint types in serial (unchanged Gauss-Seidel).
+    // ────────────────────────────────────────────────────────────────
+    virtual void _iterateConstraints() override
     {
-        // Update coloring if needed (topology changed)
-        if (!_coloring_valid) {
-            _updateColoring();
-        }
-        
-        // Iterate through each color group SERIALLY
-        for (int color = 0; color < _coloring.num_colors; ++color)
+        // ── Path A: DevHydProjector → parallel colored Gauss-Seidel ─────────────────
+        // Compiled away entirely when this solver has no DevHydProjector.
+        if constexpr (HAS_DEVHYD)
         {
-            const auto& constraint_indices = _coloring.color_groups[color];
-            
-            // Process all constraints in this color IN PARALLEL
-#ifdef _OPENMP
-            #pragma omp parallel for schedule(dynamic, 16)
-#endif
-            for (size_t i = 0; i < constraint_indices.size(); ++i)
+            // Build coloring once (elastic constraints are static after setup)
+            if (!_devhyd_coloring_valid)
+                _buildDevHydColoring();
+
+            auto& devhyd_vec =
+                this->template getConstraintProjectorsOfType<DevHydProjType>();
+            const GraphColoring::ColoringResult& coloring = _devhyd_coloring;
+
+            #pragma omp parallel num_threads(_num_threads)
             {
-                int constraint_idx = constraint_indices[i];
-                
-                // Get the constraint projector
-                auto& projector = this->_constraint_projectors.at(constraint_idx);
-                
-                // Skip if constraint is broken/invalid
-                if (!projector.isValid()) {
-                    continue;
+                // Each thread owns its own stack buffer — no heap allocation,
+                // no shared-memory conflict. Size is a compile-time constant.
+                CoordinateUpdate local_buf[DevHydProjType::MAX_NUM_COORDINATES];
+
+                for (int c = 0; c < coloring.num_colors; c++)
+                {
+                    const auto& group = coloring.color_groups[c];
+                    const int   sz    = static_cast<int>(group.size());
+
+                    // Small groups: not worth the barrier overhead — one thread handles them
+                    if (sz < _num_threads * 2)
+                    {
+                        #pragma omp single
+                        for (int i = 0; i < sz; i++)
+                        {
+                            const int idx = group[i];
+                            if (!devhyd_vec[idx].isValid()) continue;
+                            devhyd_vec[idx].project(local_buf);
+                            const int nc = devhyd_vec[idx].numCoordinates();
+                            for (int k = 0; k < nc; k++)
+                                if (local_buf[k].ptr)
+                                    *(local_buf[k].ptr) += local_buf[k].update;
+                        }
+                        // omp single has implicit barrier — safe to continue
+                        continue;
+                    }
+
+                    // Distribute this color group across all threads
+                    #pragma omp for schedule(static)
+                    for (int i = 0; i < sz; i++)
+                    {
+                        const int idx = group[i];
+                        if (!devhyd_vec[idx].isValid()) continue;
+
+                        devhyd_vec[idx].project(local_buf);
+
+                        // Same-color group ⇒ no shared vertices ⇒ no data race
+                        const int nc = devhyd_vec[idx].numCoordinates();
+                        for (int k = 0; k < nc; k++)
+                            if (local_buf[k].ptr)
+                                *(local_buf[k].ptr) += local_buf[k].update;
+                    }
+                    // Implicit barrier: all threads complete color c before color c+1
                 }
-                
-                // Project the constraint
-                projector.project(this->_timestep);
+            }
+        }
+
+        // ── Path B: all other projector types → serial Gauss-Seidel ─────────────
+        // DevHydProjType entries are skipped via `if constexpr` — zero runtime cost.
+        this->_constraint_projectors.for_each_element([&](auto& proj)
+        {
+            using ProjType = std::decay_t<decltype(proj)>;
+            if constexpr (std::is_same_v<ProjType, DevHydProjType>)
+                return;  // Already handled in parallel path above
+
+            if (!proj.isValid()) return;
+            _projectAndUpdate(proj);
+        });
+    }
+    
+    /** Local collision iterations — always serial (small subset, not worth parallelizing) */
+    virtual void _iterateConstraints(projector_reference_container_type& projector_references) override
+    {
+        projector_references.for_each_element([&](auto& proj_ref)
+        {
+            if (!proj_ref->isValid()) return;
+            _projectAndUpdate(*proj_ref);
+        });
+    }
+    
+    /**
+     * @brief Project constraint and update mesh positions (Gauss-Seidel style)
+     * Standard projectors use coordinate_updates buffer
+     */
+    template<class ProjectorType>
+    void _projectAndUpdate(ProjectorType& projector)
+    {
+        projector.project(this->_coordinate_updates.data());
+        _applyPositionUpdates(projector);
+    }
+    
+    /**
+     * @brief Project constraint for rigid body projectors (special case)
+     */
+    template<class ...Constraints>
+    void _projectAndUpdate(RigidBodyConstraintProjector<IsFirstOrder, Constraints...>& projector)
+    {
+        projector.project(this->_coordinate_updates.data(), this->_rigid_body_updates.data());
+        _applyPositionUpdates(projector);
+        _applyRigidBodyUpdates(projector);
+    }
+    
+    /**
+     * @brief Apply position updates from coordinate_updates buffer
+     */
+    template<class ProjectorType>
+    void _applyPositionUpdates(ProjectorType& projector)
+    {
+        for (int i = 0; i < projector.numCoordinates(); i++)
+        {
+            if (this->_coordinate_updates[i].ptr)
+                *(this->_coordinate_updates[i].ptr) += this->_coordinate_updates[i].update;
+        }
+    }
+    
+    /**
+     * @brief Apply rigid body updates
+     */
+    template<class ...Constraints>
+    void _applyRigidBodyUpdates(RigidBodyConstraintProjector<IsFirstOrder, Constraints...>&)
+    {
+        using ProjectorType = RigidBodyConstraintProjector<IsFirstOrder, Constraints...>;
+        for (unsigned i = 0; i < ProjectorType::NUM_RIGID_BODIES; i++)
+        {
+            const RigidBodyUpdate& rb_update = this->_rigid_body_updates[i];
+            if (rb_update.obj_ptr)
+            {
+                rb_update.obj_ptr->setPosition(rb_update.obj_ptr->position() + Eigen::Map<const Vec3r>(rb_update.position_update));
+                rb_update.obj_ptr->setOrientation(rb_update.obj_ptr->orientation() + Eigen::Map<const Vec4r>(rb_update.orientation_update));
             }
         }
     }
     
-    /**
-     * @brief Update the constraint coloring
-     */
-    void _updateColoring()
+private:
+    void _buildDevHydColoring()
     {
-        auto start = std::chrono::high_resolution_clock::now();
-        
-        // Perform graph coloring
-        _coloring = GraphColoring::colorConstraints(this->_constraint_projectors);
-        
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        
-        _coloring_valid = true;
-        _topology_change_count = 0;
-        
-        // Print statistics
-        auto stats = getColoringStats();
-        std::cout << "[ColoredGS] Coloring complete:\n";
-        std::cout << "  - Colors: " << stats.num_colors << "\n";
-        std::cout << "  - Constraints per color: " << stats.avg_color_size 
-                  << " (min=" << stats.min_color_size 
-                  << ", max=" << stats.max_color_size << ")\n";
-        std::cout << "  - Efficiency: " << (stats.parallelization_efficiency * 100) << "%\n";
-        std::cout << "  - Coloring time: " << (duration.count() / 1000.0) << "ms\n";
-        
-        // Estimate speedup
-        double theoretical_speedup = std::min(
-            static_cast<double>(_num_threads),
-            stats.parallelization_efficiency * _num_threads
-        );
-        std::cout << "  - Estimated speedup: " << theoretical_speedup << "x\n";
-    }
-    
-    /**
-     * @brief Override to handle topology changes
-     */
-    void onConstraintTopologyChanged() {
-        _topology_change_count++;
-        
-        // Only recolor if enough changes accumulated
-        if (_topology_change_count >= _recolor_threshold) {
-            invalidateColoring();
+        if constexpr (HAS_DEVHYD)
+        {
+            auto& devhyd_vec =
+                this->template getConstraintProjectorsOfType<DevHydProjType>();
+            if (!devhyd_vec.empty())
+            {
+                std::cout << "[Colored GS] Building DevHyd coloring for "
+                          << devhyd_vec.size() << " projectors...\n";
+                _devhyd_coloring = GraphColoring::colorConstraints(devhyd_vec);
+                std::cout << "[Colored GS] Done: " << _devhyd_coloring.num_colors
+                          << " colors, " << devhyd_vec.size() << " projectors\n";
+            }
         }
+        _devhyd_coloring_valid = true;
     }
 
-private:
     int _num_threads;                          ///< Number of OpenMP threads
-    GraphColoring::ColoringResult _coloring;   ///< Current coloring
-    bool _coloring_valid;                      ///< Whether coloring is up-to-date
-    int _recolor_threshold;                    ///< Recolor after N topology changes
-    int _topology_change_count;                ///< Current topology change count
+    bool _devhyd_coloring_valid;               ///< Whether _devhyd_coloring is up-to-date
+    GraphColoring::ColoringResult _devhyd_coloring;  ///< Coloring for DevHyd projectors
 };
 
 } // namespace Solver

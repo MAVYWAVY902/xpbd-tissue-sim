@@ -29,6 +29,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
     {
         static std::map<std::string, XPBDObjectSolverTypeEnum> solver_type_options{
             {"Gauss-Seidel", XPBDObjectSolverTypeEnum::GAUSS_SEIDEL},
+            {"Colored-Gauss-Seidel", XPBDObjectSolverTypeEnum::COLORED_GAUSS_SEIDEL},
             {"Jacobi", XPBDObjectSolverTypeEnum::JACOBI},
             {"Parallel-Jacobi", XPBDObjectSolverTypeEnum::PARALLEL_JACOBI}
         };

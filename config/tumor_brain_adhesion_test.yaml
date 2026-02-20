@@ -32,9 +32,32 @@ state-recording-output-folder: "../output/adhesion_recording"
 state-recording-snapshot-interval: 0.05  # Record every 0.1 seconds (10 fps) when enabled
 
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
-grasp-radius: 0.007   # Grasping tool radius: 13mm (default 100mm)
-tool-radius: 0.007    # Pushing tool radius: 13mm (default 200mm)
+grasp-radius: 0.065   # Grasping tool radius: 7mm (default 100mm)
+tool-radius: 0.065    # Pushing knife tool scale: 7mm (controls knife mesh size)
+                      # The knife mesh will be scaled so its largest dimension = tool-radius
+#                       # Examples: 0.005 = 5mm knife, 0.01 = 10mm knife, 0.02 = 20mm knife
+# knife-scale-x: 0.05  # Make knife 8cm wide in X direction
+# knife-scale-y: 0.05  # Make knife 2cm thin in Y direction  
+# knife-scale-z: 0.05  # Make knife 5cm tall in Z direction
+
+knife-rotation: [0, -90, 0]   # Rotate knife in degrees [rx, ry, rz]
+                               # Examples:
+                               # [0, 0, 90]  = 90° rotation around Z-axis
+                               # [90, 0, 0]  = 90° rotation around X-axis
+                               # [0, 90, 0]  = 90° rotation around Y-axis
+                               # [45, 0, 0]  = 45° rotation around X-axis
+
+push-stiffness: 1000.0  # Base stiffness for pushing forces [N/m]
+                        # Higher = stronger push, but may cause oscillations
+                        # Press Q/A during simulation to adjust in real-time
+push-damping: 0.7       # Damping coefficient to prevent oscillations (0-1)
+                        # 0 = no damping (oscillations at high stiffness)
+                        # 0.5 = moderate damping (default, good balance)
+                        # 1 = maximum damping (very stable, less responsive)
+                        # Increase this if you see jiggling at high stiffness
+
 fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL objects (GraspingTest/PushingTest default=true)
+
 
 ## ==================== INTER-DEFORM ADHESION SETTINGS ====================
 ## Adhesion between two deformable objects (Tumor ↔ Brain)
@@ -207,8 +230,8 @@ objects:
     inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
 
     ## XPBD-specific options
-    num-solver-iters: 1            # REDUCED to 1 for maximum performance
-    solver-type: "Gauss-Seidel"
+    num-solver-iters: 3            # REDUCED to 1 for maximum performance
+    solver-type: "Colored-Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     damping-multiplier: 9000000      # REDUCED from 9M - was causing excessive damping
@@ -254,8 +277,8 @@ objects:
     inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
 
     ## XPBD-specific options
-    num-solver-iters: 1            # REDUCED to 1 for maximum performance
-    solver-type: "Gauss-Seidel"
+    num-solver-iters: 4            # REDUCED to 1 for maximum performance
+    solver-type: "Colored-Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     damping-multiplier: 7000000 

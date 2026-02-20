@@ -4,11 +4,9 @@
 #include <vector>
 #include <set>
 #include <unordered_set>
+#include <unordered_map>
 #include <algorithm>
 #include <iostream>
-
-#include "solver/constraint/Constraint.hpp"
-#include "solver/xpbd_projector/ConstraintProjector.hpp"
 
 namespace Solver
 {
@@ -30,8 +28,9 @@ public:
     struct ColoringResult
     {
         std::vector<std::vector<int>> color_groups;  // color_groups[color] = [constraint_indices]
-        int num_colors;
-        
+        int num_colors = 0;
+        int num_projectors = 0;  ///< size of the projector vector when coloring was built
+
         void print() const
         {
             std::cout << "[Graph Coloring] Total colors: " << num_colors << "\n";
@@ -65,65 +64,53 @@ public:
         
         // Step 3: Group by color
         ColoringResult result;
-        result.num_colors = max_color + 1;
+        result.num_colors     = max_color + 1;
+        result.num_projectors = num_constraints;
         result.color_groups.resize(result.num_colors);
-        
-        for (int i = 0; i < num_constraints; i++) {
-            if (colors[i] >= 0) {
+
+        for (int i = 0; i < num_constraints; i++)
+            if (colors[i] >= 0)
                 result.color_groups[colors[i]].push_back(i);
-            }
-        }
-        
+
         result.print();
         return result;
     }
 
 private:
     /**
-     * @brief Build conflict graph - two constraints conflict if they share vertices
+     * @brief Build conflict graph using a vertex → constraints hash map.
+     *
+     * Calls projector.positions() directly — compatible with all real projector types
+     * (ConstraintProjector, CombinedConstraintProjector, RigidBodyConstraintProjector)
+     * because they all expose a public positions() method.
+     *
+     * Complexity: O(n × d²) where d ≈ average constraints sharing a vertex (~4-6 for
+     * typical tet meshes), vs O(n²) for the naive pairwise approach.  For 60 k tets
+     * this is ~1.5 M operations instead of 1.8 B.
      */
     template<typename ConstraintContainer>
     static void buildConflictGraph(
         const ConstraintContainer& constraints,
         std::vector<std::set<int>>& conflict_graph)
     {
-        const int num_constraints = constraints.size();
-        
-        // For each pair of constraints
-        for (int i = 0; i < num_constraints; i++) {
-            for (int j = i + 1; j < num_constraints; j++) {
-                
-                // Check if they share vertices
-                if (constraintsShareVertices(constraints[i], constraints[j])) {
-                    conflict_graph[i].insert(j);
-                    conflict_graph[j].insert(i);
-                }
-            }
-        }
+        const int n = static_cast<int>(constraints.size());
+
+        // Map each vertex index to every constraint that references it
+        std::unordered_map<int, std::vector<int>> vertex_to_constraints;
+        vertex_to_constraints.reserve(n * 4);
+
+        for (int i = 0; i < n; i++)
+            for (const auto& pos : constraints[i].positions())
+                vertex_to_constraints[pos.index].push_back(i);
+
+        // Any two constraints that share a vertex are conflicting
+        for (const auto& kv : vertex_to_constraints)
+            for (int a : kv.second)
+                for (int b : kv.second)
+                    if (a != b)
+                        conflict_graph[a].insert(b);
     }
-    
-    /**
-     * @brief Check if two constraints share any vertices
-     */
-    template<typename Constraint1, typename Constraint2>
-    static bool constraintsShareVertices(const Constraint1& c1, const Constraint2& c2)
-    {
-        // Get position indices from both constraints
-        const auto& positions1 = c1.constraint().positions();
-        const auto& positions2 = c2.constraint().positions();
-        
-        // Check for shared vertex indices
-        for (const auto& pos1 : positions1) {
-            for (const auto& pos2 : positions2) {
-                if (pos1.index == pos2.index) {
-                    return true;  // Conflict found!
-                }
-            }
-        }
-        
-        return false;  // No conflict
-    }
-    
+
     /**
      * @brief Greedy coloring algorithm
      * 

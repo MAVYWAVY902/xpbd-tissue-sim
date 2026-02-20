@@ -154,6 +154,20 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(TestGraphColoring OpenMP::OpenMP_CXX)
 endif()
 
+# Graph Coloring Benchmark on Real Meshes
+add_executable(BenchmarkGraphColoring src/exec/benchmark_graph_coloring.cpp)
+target_link_libraries(BenchmarkGraphColoring Geometry Solver Eigen3::Eigen)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(BenchmarkGraphColoring OpenMP::OpenMP_CXX)
+endif()
+
+# Adhesion Constraints + Graph Coloring Benchmark
+add_executable(BenchmarkAdhesionColoring src/exec/benchmark_adhesion_coloring.cpp)
+target_link_libraries(BenchmarkAdhesionColoring Geometry Solver Eigen3::Eigen)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(BenchmarkAdhesionColoring OpenMP::OpenMP_CXX)
+endif()
+
 add_executable(BeamTest src/exec/beam_test_main.cpp)
 target_link_libraries(BeamTest BeamSimulation)
 

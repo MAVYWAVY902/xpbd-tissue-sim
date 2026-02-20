@@ -67,6 +67,11 @@ class XPBDObjectFactory
             using SolverType = typename XPBDObjectSolverTypes<false, typename ConstraintType::projector_type_list>::GaussSeidel;
             return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
+        else if (solver_type == XPBDObjectSolverTypeEnum::COLORED_GAUSS_SEIDEL)
+        {
+            using SolverType = typename XPBDObjectSolverTypes<false, typename ConstraintType::projector_type_list>::ColoredGaussSeidel;
+            return std::make_unique<Sim::XPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
+        }
         else if (solver_type == XPBDObjectSolverTypeEnum::JACOBI)
         {
             using SolverType = typename XPBDObjectSolverTypes<false, typename ConstraintType::projector_type_list>::Jacobi;
@@ -92,6 +97,11 @@ class XPBDObjectFactory
         if (solver_type == XPBDObjectSolverTypeEnum::GAUSS_SEIDEL)
         {
             using SolverType = typename XPBDObjectSolverTypes<true, typename ConstraintType::projector_type_list>::GaussSeidel;
+            return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
+        }
+        else if (solver_type == XPBDObjectSolverTypeEnum::COLORED_GAUSS_SEIDEL)
+        {
+            using SolverType = typename XPBDObjectSolverTypes<true, typename ConstraintType::projector_type_list>::ColoredGaussSeidel;
             return std::make_unique<Sim::FirstOrderXPBDMeshObject<SolverType, typename ConstraintType::constraint_type_list>>(sim, config);
         }
         else if (solver_type == XPBDObjectSolverTypeEnum::JACOBI)

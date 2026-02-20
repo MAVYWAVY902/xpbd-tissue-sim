@@ -129,6 +129,9 @@ class ObjectRenderConfig : public Config
     void setSpecularColor(const Vec3r& color) { _specular_color.value = color; }
     void setSpecularExponent(Real exponent) { _specular_exponent.value = exponent; }
     void setOpacity(Real opacity) { _opacity.value = opacity; }
+    
+    // Texture file setter
+    void setTextureFile(const std::string& filename) { _texture_file.value = filename; }
 
     protected:
     ConfigParameter<RenderType> _render_type = ConfigParameter<RenderType>(RenderType::PHONG); 

@@ -169,10 +169,10 @@ class CombinedConstraintProjector
         // TODO: FOR NOW assuming that both constraints share exactly the same coordinates, in exactly the same order. FIND A MORE GENERAL WAY
         for (int ci = 0; ci < 2; ci++)
         {
-            float* delC_i = delC + ci*Constraint1::NUM_COORDINATES;
+            Real* delC_i = delC + ci*Constraint1::NUM_COORDINATES;
             for (int cj = ci; cj < 2; cj++)
             {
-                float* delC_j = delC + cj*Constraint1::NUM_COORDINATES;
+                Real* delC_j = delC + cj*Constraint1::NUM_COORDINATES;
 
                 for (int i = 0; i < Constraint1::NUM_POSITIONS; i++)
                 {
@@ -184,14 +184,14 @@ class CombinedConstraintProjector
             
         }
         // compute RHS of lambda update: -C - alpha_tilde * lambda
-        float RHS[2];
+        Real RHS[2];
         for (int ci = 0; ci < 2; ci++)
         {
             RHS[ci] = -C[ci] - alpha_tilde[ci] * _lambda[ci];
         }
 
         // compute lambda update - solve 2x2 system
-        float dlam[2];
+        Real dlam[2];
         const float det = LHS[0]*LHS[3] - LHS[1]*LHS[2];
 
         dlam[0] = (RHS[0]*LHS[3] - RHS[1]*LHS[2]) / det;

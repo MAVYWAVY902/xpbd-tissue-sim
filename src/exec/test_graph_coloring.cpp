@@ -47,6 +47,9 @@ public:
     
     const MockConstraint& constraint() const { return _constraint; }
     bool isValid() const { return true; }
+
+    // Direct positions() accessor required by GraphColoring::colorConstraints
+    const std::vector<PositionReference>& positions() const { return _constraint.positions(); }
     
 private:
     MockConstraint _constraint;

@@ -429,6 +429,104 @@ int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::che
         }
     }
     
+    // ==================== CHECK INTER-DEFORM UNIFIED DISTANCE CONSTRAINTS ====================
+    // Check InterDeformUnifiedDistanceConstraint (deform-deform adhesion like Tumor ↔ Brain)
+    using InterDeformUnifiedProjectorType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformUnifiedDistanceConstraint>;
+    auto& inter_deform_unified_projectors = _solver.template getConstraintProjectorsOfType<InterDeformUnifiedProjectorType>();
+    
+    for (size_t i = 0; i < inter_deform_unified_projectors.size(); ++i)
+    {
+        if (!inter_deform_unified_projectors[i].isValid()) {
+            continue;
+        }
+        
+        auto& constraint_ref = inter_deform_unified_projectors[i].constraint();
+        auto& constraint = const_cast<Solver::InterDeformUnifiedDistanceConstraint&>(constraint_ref.get());
+        
+        // Skip if already marked for breaking
+        if (constraint.shouldBreak()) {
+            continue;
+        }
+        
+        // Get constraint endpoints: vertex from object A and triangle from object B
+        const auto& positions = constraint.positions();
+        const Real* vertex_p = positions[0].position_ptr;  // Vertex position
+        const Real* tri_p1 = positions[1].position_ptr;    // Triangle vertex 1
+        const Real* tri_p2 = positions[2].position_ptr;    // Triangle vertex 2
+        const Real* tri_p3 = positions[3].position_ptr;    // Triangle vertex 3
+        
+        Vec3r vertex_pos(vertex_p[0], vertex_p[1], vertex_p[2]);
+        Vec3r tri_pos1(tri_p1[0], tri_p1[1], tri_p1[2]);
+        Vec3r tri_pos2(tri_p2[0], tri_p2[1], tri_p2[2]);
+        Vec3r tri_pos3(tri_p3[0], tri_p3[1], tri_p3[2]);
+        
+        // Compute triangle centroid
+        Vec3r tri_centroid = (tri_pos1 + tri_pos2 + tri_pos3) / 3.0;
+        
+        bool should_break = false;
+        std::string break_reason;
+        
+        // PRIORITY 1: Check if knife is near either endpoint (vertex or triangle centroid)
+        Real knife_to_vertex_dist = sdf->evaluate(vertex_pos);
+        Real knife_to_triangle_dist = sdf->evaluate(tri_centroid);
+        
+        if (knife_to_vertex_dist < threshold || knife_to_triangle_dist < threshold)
+        {
+            should_break = true;
+            break_reason = "knife near adhesion endpoint";
+        }
+        else
+        {
+            // PRIORITY 2: Check if knife is between the two endpoints (cutting through the adhesion)
+            // This checks if the knife is intersecting the line segment between vertex and triangle centroid
+            Vec3r adhesion_vector = tri_centroid - vertex_pos;
+            Real adhesion_length = adhesion_vector.norm();
+            
+            if (adhesion_length > 1e-6) {
+                // Sample points along the adhesion line
+                const int num_samples = 5;
+                for (int j = 1; j < num_samples; ++j) {
+                    Real t = static_cast<Real>(j) / num_samples;
+                    Vec3r sample_point = vertex_pos + adhesion_vector * t;
+                    Real knife_dist = sdf->evaluate(sample_point);
+                    
+                    if (knife_dist < threshold) {
+                        should_break = true;
+                        break_reason = "knife cutting through adhesion";
+                        break;
+                    }
+                }
+            }
+            
+            // PRIORITY 3: Check if gap has increased significantly
+            if (!should_break) {
+                Real current_dist = constraint.getCurrentDistance();
+                Real initial_dist = constraint.getInitialDistance();
+                Real gap_increase = current_dist - initial_dist;
+                
+                const Real gap_increase_threshold = 0.005; // 5mm gap increase
+                if (gap_increase > gap_increase_threshold) {
+                    should_break = true;
+                    break_reason = "excessive gap increase";
+                }
+            }
+        }
+        
+        if (should_break)
+        {
+            // InterDeformUnifiedDistanceConstraint doesn't have markForBreaking(), so invalidate directly
+            _solver.template setProjectorValidity<InterDeformUnifiedProjectorType>(i, false);
+            constraints_broken++;
+            
+            // Debug output for first few breaks
+            if (constraints_broken <= 3) {
+                std::cout << "[XPBDMeshObject] Knife cutting inter-deform adhesion (" << break_reason << ")! "
+                          << "Vertex: (" << vertex_pos.transpose() << "), "
+                          << "Triangle: (" << tri_centroid.transpose() << ")" << std::endl;
+            }
+        }
+    }
+    
     return constraints_broken;
 }
 
@@ -2460,11 +2558,13 @@ using StableNeohookeanCombinedConstraints = typename XPBDMeshObjectConstraintCon
 
 // Stable Neohookean constraint config
 template class XPBDMeshObject_<false, SolverTypesStableNeohookean::GaussSeidel, StableNeohookeanConstraints>;
+template class XPBDMeshObject_<false, SolverTypesStableNeohookean::ColoredGaussSeidel, StableNeohookeanConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookean::Jacobi, StableNeohookeanConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookean::ParallelJacobi, StableNeohookeanConstraints>;
 
 // Stable Neohookean Combined constraint config
 template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::GaussSeidel, StableNeohookeanCombinedConstraints>;
+template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::ColoredGaussSeidel, StableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::Jacobi, StableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<false, SolverTypesStableNeohookeanCombined::ParallelJacobi, StableNeohookeanCombinedConstraints>;
 
@@ -2473,10 +2573,12 @@ using FirstOrderSolverTypesStableNeohookeanCombined = XPBDObjectSolverTypes<true
 using FirstOrderStableNeohookeanConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookean::constraint_type_list;
 using FirstOrderStableNeohookeanCombinedConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::StableNeohookeanCombined::constraint_type_list;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::GaussSeidel, FirstOrderStableNeohookeanConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::ColoredGaussSeidel, FirstOrderStableNeohookeanConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::Jacobi, FirstOrderStableNeohookeanConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookean::ParallelJacobi, FirstOrderStableNeohookeanConstraints>;
 
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::GaussSeidel, FirstOrderStableNeohookeanCombinedConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::ColoredGaussSeidel, FirstOrderStableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::Jacobi, FirstOrderStableNeohookeanCombinedConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesStableNeohookeanCombined::ParallelJacobi, FirstOrderStableNeohookeanCombinedConstraints>;
 
@@ -2485,6 +2587,7 @@ using SolverTypesNerveOnly = XPBDObjectSolverTypes<false, typename XPBDMeshObjec
 using NerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigurations<false>::NerveOnly::constraint_type_list;
 
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::GaussSeidel, NerveOnlyConstraints>;
+template class XPBDMeshObject_<false, SolverTypesNerveOnly::ColoredGaussSeidel, NerveOnlyConstraints>;
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::Jacobi, NerveOnlyConstraints>;
 template class XPBDMeshObject_<false, SolverTypesNerveOnly::ParallelJacobi, NerveOnlyConstraints>;
 
@@ -2578,6 +2681,7 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ge
 using FirstOrderNerveOnlyConstraints = typename XPBDMeshObjectConstraintConfigurations<true>::NerveOnly::constraint_type_list;
 
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::GaussSeidel, FirstOrderNerveOnlyConstraints>;
+template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::ColoredGaussSeidel, FirstOrderNerveOnlyConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::Jacobi, FirstOrderNerveOnlyConstraints>;
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::ParallelJacobi, FirstOrderNerveOnlyConstraints>;
 

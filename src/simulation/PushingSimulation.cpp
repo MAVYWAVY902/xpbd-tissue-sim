@@ -91,6 +91,8 @@ void PushingSimulation::setup()
     
     // Graphics-only knife - no collision, controlled manually
     Vec3r knife_initial_position(0.15, 0.0, 0.05);
+    const Config::PushingSimulationConfig* pushing_config = dynamic_cast<const Config::PushingSimulationConfig*>(config());
+    Vec3r knife_rotation = pushing_config->knifeRotation();
     
     // Determine scaling mode: directional or uniform
     std::optional<Real> max_size_param = std::nullopt;
@@ -113,14 +115,14 @@ void PushingSimulation::setup()
     Config::RigidMeshObjectConfig cursor_config(
         "pushing_tool",                                    // name
         knife_initial_position,                            // initial position (away from objects)
-        Vec3r(0,0,0),                                      // initial rotation
+        knife_rotation,                                    // initial rotation
         Vec3r(0,0,0),                                      // initial velocity
         Vec3r(0,0,0),                                      // initial angular velocity
         1.0,                                               // density
         false,                                             // collisions (DISABLED - knife is graphics only)
         true,                                              // graphics_only (TRUE = no physics collision)
         false,                                             // fixed (allow manual movement)
-        "../resource/tools/convex_knife_scaled.obj",      // filename
+        "../resource/tools/dissector_uv.obj",      // filename
         max_size_param,                                    // max_size (uniform scaling)
         size_param,                                        // size (directional scaling)
         false,                                             // draw_points
@@ -128,7 +130,11 @@ void PushingSimulation::setup()
         true,                                              // draw_faces
         Vec4r(0.8, 0.8, 0.8, 1.0),                        // color (silver/gray for knife)
         std::nullopt,                                      // sdf_filename
-        Config::ObjectRenderConfig()                       // render_config
+        []() {
+            Config::ObjectRenderConfig render_cfg;
+            render_cfg.setTextureFile("../resource/textures/knife_texture.jpg");
+            return render_cfg;
+        }()                                                // render_config with texture
     );
     _cursor = _addObjectFromConfig(&cursor_config);
     assert(_cursor);
@@ -157,8 +163,8 @@ void PushingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton bu
 {
     // printf("DEBUG: Mouse button event: button=%d, action=%d\n", static_cast<int>(button), static_cast<int>(action));
 
-    // Left mouse button toggles pushing on/off
-    if (button == SimulationInput::MouseButton::LEFT && action == SimulationInput::MouseAction::PRESS)
+    // Middle mouse button toggles pushing on/off
+    if (button == SimulationInput::MouseButton::MIDDLE && action == SimulationInput::MouseAction::PRESS)
     {
         _togglePushing();
     }

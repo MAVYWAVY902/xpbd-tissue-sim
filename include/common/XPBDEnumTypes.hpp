@@ -6,6 +6,7 @@
 enum class XPBDObjectSolverTypeEnum
 {
     GAUSS_SEIDEL,
+    COLORED_GAUSS_SEIDEL,
     JACOBI,
     PARALLEL_JACOBI
 };

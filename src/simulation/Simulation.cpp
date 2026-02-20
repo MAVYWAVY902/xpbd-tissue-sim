@@ -1838,36 +1838,42 @@ void Simulation::setup()
                                 {
                                     using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
                                     using Sol1 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
-                                    using A_GS = XPBDMeshObject_<true, Sol1::GaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
-                                    using A_J  = XPBDMeshObject_<true, Sol1::Jacobi,       typename Cfg::StableNeohookean::constraint_type_list>;
-                                    using A_PJ = XPBDMeshObject_<true, Sol1::ParallelJacobi,typename Cfg::StableNeohookean::constraint_type_list>;
+                                    using A_GS = XPBDMeshObject_<true, Sol1::GaussSeidel,        typename Cfg::StableNeohookean::constraint_type_list>;
+                                    using A_J  = XPBDMeshObject_<true, Sol1::Jacobi,              typename Cfg::StableNeohookean::constraint_type_list>;
+                                    using A_PJ = XPBDMeshObject_<true, Sol1::ParallelJacobi,      typename Cfg::StableNeohookean::constraint_type_list>;
+                                    using A_CG = XPBDMeshObject_<true, Sol1::ColoredGaussSeidel,  typename Cfg::StableNeohookean::constraint_type_list>;
                                     if (!added) added = try_add_for(dynamic_cast<A_GS*>(base_ptr), "1st + NonCombined + GS");
                                     if (!added) added = try_add_for(dynamic_cast<A_J *>(base_ptr), "1st + NonCombined + Jacobi");
                                     if (!added) added = try_add_for(dynamic_cast<A_PJ*>(base_ptr), "1st + NonCombined + ParallelJacobi");
+                                    if (!added) added = try_add_for(dynamic_cast<A_CG*>(base_ptr), "1st + NonCombined + ColoredGS");
                                 }
 
                                 // ===== 1st-order + Stable-Neohookean-Combined =====
                                 {
                                     using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
                                     using Sol2 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
-                                    using B_GS = XPBDMeshObject_<true, Sol2::GaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
-                                    using B_J  = XPBDMeshObject_<true, Sol2::Jacobi,       typename Cfg::StableNeohookeanCombined::constraint_type_list>;
-                                    using B_PJ = XPBDMeshObject_<true, Sol2::ParallelJacobi,typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    using B_GS = XPBDMeshObject_<true, Sol2::GaussSeidel,        typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    using B_J  = XPBDMeshObject_<true, Sol2::Jacobi,              typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    using B_PJ = XPBDMeshObject_<true, Sol2::ParallelJacobi,      typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    using B_CG = XPBDMeshObject_<true, Sol2::ColoredGaussSeidel,  typename Cfg::StableNeohookeanCombined::constraint_type_list>;
                                     if (!added) added = try_add_for(dynamic_cast<B_GS*>(base_ptr), "1st + Combined + GS");
                                     if (!added) added = try_add_for(dynamic_cast<B_J *>(base_ptr), "1st + Combined + Jacobi");
                                     if (!added) added = try_add_for(dynamic_cast<B_PJ*>(base_ptr), "1st + Combined + ParallelJacobi");
+                                    if (!added) added = try_add_for(dynamic_cast<B_CG*>(base_ptr), "1st + Combined + ColoredGS");
                                 }
 
                                 // ===== 1st-order + Nerve-Only =====
                                 {
                                     using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
                                     using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
-                                    using C_GS = XPBDMeshObject_<true, Sol3::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
-                                    using C_J  = XPBDMeshObject_<true, Sol3::Jacobi,       typename Cfg::NerveOnly::constraint_type_list>;
-                                    using C_PJ = XPBDMeshObject_<true, Sol3::ParallelJacobi,typename Cfg::NerveOnly::constraint_type_list>;
+                                    using C_GS = XPBDMeshObject_<true, Sol3::GaussSeidel,        typename Cfg::NerveOnly::constraint_type_list>;
+                                    using C_J  = XPBDMeshObject_<true, Sol3::Jacobi,              typename Cfg::NerveOnly::constraint_type_list>;
+                                    using C_PJ = XPBDMeshObject_<true, Sol3::ParallelJacobi,      typename Cfg::NerveOnly::constraint_type_list>;
+                                    using C_CG = XPBDMeshObject_<true, Sol3::ColoredGaussSeidel,  typename Cfg::NerveOnly::constraint_type_list>;
                                     if (!added) added = try_add_for(dynamic_cast<C_GS*>(base_ptr), "1st + NerveOnly + GS");
                                     if (!added) added = try_add_for(dynamic_cast<C_J *>(base_ptr), "1st + NerveOnly + Jacobi");
                                     if (!added) added = try_add_for(dynamic_cast<C_PJ*>(base_ptr), "1st + NerveOnly + ParallelJacobi");
+                                    if (!added) added = try_add_for(dynamic_cast<C_CG*>(base_ptr), "1st + NerveOnly + ColoredGS");
                                 }
 
                                 if (added) { added_any = true; break; }
@@ -2158,6 +2164,25 @@ void Simulation::setup()
                                     using TumorType3 = XPBDMeshObject_<true, Sol3::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
                                     if (!tumor_cast_handled) tumor_cast_handled = try_add_on_tumor(dynamic_cast<TumorType3*>(tumor_ptr));
                                 }
+                                // Try Colored-Gauss-Seidel variants
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                    using Sol1 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                                    using TumorType1 = XPBDMeshObject_<true, Sol1::ColoredGaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                                    if (!tumor_cast_handled) tumor_cast_handled = try_add_on_tumor(dynamic_cast<TumorType1*>(tumor_ptr));
+                                }
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                    using Sol2 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                                    using TumorType2 = XPBDMeshObject_<true, Sol2::ColoredGaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                                    if (!tumor_cast_handled) tumor_cast_handled = try_add_on_tumor(dynamic_cast<TumorType2*>(tumor_ptr));
+                                }
+                                {
+                                    using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                                    using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                                    using TumorType3 = XPBDMeshObject_<true, Sol3::ColoredGaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                                    if (!tumor_cast_handled) tumor_cast_handled = try_add_on_tumor(dynamic_cast<TumorType3*>(tumor_ptr));
+                                }
                             } catch (const std::exception& e) {
                                 std::cout << "[adhesion] Error pairing nerve and tumor objects: " << e.what() << "\n";
                             }
@@ -2416,7 +2441,27 @@ void Simulation::setup()
                 using Cube2Type3 = XPBDMeshObject_<true, Sol3::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
                 if (!handled) handled = try_add_inter_deform(dynamic_cast<Cube2Type3*>(cube2_ptr));
             }
-            
+
+            // Try Colored-Gauss-Seidel variants
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol1 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                using Cube2Type1 = XPBDMeshObject_<true, Sol1::ColoredGaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                if (!handled) handled = try_add_inter_deform(dynamic_cast<Cube2Type1*>(cube2_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol2 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                using Cube2Type2 = XPBDMeshObject_<true, Sol2::ColoredGaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                if (!handled) handled = try_add_inter_deform(dynamic_cast<Cube2Type2*>(cube2_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                using Cube2Type3 = XPBDMeshObject_<true, Sol3::ColoredGaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                if (!handled) handled = try_add_inter_deform(dynamic_cast<Cube2Type3*>(cube2_ptr));
+            }
+
             // Try Jacobi variants
             {
                 using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
@@ -2877,7 +2922,27 @@ void Simulation::setup()
                 using TissueType3 = XPBDMeshObject_<true, Sol3::GaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
                 if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType3*>(tissue_ptr));
             }
-            
+
+            // Try Colored-Gauss-Seidel variants
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol1 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookean::projector_type_list>;
+                using TissueType1 = XPBDMeshObject_<true, Sol1::ColoredGaussSeidel, typename Cfg::StableNeohookean::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType1*>(tissue_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol2 = XPBDObjectSolverTypes<true, typename Cfg::StableNeohookeanCombined::projector_type_list>;
+                using TissueType2 = XPBDMeshObject_<true, Sol2::ColoredGaussSeidel, typename Cfg::StableNeohookeanCombined::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType2*>(tissue_ptr));
+            }
+            {
+                using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
+                using Sol3 = XPBDObjectSolverTypes<true, typename Cfg::NerveOnly::projector_type_list>;
+                using TissueType3 = XPBDMeshObject_<true, Sol3::ColoredGaussSeidel, typename Cfg::NerveOnly::constraint_type_list>;
+                if (!handled) handled = try_add_rigid_deform(dynamic_cast<TissueType3*>(tissue_ptr));
+            }
+
             // Try Jacobi variants
             {
                 using Cfg = XPBDMeshObjectConstraintConfigurations<true>;
