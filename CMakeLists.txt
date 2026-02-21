@@ -206,6 +206,13 @@ target_link_libraries(PalpationDemo PalpationSimulation)
 add_executable(HapticDissectionTest src/exec/haptic_dissection_main.cpp)
 target_link_libraries(HapticDissectionTest HapticDissectionSimulation)
 
+# Minimal Inverse3 connection test (no OpenGL)
+if(EXISTS /thirdparty/HaplyHardwareAPI/libHaply.HardwareAPI.a)
+    add_executable(HapticConnectionTest src/exec/haptic_connection_test.cpp)
+    target_include_directories(HapticConnectionTest PRIVATE /thirdparty/HaplyHardwareAPI/include)
+    target_link_libraries(HapticConnectionTest /thirdparty/HaplyHardwareAPI/libHaply.HardwareAPI.a pthread)
+endif()
+
 # add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
 # target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
 

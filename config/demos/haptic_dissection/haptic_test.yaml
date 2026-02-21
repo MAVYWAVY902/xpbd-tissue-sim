@@ -1,0 +1,73 @@
+## Simple haptic connection test
+## Move the Inverse3 end-effector and verify the knife follows in the viewer.
+## No tissue, no adhesion — just device → knife position mapping.
+
+name: "Haptic Connection Test"
+description: "Verify Inverse3 connection and knife tracking"
+
+visualization: "Easy3D"
+
+g-accel: 0
+sim-mode: "Visualization"
+enable-mouse-interaction: true
+input-device: "Mouse"
+
+time-step: 1e-3
+collision-rate: 1000
+fps: 30
+end-time: 10000
+
+## PushingSimulation parameters
+tool-radius: 0.05
+push-stiffness: 0.0
+push-damping: 0.0
+max-push-force: 0.0
+fix-min-z: false
+
+## HapticDissectionSimulation parameters
+haptic-force-scaling: 0.0              # no force feedback for this test
+haptic-serial-port: ""                 # auto-detect
+contact-force-stiffness: 0.0
+force-filter-alpha: 0.0
+haptic-workspace-radius: 0.08          # Inverse3 physical workspace [m]
+sim-workspace-radius: 0.15             # larger sim workspace so knife moves more visibly
+
+## No adhesion
+nerve-tumor-adhesion-enable: false
+
+## Materials (minimal — needed by parser)
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000
+    E: 6e4
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+
+## A small static tissue block just for visual reference (not interacted with)
+objects:
+  -
+    name: "Reference Cube"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tumor_fixed/tumor_squeezed_uv03.obj"
+    materials: ["Soft Tissue"]
+
+    color: [0.8, 0.3, 0.2, 0.3]
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    collisions: false
+
+    use-original-coords: true
+    max-size: 0.05
+    position: [0.0, 0.0, 0.0]
+    velocity: [0.0, 0.0, 0.0]
+    rotation: [0, 0, 0]
+
+    num-solver-iters: 1
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 5000000

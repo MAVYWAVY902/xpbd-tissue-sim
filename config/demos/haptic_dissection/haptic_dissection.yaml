@@ -63,15 +63,17 @@ objects:
     draw-edges: true
     draw-faces: true
 
-    max-size: 1
-    position: [0, 0, 1.2]
-    velocity: [0, 0, 0.0]
-    rotation: [0, 0, 0]
-
     collisions: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 0.05               # Scale to 50mm (0.05m)
+    position: [-0.0, 0.0, 0.0]    # LEFT: -30mm to avoid overlap!
+    velocity: [0.0, 0, 0.0]      # Stationary
+    rotation: [0, 0, 0]
 
     num-solver-iters: 3
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 1000000
+    damping-multiplier: 5000000

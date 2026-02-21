@@ -1,7 +1,9 @@
 #include "haptics/HaplyInverse3Device.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
+#include <unistd.h>
 
 #ifndef NO_HAPLY_HARDWARE_API
 #include "HardwareAPI.h"
@@ -33,7 +35,23 @@ std::string HaplyInverse3Device::_autoDetectPort()
 HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
 {
 #ifndef NO_HAPLY_HARDWARE_API
-    std::string port = serial_port.empty() ? _autoDetectPort() : serial_port;
+    std::string port = serial_port;
+    if (port.empty())
+    {
+        // Skip DetectInverse3s() to avoid double-wakeup — just scan ports directly
+        const char* candidates[] = {
+            "/dev/ttyACM0", "/dev/ttyACM1", "/dev/ttyACM2", "/dev/ttyACM3"
+        };
+        for (const char* p : candidates)
+        {
+            if (access(p, R_OK | W_OK) == 0)
+            {
+                port = p;
+                std::cout << "[HaplyInverse3] Found serial port: " << port << std::endl;
+                break;
+            }
+        }
+    }
     if (port.empty())
     {
         std::cerr << "[HaplyInverse3] Inverse3 NOT found, falling back to mouse/keyboard" << std::endl;
@@ -44,10 +62,18 @@ HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
     try
     {
         auto* stream = new Haply::HardwareAPI::IO::SerialStream(port.c_str());
+        // Brief pause to let serial port settle
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         auto* device = new Haply::HardwareAPI::Devices::Inverse3(stream);
         Haply::HardwareAPI::Devices::Inverse3::DeviceInfoResponse info = device->DeviceWakeup();
         std::cout << "[HaplyInverse3] Device woken up on " << port
                   << "  (device ID: " << info.device_id << ")" << std::endl;
+
+        // Read initial position to verify communication works
+        auto state = device->GetEndEffectorPosition();
+        std::cout << "[HaplyInverse3] Initial position: ("
+                  << state.position[0] << ", " << state.position[1] << ", "
+                  << state.position[2] << ")" << std::endl;
         _stream_handle = static_cast<void*>(stream);
         _device_handle = static_cast<void*>(device);
         _connected = true;
@@ -110,6 +136,7 @@ void HaplyInverse3Device::_runLoop()
 {
 #ifndef NO_HAPLY_HARDWARE_API
     auto* device = static_cast<Haply::HardwareAPI::Devices::Inverse3*>(_device_handle);
+    int loop_count = 0;
 
     while (_running)
     {
@@ -141,6 +168,13 @@ void HaplyInverse3Device::_runLoop()
                 _device_state.velocity[1] = static_cast<Real>(resp.velocity[1]);
                 _device_state.velocity[2] = static_cast<Real>(resp.velocity[2]);
                 _copied_state.stale = true;
+            }
+
+            // Log position every ~1 second (every 1000 loops at 1kHz)
+            if (++loop_count % 1000 == 0)
+            {
+                std::cout << "[HaplyInverse3] pos=(" << resp.position[0] << ", "
+                          << resp.position[1] << ", " << resp.position[2] << ")" << std::endl;
             }
         }
         catch (const std::exception& e)
