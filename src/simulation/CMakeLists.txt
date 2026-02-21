@@ -195,6 +195,31 @@ install(FILES ${INITIAL_DEFORMATION_SIMULATION_HEADERS}
     DESTINATION include/${PROJECT_NAME}/simulation)
 
 
+######################################
+# Haptic Dissection Simulation
+######################################
+set(HAPTIC_DISSECTION_SIMULATION_HEADERS
+    "${SIMULATION_INCLUDE_DIR}/HapticDissectionSimulation.hpp"
+)
+
+set(HAPTIC_DISSECTION_SIMULATION_SOURCES
+    "${SIMULATION_SRC_DIR}/HapticDissectionSimulation.cpp"
+)
+
+target_sources(HapticDissectionSimulation
+    PRIVATE
+        ${HAPTIC_DISSECTION_SIMULATION_HEADERS}
+        ${HAPTIC_DISSECTION_SIMULATION_SOURCES}
+)
+
+install(TARGETS HapticDissectionSimulation EXPORT HapticDissectionSimulation-targets
+    RUNTIME DESTINATION bin/${PROJECT_NAME}
+    LIBRARY DESTINATION lib/${PROJECT_NAME}
+)
+install(FILES ${HAPTIC_DISSECTION_SIMULATION_HEADERS}
+    DESTINATION include/${PROJECT_NAME}/simulation)
+
+
 # target_sources(BeamStretchSimulation
 #     PRIVATE
 #         ${SIMULATION_INCLUDE_DIR}/BeamStretchSimulation.hpp

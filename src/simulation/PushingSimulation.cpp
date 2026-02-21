@@ -7,7 +7,7 @@ namespace Sim
 {
 
 PushingSimulation::PushingSimulation(const Config::PushingSimulationConfig* config)
-    : Simulation(config), _pushing_enabled(false), _cursor(nullptr)
+    : Simulation(config), _pushing_enabled(false)
 {
     _tool_radius = config->toolRadius();
     _push_stiffness = config->pushStiffness();

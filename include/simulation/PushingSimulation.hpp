@@ -38,6 +38,8 @@ public:
 protected:
     void _timeStep() override;
 
+    Sim::RigidMeshObject* _cursor = nullptr;   ///< visual representation of the knife tool
+
 private:
     /// @brief move the tool cursor by a given displacement
     void _moveCursor(const Vec3r& dp);
@@ -76,7 +78,6 @@ private:
     std::map<SimulationInput::Key, int> _keys_held;  ///< map of currently held keys
     std::array<double, 2> _last_mouse_pos;           ///< last mouse position
     
-    Sim::RigidMeshObject* _cursor;       ///< visual representation of the knife tool
     Vec3r _knife_initial_position;       ///< initial position of the knife for reset functionality
 
     // Storage for per-vertex push targets to ensure stable pointer lifetimes

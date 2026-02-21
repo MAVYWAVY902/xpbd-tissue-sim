@@ -91,8 +91,10 @@ if (HAVE_CUDA AND NOT NO_GPU)
     add_subdirectory("src/gpu")
 endif()
 
-# Haptics library
+# Haptics library (OpenHaptics / Geomagic Touch)
 add_library(Haptics)
+# Haply Haptics library (Haply Inverse3)
+add_library(HaplyHaptics)
 add_subdirectory("src/haptics")
 
 
@@ -115,6 +117,16 @@ target_link_libraries(Config Eigen3::Eigen SimObject)
 target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer ${VTK_LIBRARIES}) # link Easy3D for Graphics library
 target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils embree)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
+
+# Haply Haptics: link against the static HardwareAPI library
+if(EXISTS /thirdparty/HaplyHardwareAPI/libHaply.HardwareAPI.a)
+    target_include_directories(HaplyHaptics PRIVATE /thirdparty/HaplyHardwareAPI/include)
+    target_link_libraries(HaplyHaptics Eigen3::Eigen /thirdparty/HaplyHardwareAPI/libHaply.HardwareAPI.a pthread)
+else()
+    # Build without device support when HardwareAPI is not installed
+    target_compile_definitions(HaplyHaptics PRIVATE NO_HAPLY_HARDWARE_API)
+    target_link_libraries(HaplyHaptics Eigen3::Eigen pthread)
+endif()
 target_link_libraries(SimObject Eigen3::Eigen MeshUtils GeometryUtils Geometry Solver Config)   # link MeshUtils and Solver libraries
 target_link_libraries(Solver PUBLIC Eigen3::Eigen SimObject)         # link SimObject library
 target_link_libraries(MeshUtils gmsh assimp Eigen3::Eigen Geometry) # link MeshUtils with gmsh (for volume mesh generation) and assimp (for mesh loading/conversion)
@@ -128,6 +140,7 @@ add_library(PushingSimulation)
 add_library(HangingSimulation)
 add_library(VirtuosoSimulation)
 add_library(PalpationSimulation)
+add_library(HapticDissectionSimulation)
 # add_library(BeamStretchSimulation)
 # add_library(TissueGraspingSimulation)
 add_library(InitialDeformationSimulation)
@@ -140,6 +153,7 @@ target_link_libraries(PushingSimulation Simulation)
 target_link_libraries(HangingSimulation Simulation)
 target_link_libraries(VirtuosoSimulation Simulation Haptics)
 target_link_libraries(PalpationSimulation VirtuosoSimulation)
+target_link_libraries(HapticDissectionSimulation PushingSimulation HaplyHaptics)
 # target_link_libraries(BeamStretchSimulation Simulation)
 target_link_libraries(InitialDeformationSimulation Config Simulation)
 
@@ -188,6 +202,9 @@ target_link_libraries(VirtuosoTracheaDemo VirtuosoSimulation)
 
 add_executable(PalpationDemo src/exec/demos/palpation_demo.cpp)
 target_link_libraries(PalpationDemo PalpationSimulation)
+
+add_executable(HapticDissectionTest src/exec/haptic_dissection_main.cpp)
+target_link_libraries(HapticDissectionTest HapticDissectionSimulation)
 
 # add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)
 # target_link_libraries(TissueGraspingTest TissueGraspingSimulation)
@@ -241,7 +258,7 @@ add_executable(TestSDFCollision src/exec/util/test_sdf_collision.cpp)
 target_link_libraries(TestSDFCollision Geometry MeshUtils)
 
 vtk_module_autoinit(
-  TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest VirtuosoStaticsModelTest InitialDeformationTest
+  TARGETS Test BeamTest GraspingTest VirtuosoTest VirtuosoTracheaDemo VTKTest VirtuosoStaticsModelTest InitialDeformationTest HapticDissectionTest
   MODULES ${VTK_LIBRARIES}
 )
 

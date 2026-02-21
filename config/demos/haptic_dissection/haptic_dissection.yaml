@@ -1,0 +1,77 @@
+## Haptic Dissection Demo
+## Haply Inverse3 haptic device + knife tool + adhesion-based tissue cutting
+## Falls back to mouse/keyboard if no device is connected.
+
+name: "Haptic Dissection"
+description: "Interactive haptic dissection with Haply Inverse3 force feedback"
+
+visualization: "Easy3D"
+
+g-accel: 0
+sim-mode: "Visualization"
+enable-mouse-interaction: true
+input-device: "Mouse"
+
+time-step: 1e-3
+collision-rate: 1000
+fps: 30
+end-time: 10000
+
+## PushingSimulation parameters
+tool-radius: 0.1
+push-stiffness: 50.0
+push-damping: 0.5
+max-push-force: 20.0
+fix-min-z: true
+
+## HapticDissectionSimulation parameters
+haptic-force-scaling: 5.0
+haptic-serial-port: ""            # empty = auto-detect /dev/ttyACM*
+contact-force-stiffness: 500.0    # penalty stiffness for SDF contact feedback [N/m]
+force-filter-alpha: 0.3           # low-pass filter coefficient (0 = no new, 1 = no smoothing)
+haptic-workspace-radius: 0.08     # Inverse3 physical workspace [m]
+sim-workspace-radius: 0.1         # simulation workspace to map into [m]
+
+## Adhesion settings (nerve-tumor adhesion)
+nerve-tumor-adhesion-enable: true
+nerve-tumor-adhesion-target-gap: 0.0
+nerve-tumor-adhesion-alpha: 1e-7
+nerve-tumor-adhesion-distance-window: 2.0
+nerve-tumor-adhesion-bond-distance: 0.005
+nerve-tumor-adhesion-break-distance: 0.02
+
+## Materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000
+    E: 6e4
+    nu: 0.45
+    mu-s: 0.0
+    mu-k: 0.0
+
+## Objects
+objects:
+  -
+    name: "Tissue"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tumor_fixed/tumor_squeezed_uv03.obj"
+    materials: ["Soft Tissue"]
+
+    color: [0.8, 0.3, 0.2, 1.0]
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    max-size: 1
+    position: [0, 0, 1.2]
+    velocity: [0, 0, 0.0]
+    rotation: [0, 0, 0]
+
+    collisions: true
+
+    num-solver-iters: 3
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 1000000

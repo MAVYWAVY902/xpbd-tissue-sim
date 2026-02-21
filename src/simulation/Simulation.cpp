@@ -3970,6 +3970,8 @@ int Simulation::run()
     if (_graphics_scene)
     {
         _graphics_scene->run();
+        if (update_thread.joinable())
+            update_thread.join();
         return 0;
     }
     else

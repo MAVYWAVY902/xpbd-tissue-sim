@@ -117,7 +117,17 @@ RUN make -j 8
 RUN make install
 
 
-################################## 
+##################################
+# Haply Inverse3 HardwareAPI
+##################################
+WORKDIR /thirdparty
+RUN wget -q https://cdn.haply.co/r/33857671/HardwareAPI.0.2.8.linux.tar.gz \
+    && mkdir -p HaplyHardwareAPI \
+    && tar -xzf HardwareAPI.0.2.8.linux.tar.gz -C HaplyHardwareAPI \
+    && rm -f HardwareAPI.0.2.8.linux.tar.gz
+
+
+##################################
 # Geomagic Touch device setup
 ##################################
 
