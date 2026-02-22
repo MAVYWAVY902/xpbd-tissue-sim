@@ -211,6 +211,10 @@ if(EXISTS /thirdparty/HaplyHardwareAPI/libHaply.HardwareAPI.a)
     add_executable(HapticConnectionTest src/exec/haptic_connection_test.cpp)
     target_include_directories(HapticConnectionTest PRIVATE /thirdparty/HaplyHardwareAPI/include)
     target_link_libraries(HapticConnectionTest /thirdparty/HaplyHardwareAPI/libHaply.HardwareAPI.a pthread)
+
+    add_executable(HapticForceTest src/exec/haptic_force_test.cpp)
+    target_include_directories(HapticForceTest PRIVATE /thirdparty/HaplyHardwareAPI/include)
+    target_link_libraries(HapticForceTest /thirdparty/HaplyHardwareAPI/libHaply.HardwareAPI.a pthread)
 endif()
 
 # add_executable(TissueGraspingTest src/exec/tissue_grasping_test_main.cpp)

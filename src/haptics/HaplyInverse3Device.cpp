@@ -136,6 +136,23 @@ HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
                               << "to enable force feedback!" << std::endl;
                 }
 
+                // Check torque scaling state
+                auto ts = device->GetTorqueScaling();
+                std::cout << "[HaplyInverse3] Torque scaling: "
+                          << (ts.enabled ? "ENABLED" : "DISABLED") << std::endl;
+
+                // Check gravity compensation state
+                auto gc = device->GetGravityCompensation();
+                std::cout << "[HaplyInverse3] Gravity compensation: "
+                          << (gc.enabled ? "ENABLED" : "DISABLED")
+                          << "  scale_factor=" << gc.gravity_scale_factor << std::endl;
+
+                // Query motor currents to see baseline
+                auto mc = device->MotorCurrentsQuery();
+                std::cout << "[HaplyInverse3] Motor currents: ("
+                          << mc.currents[0] << ", " << mc.currents[1] << ", "
+                          << mc.currents[2] << ") A" << std::endl;
+
                 break;
             }
 
@@ -353,58 +370,96 @@ bool HaplyInverse3Device::poll()
     // ---- Poll Inverse3 (position + velocity) ----
     auto* device = static_cast<Haply::HardwareAPI::Devices::Inverse3*>(_device_handle);
 
-    Haply::HardwareAPI::Devices::Inverse3::EndEffectorForceRequest req{};
-    if (_test_force_enabled)
+    if (_test_force_enabled && _test_use_joint_torques)
     {
-        // Constant test force: 2N in +Y (upward in Inverse3 frame)
-        req.force[0] = 0.0f;
-        req.force[1] = 2.0f;
-        req.force[2] = 0.0f;
+        // ---- JointTorques test: bypass end-effector kinematics ----
+        // SDK says ~20 Nmm needed to overcome internal friction.
+        // Use 100 Nmm on all motors — should be VERY noticeable.
+        Haply::HardwareAPI::Devices::Inverse3::JointTorquesRequest treq{};
+        treq.torques[0] = 100.0f;  // Nmm
+        treq.torques[1] = 100.0f;
+        treq.torques[2] = 100.0f;
+        try
+        {
+            auto tresp = device->JointTorques(treq);
+
+            _position[0] = 0; _position[1] = 0; _position[2] = 0;  // no cartesian data from JointTorques
+
+            if (++_poll_count % 30 == 0)
+            {
+                std::cout << "[TEST TORQUE] Sending 100 Nmm on all 3 motors"
+                          << "  angles=(" << tresp.angles[0] << ", "
+                          << tresp.angles[1] << ", " << tresp.angles[2] << ") deg"
+                          << std::endl;
+            }
+            result = true;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[TEST TORQUE] Error: " << e.what() << std::endl;
+        }
     }
     else
     {
-        req.force[0] = static_cast<float>(std::clamp(_commanded_force[0],
-                            static_cast<Real>(-kMaxForcePerAxis),
-                            static_cast<Real>(kMaxForcePerAxis)));
-        req.force[1] = static_cast<float>(std::clamp(_commanded_force[1],
-                            static_cast<Real>(-kMaxForcePerAxis),
-                            static_cast<Real>(kMaxForcePerAxis)));
-        req.force[2] = static_cast<float>(std::clamp(_commanded_force[2],
-                            static_cast<Real>(-kMaxForcePerAxis),
-                            static_cast<Real>(kMaxForcePerAxis)));
-    }
-
-    try
-    {
-        auto resp = device->EndEffectorForce(req);
-
-        bool valid = (resp.position[0] != 0.0f || resp.position[1] != 0.0f
-                      || resp.position[2] != 0.0f);
-        if (valid)
+        // ---- Normal EndEffectorForce path ----
+        Haply::HardwareAPI::Devices::Inverse3::EndEffectorForceRequest req{};
+        if (_test_force_enabled)
         {
-            _position[0] = static_cast<Real>(resp.position[0]);
-            _position[1] = static_cast<Real>(resp.position[1]);
-            _position[2] = static_cast<Real>(resp.position[2]);
-            _velocity[0] = static_cast<Real>(resp.velocity[0]);
-            _velocity[1] = static_cast<Real>(resp.velocity[1]);
-            _velocity[2] = static_cast<Real>(resp.velocity[2]);
+            // MAX test force on all axes — should be very obvious
+            req.force[0] = 3.3f;
+            req.force[1] = 3.3f;
+            req.force[2] = 3.3f;
+        }
+        else
+        {
+            req.force[0] = static_cast<float>(std::clamp(_commanded_force[0],
+                                static_cast<Real>(-kMaxForcePerAxis),
+                                static_cast<Real>(kMaxForcePerAxis)));
+            req.force[1] = static_cast<float>(std::clamp(_commanded_force[1],
+                                static_cast<Real>(-kMaxForcePerAxis),
+                                static_cast<Real>(kMaxForcePerAxis)));
+            req.force[2] = static_cast<float>(std::clamp(_commanded_force[2],
+                                static_cast<Real>(-kMaxForcePerAxis),
+                                static_cast<Real>(kMaxForcePerAxis)));
         }
 
-        // Log every ~1 second (assuming ~30 fps)
-        if (++_poll_count % 30 == 0)
+        try
         {
-            std::cout << "[HaplyInverse3] pos=(" << resp.position[0] << ", "
-                      << resp.position[1] << ", " << resp.position[2] << ")"
-                      << "  force_sent=(" << req.force[0] << ", "
-                      << req.force[1] << ", " << req.force[2] << ")"
-                      << (valid ? "" : " [STALE]") << std::endl;
-        }
+            auto resp = device->EndEffectorForce(req);
 
-        result = valid;
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << "[HaplyInverse3] Communication error: " << e.what() << std::endl;
+            bool valid = (resp.position[0] != 0.0f || resp.position[1] != 0.0f
+                          || resp.position[2] != 0.0f);
+            if (valid)
+            {
+                _position[0] = static_cast<Real>(resp.position[0]);
+                _position[1] = static_cast<Real>(resp.position[1]);
+                _position[2] = static_cast<Real>(resp.position[2]);
+                _velocity[0] = static_cast<Real>(resp.velocity[0]);
+                _velocity[1] = static_cast<Real>(resp.velocity[1]);
+                _velocity[2] = static_cast<Real>(resp.velocity[2]);
+            }
+
+            // Log every ~1 second
+            if (++_poll_count % 30 == 0)
+            {
+                std::cout << "[HaplyInverse3] pos=(" << resp.position[0] << ", "
+                          << resp.position[1] << ", " << resp.position[2] << ")"
+                          << "  force_sent=(" << req.force[0] << ", "
+                          << req.force[1] << ", " << req.force[2] << ")"
+                          << (valid ? "" : " [STALE]") << std::endl;
+
+                if (_test_force_enabled)
+                {
+                    std::cout << "[TEST FORCE EE] Sending (3.3, 3.3, 3.3) N" << std::endl;
+                }
+            }
+
+            result = valid;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[HaplyInverse3] Communication error: " << e.what() << std::endl;
+        }
     }
 
     // ---- Poll VerseGrip (orientation) ----

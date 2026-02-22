@@ -39,13 +39,23 @@ HapticDissectionSimulation::~HapticDissectionSimulation() = default;
 void HapticDissectionSimulation::notifyKeyPressed(
     SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
-    // 'T' key: toggle test force on the haptic device
+    // 'T' key: toggle EndEffectorForce test (3.3N all axes)
     if (key == SimulationInput::Key::T && action == SimulationInput::KeyAction::PRESS)
     {
         if (_haptic_device && _haptic_device->isConnected())
         {
             _haptic_device->toggleTestForce();
-            std::cout << "[HapticDissection] Test force toggled!" << std::endl;
+            std::cout << "[HapticDissection] Test EndEffectorForce toggled! (3.3N all axes)" << std::endl;
+        }
+    }
+
+    // 'Y' key: toggle JointTorques test (100 Nmm all motors — bypasses kinematics)
+    if (key == SimulationInput::Key::Y && action == SimulationInput::KeyAction::PRESS)
+    {
+        if (_haptic_device && _haptic_device->isConnected())
+        {
+            _haptic_device->toggleTestTorque();
+            std::cout << "[HapticDissection] Test JointTorques toggled! (100 Nmm all motors)" << std::endl;
         }
     }
 

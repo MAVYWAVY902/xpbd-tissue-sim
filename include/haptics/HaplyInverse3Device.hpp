@@ -55,8 +55,11 @@ public:
     /// Each axis is clamped to [-3.3, 3.3] N (hardware limit).
     void setForce(const Vec3r& force);
 
-    /// Toggle a constant test force (2N upward) to verify device responds.
-    void toggleTestForce() { _test_force_enabled = !_test_force_enabled; }
+    /// Toggle a constant test force to verify device responds.
+    /// 'T' = toggle EndEffectorForce test (3.3N all axes)
+    /// 'Y' = toggle JointTorques test (100 Nmm all motors, bypasses kinematics)
+    void toggleTestForce() { _test_force_enabled = !_test_force_enabled; _test_use_joint_torques = false; }
+    void toggleTestTorque() { _test_force_enabled = !_test_force_enabled; _test_use_joint_torques = true; }
 
 private:
     /// Try to auto-detect the Inverse3 serial port.
@@ -71,6 +74,7 @@ private:
     Vec3r _initial_position = Vec3r::Zero();
     int _poll_count = 0;
     bool _test_force_enabled = false;
+    bool _test_use_joint_torques = false;
 
     // ---- VerseGrip state ----
     Vec4r _orientation = Vec4r(0, 0, 0, 1);  // identity quaternion [x, y, z, w]
