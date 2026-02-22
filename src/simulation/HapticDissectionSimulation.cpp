@@ -1,6 +1,8 @@
 #include "simulation/HapticDissectionSimulation.hpp"
 #include "haptics/HaplyInverse3Device.hpp"
 #include "simobject/XPBDMeshObjectBase.hpp"
+#include <chrono>
+#include <thread>
 
 namespace Sim
 {
@@ -33,9 +35,12 @@ void HapticDissectionSimulation::setup()
     // Record the device's rest position if connected
     if (_haptic_device && _haptic_device->isConnected())
     {
-        _haptic_device_origin = _haptic_device->position();
+        // Use the validated initial position from the constructor
+        _haptic_device_origin = _haptic_device->initialPosition();
         std::cout << "[HapticDissection] Haptic device connected. "
                   << "Device origin: (" << _haptic_device_origin.transpose() << ")" << std::endl;
+        std::cout << "[HapticDissection] Knife origin in sim: ("
+                  << _haptic_origin.transpose() << ")" << std::endl;
     }
     else
     {
@@ -46,13 +51,25 @@ void HapticDissectionSimulation::setup()
 void HapticDissectionSimulation::_timeStep()
 {
     // ------------------------------------------------------------------
-    // 1. If device connected: read position and drive the knife
+    // 1. If device connected: poll device and drive the knife
     // ------------------------------------------------------------------
     if (_haptic_device && _haptic_device->isConnected())
     {
+        // Synchronous poll: exchange force command for position/velocity
+        _haptic_device->poll();
+
         Vec3r device_pos = _haptic_device->position();
         Vec3r sim_pos = _hapticToSimPosition(device_pos);
         _cursor->setPosition(sim_pos);
+
+        // Debug: log every ~1 second (assuming ~30 fps = every 30 frames)
+        static int frame_count = 0;
+        if (++frame_count % 30 == 0)
+        {
+            std::cout << "[HapticDissection] device=(" << device_pos.transpose()
+                      << ")  sim=(" << sim_pos.transpose()
+                      << ")  knife=(" << _cursor->position().transpose() << ")" << std::endl;
+        }
     }
     // else: mouse/keyboard input from PushingSimulation works as-is
 
