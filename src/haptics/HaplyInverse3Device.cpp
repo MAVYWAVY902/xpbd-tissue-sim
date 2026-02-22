@@ -123,6 +123,19 @@ HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
                 _initial_position[2] = static_cast<Real>(resp.position[2]);
                 _position = _initial_position;
                 _connected = true;
+
+                // Check power state — forces require external 24V power supply
+                auto power = device->DevicePowerQuery();
+                std::cout << "[HaplyInverse3] Power supply: "
+                          << (power.powered ? "CONNECTED (forces enabled)"
+                                            : "NOT CONNECTED — force feedback DISABLED")
+                          << std::endl;
+                if (!power.powered)
+                {
+                    std::cerr << "[HaplyInverse3] WARNING: Connect the 24V power supply "
+                              << "to enable force feedback!" << std::endl;
+                }
+
                 break;
             }
 
@@ -341,15 +354,25 @@ bool HaplyInverse3Device::poll()
     auto* device = static_cast<Haply::HardwareAPI::Devices::Inverse3*>(_device_handle);
 
     Haply::HardwareAPI::Devices::Inverse3::EndEffectorForceRequest req{};
-    req.force[0] = static_cast<float>(std::clamp(_commanded_force[0],
-                        static_cast<Real>(-kMaxForcePerAxis),
-                        static_cast<Real>(kMaxForcePerAxis)));
-    req.force[1] = static_cast<float>(std::clamp(_commanded_force[1],
-                        static_cast<Real>(-kMaxForcePerAxis),
-                        static_cast<Real>(kMaxForcePerAxis)));
-    req.force[2] = static_cast<float>(std::clamp(_commanded_force[2],
-                        static_cast<Real>(-kMaxForcePerAxis),
-                        static_cast<Real>(kMaxForcePerAxis)));
+    if (_test_force_enabled)
+    {
+        // Constant test force: 2N in +Y (upward in Inverse3 frame)
+        req.force[0] = 0.0f;
+        req.force[1] = 2.0f;
+        req.force[2] = 0.0f;
+    }
+    else
+    {
+        req.force[0] = static_cast<float>(std::clamp(_commanded_force[0],
+                            static_cast<Real>(-kMaxForcePerAxis),
+                            static_cast<Real>(kMaxForcePerAxis)));
+        req.force[1] = static_cast<float>(std::clamp(_commanded_force[1],
+                            static_cast<Real>(-kMaxForcePerAxis),
+                            static_cast<Real>(kMaxForcePerAxis)));
+        req.force[2] = static_cast<float>(std::clamp(_commanded_force[2],
+                            static_cast<Real>(-kMaxForcePerAxis),
+                            static_cast<Real>(kMaxForcePerAxis)));
+    }
 
     try
     {
@@ -372,6 +395,8 @@ bool HaplyInverse3Device::poll()
         {
             std::cout << "[HaplyInverse3] pos=(" << resp.position[0] << ", "
                       << resp.position[1] << ", " << resp.position[2] << ")"
+                      << "  force_sent=(" << req.force[0] << ", "
+                      << req.force[1] << ", " << req.force[2] << ")"
                       << (valid ? "" : " [STALE]") << std::endl;
         }
 

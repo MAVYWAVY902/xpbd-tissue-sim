@@ -39,6 +39,16 @@ HapticDissectionSimulation::~HapticDissectionSimulation() = default;
 void HapticDissectionSimulation::notifyKeyPressed(
     SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
+    // 'T' key: toggle test force on the haptic device
+    if (key == SimulationInput::Key::T && action == SimulationInput::KeyAction::PRESS)
+    {
+        if (_haptic_device && _haptic_device->isConnected())
+        {
+            _haptic_device->toggleTestForce();
+            std::cout << "[HapticDissection] Test force toggled!" << std::endl;
+        }
+    }
+
     // Track rotation key held state
     auto it = _rotation_keys_held.find(key);
     if (it != _rotation_keys_held.end())
@@ -125,7 +135,20 @@ void HapticDissectionSimulation::_timeStep()
                        + (1.0 - _force_filter_alpha) * _prev_haptic_force;
         _prev_haptic_force = filtered;
 
-        // f. Send to device
+        // f. Log forces periodically for debugging
+        static int force_log_count = 0;
+        if (++force_log_count % 30 == 0)
+        {
+            if (total_force.norm() > 1e-6)
+            {
+                std::cout << "[ForceFeedback] contact=(" << contact_force.transpose()
+                          << ")  adhesion=(" << adhesion_force.transpose()
+                          << ")  haptic=(" << filtered.transpose()
+                          << ")  |F|=" << filtered.norm() << " N" << std::endl;
+            }
+        }
+
+        // g. Send to device
         _haptic_device->setForce(filtered);
     }
 

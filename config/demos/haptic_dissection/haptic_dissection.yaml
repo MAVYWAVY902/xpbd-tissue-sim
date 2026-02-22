@@ -21,9 +21,9 @@ end-time: 10000
 tool-radius: 0.05
 knife-position: [0.01, 0.0, 0.0]   # [x, y, z] in meters
 knife-rotation: [0, 0, 0]            # [rx, ry, rz] in degrees
-push-stiffness: 0.0
-push-damping: 0.0
-max-push-force: 0.0
+push-stiffness: 400.0              # how much tissue deforms on contact (0 = no deformation)
+push-damping: 20.0                 # damping to prevent tissue oscillation
+max-push-force: 5.0                # cap on max displacement per frame
 fix-min-z: false
 
 ## HapticDissectionSimulation parameters

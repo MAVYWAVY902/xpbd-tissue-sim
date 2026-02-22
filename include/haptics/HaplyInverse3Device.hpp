@@ -55,6 +55,9 @@ public:
     /// Each axis is clamped to [-3.3, 3.3] N (hardware limit).
     void setForce(const Vec3r& force);
 
+    /// Toggle a constant test force (2N upward) to verify device responds.
+    void toggleTestForce() { _test_force_enabled = !_test_force_enabled; }
+
 private:
     /// Try to auto-detect the Inverse3 serial port.
     static std::string _autoDetectPort();
@@ -67,6 +70,7 @@ private:
     bool _connected = false;
     Vec3r _initial_position = Vec3r::Zero();
     int _poll_count = 0;
+    bool _test_force_enabled = false;
 
     // ---- VerseGrip state ----
     Vec4r _orientation = Vec4r(0, 0, 0, 1);  // identity quaternion [x, y, z, w]
