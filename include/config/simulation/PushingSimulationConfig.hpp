@@ -48,6 +48,14 @@ public:
                 _knife_rotation = Vec3r(rotation_deg[0], rotation_deg[1], rotation_deg[2]) * M_PI / 180.0;
             }
         }
+
+        if (config_node["knife-position"])
+        {
+            auto pos = config_node["knife-position"].as<std::vector<Real>>();
+            if (pos.size() == 3) {
+                _knife_position = Vec3r(pos[0], pos[1], pos[2]);
+            }
+        }
     }
 
     Real toolRadius() const { return _tool_radius; }
@@ -60,6 +68,7 @@ public:
     Real knifeScaleY() const { return _knife_scale_y; }
     Real knifeScaleZ() const { return _knife_scale_z; }
     Vec3r knifeRotation() const { return _knife_rotation; }
+    Vec3r knifePosition() const { return _knife_position; }
 
 private:
     Real _tool_radius = 0.2;        ///< default tool radius [m]
@@ -72,6 +81,7 @@ private:
     Real _knife_scale_y = -1.0;     ///< knife Y scale (-1 = use tool_radius for uniform scaling)
     Real _knife_scale_z = -1.0;     ///< knife Z scale (-1 = use tool_radius for uniform scaling)
     Vec3r _knife_rotation = Vec3r(0, 0, 0); ///< knife rotation in RADIANS [rx, ry, rz] (converted from degrees in config)
+    Vec3r _knife_position = Vec3r(0.15, 0.0, 0.05); ///< knife initial position [m] (x, y, z)
 };
 
 } // namespace Config

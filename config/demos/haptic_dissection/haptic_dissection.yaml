@@ -12,19 +12,22 @@ sim-mode: "Visualization"
 enable-mouse-interaction: true
 input-device: "Mouse"
 
-time-step: 1e-3
+time-step: 5e-4
 collision-rate: 1000
 fps: 30
 end-time: 10000
 
 ## PushingSimulation parameters
-tool-radius: 0.1
-push-stiffness: 50.0
-push-damping: 0.5
-max-push-force: 20.0
-fix-min-z: true
+tool-radius: 0.05
+knife-position: [0.01, 0.0, 0.0]   # [x, y, z] in meters
+knife-rotation: [0, 0, 0]            # [rx, ry, rz] in degrees
+push-stiffness: 0.0
+push-damping: 0.0
+max-push-force: 0.0
+fix-min-z: false
 
 ## HapticDissectionSimulation parameters
+knife-rotation-speed: 1.0             # keyboard rotation speed [rad/s] (Q/E=yaw, R/F=pitch, Z/X=roll)
 haptic-force-scaling: 5.0
 haptic-serial-port: ""            # empty = auto-detect /dev/ttyACM*
 contact-force-stiffness: 500.0    # penalty stiffness for SDF contact feedback [N/m]

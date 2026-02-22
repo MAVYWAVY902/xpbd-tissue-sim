@@ -3,6 +3,7 @@
 #include "simulation/PushingSimulation.hpp"
 #include "config/simulation/HapticDissectionSimulationConfig.hpp"
 #include <memory>
+#include <map>
 
 class HaplyInverse3Device;
 
@@ -26,6 +27,8 @@ public:
     ~HapticDissectionSimulation();
 
     void setup() override;
+
+    void notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers) override;
 
 protected:
     void _timeStep() override;
@@ -55,6 +58,10 @@ private:
     Real _force_filter_alpha = 0.3;
     Real _haptic_workspace_radius = 0.08;
     Real _sim_workspace_radius = 0.1;
+
+    // Keyboard rotation state
+    Real _rotation_speed = 1.0;  ///< radians per second
+    std::map<SimulationInput::Key, bool> _rotation_keys_held;
 };
 
 } // namespace Sim

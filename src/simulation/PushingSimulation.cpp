@@ -90,8 +90,8 @@ void PushingSimulation::setup()
     std::cout << "[PushingSimulation] Creating knife tool..." << std::endl;
     
     // Graphics-only knife - no collision, controlled manually
-    Vec3r knife_initial_position(0.15, 0.0, 0.05);
     const Config::PushingSimulationConfig* pushing_config = dynamic_cast<const Config::PushingSimulationConfig*>(config());
+    Vec3r knife_initial_position = pushing_config->knifePosition();
     Vec3r knife_rotation = pushing_config->knifeRotation();
     
     // Determine scaling mode: directional or uniform

@@ -1,8 +1,10 @@
 #include "simulation/HapticDissectionSimulation.hpp"
 #include "haptics/HaplyInverse3Device.hpp"
 #include "simobject/XPBDMeshObjectBase.hpp"
+#include "utils/GeometryUtils.hpp"
 #include <chrono>
 #include <thread>
+#include <cmath>
 
 namespace Sim
 {
@@ -16,6 +18,15 @@ HapticDissectionSimulation::HapticDissectionSimulation(
     _force_filter_alpha     = config->forceFilterAlpha();
     _haptic_workspace_radius = config->hapticWorkspaceRadius();
     _sim_workspace_radius   = config->simWorkspaceRadius();
+    _rotation_speed         = config->knifeRotationSpeed();
+
+    // Initialize rotation key tracking
+    _rotation_keys_held[SimulationInput::Key::Q] = false;  // yaw -
+    _rotation_keys_held[SimulationInput::Key::E] = false;  // yaw +
+    _rotation_keys_held[SimulationInput::Key::R] = false;  // pitch +
+    _rotation_keys_held[SimulationInput::Key::F] = false;  // pitch -
+    _rotation_keys_held[SimulationInput::Key::Z] = false;  // roll -
+    _rotation_keys_held[SimulationInput::Key::X] = false;  // roll +
 
     // Create the haptic device (attempts connection, graceful fallback)
     _haptic_device = std::make_unique<HaplyInverse3Device>(config->hapticSerialPort());
@@ -24,6 +35,20 @@ HapticDissectionSimulation::HapticDissectionSimulation(
 // Destructor must be defined here (not in header) because HaplyInverse3Device
 // is only forward-declared in the header — unique_ptr needs the complete type.
 HapticDissectionSimulation::~HapticDissectionSimulation() = default;
+
+void HapticDissectionSimulation::notifyKeyPressed(
+    SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
+{
+    // Track rotation key held state
+    auto it = _rotation_keys_held.find(key);
+    if (it != _rotation_keys_held.end())
+    {
+        it->second = (action == SimulationInput::KeyAction::PRESS);
+    }
+
+    // Pass to parent for other key bindings (O for reset, SPACE for depth, etc.)
+    PushingSimulation::notifyKeyPressed(key, action, modifiers);
+}
 
 void HapticDissectionSimulation::setup()
 {
@@ -102,6 +127,42 @@ void HapticDissectionSimulation::_timeStep()
 
         // f. Send to device
         _haptic_device->setForce(filtered);
+    }
+
+    // ------------------------------------------------------------------
+    // 4. Rotation: VerseGrip (if available) or keyboard fallback
+    // ------------------------------------------------------------------
+    if (_haptic_device && _haptic_device->hasVerseGrip())
+    {
+        // Use VerseGrip quaternion directly
+        Vec4r device_quat = _haptic_device->orientation();
+        _cursor->setOrientation(device_quat);
+    }
+    else
+    {
+        // Keyboard fallback: Q/E=yaw, R/F=pitch, Z/X=roll
+        Real time_step = dt();
+        Real angle_step = _rotation_speed * time_step;
+
+        Real yaw   = 0;  // Y-axis
+        Real pitch = 0;  // X-axis
+        Real roll  = 0;  // Z-axis
+
+        if (_rotation_keys_held[SimulationInput::Key::Q]) yaw   -= angle_step;
+        if (_rotation_keys_held[SimulationInput::Key::E]) yaw   += angle_step;
+        if (_rotation_keys_held[SimulationInput::Key::R]) pitch += angle_step;
+        if (_rotation_keys_held[SimulationInput::Key::F]) pitch -= angle_step;
+        if (_rotation_keys_held[SimulationInput::Key::Z]) roll  -= angle_step;
+        if (_rotation_keys_held[SimulationInput::Key::X]) roll  += angle_step;
+
+        if (yaw != 0 || pitch != 0 || roll != 0)
+        {
+            Vec4r dq = GeometryUtils::eulXYZ2Quat(pitch, yaw, roll);
+            Vec4r current_q = _cursor->orientation();
+            Vec4r new_q = GeometryUtils::quatMult(dq, current_q);
+            new_q.normalize();
+            _cursor->setOrientation(new_q);
+        }
     }
 }
 
