@@ -1,6 +1,9 @@
 ## Haptic Dissection Demo
 ## Haply Inverse3 haptic device + knife tool + adhesion-based tissue cutting
 ## Falls back to mouse/keyboard if no device is connected.
+##
+## Based on tbone_tumor_brain_adhesion_test.yaml — includes TBone + Tumor
+## with rigid-deform adhesion that the knife can cut through.
 
 name: "Haptic Dissection"
 description: "Interactive haptic dissection with Haply Inverse3 force feedback"
@@ -8,75 +11,110 @@ description: "Interactive haptic dissection with Haply Inverse3 force feedback"
 visualization: "Easy3D"
 
 g-accel: 0
-sim-mode: "Visualization"
+sim-mode: "AFAP"
 enable-mouse-interaction: true
 input-device: "Mouse"
 
-time-step: 5e-4
-collision-rate: 1000
-fps: 30
+time-step: 3e-4
+collision-rate: 100
+collision-algorithm: "embree"
+fps: 60
 end-time: 10000
 
-## PushingSimulation parameters
-tool-radius: 0.05
-knife-position: [0.01, 0.0, 0.0]   # [x, y, z] in meters
-knife-rotation: [0, 0, 0]            # [rx, ry, rz] in degrees
-push-stiffness: 400.0              # how much tissue deforms on contact (0 = no deformation)
-push-damping: 20.0                 # damping to prevent tissue oscillation
-max-push-force: 5.0                # cap on max displacement per frame
+## ==================== PUSHING TOOL SETTINGS ====================
+tool-radius: 0.065         # knife mesh scale (same as tbone test)
+knife-position: [0.01, 0.0, 0.0]
+knife-rotation: [0, 0, 0]
+push-stiffness: 1000.0     # same as tbone test
+push-damping: 0.7           # same as tbone test
+max-push-force: 8.0
 fix-min-z: false
 
-## HapticDissectionSimulation parameters
-knife-rotation-speed: 1.0             # keyboard rotation speed [rad/s] (Q/E=yaw, R/F=pitch, Z/X=roll)
+## ==================== HAPTIC DEVICE SETTINGS ====================
+knife-rotation-speed: 1.0
 haptic-force-scaling: 5.0
 haptic-serial-port: ""            # empty = auto-detect /dev/ttyACM*
-contact-force-stiffness: 500.0    # penalty stiffness for SDF contact feedback [N/m]
-force-filter-alpha: 0.3           # low-pass filter coefficient (0 = no new, 1 = no smoothing)
-haptic-workspace-radius: 0.20     # Inverse3 actual workspace ~20cm radius [m]
-sim-workspace-radius: 0.05        # map to tissue size (5cm) [m]
+contact-force-stiffness: 500.0
+force-filter-alpha: 0.3
+haptic-workspace-radius: 0.20
+sim-workspace-radius: 0.05
 
-## Adhesion settings (nerve-tumor adhesion)
-nerve-tumor-adhesion-enable: true
-nerve-tumor-adhesion-target-gap: 0.0
-nerve-tumor-adhesion-alpha: 1e-7
-nerve-tumor-adhesion-distance-window: 2.0
-nerve-tumor-adhesion-bond-distance: 0.005
-nerve-tumor-adhesion-break-distance: 0.02
+## ==================== RIGID-DEFORM ADHESION (TBone ↔ Tumor) ====================
+rigid-deform-adhesion-enable: true
+rigid-deform-adhesion-interaction-type: "unified-distance"
 
-## Materials
+rigid-deform-adhesion-alpha: 1e-7
+rigid-deform-adhesion-bond-distance: 0.0348
+rigid-deform-adhesion-break-ratio: 1.27
+rigid-deform-adhesion-stretch-abs-min: 0.005
+
+## Unified-distance curve parameters
+rigid-deform-adhesion-d-contact: 0.0003
+rigid-deform-adhesion-d-rest: 0.0032
+rigid-deform-adhesion-d-neutral-start: 0.005
+rigid-deform-adhesion-d-neutral-end: 0.005
+rigid-deform-adhesion-d-bond: 0.005
+
+## ==================== MATERIALS ====================
 materials:
   -
     name: "Soft Tissue"
     density: 1000
-    E: 6e4
+    E: 8e4
     nu: 0.45
-    mu-s: 0.0
-    mu-k: 0.0
+    mu-s: 1.2
+    mu-k: 0.8
 
-## Objects
+## ==================== OBJECTS ====================
 objects:
+
+  ## Deformable Tumor
   -
-    name: "Tissue"
+    name: "Tumor"
     type: "FirstOrderXPBDMeshObject"
     filename: "../resource/tumor_fixed/tumor_squeezed_uv03.obj"
     materials: ["Soft Tissue"]
 
-    color: [0.8, 0.3, 0.2, 1.0]
+    draw-points: false
+    draw-edges: false
+    draw-faces: true
+
+    texture-file: "../resource/textures/AlbedoFat.png"
+    use-texture: true
+
+    collisions: true
+    inter-object-collisions: false
+
+    use-original-coords: true
+    max-size: 0.05
+    position: [0.0, 0.0, 0.0]
+    velocity: [0.0, 0, 0.0]
+    rotation: [0, 0, 0]
+
+    num-solver-iters: 5
+    solver-type: "Gauss-Seidel"
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 7500000
+
+  ## Rigid TBone
+  -
+    name: "RigidBone"
+    type: "RigidMeshObject"
+    filename: "../resource/tbone_fixed/tbone_MOD4.obj"
+    density: 1000
+
+    color: [0.95, 0.92, 0.85]
     draw-points: false
     draw-edges: true
     draw-faces: true
 
-    collisions: true
-
-    ## initial configuration
-    use-original-coords: true   # Center and scale mesh
-    max-size: 0.05               # Scale to 50mm (0.05m)
-    position: [-0.0, 0.0, 0.0]    # LEFT: -30mm to avoid overlap!
-    velocity: [0.0, 0, 0.0]      # Stationary
+    use-original-coords: true
+    max-size: 0.05
+    position: [0.0, 0.0, 0.0]
     rotation: [0, 0, 0]
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
 
-    num-solver-iters: 3
-    solver-type: "Gauss-Seidel"
-    constraint-type: "Stable-Neohookean-Combined"
-    residual-policy: "Never"
-    damping-multiplier: 5000000
+    collisions: true
+    fixed: true

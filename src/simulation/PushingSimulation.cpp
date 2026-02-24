@@ -313,9 +313,15 @@ void PushingSimulation::_timeStep()
     // Apply pushing forces if pushing is enabled
     if (_pushing_enabled)
     {
-        // Check if knife is cutting adhesion constraints
-        _checkKnifeAdhesionInterference();
-        
+        // Throttle expensive SDF-based checks: run every N steps instead of every step.
+        // At time-step 3e-4 this still checks every ~1.5ms which is responsive enough.
+        static int push_throttle = 0;
+        if (++push_throttle % 5 == 0)
+        {
+            // Check if knife is cutting adhesion constraints
+            _checkKnifeAdhesionInterference();
+        }
+
         // Apply pushing forces for tissue interaction
         _applyPushingForces();
     }
@@ -371,29 +377,32 @@ void PushingSimulation::_applyPushingForces()
         fo_xpbd_mesh_obj->clearAttachmentConstraints();
     }
     
+    // Bounding sphere radius for early rejection: vertices farther than this
+    // from the knife center cannot possibly be within the 1mm contact threshold.
+    const Real reject_radius = _tool_radius + 0.002; // tool radius + 2mm margin
+    const Real reject_radius_sq = reject_radius * reject_radius;
+
     // Process XPBDMeshObject_Base objects
     for (auto& xpbd_mesh_obj : xpbd_mesh_objs)
     {
-        // printf("DEBUG: Processing XPBDMeshObject with %d vertices\n", xpbd_mesh_obj->mesh()->numVertices());
-        
         for (int v = 0; v < xpbd_mesh_obj->mesh()->numVertices(); ++v)
         {
             if (xpbd_mesh_obj->vertexFixed(v)) continue;
 
             const Vec3r vertex_pos = xpbd_mesh_obj->mesh()->vertex(v);
-            
+
+            // Fast bounding sphere rejection — skip expensive SDF eval
+            if ((vertex_pos - tool_center).squaredNorm() > reject_radius_sq) continue;
+
             // Use SDF to get signed distance (negative = inside knife, positive = outside)
             Real signed_distance = knife_sdf->evaluate(vertex_pos);
-            
-            // Debug: Show vertices near tool
-            if (signed_distance <= _tool_radius * 0.2) // Within 20% of tool radius
+
+            if (signed_distance <= _tool_radius * 0.2)
             {
                 vertices_contacted++;
-                // printf("DEBUG: Vertex %d at signed distance %.4f\n", v, signed_distance);
             }
-            
-            // Apply pushing if vertex is penetrating the knife (negative distance)
-            // or very close to it (small positive distance for soft contact)
+
+            // Apply pushing if vertex is penetrating the knife
             Real contact_threshold = 0.001; // 1mm soft contact zone
             if (signed_distance < contact_threshold)
             {
@@ -460,24 +469,23 @@ void PushingSimulation::_applyPushingForces()
     // Process FirstOrderXPBDMeshObject_Base objects
     for (auto& fo_xpbd_mesh_obj : fo_xpbd_mesh_objs)
     {
-        // printf("DEBUG: Processing FirstOrderXPBDMeshObject with %d vertices\n", fo_xpbd_mesh_obj->mesh()->numVertices());
-        
         for (int v = 0; v < fo_xpbd_mesh_obj->mesh()->numVertices(); ++v)
         {
             if (fo_xpbd_mesh_obj->vertexFixed(v)) continue;
 
             const Vec3r vertex_pos = fo_xpbd_mesh_obj->mesh()->vertex(v);
-            
+
+            // Fast bounding sphere rejection — skip expensive SDF eval
+            if ((vertex_pos - tool_center).squaredNorm() > reject_radius_sq) continue;
+
             // Use SDF to get signed distance (negative = inside knife, positive = outside)
             Real signed_distance = knife_sdf->evaluate(vertex_pos);
-            
-            // Debug: Show vertices near tool
-            if (signed_distance <= _tool_radius * 0.2) // Within 20% of tool radius
+
+            if (signed_distance <= _tool_radius * 0.2)
             {
                 vertices_contacted++;
-                // printf("DEBUG: FO Vertex %d at signed distance %.4f\n", v, signed_distance);
             }
-            
+
             // Apply pushing if vertex is penetrating the knife
             Real contact_threshold = 0.001; // 1mm soft contact zone
             if (signed_distance < contact_threshold)

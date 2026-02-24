@@ -104,6 +104,10 @@ void HapticDissectionSimulation::setup()
 {
     PushingSimulation::setup();
 
+    // Auto-enable pushing so the knife interacts with tissue and cuts adhesion
+    _setPushingEnabled(true);
+    std::cout << "[HapticDissection] Pushing auto-enabled for haptic dissection." << std::endl;
+
     // Record the knife's initial position as the haptic origin in sim space
     _haptic_origin = _cursor->position();
 
@@ -145,13 +149,11 @@ void HapticDissectionSimulation::_timeStep()
         Vec3r sim_pos = _hapticToSimPosition(device_pos);
         _cursor->setPosition(sim_pos);
 
-        // Debug: log every ~1 second (2000 steps/sec)
-        static int frame_count = 0;
-        if (++frame_count % 2000 == 0)
-        {
-            std::cout << "[HapticDissection] device=(" << device_pos.transpose()
-                      << ")  sim=(" << sim_pos.transpose() << ")" << std::endl;
-        }
+        // Debug: uncomment to log device position every ~1 second
+        // static int frame_count = 0;
+        // if (++frame_count % 2000 == 0)
+        //     std::cout << "[HapticDissection] device=(" << device_pos.transpose()
+        //               << ")  sim=(" << sim_pos.transpose() << ")" << std::endl;
     }
     // else: mouse/keyboard input from PushingSimulation works as-is
 

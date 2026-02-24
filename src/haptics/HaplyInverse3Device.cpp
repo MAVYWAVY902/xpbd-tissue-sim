@@ -452,13 +452,6 @@ void HaplyInverse3Device::_inverse3ThreadFunc()
             }
 
             ++count;
-            if (count % 5000 == 0)
-            {
-                std::cout << "[Inverse3 thread] " << count << " polls, "
-                          << errors << " errors, pos=("
-                          << resp.position[0] << ", " << resp.position[1]
-                          << ", " << resp.position[2] << ")" << std::endl;
-            }
         }
         catch (const std::exception& e)
         {
@@ -529,15 +522,6 @@ void HaplyInverse3Device::_versegripThreadFunc()
                 }
             }
             ++count;
-            if (count % 500 == 0)
-            {
-                std::lock_guard<std::mutex> lock(_orient_mutex);
-                std::cout << "[VerseGrip thread] " << count << " polls, "
-                          << errors << " errors, orient=("
-                          << _orientation[0] << ", " << _orientation[1]
-                          << ", " << _orientation[2] << ", " << _orientation[3]
-                          << ")" << std::endl;
-            }
         }
         catch (const std::exception& e)
         {

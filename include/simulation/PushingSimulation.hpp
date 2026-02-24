@@ -40,6 +40,9 @@ protected:
 
     Sim::RigidMeshObject* _cursor = nullptr;   ///< visual representation of the knife tool
 
+    /// @brief Enable/disable pushing (for subclasses like HapticDissectionSimulation)
+    void _setPushingEnabled(bool enabled) { _pushing_enabled = enabled; }
+
 private:
     /// @brief move the tool cursor by a given displacement
     void _moveCursor(const Vec3r& dp);

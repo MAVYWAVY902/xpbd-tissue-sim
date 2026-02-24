@@ -3096,6 +3096,7 @@ void Simulation::_timeStep()
     }
 
     // —— PRE: read current length of the picked edge —— //
+#if 0  // DEBUG MONITORING — disabled for performance (120+ dynamic_casts per timestep)
     if (s_edge_initialized)
     {
         auto read_and_print = [&](auto* xpbd, const char* tag, const char* phase){
@@ -3357,6 +3358,7 @@ void Simulation::_timeStep()
             warned_pre_triplet = true;
         }
     }
+#endif  // DEBUG MONITORING disabled
 
     // —— Run one XPBD step (objects do elasticity + collisions + your stretch) —— //
     _objects.for_each_element([](auto& obj) { obj->update(); });
@@ -3412,9 +3414,8 @@ void Simulation::_timeStep()
         }
     }
     
-    // Update visualization markers for active adhesion constraints EVERY FRAME (green for active, black for inactive)
-    // This is outside the should_check_breaking block to ensure smooth visual updates
-    if (_config->rigidDeformAdhesionEnable()) {
+    // Update visualization markers — only needed at display rate, not every timestep
+    if (should_check_breaking && _config->rigidDeformAdhesionEnable()) {
         auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
         for (auto& obj : xpbd_mesh_objs) {
             obj->updateAdhesionVisualizationMarkers();
@@ -3427,6 +3428,7 @@ void Simulation::_timeStep()
     }
 
     // —— POST: read again and print error —— //
+#if 0  // DEBUG MONITORING — disabled for performance
     if (s_edge_initialized)
     {
         auto read_and_print_post = [&](auto* xpbd, const char* tag){
@@ -3697,6 +3699,7 @@ void Simulation::_timeStep()
             warned_triplet_post = true;
         }
     }
+#endif  // DEBUG MONITORING disabled
 
     // —— velocity update —— //
     _objects.for_each_element([](auto& obj) { obj->velocityUpdate(); });
