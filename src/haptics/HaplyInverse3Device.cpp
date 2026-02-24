@@ -88,34 +88,86 @@ HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
         return;
     }
 
-    // Retry initialization — the Inverse3 wakeup over Docker serial is flaky
-    // and sometimes returns device_id 0 or zero position.
-    constexpr int kMaxRetries = 5;
-    for (int attempt = 1; attempt <= kMaxRetries; ++attempt)
+    // Open the serial stream ONCE. Each new SerialStream triggers a DTR reset
+    // that reboots the Inverse3 firmware, so we must NOT re-open on retry.
+    Haply::HardwareAPI::IO::SerialStream* stream = nullptr;
+    Haply::HardwareAPI::Devices::Inverse3* device = nullptr;
+    try
+    {
+        stream = new Haply::HardwareAPI::IO::SerialStream(port.c_str());
+        // Wait for device to recover from DTR-triggered reboot
+        std::cout << "[HaplyInverse3] Waiting 3 seconds for device boot after port open..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        // Use default timeout (5s) — same as working HapticConnectionTest.
+        // The background thread absorbs the blocking, so simulation won't lag.
+        device = new Haply::HardwareAPI::Devices::Inverse3(stream);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[HaplyInverse3] Failed to open " << port << ": " << e.what() << std::endl;
+        delete stream;
+        _connected = false;
+        return;
+    }
+
+    // DeviceWakeup — retry up to 3 times (100ms timeout per attempt is fine;
+    // in tests the wakeup responds quickly when the device is ready).
+    bool wakeup_ok = false;
+    for (int w = 0; w < 3; ++w)
     {
         try
         {
-            auto* stream = new Haply::HardwareAPI::IO::SerialStream(port.c_str());
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            auto* device = new Haply::HardwareAPI::Devices::Inverse3(stream);
             auto info = device->DeviceWakeup();
+            std::cout << "[HaplyInverse3] DeviceWakeup (attempt " << (w + 1)
+                      << "): device ID = " << info.device_id << std::endl;
+            wakeup_ok = true;
+            break;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[HaplyInverse3] DeviceWakeup attempt " << (w + 1)
+                      << " failed: " << e.what() << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    }
+    if (!wakeup_ok)
+    {
+        std::cerr << "[HaplyInverse3] DeviceWakeup failed after 3 attempts" << std::endl;
+        delete device;
+        delete stream;
+        _connected = false;
+        return;
+    }
 
-            std::cout << "[HaplyInverse3] Attempt " << attempt
-                      << ": device ID = " << info.device_id << std::endl;
+    // Wait after wakeup before sending force commands
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-            // Verify with a test read — send zero force and check position
+    // Pump EndEffectorForce repeatedly — device may need several cycles
+    // before forward kinematics returns valid positions.
+    constexpr int kMaxPumpCycles = 50;
+    std::cout << "[HaplyInverse3] Pumping EndEffectorForce (up to " << kMaxPumpCycles
+              << " cycles)..." << std::endl;
+    for (int i = 0; i < kMaxPumpCycles; ++i)
+    {
+        try
+        {
             Haply::HardwareAPI::Devices::Inverse3::EndEffectorForceRequest req{};
             auto resp = device->EndEffectorForce(req);
             bool valid = (resp.position[0] != 0.0f || resp.position[1] != 0.0f
                           || resp.position[2] != 0.0f);
 
+            if (i % 10 == 0 || valid)
+            {
+                std::cout << "[HaplyInverse3] Cycle " << (i + 1)
+                          << ": pos=(" << resp.position[0] << ", "
+                          << resp.position[1] << ", " << resp.position[2] << ")"
+                          << (valid ? " VALID!" : " (zero)") << std::endl;
+            }
+
             if (valid)
             {
-                std::cout << "[HaplyInverse3] Device woken up on " << port
-                          << "  (device ID: " << info.device_id << ")" << std::endl;
-                std::cout << "[HaplyInverse3] Initial position: ("
-                          << resp.position[0] << ", " << resp.position[1] << ", "
-                          << resp.position[2] << ")" << std::endl;
+                std::cout << "[HaplyInverse3] Connected on " << port
+                          << " after " << (i + 1) << " cycles" << std::endl;
                 _stream_handle = static_cast<void*>(stream);
                 _device_handle = static_cast<void*>(device);
                 _initial_position[0] = static_cast<Real>(resp.position[0]);
@@ -123,58 +175,30 @@ HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
                 _initial_position[2] = static_cast<Real>(resp.position[2]);
                 _position = _initial_position;
                 _connected = true;
-
-                // Check power state — forces require external 24V power supply
-                auto power = device->DevicePowerQuery();
-                std::cout << "[HaplyInverse3] Power supply: "
-                          << (power.powered ? "CONNECTED (forces enabled)"
-                                            : "NOT CONNECTED — force feedback DISABLED")
-                          << std::endl;
-                if (!power.powered)
-                {
-                    std::cerr << "[HaplyInverse3] WARNING: Connect the 24V power supply "
-                              << "to enable force feedback!" << std::endl;
-                }
-
-                // Check torque scaling state
-                auto ts = device->GetTorqueScaling();
-                std::cout << "[HaplyInverse3] Torque scaling: "
-                          << (ts.enabled ? "ENABLED" : "DISABLED") << std::endl;
-
-                // Check gravity compensation state
-                auto gc = device->GetGravityCompensation();
-                std::cout << "[HaplyInverse3] Gravity compensation: "
-                          << (gc.enabled ? "ENABLED" : "DISABLED")
-                          << "  scale_factor=" << gc.gravity_scale_factor << std::endl;
-
-                // Query motor currents to see baseline
-                auto mc = device->MotorCurrentsQuery();
-                std::cout << "[HaplyInverse3] Motor currents: ("
-                          << mc.currents[0] << ", " << mc.currents[1] << ", "
-                          << mc.currents[2] << ") A" << std::endl;
-
                 break;
             }
-
-            // Invalid — clean up and retry
-            std::cerr << "[HaplyInverse3] Attempt " << attempt
-                      << " got zero position, retrying..." << std::endl;
-            delete device;
-            delete stream;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
         catch (const std::exception& e)
         {
-            std::cerr << "[HaplyInverse3] Attempt " << attempt
-                      << " failed: " << e.what() << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            if (i % 10 == 0)
+            {
+                std::cerr << "[HaplyInverse3] Cycle " << (i + 1)
+                          << " error: " << e.what() << std::endl;
+            }
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     if (!_connected)
     {
-        std::cerr << "[HaplyInverse3] Failed to initialize device after "
-                  << kMaxRetries << " attempts" << std::endl;
+        std::cerr << "[HaplyInverse3] Failed after " << kMaxPumpCycles
+                  << " cycles — no valid position received" << std::endl;
+        delete device;
+        delete stream;
+    }
+
+    if (!_connected)
+    {
         return;
     }
 
@@ -207,7 +231,7 @@ HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
         {
             auto* h_stream = new Haply::HardwareAPI::IO::SerialStream(handle_port.c_str());
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            auto* handle = new QuillHandle(h_stream);
+            auto* handle = new QuillHandle(h_stream, 2.0f);  // 2s timeout (bg thread)
 
             // REQUIRED: wake up the Handle before any other commands
             std::cout << "[VerseGrip] Sending wakeup..." << std::endl;
@@ -311,6 +335,18 @@ HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
     {
         std::cout << "[VerseGrip] Not detected. Using keyboard rotation (Q/E/R/F/Z/X)." << std::endl;
     }
+
+    // ---- 3. Start background polling threads ----
+    _poll_running = true;
+    _inverse3_thread = std::thread(&HaplyInverse3Device::_inverse3ThreadFunc, this);
+    std::cout << "[HaplyInverse3] Inverse3 polling thread started." << std::endl;
+
+    if (_versegrip_connected)
+    {
+        _versegrip_thread = std::thread(&HaplyInverse3Device::_versegripThreadFunc, this);
+        std::cout << "[HaplyInverse3] VerseGrip polling thread started." << std::endl;
+    }
+
 #else
     (void)serial_port;
     std::cerr << "[HaplyInverse3] Compiled without Haply HardwareAPI (NO_HAPLY_HARDWARE_API)" << std::endl;
@@ -319,10 +355,17 @@ HaplyInverse3Device::HaplyInverse3Device(const std::string& serial_port)
 }
 
 // --------------------------------------------------------------------------
-// Destructor
+// Destructor — stop the polling thread, then clean up devices
 // --------------------------------------------------------------------------
 HaplyInverse3Device::~HaplyInverse3Device()
 {
+    // Stop all background polling threads
+    _poll_running = false;
+    if (_inverse3_thread.joinable())
+        _inverse3_thread.join();
+    if (_versegrip_thread.joinable())
+        _versegrip_thread.join();
+
 #ifndef NO_HAPLY_HARDWARE_API
     if (_device_handle)
     {
@@ -358,79 +401,48 @@ HaplyInverse3Device::~HaplyInverse3Device()
 }
 
 // --------------------------------------------------------------------------
-// Synchronous poll — call once per sim time step
+// Thread-safe getters
 // --------------------------------------------------------------------------
-bool HaplyInverse3Device::poll()
+Vec3r HaplyInverse3Device::position() const
 {
-    if (!_connected) return false;
+    std::lock_guard<std::mutex> lock(_pos_mutex);
+    return _position;
+}
 
-    bool result = false;
+Vec3r HaplyInverse3Device::velocity() const
+{
+    std::lock_guard<std::mutex> lock(_pos_mutex);
+    return _velocity;
+}
 
+Vec4r HaplyInverse3Device::orientation() const
+{
+    std::lock_guard<std::mutex> lock(_orient_mutex);
+    return _orientation;
+}
+
+// --------------------------------------------------------------------------
+// Inverse3 polling thread — tight loop, just like HapticConnectionTest
+// --------------------------------------------------------------------------
+void HaplyInverse3Device::_inverse3ThreadFunc()
+{
 #ifndef NO_HAPLY_HARDWARE_API
-    // ---- Poll Inverse3 (position + velocity) ----
     auto* device = static_cast<Haply::HardwareAPI::Devices::Inverse3*>(_device_handle);
+    int count = 0;
+    int errors = 0;
 
-    if (_test_force_enabled && _test_use_joint_torques)
+    while (_poll_running)
     {
-        // ---- JointTorques test: bypass end-effector kinematics ----
-        // SDK says ~20 Nmm needed to overcome internal friction.
-        // Use 100 Nmm on all motors — should be VERY noticeable.
-        Haply::HardwareAPI::Devices::Inverse3::JointTorquesRequest treq{};
-        treq.torques[0] = 100.0f;  // Nmm
-        treq.torques[1] = 100.0f;
-        treq.torques[2] = 100.0f;
         try
         {
-            auto tresp = device->JointTorques(treq);
-
-            _position[0] = 0; _position[1] = 0; _position[2] = 0;  // no cartesian data from JointTorques
-
-            if (++_poll_count % 30 == 0)
-            {
-                std::cout << "[TEST TORQUE] Sending 100 Nmm on all 3 motors"
-                          << "  angles=(" << tresp.angles[0] << ", "
-                          << tresp.angles[1] << ", " << tresp.angles[2] << ") deg"
-                          << std::endl;
-            }
-            result = true;
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << "[TEST TORQUE] Error: " << e.what() << std::endl;
-        }
-    }
-    else
-    {
-        // ---- Normal EndEffectorForce path ----
-        Haply::HardwareAPI::Devices::Inverse3::EndEffectorForceRequest req{};
-        if (_test_force_enabled)
-        {
-            // MAX test force on all axes — should be very obvious
-            req.force[0] = 3.3f;
-            req.force[1] = 3.3f;
-            req.force[2] = 3.3f;
-        }
-        else
-        {
-            req.force[0] = static_cast<float>(std::clamp(_commanded_force[0],
-                                static_cast<Real>(-kMaxForcePerAxis),
-                                static_cast<Real>(kMaxForcePerAxis)));
-            req.force[1] = static_cast<float>(std::clamp(_commanded_force[1],
-                                static_cast<Real>(-kMaxForcePerAxis),
-                                static_cast<Real>(kMaxForcePerAxis)));
-            req.force[2] = static_cast<float>(std::clamp(_commanded_force[2],
-                                static_cast<Real>(-kMaxForcePerAxis),
-                                static_cast<Real>(kMaxForcePerAxis)));
-        }
-
-        try
-        {
+            Haply::HardwareAPI::Devices::Inverse3::EndEffectorForceRequest req{};
             auto resp = device->EndEffectorForce(req);
 
             bool valid = (resp.position[0] != 0.0f || resp.position[1] != 0.0f
                           || resp.position[2] != 0.0f);
             if (valid)
             {
+                std::lock_guard<std::mutex> lock(_pos_mutex);
                 _position[0] = static_cast<Real>(resp.position[0]);
                 _position[1] = static_cast<Real>(resp.position[1]);
                 _position[2] = static_cast<Real>(resp.position[2]);
@@ -439,38 +451,45 @@ bool HaplyInverse3Device::poll()
                 _velocity[2] = static_cast<Real>(resp.velocity[2]);
             }
 
-            // Log every ~1 second
-            if (++_poll_count % 30 == 0)
+            ++count;
+            if (count % 5000 == 0)
             {
-                std::cout << "[HaplyInverse3] pos=(" << resp.position[0] << ", "
-                          << resp.position[1] << ", " << resp.position[2] << ")"
-                          << "  force_sent=(" << req.force[0] << ", "
-                          << req.force[1] << ", " << req.force[2] << ")"
-                          << (valid ? "" : " [STALE]") << std::endl;
-
-                if (_test_force_enabled)
-                {
-                    std::cout << "[TEST FORCE EE] Sending (3.3, 3.3, 3.3) N" << std::endl;
-                }
+                std::cout << "[Inverse3 thread] " << count << " polls, "
+                          << errors << " errors, pos=("
+                          << resp.position[0] << ", " << resp.position[1]
+                          << ", " << resp.position[2] << ")" << std::endl;
             }
-
-            result = valid;
         }
         catch (const std::exception& e)
         {
-            std::cerr << "[HaplyInverse3] Communication error: " << e.what() << std::endl;
+            ++errors;
+            if (errors <= 3)
+                std::cerr << "[Inverse3 thread] Error: " << e.what() << std::endl;
         }
+        // No sleep — tight loop, same as working HapticConnectionTest
     }
 
-    // ---- Poll VerseGrip (orientation) ----
-    if (_versegrip_connected && _handle_device_handle)
+    std::cout << "[Inverse3 thread] Stopped. " << count << " polls, "
+              << errors << " errors." << std::endl;
+#endif
+}
+
+// --------------------------------------------------------------------------
+// VerseGrip polling thread — runs independently on its own serial port
+// --------------------------------------------------------------------------
+void HaplyInverse3Device::_versegripThreadFunc()
+{
+#ifndef NO_HAPLY_HARDWARE_API
+    auto* handle = static_cast<QuillHandle*>(_handle_device_handle);
+    int count = 0;
+    int errors = 0;
+
+    while (_poll_running)
     {
-        auto* handle = static_cast<QuillHandle*>(_handle_device_handle);
         try
         {
             if (_use_versegrip_api)
             {
-                // Wireless dongle API
                 auto status = handle->GetVersegripStatus();
                 if (status.error_flag == 0)
                 {
@@ -478,6 +497,7 @@ bool HaplyInverse3Device::poll()
                                 + status.q.z*status.q.z + status.q.w*status.q.w;
                     if (qnorm > 0.5f)
                     {
+                        std::lock_guard<std::mutex> lock(_orient_mutex);
                         _orientation[0] = static_cast<Real>(status.q.x);
                         _orientation[1] = static_cast<Real>(status.q.y);
                         _orientation[2] = static_cast<Real>(status.q.z);
@@ -487,21 +507,20 @@ bool HaplyInverse3Device::poll()
             }
             else
             {
-                // Traditional wired Quill API
                 handle->has_data = false;
                 handle->RequestStatus();
                 handle->Receive();
 
                 if (handle->has_data)
                 {
-                    float qw = handle->last_quat[0];  // WXYZ order
+                    float qw = handle->last_quat[0];
                     float qx = handle->last_quat[1];
                     float qy = handle->last_quat[2];
                     float qz = handle->last_quat[3];
                     float qnorm = qw*qw + qx*qx + qy*qy + qz*qz;
                     if (qnorm > 0.5f)
                     {
-                        // Convert WXYZ → XYZW (codebase: scalar-last)
+                        std::lock_guard<std::mutex> lock(_orient_mutex);
                         _orientation[0] = static_cast<Real>(qx);
                         _orientation[1] = static_cast<Real>(qy);
                         _orientation[2] = static_cast<Real>(qz);
@@ -509,22 +528,30 @@ bool HaplyInverse3Device::poll()
                     }
                 }
             }
-
-            if (_poll_count % 30 == 0)
+            ++count;
+            if (count % 500 == 0)
             {
-                std::cout << "[VerseGrip] orient=(" << _orientation[0] << ", "
-                          << _orientation[1] << ", " << _orientation[2] << ", "
-                          << _orientation[3] << ")" << std::endl;
+                std::lock_guard<std::mutex> lock(_orient_mutex);
+                std::cout << "[VerseGrip thread] " << count << " polls, "
+                          << errors << " errors, orient=("
+                          << _orientation[0] << ", " << _orientation[1]
+                          << ", " << _orientation[2] << ", " << _orientation[3]
+                          << ")" << std::endl;
             }
         }
         catch (const std::exception& e)
         {
-            std::cerr << "[VerseGrip] Communication error: " << e.what() << std::endl;
+            ++errors;
+            if (errors <= 3)
+                std::cerr << "[VerseGrip thread] Error: " << e.what() << std::endl;
         }
+        // Small sleep — orientation doesn't need kHz updates
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
-#endif
 
-    return result;
+    std::cout << "[VerseGrip thread] Stopped. " << count << " polls, "
+              << errors << " errors." << std::endl;
+#endif
 }
 
 // --------------------------------------------------------------------------

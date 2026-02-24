@@ -48,9 +48,13 @@ private:
 
     std::unique_ptr<HaplyInverse3Device> _haptic_device;
 
-    Vec3r _haptic_origin = Vec3r::Zero();        ///< knife starting position = haptic center in sim frame
-    Vec3r _haptic_device_origin = Vec3r::Zero();  ///< device rest position at startup
-    Vec3r _prev_haptic_force = Vec3r::Zero();     ///< previous filtered force (for low-pass filter)
+    Vec3r _haptic_origin = Vec3r::Zero();          ///< knife starting position in sim frame
+    Vec3r _haptic_device_origin = Vec3r::Zero();   ///< device rest position at startup
+    Vec3r _prev_haptic_force = Vec3r::Zero();      ///< previous filtered force (for low-pass filter)
+    Vec4r _initial_grip_quat = Vec4r(0,0,0,1);    ///< VerseGrip orientation at startup
+    Vec4r _initial_knife_quat = Vec4r(0,0,0,1);   ///< knife orientation at startup
+    bool _use_grip_orientation = true;              ///< toggle with 'G' key
+    int _axis_mapping = 0;                          ///< cycle with 'M' key
 
     // Config parameters
     Real _haptic_force_scaling = 5.0;

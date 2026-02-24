@@ -32,8 +32,8 @@ haptic-force-scaling: 5.0
 haptic-serial-port: ""            # empty = auto-detect /dev/ttyACM*
 contact-force-stiffness: 500.0    # penalty stiffness for SDF contact feedback [N/m]
 force-filter-alpha: 0.3           # low-pass filter coefficient (0 = no new, 1 = no smoothing)
-haptic-workspace-radius: 0.08     # Inverse3 physical workspace [m]
-sim-workspace-radius: 0.1         # simulation workspace to map into [m]
+haptic-workspace-radius: 0.20     # Inverse3 actual workspace ~20cm radius [m]
+sim-workspace-radius: 0.05        # map to tissue size (5cm) [m]
 
 ## Adhesion settings (nerve-tumor adhesion)
 nerve-tumor-adhesion-enable: true

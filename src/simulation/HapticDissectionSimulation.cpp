@@ -59,6 +59,36 @@ void HapticDissectionSimulation::notifyKeyPressed(
         }
     }
 
+    // 'G' key: toggle VerseGrip orientation tracking
+    if (key == SimulationInput::Key::G && action == SimulationInput::KeyAction::PRESS)
+    {
+        _use_grip_orientation = !_use_grip_orientation;
+        std::cout << "[HapticDissection] VerseGrip orientation: "
+                  << (_use_grip_orientation ? "ENABLED" : "DISABLED") << std::endl;
+    }
+
+    // 'M' key: cycle through axis mapping presets for translation
+    if (key == SimulationInput::Key::M && action == SimulationInput::KeyAction::PRESS)
+    {
+        _axis_mapping = (_axis_mapping + 1) % 12;
+        const char* labels[] = {
+            " X,  Y, -Z",   // 0 (current default)
+            " X,  Y,  Z",   // 1
+            " X, -Y,  Z",   // 2
+            " X, -Y, -Z",   // 3
+            "-X,  Y,  Z",   // 4
+            "-X,  Y, -Z",   // 5
+            " X,  Z, -Y",   // 6 (swap Y/Z)
+            " X, -Z,  Y",   // 7
+            " X,  Z,  Y",   // 8
+            " Z,  Y, -X",   // 9 (swap X/Z)
+            "-Z,  Y,  X",   // 10
+            " Y,  X, -Z",   // 11 (swap X/Y)
+        };
+        std::cout << "[HapticDissection] Axis mapping #" << _axis_mapping
+                  << ": " << labels[_axis_mapping] << std::endl;
+    }
+
     // Track rotation key held state
     auto it = _rotation_keys_held.find(key);
     if (it != _rotation_keys_held.end())
@@ -77,15 +107,24 @@ void HapticDissectionSimulation::setup()
     // Record the knife's initial position as the haptic origin in sim space
     _haptic_origin = _cursor->position();
 
-    // Record the device's rest position if connected
+    // Record the device's rest position and orientation if connected
     if (_haptic_device && _haptic_device->isConnected())
     {
-        // Use the validated initial position from the constructor
         _haptic_device_origin = _haptic_device->initialPosition();
-        std::cout << "[HapticDissection] Haptic device connected. "
-                  << "Device origin: (" << _haptic_device_origin.transpose() << ")" << std::endl;
-        std::cout << "[HapticDissection] Knife origin in sim: ("
-                  << _haptic_origin.transpose() << ")" << std::endl;
+        _initial_knife_quat = _cursor->orientation();
+
+        // Wait a moment for VerseGrip thread to get initial orientation
+        if (_haptic_device->hasVerseGrip())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            _initial_grip_quat = _haptic_device->orientation();
+        }
+
+        std::cout << "[HapticDissection] Haptic device connected." << std::endl;
+        std::cout << "  Device origin: (" << _haptic_device_origin.transpose() << ")" << std::endl;
+        std::cout << "  Knife origin: (" << _haptic_origin.transpose() << ")" << std::endl;
+        std::cout << "  Initial grip quat: (" << _initial_grip_quat.transpose() << ")" << std::endl;
+        std::cout << "  Initial knife quat: (" << _initial_knife_quat.transpose() << ")" << std::endl;
     }
     else
     {
@@ -100,20 +139,18 @@ void HapticDissectionSimulation::_timeStep()
     // ------------------------------------------------------------------
     if (_haptic_device && _haptic_device->isConnected())
     {
-        // Synchronous poll: exchange force command for position/velocity
-        _haptic_device->poll();
-
+        // Background thread handles serial I/O — just read latest values.
+        // position()/orientation() are thread-safe (mutex-protected).
         Vec3r device_pos = _haptic_device->position();
         Vec3r sim_pos = _hapticToSimPosition(device_pos);
         _cursor->setPosition(sim_pos);
 
-        // Debug: log every ~1 second (assuming ~30 fps = every 30 frames)
+        // Debug: log every ~1 second (2000 steps/sec)
         static int frame_count = 0;
-        if (++frame_count % 30 == 0)
+        if (++frame_count % 2000 == 0)
         {
             std::cout << "[HapticDissection] device=(" << device_pos.transpose()
-                      << ")  sim=(" << sim_pos.transpose()
-                      << ")  knife=(" << _cursor->position().transpose() << ")" << std::endl;
+                      << ")  sim=(" << sim_pos.transpose() << ")" << std::endl;
         }
     }
     // else: mouse/keyboard input from PushingSimulation works as-is
@@ -124,23 +161,15 @@ void HapticDissectionSimulation::_timeStep()
     PushingSimulation::_timeStep();
 
     // ------------------------------------------------------------------
-    // 3. If device connected: compute and send force feedback
+    // 3. Force feedback — DISABLED for safety until tested properly
     // ------------------------------------------------------------------
+#if 0
     if (_haptic_device && _haptic_device->isConnected())
     {
-        // a. Contact penalty force from SDF penetration
         Vec3r contact_force = _computeContactForce();
-
-        // b. Net adhesion force (Newton's 3rd law: negate forces on tissue)
         Vec3r adhesion_force = _collectNetAdhesionForce();
-
-        // c. Total sim-space force on the tool
         Vec3r total_force = contact_force + adhesion_force;
-
-        // d. Transform to haptic device frame
         Vec3r haptic_force = _simToHapticForce(total_force);
-
-        // e. Low-pass filter (matches PalpationSimulation pattern)
         Vec3r filtered = _force_filter_alpha * haptic_force
                        + (1.0 - _force_filter_alpha) * _prev_haptic_force;
         _prev_haptic_force = filtered;
@@ -158,18 +187,34 @@ void HapticDissectionSimulation::_timeStep()
             }
         }
 
-        // g. Send to device
         _haptic_device->setForce(filtered);
     }
+#endif  // Force feedback disabled for safety
 
     // ------------------------------------------------------------------
     // 4. Rotation: VerseGrip (if available) or keyboard fallback
     // ------------------------------------------------------------------
-    if (_haptic_device && _haptic_device->hasVerseGrip())
+    if (_haptic_device && _haptic_device->hasVerseGrip() && _use_grip_orientation)
     {
-        // Use VerseGrip quaternion directly
-        Vec4r device_quat = _haptic_device->orientation();
-        _cursor->setOrientation(device_quat);
+        // Compute RELATIVE rotation from initial grip orientation,
+        // then apply it to the knife's initial orientation.
+        // This way: no grip movement → knife stays at initial orientation.
+        Vec4r current_grip = _haptic_device->orientation();
+
+        // q_inverse for XYZW (scalar-last): negate xyz, keep w
+        Vec4r inv_initial_grip = Vec4r(
+            -_initial_grip_quat[0], -_initial_grip_quat[1],
+            -_initial_grip_quat[2],  _initial_grip_quat[3]);
+
+        // delta = current * inverse(initial) → relative rotation
+        Vec4r delta_quat = GeometryUtils::quatMult(current_grip, inv_initial_grip);
+        delta_quat.normalize();
+
+        // Apply: new_knife = delta * initial_knife
+        Vec4r new_knife_quat = GeometryUtils::quatMult(delta_quat, _initial_knife_quat);
+        new_knife_quat.normalize();
+
+        _cursor->setOrientation(new_knife_quat);
     }
     else
     {
@@ -284,11 +329,28 @@ Vec3r HapticDissectionSimulation::_hapticToSimPosition(const Vec3r& haptic_pos) 
 
     // Scale from haptic workspace to simulation workspace
     Real scale = _sim_workspace_radius / _haptic_workspace_radius;
-    Vec3r sim_delta = delta * scale;
 
-    // Inverse3 coordinate convention: +x right, +y up, +z toward user
-    // Simulation convention may differ — apply a simple axis mapping here.
-    // Default: direct mapping (can be adjusted if axes differ)
+    // Axis mapping: Inverse3 device → simulation frame
+    // Cycle through presets with 'M' key to find the correct one.
+    Real dx = delta[0], dy = delta[1], dz = delta[2];
+    Vec3r sim_delta;
+    switch (_axis_mapping)
+    {
+        case 0:  sim_delta = Vec3r( dx,  dy, -dz) * scale; break;  //  X,  Y, -Z (default)
+        case 1:  sim_delta = Vec3r( dx,  dy,  dz) * scale; break;  //  X,  Y,  Z
+        case 2:  sim_delta = Vec3r( dx, -dy,  dz) * scale; break;  //  X, -Y,  Z
+        case 3:  sim_delta = Vec3r( dx, -dy, -dz) * scale; break;  //  X, -Y, -Z
+        case 4:  sim_delta = Vec3r(-dx,  dy,  dz) * scale; break;  // -X,  Y,  Z
+        case 5:  sim_delta = Vec3r(-dx,  dy, -dz) * scale; break;  // -X,  Y, -Z
+        case 6:  sim_delta = Vec3r( dx,  dz, -dy) * scale; break;  //  X,  Z, -Y
+        case 7:  sim_delta = Vec3r( dx, -dz,  dy) * scale; break;  //  X, -Z,  Y
+        case 8:  sim_delta = Vec3r( dx,  dz,  dy) * scale; break;  //  X,  Z,  Y
+        case 9:  sim_delta = Vec3r( dz,  dy, -dx) * scale; break;  //  Z,  Y, -X
+        case 10: sim_delta = Vec3r(-dz,  dy,  dx) * scale; break;  // -Z,  Y,  X
+        case 11: sim_delta = Vec3r( dy,  dx, -dz) * scale; break;  //  Y,  X, -Z
+        default: sim_delta = Vec3r( dx,  dy, -dz) * scale; break;
+    }
+
     return _haptic_origin + sim_delta;
 }
 

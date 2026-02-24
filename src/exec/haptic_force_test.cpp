@@ -44,7 +44,9 @@ int main(int argc, char** argv)
     try
     {
         stream = new Haply::HardwareAPI::IO::SerialStream(port.c_str());
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        // Wait 3 seconds for device to recover from DTR-triggered reboot
+        std::cout << "Waiting 3 seconds for device to boot after port open..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
         device = new Haply::HardwareAPI::Devices::Inverse3(stream);
         auto info = device->DeviceWakeup();
         std::cout << "Device ID: " << info.device_id << std::endl;
