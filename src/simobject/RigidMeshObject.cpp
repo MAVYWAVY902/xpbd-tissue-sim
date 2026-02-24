@@ -122,4 +122,23 @@ void RigidMeshObject::setOrientation(const Vec4r& orientation)
     _q = orientation;
 }
 
+void RigidMeshObject::forceSetPosition(const Vec3r& position)
+{
+    const Vec3r dx = position - _p;
+    _mesh->moveTogether(dx);
+    _p = position;
+    _p_prev = position;   // sync so update() computes dx=0
+    _v = Vec3r::Zero();   // zero velocity so update() doesn't drift
+}
+
+void RigidMeshObject::forceSetOrientation(const Vec4r& orientation)
+{
+    const Vec4r dq = GeometryUtils::quatMult(GeometryUtils::inverseQuat(_q), orientation).normalized();
+    const Mat3r rot_mat = GeometryUtils::quatToMat(dq);
+    _mesh->rotateAbout(_p, rot_mat);
+    _q = orientation;
+    _q_prev = orientation;  // sync so update() computes dq=identity
+    _w = Vec3r::Zero();     // zero angular velocity
+}
+
 } // namespace Simulation

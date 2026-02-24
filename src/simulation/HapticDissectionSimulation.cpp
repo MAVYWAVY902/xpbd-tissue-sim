@@ -104,9 +104,7 @@ void HapticDissectionSimulation::setup()
 {
     PushingSimulation::setup();
 
-    // Auto-enable pushing so the knife interacts with tissue and cuts adhesion
-    _setPushingEnabled(true);
-    std::cout << "[HapticDissection] Pushing auto-enabled for haptic dissection." << std::endl;
+    // Pushing starts DISABLED — click middle mouse to enable (same as PushingTest)
 
     // Record the knife's initial position as the haptic origin in sim space
     _haptic_origin = _cursor->position();
@@ -147,7 +145,7 @@ void HapticDissectionSimulation::_timeStep()
         // position()/orientation() are thread-safe (mutex-protected).
         Vec3r device_pos = _haptic_device->position();
         Vec3r sim_pos = _hapticToSimPosition(device_pos);
-        _cursor->setPosition(sim_pos);
+        _cursor->forceSetPosition(sim_pos);
 
         // Debug: uncomment to log device position every ~1 second
         // static int frame_count = 0;
@@ -216,7 +214,7 @@ void HapticDissectionSimulation::_timeStep()
         Vec4r new_knife_quat = GeometryUtils::quatMult(delta_quat, _initial_knife_quat);
         new_knife_quat.normalize();
 
-        _cursor->setOrientation(new_knife_quat);
+        _cursor->forceSetOrientation(new_knife_quat);
     }
     else
     {
@@ -241,7 +239,7 @@ void HapticDissectionSimulation::_timeStep()
             Vec4r current_q = _cursor->orientation();
             Vec4r new_q = GeometryUtils::quatMult(dq, current_q);
             new_q.normalize();
-            _cursor->setOrientation(new_q);
+            _cursor->forceSetOrientation(new_q);
         }
     }
 }

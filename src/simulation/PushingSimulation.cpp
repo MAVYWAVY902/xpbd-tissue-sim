@@ -216,7 +216,7 @@ void PushingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInp
     if (key == SimulationInput::Key::O && action == SimulationInput::KeyAction::PRESS)
     {
         if (_cursor) {
-            _cursor->setPosition(_knife_initial_position);
+            _cursor->forceSetPosition(_knife_initial_position);
             std::cout << "[PushingSimulation] Knife reset to initial position: (" 
                       << _knife_initial_position.x() << ", " 
                       << _knife_initial_position.y() << ", " 
@@ -256,22 +256,9 @@ void PushingSimulation::notifyMouseScrolled(double dx, double dy)
 
 void PushingSimulation::_moveCursor(const Vec3r& dp)
 {
-    // Move the tool cursor - force update even if it's marked as fixed
-    // This allows kinematic control (we move it, but it still has collision)
-    const Vec3r current_position = _cursor->position();
-    const Vec3r new_position = current_position + dp;
-    
-    // Directly set position, bypassing the fixed check
-    // This is necessary for kinematic rigid bodies
-    _cursor->setPosition(new_position);
-    
-    // If setPosition didn't work (because fixed=true), access the member directly
-    // Note: This is a workaround - ideally we'd have a "kinematic" rigid body type
-    if (_cursor->position() == current_position && dp.norm() > 1e-10) {
-        // Position didn't update, probably because it's fixed
-        // We need to force the update for kinematic control
-        std::cout << "[PushingSimulation] Warning: Knife is fixed, position update may not work properly" << std::endl;
-    }
+    const Vec3r new_position = _cursor->position() + dp;
+    // Use forceSetPosition to prevent double-move from update() drift
+    _cursor->forceSetPosition(new_position);
 }
 
 void PushingSimulation::_timeStep()
@@ -313,14 +300,8 @@ void PushingSimulation::_timeStep()
     // Apply pushing forces if pushing is enabled
     if (_pushing_enabled)
     {
-        // Throttle expensive SDF-based checks: run every N steps instead of every step.
-        // At time-step 3e-4 this still checks every ~1.5ms which is responsive enough.
-        static int push_throttle = 0;
-        if (++push_throttle % 5 == 0)
-        {
-            // Check if knife is cutting adhesion constraints
-            _checkKnifeAdhesionInterference();
-        }
+        // Check if knife is cutting adhesion constraints
+        _checkKnifeAdhesionInterference();
 
         // Apply pushing forces for tissue interaction
         _applyPushingForces();
@@ -587,10 +568,9 @@ void PushingSimulation::_checkKnifeAdhesionInterference()
         total_broken += broken;
     }
     
-    // Report cutting activity (only if constraints were broken)
-    if (total_broken > 0) {
-        std::cout << "[PushingSimulation] Knife cut " << total_broken << " adhesion constraints" << std::endl;
-    }
+    // Report cutting activity (disabled for performance)
+    // if (total_broken > 0)
+    //     std::cout << "[PushingSimulation] Knife cut " << total_broken << " adhesion constraints" << std::endl;
 }
 
 Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec3r& tool_center, Real tool_radius)

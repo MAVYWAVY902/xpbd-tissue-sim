@@ -36,6 +36,10 @@ state-recording-snapshot-interval: 0.05  # Record every 0.1 seconds (10 fps) whe
 grasp-radius: 0.065   # Grasping tool radius: 7mm (default 100mm)
 tool-radius: 0.065    # Pushing knife tool scale: 7mm (controls knife mesh size)
                       # The knife mesh will be scaled so its largest dimension = tool-radius
+# grasp-radius: 0.015   # Grasping tool radius: 7mm (default 100mm)
+# tool-radius: 0.015    # Pushing knife tool scale: 7mm (controls knife mesh size)
+
+
 #                       # Examples: 0.005 = 5mm knife, 0.01 = 10mm knife, 0.02 = 20mm knife
 # knife-scale-x: 0.05  # Make knife 8cm wide in X direction
 # knife-scale-y: 0.05  # Make knife 2cm thin in Y direction  
@@ -115,7 +119,7 @@ rigid-deform-adhesion-bond-distance: 0.0348   # construct adhesion within this r
 rigid-deform-adhesion-break-ratio: 1.27       # for knife
                                         
 
-rigid-deform-adhesion-stretch-abs-min: 0.002 # for knife
+# rigid-deform-adhesion-stretch-abs-min: 0.002 # for knife
 
 rigid-deform-adhesion-stretch-abs-min: 0.005 # Absolute minimum stretch tolerance (5mm)
                                              # Physical meaning: Intrinsic tissue toughness
@@ -233,9 +237,9 @@ objects:
     inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
 
     ## XPBD-specific options
-    num-solver-iters: 5            # REDUCED to 1 for maximum performance
+    num-solver-iters: 2            # REDUCED to 1 for maximum performance
     # solver-type: "Gauss-Seidel"
-    solver-type: "Colored-Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
+    solver-type: "Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"

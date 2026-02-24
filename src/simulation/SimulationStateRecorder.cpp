@@ -44,11 +44,11 @@ void SimulationStateRecorder::recordSnapshot(Real time, int frame_num, const Fra
     //           << " - inter-deform: " << snapshot.inter_deform_adhesion_states.size()
     //           << ", rigid-deform: " << snapshot.rigid_deform_adhesion_states.size();
     
+    // Only print when there are actual breaking events
     if (!snapshot.broken_adhesion_ids.empty())
     {
-        std::cout << ", " << snapshot.broken_adhesion_ids.size() << " BROKE!";
+        std::cout << "[StateRecorder] " << snapshot.broken_adhesion_ids.size() << " adhesion(s) BROKE at t=" << time << "s\n";
     }
-    std::cout << "\n";
 }
 
 void SimulationStateRecorder::saveToFile()

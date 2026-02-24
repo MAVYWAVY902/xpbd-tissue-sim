@@ -36,6 +36,14 @@ class RigidMeshObject : public RigidObject, public MeshObject
 
     virtual void setOrientation(const Vec4r& orientation) override;
 
+    /** Kinematic position set: moves mesh, updates _p, AND syncs _p_prev/_v
+     *  so that update() won't double-move or drift the object.
+     *  Use this for kinematically-controlled objects (e.g. haptic cursor). */
+    void forceSetPosition(const Vec3r& position);
+
+    /** Kinematic orientation set: updates _q AND syncs _q_prev/_w. */
+    void forceSetOrientation(const Vec4r& orientation);
+
     virtual void createSDF() override 
     { 
         if(!_sdf.has_value()) 

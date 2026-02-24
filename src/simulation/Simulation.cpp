@@ -3414,8 +3414,8 @@ void Simulation::_timeStep()
         }
     }
     
-    // Update visualization markers — only needed at display rate, not every timestep
-    if (should_check_breaking && _config->rigidDeformAdhesionEnable()) {
+    // Update visualization markers for active adhesion constraints
+    if (_config->rigidDeformAdhesionEnable()) {
         auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
         for (auto& obj : xpbd_mesh_objs) {
             obj->updateAdhesionVisualizationMarkers();

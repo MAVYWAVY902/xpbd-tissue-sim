@@ -35,6 +35,8 @@
 #include "utils/FileUtils.hpp"
 
 #include "geometry/DeformableMeshSDF.hpp"
+#include "geometry/MeshSDF.hpp"
+#include "simobject/RigidMeshObject.hpp"
 
 #ifdef HAVE_CUDA
 #include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
@@ -356,54 +358,71 @@ int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::che
     if (!sdf) {
         return 0;
     }
-    
+
     int constraints_broken = 0;
-    
+
+    // Get SDF grid bounding box (in body frame) for bounds checking.
+    // Points outside this box get extrapolated/clamped values from mesh2sdf,
+    // which can be falsely small and trigger incorrect breaking.
+    const Geometry::AABB grid_bbox = sdf->gridBoundingBox();
+    const Sim::RigidMeshObject* knife_obj = sdf->meshObj();
+
     // Get unified distance constraint projectors (rigid-deform adhesion)
     using UnifiedDistanceProjectorType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>;
     auto& unified_distance_projectors = _solver.template getConstraintProjectorsOfType<UnifiedDistanceProjectorType>();
-    
+
     // Check each constraint
     for (size_t i = 0; i < unified_distance_projectors.size(); ++i)
     {
         if (!unified_distance_projectors[i].isValid()) {
             continue;
         }
-        
+
         auto& constraint_ref = unified_distance_projectors[i].constraint();
         // Need to cast away const to call markForBreaking()
         auto& constraint = const_cast<Solver::UnifiedDistanceConstraint&>(constraint_ref.get());
-        
+
         // Skip if already marked for breaking
         if (constraint.shouldBreak()) {
             continue;
         }
-        
+
         // Get rigid body attachment point in global coordinates
         const Vec3r& body_point = constraint.rigidBodyPoint();
         Sim::RigidObject* rigid_obj = constraint.rigidBodies()[0];
         Vec3r bone_attach_point = rigid_obj->bodyToGlobal(body_point);
-        
-        // PRIORITY 1: Check if knife is near the bone attachment point
-        Real knife_to_bone_distance = sdf->evaluate(bone_attach_point);
-        
+
         bool should_break = false;
         std::string break_reason;
-        
-        // If knife is close to or penetrating the attachment point, it's "cutting" the adhesion
-        if (knife_to_bone_distance < threshold)
+
+        // PRIORITY 1: Check if knife is near the bone attachment point
+        // First verify the point is within the SDF grid bounds (body frame)
+        // to avoid false positives from mesh2sdf extrapolation.
+        Vec3r point_body = knife_obj->globalToBody(bone_attach_point);
+        bool in_grid = point_body[0] >= grid_bbox.min[0] && point_body[0] <= grid_bbox.max[0] &&
+                       point_body[1] >= grid_bbox.min[1] && point_body[1] <= grid_bbox.max[1] &&
+                       point_body[2] >= grid_bbox.min[2] && point_body[2] <= grid_bbox.max[2];
+
+        if (in_grid)
         {
-            should_break = true;
-            break_reason = "knife near bone attachment";
+            Real knife_to_bone_distance = sdf->evaluate(bone_attach_point);
+
+            // If knife is close to or penetrating the attachment point, it's "cutting" the adhesion
+            if (knife_to_bone_distance < threshold)
+            {
+                should_break = true;
+                break_reason = "knife near bone attachment";
+            }
         }
-        else
+
+        if (!should_break)
         {
             // PRIORITY 2: Check if gap between bone and tumor has increased too much
             // Get current distance between bone and tumor
             Real current_gap = constraint.getCurrentDistance();
             Real initial_gap = constraint.getInitialDistance();
             Real gap_increase = current_gap - initial_gap;
-            
+
             // If gap increased significantly (e.g., >5mm), knife may have pushed them apart
             const Real gap_increase_threshold = 0.005; // 5mm gap increase
             if (gap_increase > gap_increase_threshold)
@@ -412,20 +431,11 @@ int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::che
                 break_reason = "excessive gap increase";
             }
         }
-        
+
         if (should_break)
         {
             constraint.markForBreaking();
             constraints_broken++;
-            
-            // Debug output for first few breaks
-            if (constraints_broken <= 3) {
-                std::cout << "[XPBDMeshObject] Knife cutting adhesion (" << break_reason << ")! "
-                          << "Knife-to-bone: " << knife_to_bone_distance * 1000.0 << "mm at (" 
-                          << bone_attach_point.x() << ", "
-                          << bone_attach_point.y() << ", "
-                          << bone_attach_point.z() << ")" << std::endl;
-            }
         }
     }
     
@@ -465,31 +475,48 @@ int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::che
         
         bool should_break = false;
         std::string break_reason;
-        
+
         // PRIORITY 1: Check if knife is near either endpoint (vertex or triangle centroid)
-        Real knife_to_vertex_dist = sdf->evaluate(vertex_pos);
-        Real knife_to_triangle_dist = sdf->evaluate(tri_centroid);
-        
-        if (knife_to_vertex_dist < threshold || knife_to_triangle_dist < threshold)
+        // Guard with SDF grid bounds check to avoid mesh2sdf extrapolation false positives.
         {
-            should_break = true;
-            break_reason = "knife near adhesion endpoint";
+            auto checkInGrid = [&](const Vec3r& pt) -> bool {
+                Vec3r pt_body = knife_obj->globalToBody(pt);
+                return pt_body[0] >= grid_bbox.min[0] && pt_body[0] <= grid_bbox.max[0] &&
+                       pt_body[1] >= grid_bbox.min[1] && pt_body[1] <= grid_bbox.max[1] &&
+                       pt_body[2] >= grid_bbox.min[2] && pt_body[2] <= grid_bbox.max[2];
+            };
+
+            bool vertex_near = checkInGrid(vertex_pos) && sdf->evaluate(vertex_pos) < threshold;
+            bool tri_near = checkInGrid(tri_centroid) && sdf->evaluate(tri_centroid) < threshold;
+
+            if (vertex_near || tri_near)
+            {
+                should_break = true;
+                break_reason = "knife near adhesion endpoint";
+            }
         }
-        else
+
+        if (!should_break)
         {
             // PRIORITY 2: Check if knife is between the two endpoints (cutting through the adhesion)
-            // This checks if the knife is intersecting the line segment between vertex and triangle centroid
             Vec3r adhesion_vector = tri_centroid - vertex_pos;
             Real adhesion_length = adhesion_vector.norm();
-            
+
             if (adhesion_length > 1e-6) {
-                // Sample points along the adhesion line
                 const int num_samples = 5;
                 for (int j = 1; j < num_samples; ++j) {
                     Real t = static_cast<Real>(j) / num_samples;
                     Vec3r sample_point = vertex_pos + adhesion_vector * t;
+
+                    // Bounds check before SDF evaluation
+                    Vec3r sp_body = knife_obj->globalToBody(sample_point);
+                    if (sp_body[0] < grid_bbox.min[0] || sp_body[0] > grid_bbox.max[0] ||
+                        sp_body[1] < grid_bbox.min[1] || sp_body[1] > grid_bbox.max[1] ||
+                        sp_body[2] < grid_bbox.min[2] || sp_body[2] > grid_bbox.max[2])
+                        continue;
+
                     Real knife_dist = sdf->evaluate(sample_point);
-                    
+
                     if (knife_dist < threshold) {
                         should_break = true;
                         break_reason = "knife cutting through adhesion";
@@ -497,18 +524,19 @@ int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::che
                     }
                 }
             }
-            
+        }
+
+        if (!should_break)
+        {
             // PRIORITY 3: Check if gap has increased significantly
-            if (!should_break) {
-                Real current_dist = constraint.getCurrentDistance();
-                Real initial_dist = constraint.getInitialDistance();
-                Real gap_increase = current_dist - initial_dist;
-                
-                const Real gap_increase_threshold = 0.005; // 5mm gap increase
-                if (gap_increase > gap_increase_threshold) {
-                    should_break = true;
-                    break_reason = "excessive gap increase";
-                }
+            Real current_dist = constraint.getCurrentDistance();
+            Real initial_dist = constraint.getInitialDistance();
+            Real gap_increase = current_dist - initial_dist;
+
+            const Real gap_increase_threshold = 0.005; // 5mm gap increase
+            if (gap_increase > gap_increase_threshold) {
+                should_break = true;
+                break_reason = "excessive gap increase";
             }
         }
         
@@ -518,12 +546,7 @@ int XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::che
             _solver.template setProjectorValidity<InterDeformUnifiedProjectorType>(i, false);
             constraints_broken++;
             
-            // Debug output for first few breaks
-            if (constraints_broken <= 3) {
-                std::cout << "[XPBDMeshObject] Knife cutting inter-deform adhesion (" << break_reason << ")! "
-                          << "Vertex: (" << vertex_pos.transpose() << "), "
-                          << "Triangle: (" << tri_centroid.transpose() << ")" << std::endl;
-            }
+            // Debug output disabled for performance
         }
     }
     
@@ -782,13 +805,8 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
             Real current_dist = constraint->getCurrentDistance();
             Real initial_dist = constraint->getInitialDistance();
             Real break_threshold = constraint->getBreakThreshold();
-            if (unified_distance_to_invalidate.size() < 3) {  // Only print first 3
-                std::cout << "[DEBUG BREAK] Constraint #" << i 
-                          << " | initial=" << initial_dist*1000 << "mm"
-                          << " | current=" << current_dist*1000 << "mm"
-                          << " | threshold=" << break_threshold*1000 << "mm"
-                          << " | ratio=" << (current_dist/initial_dist) << "x" << std::endl;
-            }
+            // Debug print disabled for performance
+            (void)current_dist; (void)initial_dist; (void)break_threshold;
             unified_distance_to_invalidate.push_back(static_cast<int>(i));
         }
     }
@@ -946,22 +964,14 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::ch
         }
     }
     
-    // Print breaking summary for unified distance
-    if (!unified_distance_to_invalidate.empty()) {
-        // Count actually valid projectors AFTER invalidation
-        size_t remaining_valid = 0;
-        for (const auto& proj : unified_distance_projectors) {
-            if (proj.isValid()) remaining_valid++;
-        }
-        
-        std::cout << "\n╔════════════════════════════════════════╗\n";
-        std::cout << "║  🔥 ADHESION BREAKING EVENT 🔥       ║\n";
-        std::cout << "╠════════════════════════════════════════╣\n";
-        std::cout << "║  Constraints broken: " << std::setw(4) << unified_distance_to_invalidate.size() << "             ║\n";
-        std::cout << "║  Remaining active: " << std::setw(4) << remaining_valid << "               ║\n";
-        std::cout << "║  Total created:    " << std::setw(4) << unified_distance_projectors.size() << "               ║\n";
-        std::cout << "╚════════════════════════════════════════╝\n" << std::endl;
-    }
+    // Breaking summary disabled for performance
+    // if (!unified_distance_to_invalidate.empty()) {
+    //     size_t remaining_valid = 0;
+    //     for (const auto& proj : unified_distance_projectors)
+    //         if (proj.isValid()) remaining_valid++;
+    //     std::cout << "[adhesion] Broke " << unified_distance_to_invalidate.size()
+    //               << ", remaining " << remaining_valid << std::endl;
+    // }
     
     // Log breaking summary
     if (!nerve_tumor_to_invalidate.empty() || !inter_deform_to_invalidate.empty() || 
