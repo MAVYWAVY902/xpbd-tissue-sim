@@ -24,6 +24,8 @@ class SimulationRenderConfig : public Config
         _extractParameter("create-skybox", node, _create_skybox);
         _extractParameter("exposure", node, _exposure);
 
+        _extractParameter("background-image", node, _background_image);
+
         _extractParameter("window-width", node, _window_width);
         _extractParameter("window-height", node, _window_height);
     }
@@ -31,12 +33,14 @@ class SimulationRenderConfig : public Config
     const std::optional<std::string>& hdrImageFilename() const { return _hdr_image_filename.value; }
     bool createSkybox() const { return _create_skybox.value; }
     Real exposure() const { return _exposure.value; }
+    const std::optional<std::string>& backgroundImage() const { return _background_image.value; }
 
     int windowWidth() const { return _window_width.value; }
     int windowHeight() const { return _window_height.value; }
 
     protected:
     ConfigParameter<std::optional<std::string>> _hdr_image_filename;
+    ConfigParameter<std::optional<std::string>> _background_image;
     ConfigParameter<bool> _create_skybox = ConfigParameter<bool>(true);
     ConfigParameter<Real> _exposure = ConfigParameter<Real>(0.5);
 

@@ -22,6 +22,7 @@
 #include <easy3d/core/model.h>
 #include <easy3d/core/types.h>
 #include <easy3d/util/initializer.h>
+#include <easy3d/renderer/texture.h>
 
 namespace Graphics
 {
@@ -46,6 +47,22 @@ void Easy3DGraphicsScene::init()
     _viewer = std::make_unique<Easy3DTextRenderingViewer>(_name);
     _easy3d_viewer = dynamic_cast<Easy3DTextRenderingViewer*>(_viewer.get());
     _easy3d_viewer->set_usage("");
+
+    // load background image if configured
+    if (_sim_render_config.backgroundImage().has_value())
+    {
+        const std::string& bg_path = _sim_render_config.backgroundImage().value();
+        easy3d::Texture* bg_texture = easy3d::Texture::create(bg_path);
+        if (bg_texture)
+        {
+            _easy3d_viewer->setBackgroundTexture(bg_texture->id());
+            std::cout << "[Easy3D] Background image loaded: " << bg_path << std::endl;
+        }
+        else
+        {
+            std::cerr << "[Easy3D] WARNING: Failed to load background image: " << bg_path << std::endl;
+        }
+    }
 }
 
 void Easy3DGraphicsScene::update()

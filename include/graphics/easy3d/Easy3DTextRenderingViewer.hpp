@@ -35,6 +35,9 @@ class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
      */
     virtual void update() override;
 
+    /** Sets the background texture ID for rendering a full-screen background image. */
+    void setBackgroundTexture(unsigned int id) { _background_texture_id = id; }
+
     /** Width of the viewer window. */
     virtual int width() const override { return easy3d::Viewer::width(); }
 
@@ -74,6 +77,22 @@ class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
     private:
     /** The TextRenderer responsible for drawing the text on screen. */
     std::unique_ptr<easy3d::TextRenderer> _text_renderer;
+
+    /** OpenGL texture ID for background image (0 = no background). */
+    unsigned int _background_texture_id = 0;
+
+    /** OpenGL resources for equirectangular background shader (mutable for const draw). */
+    mutable unsigned int _bg_shader = 0;
+    mutable unsigned int _bg_vao = 0;
+    mutable unsigned int _bg_vbo = 0;
+    mutable unsigned int _bg_ebo = 0;
+    mutable bool _bg_shader_initialized = false;
+
+    /** Initializes the equirectangular background shader and geometry. */
+    void _initBackgroundShader() const;
+
+    /** Draws the equirectangular background using the camera's orientation. */
+    void _drawBackground() const;
 
     /** Maps Easy3D keys to SimulationInput keys */
     static const std::map<int, SimulationInput::Key> _easy3d_key_map;

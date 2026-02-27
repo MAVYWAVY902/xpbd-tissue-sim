@@ -11,6 +11,7 @@ name: "TBone-Tumor-Brain Adhesion Test"
 description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "Easy3D"
+background-image: "../resource/rendering/hdr/surgery_1k.png"
 
 # g-accel: [-300, -300, -100] # downward acceleration due to gravity [m/s2]
 g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]

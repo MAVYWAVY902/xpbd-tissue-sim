@@ -1,4 +1,6 @@
 #include "graphics/easy3d/Easy3DTextRenderingViewer.hpp"
+#include <easy3d/renderer/opengl.h>
+#include <easy3d/renderer/camera.h>
 
 namespace Graphics
 {
@@ -121,8 +123,154 @@ void Easy3DTextRenderingViewer::drawText() const
     }
 }
 
+// Equirectangular environment map shaders (inline GLSL)
+static const char* s_bg_vert_src = R"(
+#version 150
+in vec2 vtx_position;
+out vec2 vNDC;
+void main() {
+    vNDC = vtx_position;
+    gl_Position = vec4(vtx_position, 0.999, 1.0);
+}
+)";
+
+static const char* s_bg_frag_src = R"(
+#version 150
+in vec2 vNDC;
+out vec4 fragOutput;
+uniform sampler2D uTexture;
+uniform mat4 uInverseVPRot;
+
+const float PI = 3.14159265359;
+
+void main() {
+    // Unproject NDC to world-space direction (rotation only, no translation)
+    vec4 worldDir = uInverseVPRot * vec4(vNDC, -1.0, 1.0);
+    vec3 dir = normalize(worldDir.xyz / worldDir.w);
+
+    // Equirectangular mapping: direction -> UV
+    float u = atan(dir.z, dir.x) / (2.0 * PI) + 0.5;
+    float v = asin(clamp(dir.y, -1.0, 1.0)) / PI + 0.5;
+
+    fragOutput = texture(uTexture, vec2(u, v));
+}
+)";
+
+static GLuint compileShader(GLenum type, const char* src)
+{
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &src, nullptr);
+    glCompileShader(shader);
+    GLint ok = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+    if (!ok) {
+        char log[512];
+        glGetShaderInfoLog(shader, 512, nullptr, log);
+        std::cerr << "[Easy3D Background] Shader compile error: " << log << std::endl;
+    }
+    return shader;
+}
+
+void Easy3DTextRenderingViewer::_initBackgroundShader() const
+{
+    // Compile and link the equirectangular shader program
+    GLuint vs = compileShader(GL_VERTEX_SHADER, s_bg_vert_src);
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, s_bg_frag_src);
+    _bg_shader = glCreateProgram();
+    glAttachShader(_bg_shader, vs);
+    glAttachShader(_bg_shader, fs);
+    // Bind attribute location before linking
+    glBindAttribLocation(_bg_shader, 0, "vtx_position");
+    glLinkProgram(_bg_shader);
+    GLint ok = 0;
+    glGetProgramiv(_bg_shader, GL_LINK_STATUS, &ok);
+    if (!ok) {
+        char log[512];
+        glGetProgramInfoLog(_bg_shader, 512, nullptr, log);
+        std::cerr << "[Easy3D Background] Shader link error: " << log << std::endl;
+    }
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    // Create full-screen quad VAO
+    static const float verts[] = {
+        -1.0f, -1.0f,
+         1.0f, -1.0f,
+         1.0f,  1.0f,
+        -1.0f,  1.0f
+    };
+    static const unsigned int indices[] = { 0, 1, 2, 0, 2, 3 };
+
+    glGenVertexArrays(1, &_bg_vao);
+    glGenBuffers(1, &_bg_vbo);
+    glGenBuffers(1, &_bg_ebo);
+
+    glBindVertexArray(_bg_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, _bg_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _bg_ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBindVertexArray(0);
+
+    _bg_shader_initialized = true;
+    std::cout << "[Easy3D] Equirectangular background shader initialized." << std::endl;
+}
+
+void Easy3DTextRenderingViewer::_drawBackground() const
+{
+    if (!_bg_shader_initialized)
+        _initBackgroundShader();
+
+    // Get camera matrices
+    const easy3d::mat4& mv = camera()->modelViewMatrix();
+    const easy3d::mat4& proj = camera()->projectionMatrix();
+
+    // Strip translation from modelView matrix (keep only rotation)
+    // The view matrix is [R | t; 0 0 0 1], we zero out the translation column
+    easy3d::mat4 viewRot = mv;
+    viewRot(0, 3) = 0.0f;
+    viewRot(1, 3) = 0.0f;
+    viewRot(2, 3) = 0.0f;
+
+    // Compute inverse(Projection * ViewRotation)
+    easy3d::mat4 vpRot = proj * viewRot;
+    easy3d::mat4 invVPRot = easy3d::inverse(vpRot);
+
+    // Draw with depth test disabled (background behind everything)
+    glDepthMask(GL_FALSE);
+
+    glUseProgram(_bg_shader);
+
+    // Set uniforms
+    GLint loc_tex = glGetUniformLocation(_bg_shader, "uTexture");
+    GLint loc_mat = glGetUniformLocation(_bg_shader, "uInverseVPRot");
+    glUniform1i(loc_tex, 0);
+    // Easy3D mat4 is column-major, same as OpenGL expects
+    glUniformMatrix4fv(loc_mat, 1, GL_FALSE, &invVPRot(0, 0));
+
+    // Bind texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _background_texture_id);
+
+    // Draw full-screen quad
+    glBindVertexArray(_bg_vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+    glBindVertexArray(0);
+
+    glUseProgram(0);
+    glDepthMask(GL_TRUE);
+}
+
 void Easy3DTextRenderingViewer::draw() const
 {
+    // draw equirectangular environment map background
+    if (_background_texture_id != 0)
+    {
+        _drawBackground();
+    }
+
     // call original easy3d Viewer draw call
     easy3d::Viewer::draw();
 
