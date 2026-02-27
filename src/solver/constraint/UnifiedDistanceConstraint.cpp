@@ -41,56 +41,6 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
     _initial_distance(initial_distance),  // Use precomputed value
     _should_break(false)
 {
-    // 🔍 RUNTIME PARAMETER VERIFICATION (print first 3 constraints only)
-    static int constraint_count = 0;
-    if (constraint_count < 3) {
-        std::cout << "\n🔍 [CONSTRAINT #" << constraint_count << "] Runtime Parameters:" << std::endl;
-        std::cout << "  d_contact = " << _d_contact << " m (" << _d_contact*1000 << " mm)" << std::endl;
-        std::cout << "  d_rest = " << _d_rest << " m (" << _d_rest*1000 << " mm)" << std::endl;
-        std::cout << "  d_neutral_start = " << _d_neutral_start << " m (" << _d_neutral_start*1000 << " mm)" << std::endl;
-        std::cout << "  d_neutral_end = " << _d_neutral_end << " m (" << _d_neutral_end*1000 << " mm)" << std::endl;
-        std::cout << "  d_bond = " << _d_bond << " m (" << _d_bond*1000 << " mm)" << std::endl;
-        std::cout << "  EXP_GATE_WIDTH = " << EXP_GATE_WIDTH << " m (" << EXP_GATE_WIDTH*1000 << " mm)" << std::endl;
-        std::cout << "  EXP_SCALE_MARGIN = " << EXP_SCALE_MARGIN << std::endl;
-        std::cout << "  alpha = " << alpha << std::endl;
-        std::cout << "  break_ratio = " << _break_ratio << std::endl;
-        std::cout << "  initial_distance (PRECOMPUTED) = " << initial_distance << " m (" << initial_distance*1000 << " mm)" << std::endl;
-        std::cout << "  break_threshold = " << (initial_distance * _break_ratio)*1000 << " mm" << std::endl;
-        
-        // 🔍 VERTEX POSITION DEBUG - AT CREATION TIME
-        std::cout << "\n  📍 VERTEX POSITIONS AT CREATION:" << std::endl;
-        std::cout << "    tri_p1 ptr = " << (void*)tri_p1 << std::endl;
-        std::cout << "    tri_p2 ptr = " << (void*)tri_p2 << std::endl;
-        std::cout << "    tri_p3 ptr = " << (void*)tri_p3 << std::endl;
-        Eigen::Map<const Vec3r> p1_init(tri_p1);
-        Eigen::Map<const Vec3r> p2_init(tri_p2);
-        Eigen::Map<const Vec3r> p3_init(tri_p3);
-        std::cout << "    tri_p1 = " << p1_init.transpose() << std::endl;
-        std::cout << "    tri_p2 = " << p2_init.transpose() << std::endl;
-        std::cout << "    tri_p3 = " << p3_init.transpose() << std::endl;
-        std::cout << "    rigid_pt (body) = " << rigid_body_point.transpose() << std::endl;
-        const Vec3r rigid_global_init = rigid_obj->bodyToGlobal(rigid_body_point);
-        std::cout << "    rigid_pt (global) = " << rigid_global_init.transpose() << std::endl;
-        Vec3r edge1_init = p2_init - p1_init;
-        Vec3r edge2_init = p3_init - p1_init;
-        Real area_init = edge1_init.cross(edge2_init).norm() / 2.0;
-        std::cout << "    Triangle area = " << area_init << " m²" << std::endl;
-        
-        // 🚨 SANITY CHECK: rigid point should NOT coincide with any triangle vertex!
-        Real dist_to_v1 = (rigid_global_init - p1_init).norm();
-        Real dist_to_v2 = (rigid_global_init - p2_init).norm();
-        Real dist_to_v3 = (rigid_global_init - p3_init).norm();
-        std::cout << "    ⚠️  SANITY: dist(rigid→tri_v1) = " << dist_to_v1*1000 << " mm" << std::endl;
-        std::cout << "    ⚠️  SANITY: dist(rigid→tri_v2) = " << dist_to_v2*1000 << " mm" << std::endl;
-        std::cout << "    ⚠️  SANITY: dist(rigid→tri_v3) = " << dist_to_v3*1000 << " mm" << std::endl;
-        if (dist_to_v1 < 1e-6 || dist_to_v2 < 1e-6 || dist_to_v3 < 1e-6) {
-            std::cout << "    🔴🔴🔴 CRITICAL ERROR: rigid_body_point coincides with triangle vertex!" << std::endl;
-            std::cout << "    🔴🔴🔴 This means rigid point was bound to deformable, not rigid surface!" << std::endl;
-            std::cout << "    🔴🔴🔴 Result: d will always be ~0, causing huge repulsion force!" << std::endl;
-        }
-    }
-    constraint_count++;
-    
     // INITIALIZATION: Compute barycentric coordinates once at creation
     // Transform rigid body point to global coordinates at initialization
     const Vec3r rigid_point_global = rigid_obj->bodyToGlobal(rigid_body_point);
@@ -107,17 +57,7 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
     // Let first evaluate() in timestep compute and cache the contact frame.
     // Constructor cache is just for initialization reference.
     _cache_valid = false;
-    
-    // NOTE: _initial_distance is set from constructor parameter (precomputed by caller)
-    // Do NOT try to compute it here - vertex pointers may not be initialized yet
-    
-    // Initialize debug tracking
-    _debug_prev_rigid_body_point = _rigid_body_point;
-    _debug_prev_rigid_global = rigid_point_global;
-    _debug_frame_count = 0;
-    _debug_prev_cache_valid = false;
-    _debug_initialized = false;
-    
+
     // Create RigidBodyXPBDHelper for positional constraint
     // The correction direction is along the normal from triangle to rigid body point
     _rigid_body_helpers.push_back(
@@ -141,93 +81,13 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     // Get rigid body point in global coordinates (transforms with rigid body motion)
     const Sim::RigidObject* rigid_obj = _rigid_bodies[0];
     const Vec3r rigid_point_global = rigid_obj->bodyToGlobal(_rigid_body_point);
-    
-    // 🚨 DEBUG: Check if THIS constraint's _rigid_body_point changed across frames
-    // Trigger: Detect NEW FRAME by cache state transition (false->true after recompute)
-    // This is more reliable than just checking _cache_valid==false (which can happen multiple times)
-    const bool is_new_frame = (!_cache_valid && _debug_prev_cache_valid);  // Cache just got invalidated
-    
-    if (is_new_frame && _debug_initialized && _debug_frame_count < 20) {  // 增加到20帧
-        // Check if _rigid_body_point (body coords) changed since last frame
-        const Real body_drift = (_rigid_body_point - _debug_prev_rigid_body_point).norm();
-        const Real global_drift = (rigid_point_global - _debug_prev_rigid_global).norm();
-        
-        // 🔍 更详细的调试信息
-        std::cout << "\n🔍🔍 [FRAME #" << _debug_frame_count << "] Constraint d0=" 
-                  << _initial_distance*1000 << "mm" << std::endl;
-        std::cout << "  📍 rigid_body_point (body coords):" << std::endl;
-        std::cout << "     prev = " << _debug_prev_rigid_body_point.transpose() << std::endl;
-        std::cout << "     curr = " << _rigid_body_point.transpose() << std::endl;
-        std::cout << "     drift = " << body_drift*1000 << " mm (should be 0!)" << std::endl;
-        
-        std::cout << "  🌍 rigid_body_point (global coords):" << std::endl;
-        std::cout << "     prev = " << _debug_prev_rigid_global.transpose() << std::endl;
-        std::cout << "     curr = " << rigid_point_global.transpose() << std::endl;
-        std::cout << "     drift = " << global_drift*1000 << " mm (should be ~0 for fixed rigid)" << std::endl;
-        
-        // 检查刚体状态
-        std::cout << "  🦴 Rigid body state:" << std::endl;
-        std::cout << "     position = " << rigid_obj->position().transpose() << std::endl;
-        std::cout << "     is_fixed = " << (rigid_obj->isFixed() ? "YES" : "NO") << std::endl;
-        
-        if (body_drift > 1e-12) {  // Body coords should be EXACTLY constant
-            std::cout << "  🔴🔴🔴 BUG CONFIRMED: Body coordinates changed!" << std::endl;
-            std::cout << "  🔴 This means _rigid_body_point is being overwritten!" << std::endl;
-        }
-        
-        if (global_drift > 1e-6) {  // 1微米阈值
-            if (rigid_obj->isFixed()) {
-                std::cout << "  🔴 ERROR: Global position moved but rigid is fixed!" << std::endl;
-            } else {
-                std::cout << "  ⚠️  Global drift is normal (rigid body is not fixed)" << std::endl;
-            }
-        }
-        
-        _debug_frame_count++;
-    }
-    
-    // Update debug tracking at END of frame (after cache gets recomputed)
-    if (!_cache_valid && !_debug_initialized) {
-        _debug_initialized = true;
-    }
-    if (_cache_valid && !_debug_prev_cache_valid) {  // Cache just became valid (frame completed)
-        _debug_prev_rigid_body_point = _rigid_body_point;
-        _debug_prev_rigid_global = rigid_point_global;
-    }
-    _debug_prev_cache_valid = _cache_valid;
-    
-    // 🔍 VERTEX POSITION DEBUG - AT EVALUATION TIME (first 3 constraints only)
-    static int eval_debug_count = 0;
-    if (eval_debug_count < 3) {
-        std::cout << "\n🔍🔍 [EVAL GEOMETRY DEBUG #" << eval_debug_count << "]" << std::endl;
-        std::cout << "  📍 VERTEX POSITIONS AT EVALUATION:" << std::endl;
-        std::cout << "    _positions[0].position_ptr = " << (void*)_positions[0].position_ptr << std::endl;
-        std::cout << "    _positions[1].position_ptr = " << (void*)_positions[1].position_ptr << std::endl;
-        std::cout << "    _positions[2].position_ptr = " << (void*)_positions[2].position_ptr << std::endl;
-        std::cout << "    tri_p1 = " << tri_p1.transpose() << std::endl;
-        std::cout << "    tri_p2 = " << tri_p2.transpose() << std::endl;
-        std::cout << "    tri_p3 = " << tri_p3.transpose() << std::endl;
-        std::cout << "    rigid_pt (body) = " << _rigid_body_point.transpose() << std::endl;
-        std::cout << "    rigid_pt (global) = " << rigid_point_global.transpose() << std::endl;
-        Vec3r edge1 = tri_p2 - tri_p1;
-        Vec3r edge2 = tri_p3 - tri_p1;
-        Real area = edge1.cross(edge2).norm() / 2.0;
-        std::cout << "    Triangle area = " << area << " m²" << std::endl;
-        std::cout << "    _cache_valid = " << _cache_valid << std::endl;
-        eval_debug_count++;
-    }
 
-    // ✅ FROZEN FRAME: Only recompute geometry if cache is invalid (start of timestep)
+    // FROZEN FRAME: Only recompute geometry if cache is invalid (start of timestep)
     Real point_to_tri_distance;
     if (!_cache_valid) {
         // First evaluation in this timestep - compute and freeze contact geometry
-        static int cache_recompute_count = 0;
-        if (cache_recompute_count < 10) {
-            std::cout << "🔄 [CACHE RECOMPUTE #" << cache_recompute_count << "] Computing fresh contact frame" << std::endl;
-            cache_recompute_count++;
-        }
-        
-        // FIXED ADHESION IMPLEMENTATION (Requested by User):
+
+        // FIXED ADHESION IMPLEMENTATION:
         // Instead of searching for the NEW closest point (which causes sliding),
         // we use the INITIAL barycentric coordinates (anchored material point).
         // This converts the constraint from "Point-to-Triangle" (Sliding) to "Point-to-Point" (Fixed).
@@ -264,24 +124,6 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
         // _bary_cached = bary_coords_current;  <-- DISABLED for Fixed Adhesion
         
         _cache_valid = true;
-        
-        // 🔍 DEBUG: 打印约束点的全局坐标
-        static int contact_debug_count = 0;
-        if (contact_debug_count < 5) {
-            std::cout << "\n🔍🎯 [CONTACT GEOMETRY #" << contact_debug_count << "] (Fixed Adhesion Mode)" << std::endl;
-            std::cout << "  🦴 Rigid point (global): " << rigid_point_global.transpose() << std::endl;
-            std::cout << "  📐 Triangle vertices:" << std::endl;
-            std::cout << "      tri_p1: " << tri_p1.transpose() << std::endl;
-            std::cout << "      tri_p2: " << tri_p2.transpose() << std::endl;
-            std::cout << "      tri_p3: " << tri_p3.transpose() << std::endl;
-            std::cout << "  🎯 Anchor point on triangle: " << anchor_point.transpose() << std::endl;
-            std::cout << "  📏 Distance: " << point_to_tri_distance*1000 << " mm" << std::endl;
-            std::cout << "  🧮 Fixed Barycentric coords: [" << _bary_cached[0] 
-                      << ", " << _bary_cached[1] 
-                      << ", " << _bary_cached[2] << "]" << std::endl;
-            std::cout << "  ➡️  Normal: " << normal.transpose() << std::endl;
-            contact_debug_count++;
-        }
     } else {
         // Cache valid - use frozen contact frame (within same timestep)
         // Reconstruct surface point using frozen barycentric coordinates
@@ -331,15 +173,9 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     
     const Real d = point_to_tri_distance;
     
-    // 🛡️ PROTECTION: Check for abnormal d values before break check
-    if (!std::isfinite(d) || d > 1.0 || d < 1e-6) {  // d < 1μm is likely geometry error
-        static int abnormal_count = 0;
-        if (abnormal_count < 5) {
-            std::cout << "⚠️  [ABNORMAL DISTANCE] d=" << d*1000 << "mm, using initial_distance=" 
-                      << _initial_distance*1000 << "mm as fallback" << std::endl;
-            abnormal_count++;
-        }
-        // Use initial distance as fallback instead of returning 0
+    // Protection: Check for abnormal d values before break check
+    if (!std::isfinite(d) || d > 1.0 || d < 1e-6) {
+        // Use initial distance as fallback
         const Real d_safe = _initial_distance;
         const Real d_target_safe = computeTargetDistance(d_safe);
         *C = d_safe - d_target_safe;
@@ -373,15 +209,6 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     
     if (current_stretch > max_allowed_stretch) {
         _should_break = true;
-        // DEBUG: Print when breaking condition is triggered
-        static int break_print_count = 0;
-        if (break_print_count < 5) {
-            std::cout << "🔴 [CONSTRAINT BREAKING] stretch=" << current_stretch*1000 
-                      << "mm > max_stretch=" << max_allowed_stretch*1000 
-                      << "mm (d=" << d*1000 << "mm, d0=" << _initial_distance*1000 
-                      << "mm, ratio=" << _break_ratio << ")" << std::endl;
-            break_print_count++;
-        }
         *C = 0.0;  // Disable constraint
         return;
     }
@@ -394,37 +221,8 @@ void UnifiedDistanceConstraint::evaluate(Real* C) const
     const Real d_target_plus = computeTargetDistance(d + eps);
     const Real d_target_minus = computeTargetDistance(d - eps);
     const Real dd_target_dd = (d_target_plus - d_target_minus) / (2.0 * eps);
-    const Real dC_dd = 1.0 - dd_target_dd;  // Should be > 0 (validated)
-    
-    // 🔍 DEBUG: Print first few constraints at first evaluation with FULL geometry
-    static int eval_count = 0;
-    static bool first_eval = true;
-    if (first_eval && eval_count < 5) {
-        std::cout << "\n🔍 [EVAL #" << eval_count << "] DETAILED TRACKING:" << std::endl;
-        std::cout << "  d = " << d*1000 << " mm (current separation)" << std::endl;
-        std::cout << "  d* = " << d_target*1000 << " mm (target from curve)" << std::endl;
-        std::cout << "  C = d - d* = " << constraint_value*1000 << " mm";
-        if (constraint_value > 0) std::cout << " (TOO FAR → ATTRACTION ✅)";
-        else if (constraint_value < 0) std::cout << " (TOO CLOSE → REPULSION ⚠️)";
-        else std::cout << " (EQUILIBRIUM)";
-        std::cout << std::endl;
-        std::cout << "  dC/dd = " << dC_dd << " (constraint slope)" << std::endl;
-        std::cout << "  initial_distance = " << _initial_distance*1000 << " mm" << std::endl;
-        std::cout << "  break_threshold = " << (_initial_distance * _break_ratio)*1000 << " mm" << std::endl;
-        
-        // Geometry check
-        Eigen::Map<const Vec3r> p1_now(_positions[0].position_ptr);
-        Eigen::Map<const Vec3r> p2_now(_positions[1].position_ptr);
-        Eigen::Map<const Vec3r> p3_now(_positions[2].position_ptr);
-        const Vec3r rigid_now = rigid_obj->bodyToGlobal(_rigid_body_point);
-        std::cout << "  📍 Geometry: rigid = " << rigid_now.transpose() << std::endl;
-        std::cout << "              tri_p1 = " << p1_now.transpose() << std::endl;
-        std::cout << "  🔍 Check: dist(rigid→tri_p1) = " << (rigid_now - p1_now).norm()*1000 << " mm" << std::endl;
-        
-        eval_count++;
-        if (eval_count >= 5) first_eval = false;
-    }
-    
+    const Real dC_dd = 1.0 - dd_target_dd;
+
     // Cache for gradient reuse
     _separation_cached = d;
     _constraint_value_cached = constraint_value;
@@ -520,16 +318,7 @@ Real UnifiedDistanceConstraint::computePointTriangleDistance(
     const Real area = triangle_normal.norm();
     
     if (area < 1e-12) {
-        // Degenerate triangle - DO NOT return 1e6 (causes instant breaking!)
-        static int degenerate_count = 0;
-        if (degenerate_count < 5) {
-            std::cout << "⚠️⚠️⚠️ [DEGENERATE TRIANGLE] area = " << area << " < 1e-12" << std::endl;
-            std::cout << "  tri_p1 = " << tri_p1.transpose() << std::endl;
-            std::cout << "  tri_p2 = " << tri_p2.transpose() << std::endl;
-            std::cout << "  tri_p3 = " << tri_p3.transpose() << std::endl;
-            std::cout << "  Returning fallback distance (not 1e6 to avoid breaking!)" << std::endl;
-            degenerate_count++;
-        }
+        // Degenerate triangle fallback
         normal = Vec3r::UnitZ();
         closest_point = tri_p1;
         bary_coords = Vec3r(1.0, 0.0, 0.0);
@@ -677,20 +466,8 @@ Real UnifiedDistanceConstraint::computeTargetDistance(Real d) const
     // 2. Delta (Smoothing Width): Half-width of the C1 transition zone
     //    Mapping: delta = _d_contact (Contact thickness)
     //    - Example: 0.3mm
-    Real delta = std::max(1e-5, _d_contact); 
-    
-    // Debug output (once per constraint to verify config)
-    static bool param_debug_printed = false;
-    if (!param_debug_printed) {
-        std::cout << "\n🔧 [UnifiedDistance Params] Configured from YAML:" << std::endl;
-        std::cout << "   _d_contact (-> delta) = " << _d_contact * 1000 << " mm" << std::endl;
-        std::cout << "   _d_rest / _d_neutral_start (-> beta) = " << _d_rest*1000 << " / " << _d_neutral_start*1000 
-                  << " = " << beta << std::endl;
-        param_debug_printed = true;
-    }
-    
-    // ============================================================================
-    
+    Real delta = std::max(1e-5, _d_contact);
+
     // Define slopes for different regions
     // beta (right slope): Controls extension stiffness (Softer, < 1.0)
     // alpha_compress (left slope): Controls compression stiffness

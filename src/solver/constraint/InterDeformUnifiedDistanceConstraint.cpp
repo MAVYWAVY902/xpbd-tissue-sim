@@ -3,7 +3,6 @@
 #include "utils/GeometryUtils.hpp"
 #include <cmath>
 #include <algorithm>
-#include <iostream>
 
 namespace Solver
 {
@@ -39,22 +38,6 @@ InterDeformUnifiedDistanceConstraint::InterDeformUnifiedDistanceConstraint(
     _default_alpha(alpha),              // Store original compliance
     _should_break(false)
 {
-    // 🔍 RUNTIME PARAMETER VERIFICATION (print first 3 constraints only)
-    static int constraint_count = 0;
-    if (constraint_count < 3) {
-        std::cout << "\n🔍 [INTER-DEFORM UNIFIED #" << constraint_count << "] Runtime Parameters:" << std::endl;
-        std::cout << "  d_contact = " << _d_contact << " m (" << _d_contact*1000 << " mm)" << std::endl;
-        std::cout << "  d_rest = " << _d_rest << " m (" << _d_rest*1000 << " mm)" << std::endl;
-        std::cout << "  d_neutral_start = " << _d_neutral_start << " m (" << _d_neutral_start*1000 << " mm)" << std::endl;
-        std::cout << "  d_neutral_end = " << _d_neutral_end << " m (" << _d_neutral_end*1000 << " mm)" << std::endl;
-        std::cout << "  d_bond = " << _d_bond << " m (" << _d_bond*1000 << " mm)" << std::endl;
-        std::cout << "  alpha = " << alpha << std::endl;
-        std::cout << "  break_ratio = " << _break_ratio << std::endl;
-        std::cout << "  initial_distance (PRECOMPUTED) = " << initial_distance << " m (" << initial_distance*1000 << " mm)" << std::endl;
-        std::cout << "  break_threshold = " << (initial_distance * _break_ratio)*1000 << " mm" << std::endl;
-    }
-    constraint_count++;
-    
     // INITIALIZATION: Compute barycentric coordinates once at creation to establish FIXED anchor point
     Eigen::Map<const Vec3r> vertex_pos_init(vertex_p);
     Eigen::Map<const Vec3r> tri_p1_init(tri_p1);
@@ -88,12 +71,7 @@ void InterDeformUnifiedDistanceConstraint::evaluate(Real* C) const
     Real point_to_tri_distance;
     if (!_cache_valid) {
         // First evaluation in this timestep - compute and freeze contact geometry
-        static int cache_recompute_count = 0;
-        if (cache_recompute_count < 10) {
-            std::cout << "🔄 [INTER-DEFORM CACHE RECOMPUTE #" << cache_recompute_count << "] Computing fresh contact frame" << std::endl;
-            cache_recompute_count++;
-        }
-        
+
         // FIXED ADHESION IMPLEMENTATION:
         // Use INITIAL barycentric coordinates (anchored material point).
         // This converts the constraint from "Point-to-Triangle" (Sliding) to "Point-to-Point" (Fixed).
@@ -149,24 +127,6 @@ void InterDeformUnifiedDistanceConstraint::evaluate(Real* C) const
         // IMPORTANT: We do NOT update _bary_cached. We keep the initial bond point!
         
         _cache_valid = true;
-        
-        // 🔍 DEBUG: Print contact geometry for first few constraints
-        static int contact_debug_count = 0;
-        if (contact_debug_count < 5) {
-            std::cout << "\n🔍🎯 [INTER-DEFORM CONTACT GEOMETRY #" << contact_debug_count << "] (Fixed Adhesion Mode)" << std::endl;
-            std::cout << "  📌 Vertex position: " << vertex_pos.transpose() << std::endl;
-            std::cout << "  📐 Triangle vertices:" << std::endl;
-            std::cout << "      tri_p1: " << tri_p1.transpose() << std::endl;
-            std::cout << "      tri_p2: " << tri_p2.transpose() << std::endl;
-            std::cout << "      tri_p3: " << tri_p3.transpose() << std::endl;
-            std::cout << "  🎯 Anchor point on triangle: " << anchor_point.transpose() << std::endl;
-            std::cout << "  📏 Distance: " << point_to_tri_distance*1000 << " mm" << std::endl;
-            std::cout << "  🧮 Fixed Barycentric coords: [" << _bary_cached[0] 
-                      << ", " << _bary_cached[1] 
-                      << ", " << _bary_cached[2] << "]" << std::endl;
-            std::cout << "  ➡️  Normal: " << normal.transpose() << std::endl;
-            contact_debug_count++;
-        }
     } else {
         // Cache valid - use frozen contact frame (within same timestep)
         // Reconstruct surface point using frozen barycentric coordinates
@@ -206,17 +166,8 @@ void InterDeformUnifiedDistanceConstraint::evaluate(Real* C) const
         mutable_alpha = _default_alpha; // Restore configured soft compliance
     }
     
-    // 🛡️ PROTECTION: Check for abnormal d values before break check
-    // FIX: Removed "|| d < 1e-6" check. 
-    // This safety check was previously disabling the constraint exactly when 
-    // it was most needed (at d=0 collision), causing penetration.
+    // Protection: Check for abnormal d values before break check
     if (!std::isfinite(d) || d > 1.0) {
-        static int abnormal_count = 0;
-        if (abnormal_count < 5) {
-            std::cout << "⚠️  [INTER-DEFORM ABNORMAL DISTANCE] d=" << d*1000 << "mm, using initial_distance=" 
-                      << _initial_distance*1000 << "mm as fallback" << std::endl;
-            abnormal_count++;
-        }
         const Real d_safe = _initial_distance;
         const Real d_target_safe = computeTargetDistance(d_safe);
         *C = d_safe - d_target_safe;
@@ -230,14 +181,6 @@ void InterDeformUnifiedDistanceConstraint::evaluate(Real* C) const
     
     if (current_stretch > max_allowed_stretch) {
         _should_break = true;
-        static int break_print_count = 0;
-        if (break_print_count < 5) {
-            std::cout << "🔴 [INTER-DEFORM CONSTRAINT BREAKING] stretch=" << current_stretch*1000 
-                      << "mm > max_stretch=" << max_allowed_stretch*1000 
-                      << "mm (d=" << d*1000 << "mm, d0=" << _initial_distance*1000 
-                      << "mm, ratio=" << _break_ratio << ")" << std::endl;
-            break_print_count++;
-        }
         *C = 0.0;  // Disable constraint
         return;
     }
@@ -308,52 +251,69 @@ void InterDeformUnifiedDistanceConstraint::evaluateWithGradient(Real* C, Real* g
 
 Real InterDeformUnifiedDistanceConstraint::computeTargetDistance(Real d) const
 {
-    // This is IDENTICAL to UnifiedDistanceConstraint::computeTargetDistance
-    // Stage 1: Contact → Rest (smoothstep)
-    // Stage 2: Rest → Bond (exponential blend with gate)
-    
-    // Hard constraint zone (d < d_contact): Strong repulsion
-    if (d <= _d_contact) {
-        // FIX: Creating a hard wall at _d_contact
-        // We want C = d - d_contact (approx), so d_target should be near d_contact.
-        // Using slope_hard = 0.01 means d_target varies little from _d_contact.
-        // Formula: d_target = d_contact + slope * (d - d_contact)
-        // Resulting C = d - d_target = (1 - slope) * (d - d_contact)
-        // If slope=0.01, C = 0.99 * (d - d_contact) -> STRONG repulsion
-        
-        const Real slope_wall = 0.01; 
-        return _d_contact + slope_wall * (d - _d_contact);
-    }
-    
-    // Stage 1: Contact → Rest (smoothstep blend)
-    if (d <= _d_rest) {
-        const Real t = smoothstep(_d_contact, _d_rest, d);
-        return (1.0 - t) * _d_contact + t * _d_rest;
-    }
-    
-    // Stage 2: Rest → Bond (exponential approach with gate)
-    // Delayed exponential: stays at d_rest until d_neutral_start, then rises
-    const Real gate = smoothstep(_d_neutral_start, _d_neutral_end, d);
-    const Real s_max = (_d_bond - _d_rest) * EXP_SCALE_MARGIN / EXP_GATE_WIDTH;
-    const Real exp_contrib = expBlend(_d_rest, s_max, d, EXP_GATE_WIDTH);
-    const Real d_target_stage2 = _d_rest + gate * exp_contrib;
-    
-    return std::min(d_target_stage2, _d_bond);  // Cap at saturation
-}
+    // ============================================================================
+    // C¹-SMOOTH SLOPE-INTERPOLATION DESIGN (ported from UnifiedDistanceConstraint)
+    // ============================================================================
+    // Each constraint pulls back toward its initial_distance (d0) when stretched
+    // with C¹ continuous smooth transition at d0 (eliminates gradient discontinuity)
+    //
+    // Physics:
+    //   - d < d0 - δ: compression zone (d* ≈ d0, hard push-back, slope=0.01)
+    //   - d > d0 + δ: extension zone (d* = d0 + β(d-d0), pull-back)
+    //   - |d - d0| ≤ δ: smooth transition (slope interpolation, C¹ continuous)
+    //
+    // Guarantees:
+    //   - dd*/dd ∈ [0.01, β] globally (XPBD stable)
+    //   - dC/dd ∈ [1-β, 0.99] globally (monotonic, always positive)
+    //   - C¹ continuous everywhere (no gradient jumps, no chatter)
+    // ============================================================================
 
-Real InterDeformUnifiedDistanceConstraint::smoothstep(Real edge0, Real edge1, Real x) const
-{
-    if (x <= edge0) return 0.0;
-    if (x >= edge1) return 1.0;
-    const Real t = (x - edge0) / (edge1 - edge0);
-    return t * t * (3.0 - 2.0 * t);  // C¹ continuous: f(t) = 3t² - 2t³
-}
+    const Real d0 = _initial_distance;
 
-Real InterDeformUnifiedDistanceConstraint::expBlend(Real d0, Real s, Real d, Real gate_width) const
-{
-    if (d <= d0) return 0.0;
-    const Real exponent = -(d - d0) / gate_width;
-    return s * gate_width * (1.0 - std::exp(exponent));
+    // Beta (Stiffness Slope): Controls how strongly we pull back to d0
+    // Mapping: beta = _d_rest / _d_neutral_start
+    Real beta = 0.3; // Fallback default
+    if (_d_neutral_start > 1e-6) {
+        beta = std::max(0.01, std::min(0.99, _d_rest / _d_neutral_start));
+    }
+
+    // Delta (Smoothing Width): Half-width of the C1 transition zone
+    // Mapping: delta = _d_contact
+    Real delta = std::max(1e-5, _d_contact);
+
+    // Define slopes
+    const Real slope_left = 0.01;  // Hard push-back for compression
+    const Real slope_right = beta; // Soft pull-back for extension
+
+    // Region 1: d < d0 - delta (Compression Zone)
+    if (d < d0 - delta) {
+        return d0 + slope_left * (d - d0);
+    }
+
+    // Region 2: d > d0 + delta (Extension Zone)
+    if (d > d0 + delta) {
+        return d0 + slope_right * (d - d0);
+    }
+
+    // Region 3: Transition zone [d0-delta, d0+delta] (C¹ smooth interpolation)
+    // Method: Interpolate slope (dd*/dd), then integrate to construct d*.
+
+    // Distance from left edge of transition zone
+    const Real x = d - (d0 - delta);  // x ∈ [0, 2δ]
+
+    // Normalized parameter: t ∈ [0, 1]
+    const Real t = x / (2.0 * delta);
+
+    // Target at left edge (d = d0 - delta)
+    const Real d_target_left = d0 + slope_left * ((d0 - delta) - d0);
+
+    // Integral of blend term for smooth transition: ∫ blend(t) dx = 2δ * (t^3 - t^4/2)
+    const Real term_blend = (t*t*t - 0.5*t*t*t*t);
+
+    // d* = d_left + slope_left * x + (slope_right - slope_left) * integral_blend
+    const Real d_target = d_target_left + slope_left * x + (slope_right - slope_left) * (2.0 * delta) * term_blend;
+
+    return d_target;
 }
 
 Real InterDeformUnifiedDistanceConstraint::computePointTriangleDistance(

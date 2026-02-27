@@ -27,6 +27,7 @@ max-push-force: 0.0
 fix-min-z: false
 
 ## HapticDissectionSimulation parameters
+device-to-sim-axes: [1, 2, -3]         # signed permutation: device→sim axis mapping (press M to cycle, N for diagnostics)
 knife-rotation-speed: 1.0             # keyboard rotation speed [rad/s] (Q/E=yaw, R/F=pitch, Z/X=roll)
 haptic-force-scaling: 0.0              # no force feedback for this test
 haptic-serial-port: ""                 # auto-detect

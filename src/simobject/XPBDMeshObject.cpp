@@ -2017,7 +2017,27 @@ void XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::up
             num_adhesion_constraints++;
         }
     }
-    
+
+    // Reset inter-deform UNIFIED distance constraints (frozen contact frame)
+    using InterDeformUnifiedType = Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformUnifiedDistanceConstraint>;
+    auto& idu_projectors = _solver.template getConstraintProjectorsOfType<InterDeformUnifiedType>();
+    for (auto& projector : idu_projectors) {
+        if (projector.isValid()) {
+            projector.constraint()->resetMaxDistanceThisStep();
+            num_adhesion_constraints++;
+        }
+    }
+
+    // Reset unified distance constraints (rigid-deform, frozen contact frame)
+    using UnifiedDistType = Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>;
+    auto& ud_projectors = _solver.template getConstraintProjectorsOfType<UnifiedDistType>();
+    for (auto& projector : ud_projectors) {
+        if (projector.isValid()) {
+            projector.constraint()->resetCache();
+            num_adhesion_constraints++;
+        }
+    }
+
     auto end_reset = std::chrono::high_resolution_clock::now();
 
     // set _x_prev to be ready for the next substep

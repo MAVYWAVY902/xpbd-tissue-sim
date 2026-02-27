@@ -231,7 +231,7 @@ objects:
 
     ## XPBD-specific options
     num-solver-iters: 3            # REDUCED to 1 for maximum performance
-    solver-type: "Colored-Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
+    solver-type: "Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     damping-multiplier: 9000000      # REDUCED from 9M - was causing excessive damping
@@ -278,7 +278,7 @@ objects:
 
     ## XPBD-specific options
     num-solver-iters: 4            # REDUCED to 1 for maximum performance
-    solver-type: "Colored-Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
+    solver-type: "Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     damping-multiplier: 7000000 

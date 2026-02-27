@@ -4,6 +4,7 @@
 #include "config/simulation/HapticDissectionSimulationConfig.hpp"
 #include <memory>
 #include <map>
+#include <vector>
 
 class HaplyInverse3Device;
 
@@ -46,6 +47,12 @@ private:
     /// Map a simulation-space force to device-frame force [N].
     Vec3r _simToHapticForce(const Vec3r& sim_force) const;
 
+    /// Transform a device-frame quaternion (xyzw) to sim frame.
+    Vec4r _hapticToSimQuaternion(const Vec4r& device_quat) const;
+
+    /// Build the 3x3 signed permutation matrix from a 1-based signed axis spec.
+    void _setAxisMapping(const std::vector<int>& axes);
+
     std::unique_ptr<HaplyInverse3Device> _haptic_device;
 
     Vec3r _haptic_origin = Vec3r::Zero();          ///< knife starting position in sim frame
@@ -55,6 +62,9 @@ private:
     Vec4r _initial_knife_quat = Vec4r(0,0,0,1);   ///< knife orientation at startup
     bool _use_grip_orientation = true;              ///< toggle with 'G' key
     int _axis_mapping = 0;                          ///< cycle with 'M' key
+    Mat3r _device_to_camera = Mat3r::Identity();     ///< signed permutation matrix (device→camera)
+    Real _det_device_to_camera = 1.0;               ///< determinant of _device_to_camera (+1 or -1)
+    bool _diag_printing = false;                    ///< toggle with 'N' key
 
     // Config parameters
     Real _haptic_force_scaling = 5.0;

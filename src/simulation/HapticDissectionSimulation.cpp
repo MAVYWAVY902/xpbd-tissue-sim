@@ -9,6 +9,23 @@
 namespace Sim
 {
 
+// 12 axis-mapping presets (1-based signed: +1=deviceX, -3=-deviceZ, etc.)
+static const std::vector<int> kAxisPresets[] = {
+    { 1,  2, -3},   //  0:  X,  Y, -Z (default)
+    { 1,  2,  3},   //  1:  X,  Y,  Z
+    { 1, -2,  3},   //  2:  X, -Y,  Z
+    { 1, -2, -3},   //  3:  X, -Y, -Z
+    {-1,  2,  3},   //  4: -X,  Y,  Z
+    {-1,  2, -3},   //  5: -X,  Y, -Z
+    { 1,  3, -2},   //  6:  X,  Z, -Y
+    { 1, -3,  2},   //  7:  X, -Z,  Y
+    { 1,  3,  2},   //  8:  X,  Z,  Y
+    { 3,  2, -1},   //  9:  Z,  Y, -X
+    {-3,  2,  1},   // 10: -Z,  Y,  X
+    { 2,  1, -3},   // 11:  Y,  X, -Z
+};
+static constexpr int kNumPresets = 12;
+
 HapticDissectionSimulation::HapticDissectionSimulation(
     const Config::HapticDissectionSimulationConfig* config)
     : PushingSimulation(config)
@@ -19,6 +36,20 @@ HapticDissectionSimulation::HapticDissectionSimulation(
     _haptic_workspace_radius = config->hapticWorkspaceRadius();
     _sim_workspace_radius   = config->simWorkspaceRadius();
     _rotation_speed         = config->knifeRotationSpeed();
+
+    // Initialize axis mapping from config
+    _setAxisMapping(config->deviceToSimAxes());
+
+    // Find matching preset index for 'M' cycling
+    _axis_mapping = 0;
+    for (int i = 0; i < kNumPresets; ++i)
+    {
+        if (kAxisPresets[i] == config->deviceToSimAxes())
+        {
+            _axis_mapping = i;
+            break;
+        }
+    }
 
     // Initialize rotation key tracking
     _rotation_keys_held[SimulationInput::Key::Q] = false;  // yaw -
@@ -67,26 +98,23 @@ void HapticDissectionSimulation::notifyKeyPressed(
                   << (_use_grip_orientation ? "ENABLED" : "DISABLED") << std::endl;
     }
 
-    // 'M' key: cycle through axis mapping presets for translation
+    // 'M' key: cycle through axis mapping presets (translation + orientation)
     if (key == SimulationInput::Key::M && action == SimulationInput::KeyAction::PRESS)
     {
-        _axis_mapping = (_axis_mapping + 1) % 12;
-        const char* labels[] = {
-            " X,  Y, -Z",   // 0 (current default)
-            " X,  Y,  Z",   // 1
-            " X, -Y,  Z",   // 2
-            " X, -Y, -Z",   // 3
-            "-X,  Y,  Z",   // 4
-            "-X,  Y, -Z",   // 5
-            " X,  Z, -Y",   // 6 (swap Y/Z)
-            " X, -Z,  Y",   // 7
-            " X,  Z,  Y",   // 8
-            " Z,  Y, -X",   // 9 (swap X/Z)
-            "-Z,  Y,  X",   // 10
-            " Y,  X, -Z",   // 11 (swap X/Y)
-        };
+        _axis_mapping = (_axis_mapping + 1) % kNumPresets;
+        _setAxisMapping(kAxisPresets[_axis_mapping]);
+        const auto& a = kAxisPresets[_axis_mapping];
         std::cout << "[HapticDissection] Axis mapping #" << _axis_mapping
-                  << ": " << labels[_axis_mapping] << std::endl;
+                  << "  config: [" << a[0] << ", " << a[1] << ", " << a[2] << "]"
+                  << "  det=" << _det_device_to_camera << std::endl;
+    }
+
+    // 'N' key: toggle diagnostic printing
+    if (key == SimulationInput::Key::N && action == SimulationInput::KeyAction::PRESS)
+    {
+        _diag_printing = !_diag_printing;
+        std::cout << "[HapticDissection] Diagnostic printing: "
+                  << (_diag_printing ? "ON" : "OFF") << std::endl;
     }
 
     // Track rotation key held state
@@ -127,6 +155,13 @@ void HapticDissectionSimulation::setup()
         std::cout << "  Knife origin: (" << _haptic_origin.transpose() << ")" << std::endl;
         std::cout << "  Initial grip quat: (" << _initial_grip_quat.transpose() << ")" << std::endl;
         std::cout << "  Initial knife quat: (" << _initial_knife_quat.transpose() << ")" << std::endl;
+        std::cout << "  Axis mapping #" << _axis_mapping
+                  << "  det=" << _det_device_to_camera << std::endl;
+        std::cout << "  Device-to-camera matrix:\n" << _device_to_camera << std::endl;
+        std::cout << "  Key bindings:" << std::endl;
+        std::cout << "    M = cycle axis mapping preset" << std::endl;
+        std::cout << "    N = toggle diagnostic printing" << std::endl;
+        std::cout << "    G = toggle VerseGrip orientation" << std::endl;
     }
     else
     {
@@ -147,11 +182,17 @@ void HapticDissectionSimulation::_timeStep()
         Vec3r sim_pos = _hapticToSimPosition(device_pos);
         _cursor->forceSetPosition(sim_pos);
 
-        // Debug: uncomment to log device position every ~1 second
-        // static int frame_count = 0;
-        // if (++frame_count % 2000 == 0)
-        //     std::cout << "[HapticDissection] device=(" << device_pos.transpose()
-        //               << ")  sim=(" << sim_pos.transpose() << ")" << std::endl;
+        // Diagnostics: print device/sim coordinates periodically
+        if (_diag_printing)
+        {
+            static int diag_frame = 0;
+            if (++diag_frame % 4000 == 0)  // ~every 2s at typical step rates
+            {
+                Vec3r delta = device_pos - _haptic_device_origin;
+                std::cout << "[Diag] device_delta=(" << delta.transpose()
+                          << ")  sim_pos=(" << sim_pos.transpose() << ")" << std::endl;
+            }
+        }
     }
     // else: mouse/keyboard input from PushingSimulation works as-is
 
@@ -196,9 +237,8 @@ void HapticDissectionSimulation::_timeStep()
     // ------------------------------------------------------------------
     if (_haptic_device && _haptic_device->hasVerseGrip() && _use_grip_orientation)
     {
-        // Compute RELATIVE rotation from initial grip orientation,
-        // then apply it to the knife's initial orientation.
-        // This way: no grip movement → knife stays at initial orientation.
+        // Compute RELATIVE rotation from initial grip orientation in device frame,
+        // transform it to sim frame, then apply to the knife's initial orientation.
         Vec4r current_grip = _haptic_device->orientation();
 
         // q_inverse for XYZW (scalar-last): negate xyz, keep w
@@ -206,15 +246,31 @@ void HapticDissectionSimulation::_timeStep()
             -_initial_grip_quat[0], -_initial_grip_quat[1],
             -_initial_grip_quat[2],  _initial_grip_quat[3]);
 
-        // delta = current * inverse(initial) → relative rotation
-        Vec4r delta_quat = GeometryUtils::quatMult(current_grip, inv_initial_grip);
-        delta_quat.normalize();
+        // delta = current * inverse(initial) → relative rotation in device frame
+        Vec4r delta_device = GeometryUtils::quatMult(current_grip, inv_initial_grip);
+        delta_device.normalize();
 
-        // Apply: new_knife = delta * initial_knife
-        Vec4r new_knife_quat = GeometryUtils::quatMult(delta_quat, _initial_knife_quat);
+        // Transform the device-frame delta quaternion to sim frame
+        Vec4r delta_sim = _hapticToSimQuaternion(delta_device);
+
+        // Apply: new_knife = delta_sim * initial_knife
+        Vec4r new_knife_quat = GeometryUtils::quatMult(delta_sim, _initial_knife_quat);
         new_knife_quat.normalize();
 
         _cursor->forceSetOrientation(new_knife_quat);
+
+        // Diagnostics for orientation
+        if (_diag_printing)
+        {
+            static int orient_diag_frame = 0;
+            if (++orient_diag_frame % 4000 == 0)
+            {
+                std::cout << "[Diag] grip_quat=(" << current_grip.transpose()
+                          << ")  delta_device=(" << delta_device.transpose()
+                          << ")  delta_sim=(" << delta_sim.transpose()
+                          << ")  knife_quat=(" << new_knife_quat.transpose() << ")" << std::endl;
+            }
+        }
     }
     else
     {
@@ -320,52 +376,91 @@ Vec3r HapticDissectionSimulation::_collectNetAdhesionForce()
 }
 
 // --------------------------------------------------------------------------
-// Workspace mapping: device → sim
+// Workspace mapping: device → sim via camera frame
+// device delta → (permutation) → camera-space delta → (camera basis) → world delta
 // --------------------------------------------------------------------------
 Vec3r HapticDissectionSimulation::_hapticToSimPosition(const Vec3r& haptic_pos) const
 {
-    // Map relative displacement in device space to simulation space
     Vec3r delta = haptic_pos - _haptic_device_origin;
-
-    // Scale from haptic workspace to simulation workspace
     Real scale = _sim_workspace_radius / _haptic_workspace_radius;
 
-    // Axis mapping: Inverse3 device → simulation frame
-    // Cycle through presets with 'M' key to find the correct one.
-    Real dx = delta[0], dy = delta[1], dz = delta[2];
-    Vec3r sim_delta;
-    switch (_axis_mapping)
-    {
-        case 0:  sim_delta = Vec3r( dx,  dy, -dz) * scale; break;  //  X,  Y, -Z (default)
-        case 1:  sim_delta = Vec3r( dx,  dy,  dz) * scale; break;  //  X,  Y,  Z
-        case 2:  sim_delta = Vec3r( dx, -dy,  dz) * scale; break;  //  X, -Y,  Z
-        case 3:  sim_delta = Vec3r( dx, -dy, -dz) * scale; break;  //  X, -Y, -Z
-        case 4:  sim_delta = Vec3r(-dx,  dy,  dz) * scale; break;  // -X,  Y,  Z
-        case 5:  sim_delta = Vec3r(-dx,  dy, -dz) * scale; break;  // -X,  Y, -Z
-        case 6:  sim_delta = Vec3r( dx,  dz, -dy) * scale; break;  //  X,  Z, -Y
-        case 7:  sim_delta = Vec3r( dx, -dz,  dy) * scale; break;  //  X, -Z,  Y
-        case 8:  sim_delta = Vec3r( dx,  dz,  dy) * scale; break;  //  X,  Z,  Y
-        case 9:  sim_delta = Vec3r( dz,  dy, -dx) * scale; break;  //  Z,  Y, -X
-        case 10: sim_delta = Vec3r(-dz,  dy,  dx) * scale; break;  // -Z,  Y,  X
-        case 11: sim_delta = Vec3r( dy,  dx, -dz) * scale; break;  //  Y,  X, -Z
-        default: sim_delta = Vec3r( dx,  dy, -dz) * scale; break;
-    }
+    // Map device axes to camera-space axes (fixed permutation)
+    Vec3r delta_camera = _device_to_camera * delta * scale;
 
-    return _haptic_origin + sim_delta;
+    // Transform camera-space to world-space using live camera basis
+    const Vec3r cam_right   = _graphics_scene->cameraRightDirection();
+    const Vec3r cam_up      = _graphics_scene->cameraUpDirection();
+    const Vec3r cam_forward = _graphics_scene->cameraViewDirection();
+
+    Vec3r delta_world = cam_right   * delta_camera[0]
+                      + cam_up      * delta_camera[1]
+                      + cam_forward * delta_camera[2];
+
+    return _haptic_origin + delta_world;
 }
 
 // --------------------------------------------------------------------------
-// Force mapping: sim → device
+// Force mapping: sim → device via camera frame (inverse of position mapping)
+// world force → (project onto camera basis) → camera-space → (inverse perm) → device
 // --------------------------------------------------------------------------
 Vec3r HapticDissectionSimulation::_simToHapticForce(const Vec3r& sim_force) const
 {
-    // Inverse of workspace scaling so that forces feel proportional
+    // Project world-space force onto camera basis
+    const Vec3r cam_right   = _graphics_scene->cameraRightDirection();
+    const Vec3r cam_up      = _graphics_scene->cameraUpDirection();
+    const Vec3r cam_forward = _graphics_scene->cameraViewDirection();
+
+    Vec3r force_camera(sim_force.dot(cam_right),
+                       sim_force.dot(cam_up),
+                       sim_force.dot(cam_forward));
+
+    // Camera-space → device-space (inverse permutation = transpose)
     Real scale = _haptic_workspace_radius / _sim_workspace_radius;
+    Vec3r device_force = _device_to_camera.transpose() * force_camera;
+    return device_force * scale * _haptic_force_scaling;
+}
 
-    // Apply force scaling factor for haptic amplification
-    Vec3r haptic_force = sim_force * scale * _haptic_force_scaling;
+// --------------------------------------------------------------------------
+// Quaternion coordinate transform: device frame → sim frame via camera frame
+// Permute rotation axis to camera-space, then rotate into world-space.
+// --------------------------------------------------------------------------
+Vec4r HapticDissectionSimulation::_hapticToSimQuaternion(const Vec4r& device_quat) const
+{
+    Vec3r v_device(device_quat[0], device_quat[1], device_quat[2]);
+    Real w = device_quat[3];
 
-    return haptic_force;
+    // Map device rotation axis to camera-space axis
+    Vec3r v_camera = _det_device_to_camera * (_device_to_camera * v_device);
+
+    // Rotate axis from camera-space to world-space
+    const Vec3r cam_right   = _graphics_scene->cameraRightDirection();
+    const Vec3r cam_up      = _graphics_scene->cameraUpDirection();
+    const Vec3r cam_forward = _graphics_scene->cameraViewDirection();
+
+    Vec3r v_world = cam_right   * v_camera[0]
+                  + cam_up      * v_camera[1]
+                  + cam_forward * v_camera[2];
+
+    Vec4r q_world(v_world[0], v_world[1], v_world[2], w);
+    q_world.normalize();
+    return q_world;
+}
+
+// --------------------------------------------------------------------------
+// Build the 3x3 signed permutation matrix from a 1-based signed axis spec.
+// E.g. {1, 2, -3} means: camRight = +deviceX, camUp = +deviceY, camFwd = -deviceZ
+// --------------------------------------------------------------------------
+void HapticDissectionSimulation::_setAxisMapping(const std::vector<int>& axes)
+{
+    _device_to_camera = Mat3r::Zero();
+    for (int row = 0; row < 3; ++row)
+    {
+        int signed_axis = axes[row];
+        int col = std::abs(signed_axis) - 1;  // 1-based → 0-based
+        Real sign = (signed_axis > 0) ? 1.0 : -1.0;
+        _device_to_camera(row, col) = sign;
+    }
+    _det_device_to_camera = _device_to_camera.determinant();
 }
 
 } // namespace Sim

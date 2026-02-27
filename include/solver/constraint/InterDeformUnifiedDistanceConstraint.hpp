@@ -44,8 +44,6 @@ public:
     static constexpr Real DEFAULT_D_NEUTRAL_START = 0.003;  // 3mm - transition start
     static constexpr Real DEFAULT_D_NEUTRAL_END = 0.005;    // 5mm - transition end
     static constexpr Real DEFAULT_D_BOND = 0.015;           // 15mm - saturation
-    static constexpr Real EXP_GATE_WIDTH = 0.008;           // 8mm - smooth startup gate
-    static constexpr Real EXP_SCALE_MARGIN = 1.2;           // 20% margin for stability
     static constexpr Real DEFAULT_BREAK_RATIO = 3.0;        // Default: break at 200% strain
 
 public:
@@ -114,14 +112,8 @@ public:
     }
 
 protected:
-    /** Compute target distance d*(d) using validated mathematical formulation */
+    /** Compute target distance d*(d) using slope-interpolation design */
     Real computeTargetDistance(Real d) const;
-
-    /** C¹ continuous smoothstep function */
-    Real smoothstep(Real edge0, Real edge1, Real x) const;
-
-    /** C¹ exponential blend with delayed start */
-    Real expBlend(Real d0, Real s, Real d, Real gate_width) const;
 
     /** Compute signed distance from vertex to triangle */
     Real computePointTriangleDistance(const Vec3r& vertex_pos,
@@ -158,10 +150,6 @@ private:
     Real _default_alpha{0.0};
 
     mutable bool _should_break{false};       ///< Flag to mark constraint for removal
-    
-    // Debug tracking
-    mutable int _debug_frame_count{0};
-    mutable bool _debug_initialized{false};
 };
 
 } // namespace Solver

@@ -25,12 +25,13 @@ end-time: 10000
 tool-radius: 0.065         # knife mesh scale (same as tbone test)
 knife-position: [0.01, 0.0, 0.0]
 knife-rotation: [0, 0, 0]
-push-stiffness: 1000.0     # same as tbone test
+push-stiffness: 2000.0     # same as tbone test
 push-damping: 0.7           # same as tbone test
 max-push-force: 8.0
 fix-min-z: false
 
 ## ==================== HAPTIC DEVICE SETTINGS ====================
+device-to-sim-axes: [1, 2, -3]         # signed permutation: device→sim axis mapping (press M to cycle, N for diagnostics)
 knife-rotation-speed: 1.0
 haptic-force-scaling: 5.0
 haptic-serial-port: ""            # empty = auto-detect /dev/ttyACM*
@@ -91,7 +92,7 @@ objects:
     velocity: [0.0, 0, 0.0]
     rotation: [0, 0, 0]
 
-    num-solver-iters: 5
+    num-solver-iters: 2
     solver-type: "Gauss-Seidel"
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"

@@ -221,13 +221,6 @@ private:
     mutable Real _initial_distance{0.0};     ///< Distance when first evaluated (computed lazily)
     Real _break_ratio{3.0};                  ///< Break when d > _initial_distance * _break_ratio
     mutable bool _should_break{false};       ///< Flag to mark constraint for removal
-    
-    // Debug: Track if _rigid_body_point changes across frames (should NEVER change)
-    mutable Vec3r _debug_prev_rigid_body_point{Vec3r::Zero()}; ///< Previous frame's rigid body point (body coords)
-    mutable Vec3r _debug_prev_rigid_global{Vec3r::Zero()};     ///< Previous frame's rigid global point
-    mutable int _debug_frame_count{0};                         ///< Frame counter for this constraint
-    mutable bool _debug_prev_cache_valid{false};               ///< Previous cache_valid state (for detecting new frame)
-    mutable bool _debug_initialized{false};                    ///< Whether debug tracking started
 };
 
 } // namespace Solver
