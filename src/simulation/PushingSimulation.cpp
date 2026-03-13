@@ -19,6 +19,15 @@ PushingSimulation::PushingSimulation(const Config::PushingSimulationConfig* conf
     _knife_scale_y = config->knifeScaleY();
     _knife_scale_z = config->knifeScaleZ();
 
+    // Fixed-base pivot mode
+    _fixed_base_mode = config->fixedBaseMode();
+    _base_offset_right = config->baseOffsetRight();
+    _base_offset_up = config->baseOffsetUp();
+    _base_offset_forward = config->baseOffsetForward();
+    _knife_shaft_length = config->knifeShaftLength();
+    _knife_rest_direction_camera = config->knifeRestDirection();
+    _tip_sensitivity = config->tipSensitivity();
+
     // Pre-allocate space for push targets to guarantee pointer stability
     _push_targets.reserve(kMaxPushedVertices);
 
@@ -146,7 +155,7 @@ void PushingSimulation::setup()
     std::cout << "[PushingSimulation] Creating SDF for knife tool..." << std::endl;
     _cursor->createSDF();
     std::cout << "[PushingSimulation] Knife tool SDF created successfully!" << std::endl;
-    
+
     // Report actual knife dimensions
     Geometry::AABB knife_bbox = _cursor->boundingBox();
     Vec3r bbox_size = knife_bbox.max - knife_bbox.min;
@@ -180,10 +189,6 @@ void PushingSimulation::notifyMouseMoved(double x, double y)
     // Move cursor when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
-    // Reduced sensitivity for better control: less world motion per pixel
-    const Real base_scaling = _tool_radius / 100.0; // Reduced from /30.0 for finer control
-    const Real scaling = _pushing_enabled ? base_scaling * 0.35 : base_scaling; // Slower when pushing
-
         Real dx = x - _last_mouse_pos[0];
         Real dy = y - _last_mouse_pos[1];
 
@@ -192,14 +197,24 @@ void PushingSimulation::notifyMouseMoved(double x, double y)
         dx = std::max(-max_mouse_delta, std::min(max_mouse_delta, dx));
         dy = std::max(-max_mouse_delta, std::min(max_mouse_delta, dy));
 
-        // camera plane defined by camera up direction and camera right direction
-    const Vec3r up_vec = _graphics_scene->cameraUpDirection();
-    const Vec3r right_vec = _graphics_scene->cameraRightDirection();
-        
-    // Map screen-space mouse to world: right maps to +cameraRight, up maps to +cameraUp
-    // Using +dy here so moving mouse up moves tool up in the scene
-    const Vec3r offset = right_vec * dx + up_vec * dy;
-    _moveCursor(offset * scaling);
+        if (_fixed_base_mode)
+        {
+            // In fixed-base mode, accumulate tip deflection in camera-local coords
+            const Real scaling = _tip_sensitivity / 500.0;
+            _tip_deflection_camera[0] += dx * scaling;  // right
+            _tip_deflection_camera[1] += dy * scaling;  // up
+        }
+        else
+        {
+            // Original translation mode
+            const Real base_scaling = _tool_radius / 100.0;
+            const Real scaling = _pushing_enabled ? base_scaling * 0.35 : base_scaling;
+
+            const Vec3r up_vec = _graphics_scene->cameraUpDirection();
+            const Vec3r right_vec = _graphics_scene->cameraRightDirection();
+            const Vec3r offset = right_vec * dx + up_vec * dy;
+            _moveCursor(offset * scaling);
+        }
     }
 
     _last_mouse_pos[0] = x;
@@ -215,11 +230,17 @@ void PushingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInp
     // Reset knife to initial position when 'o' key is pressed
     if (key == SimulationInput::Key::O && action == SimulationInput::KeyAction::PRESS)
     {
-        if (_cursor) {
+        if (_fixed_base_mode)
+        {
+            _tip_deflection_camera = Vec3r::Zero();
+            std::cout << "[PushingSimulation] Tip deflection reset to zero" << std::endl;
+        }
+        else if (_cursor)
+        {
             _cursor->forceSetPosition(_knife_initial_position);
-            std::cout << "[PushingSimulation] Knife reset to initial position: (" 
-                      << _knife_initial_position.x() << ", " 
-                      << _knife_initial_position.y() << ", " 
+            std::cout << "[PushingSimulation] Knife reset to initial position: ("
+                      << _knife_initial_position.x() << ", "
+                      << _knife_initial_position.y() << ", "
                       << _knife_initial_position.z() << ")" << std::endl;
         }
     }
@@ -239,16 +260,23 @@ void PushingSimulation::notifyMouseScrolled(double dx, double dy)
     // Mouse scrolling moves the tool tip in/out when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
-    // Reduced scroll sensitivity for better depth control
-    const Real base_scaling = _tool_radius / 3.0; // Reduced from /1.0 for finer control
-    const Real scaling = _pushing_enabled ? base_scaling * 0.5 : base_scaling; // Slower when pushing
-
         // Limit scroll delta to prevent explosive motion
         const Real limited_dy = std::max(-2.0, std::min(2.0, dy));
-        const Vec3r view_dir = _graphics_scene->cameraViewDirection();
 
-        const Vec3r offset = view_dir * limited_dy;
-        _moveCursor(offset * scaling);
+        if (_fixed_base_mode)
+        {
+            // In fixed-base mode, scroll adjusts forward/back deflection
+            const Real scaling = _tip_sensitivity / 5.0;
+            _tip_deflection_camera[2] += limited_dy * scaling;
+        }
+        else
+        {
+            const Real base_scaling = _tool_radius / 3.0;
+            const Real scaling = _pushing_enabled ? base_scaling * 0.5 : base_scaling;
+            const Vec3r view_dir = _graphics_scene->cameraViewDirection();
+            const Vec3r offset = view_dir * limited_dy;
+            _moveCursor(offset * scaling);
+        }
     }
 
     Simulation::notifyMouseScrolled(dx, dy);
@@ -263,6 +291,12 @@ void PushingSimulation::_moveCursor(const Vec3r& dp)
 
 void PushingSimulation::_timeStep()
 {
+    // Update knife position/orientation in fixed-base pivot mode
+    if (_fixed_base_mode)
+    {
+        _updateFixedBaseKnife();
+    }
+
     // Handle tool radius adjustment with W/S keys
     Real radius_change = 0;
     if (_keys_held.count(SimulationInput::Key::W) && _keys_held.at(SimulationInput::Key::W) > 0)
@@ -571,6 +605,86 @@ void PushingSimulation::_checkKnifeAdhesionInterference()
     // Report cutting activity (disabled for performance)
     // if (total_broken > 0)
     //     std::cout << "[PushingSimulation] Knife cut " << total_broken << " adhesion constraints" << std::endl;
+}
+
+Vec3r PushingSimulation::_computeBasePosition() const
+{
+    const Vec3r cam_pos     = _graphics_scene->cameraPosition();
+    const Vec3r cam_right   = _graphics_scene->cameraRightDirection();
+    const Vec3r cam_up      = _graphics_scene->cameraUpDirection();
+    const Vec3r cam_forward = _graphics_scene->cameraViewDirection();
+
+    return cam_pos
+         + cam_right   * _base_offset_right
+         + cam_up      * _base_offset_up
+         + cam_forward * _base_offset_forward;
+}
+
+Vec3r PushingSimulation::_computeTipPosition(const Vec3r& base_world) const
+{
+    // Combine rest direction with user deflection in camera-local space
+    Vec3r tip_dir_camera = _knife_rest_direction_camera + _tip_deflection_camera;
+
+    // Normalize (guard against zero)
+    Real len = tip_dir_camera.norm();
+    if (len < 1e-8)
+        tip_dir_camera = Vec3r(0, 0, 1);  // fallback to forward
+    else
+        tip_dir_camera /= len;
+
+    // Transform camera-local direction to world space
+    const Vec3r cam_right   = _graphics_scene->cameraRightDirection();
+    const Vec3r cam_up      = _graphics_scene->cameraUpDirection();
+    const Vec3r cam_forward = _graphics_scene->cameraViewDirection();
+
+    Vec3r tip_dir_world = cam_right   * tip_dir_camera[0]
+                        + cam_up      * tip_dir_camera[1]
+                        + cam_forward * tip_dir_camera[2];
+
+    tip_dir_world.normalize();
+
+    return base_world + tip_dir_world * _knife_shaft_length;
+}
+
+Vec4r PushingSimulation::_computeKnifeOrientation(const Vec3r& base_world, const Vec3r& tip_world) const
+{
+    // Knife mesh long axis is +X, so we need rotation from +X to desired direction
+    Vec3r desired_dir = (tip_world - base_world);
+    Real dir_len = desired_dir.norm();
+    if (dir_len < 1e-8)
+        return Vec4r(0, 0, 0, 1);  // identity
+    desired_dir /= dir_len;
+
+    const Vec3r from(1, 0, 0);  // knife mesh long axis
+    Real dot = from.dot(desired_dir);
+
+    // Handle near-parallel case (already aligned)
+    if (dot > 0.999999)
+        return Vec4r(0, 0, 0, 1);  // identity
+
+    // Handle anti-parallel case (180 degree rotation about Y)
+    if (dot < -0.999999)
+        return Vec4r(0, 1, 0, 0);  // 180° about Y axis
+
+    // Shortest-arc quaternion: q = (cross, 1 + dot), then normalize
+    Vec3r cross = from.cross(desired_dir);
+    Real w = 1.0 + dot;
+
+    Vec4r q(cross[0], cross[1], cross[2], w);
+    q.normalize();
+    return q;
+}
+
+void PushingSimulation::_updateFixedBaseKnife()
+{
+    if (!_cursor) return;
+
+    Vec3r base = _computeBasePosition();
+    Vec3r tip  = _computeTipPosition(base);
+    Vec4r quat = _computeKnifeOrientation(base, tip);
+
+    _cursor->forceSetPosition(base);
+    _cursor->forceSetOrientation(quat);
 }
 
 Vec3r PushingSimulation::_calculatePushTarget(const Vec3r& vertex_pos, const Vec3r& tool_center, Real tool_radius)

@@ -1,227 +1,224 @@
 #!/usr/bin/env python3
 """
-Verify SDF generation by:
-1. Generate SDF from mesh (same as C++ code does)
-2. Extract zero-level isosurface (the "surface" according to SDF)
-3. Compare with original mesh
-4. Visualize SDF slice to see inside/outside regions
+Verify SDF by loading binary dump from C++ and visualizing it.
+
+Usage:
+    python3 scripts/verify_sdf.py sdf_verification/knife_sdf_dump.bin
+
+Binary file format (written by Geometry::MeshSDF::dumpToFile):
+    - 3 x int32:  ni, nj, nk (grid dimensions)
+    - 3 x float64: cell_size_x, cell_size_y, cell_size_z
+    - 3 x float64: bbox_min_x, bbox_min_y, bbox_min_z
+    - 3 x float64: bbox_max_x, bbox_max_y, bbox_max_z
+    - ni*nj*nk x float64: distance values (flat array)
 """
 
 import sys
 import os
-
-# Add the Mesh2SDF Python bindings path if needed
-sys.path.insert(0, '/usr/local/lib/python3.10/dist-packages')
-
-try:
-    import mesh2sdf
-except ImportError:
-    print("ERROR: Cannot import mesh2sdf")
-    print("Make sure Mesh2SDF is installed and Python bindings are available")
-    sys.exit(1)
+import struct
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
-def read_obj(filename):
-    """Read OBJ file"""
-    vertices = []
-    faces = []
-    
-    with open(filename, 'r') as f:
-        for line in f:
-            if line.startswith('v '):
-                parts = line.split()
-                vertices.append([float(parts[1]), float(parts[2]), float(parts[3])])
-            elif line.startswith('f '):
-                parts = line.split()[1:]
-                face = [int(p.split('/')[0]) - 1 for p in parts]
-                faces.append(face)
-    
-    vertices = np.array(vertices, dtype=np.float64)
-    faces = np.array(faces, dtype=np.uint32)
-    
-    return vertices, faces
 
-def write_obj(filename, vertices, faces):
-    """Write OBJ file"""
-    with open(filename, 'w') as f:
-        for v in vertices:
-            f.write(f"v {v[0]} {v[1]} {v[2]}\n")
-        for face in faces:
-            f.write(f"f {face[0]+1} {face[1]+1} {face[2]+1}\n")
+def load_sdf_dump(filename):
+    """Load binary SDF dump file."""
+    with open(filename, "rb") as f:
+        # Grid dimensions: 3 x int32
+        ni, nj, nk = struct.unpack("iii", f.read(12))
 
-def analyze_sdf(mesh_file, output_dir="output/sdf_verification"):
-    """Generate and analyze SDF"""
-    
-    os.makedirs(output_dir, exist_ok=True)
-    
-    print(f"Reading mesh: {mesh_file}")
-    vertices, faces = read_obj(mesh_file)
-    
-    print(f"  Vertices: {len(vertices)}")
-    print(f"  Faces: {len(faces)}")
-    print(f"  Bbox: {vertices.min(axis=0)} to {vertices.max(axis=0)}")
-    
-    # Generate SDF (same parameters as C++ code: 128 grid, 5 voxel padding, with gradients)
-    print("\nGenerating SDF (128x128x128 grid, padding=5)...")
-    sdf = mesh2sdf.MeshSDF(vertices, faces, grid_size=128, padding=5, compute_gradients=True)
-    
-    # Get SDF properties
-    print("\n=== SDF PROPERTIES ===")
-    print(f"Grid size: {sdf.grid_size()}")
-    print(f"Cell size: {sdf.grid_cell_size()}")
-    
-    grid_bbox = sdf.grid_bounding_box()
-    print(f"Grid bbox: {grid_bbox[0]} to {grid_bbox[1]}")
-    
-    mesh_bbox = sdf.mesh_bounding_box()
-    print(f"Mesh bbox (from SDF): {mesh_bbox[0]} to {mesh_bbox[1]}")
-    
-    mesh_center = sdf.mesh_mass_center()
-    print(f"Mesh mass center: {mesh_center}")
-    
-    # Sample SDF at various points
-    print("\n=== SAMPLING SDF ===")
-    
-    # Test points: origin, mesh vertices, and some interior points
-    test_points = [
-        ("Origin", np.array([0.0, 0.0, 0.0])),
-        ("Mesh center", mesh_center),
-        ("First vertex", vertices[0]),
-        ("Random vertex", vertices[len(vertices)//2]),
-    ]
-    
-    print("\nDistance values at test points:")
-    for name, point in test_points:
-        dist = sdf.evaluate(point)
-        grad = sdf.gradient(point)
-        print(f"  {name}: pos={point}, dist={dist:.6f} m = {dist*1000:.2f} mm")
-        print(f"    gradient: {grad}, norm={np.linalg.norm(grad):.4f}")
-    
-    # Check distribution of distances in the grid
-    print("\n=== SDF DISTANCE DISTRIBUTION ===")
-    distance_grid = sdf.distance_grid()
-    
-    print(f"Grid shape: {distance_grid.shape}")
-    print(f"Distance range: [{distance_grid.min():.6f}, {distance_grid.max():.6f}] meters")
-    print(f"Distance range: [{distance_grid.min()*1000:.2f}, {distance_grid.max()*1000:.2f}] mm")
-    
-    # Count negative (inside) vs positive (outside) distances
-    negative_count = np.sum(distance_grid < 0)
-    positive_count = np.sum(distance_grid > 0)
-    zero_count = np.sum(distance_grid == 0)
-    total = distance_grid.size
-    
+        # Cell size: 3 x float64
+        cell_size = np.array(struct.unpack("ddd", f.read(24)))
+
+        # Bounding box min: 3 x float64
+        bbox_min = np.array(struct.unpack("ddd", f.read(24)))
+
+        # Bounding box max: 3 x float64
+        bbox_max = np.array(struct.unpack("ddd", f.read(24)))
+
+        # Distance grid: ni*nj*nk x float64
+        num_values = ni * nj * nk
+        data = np.frombuffer(f.read(num_values * 8), dtype=np.float64)
+        # Array3 stores data in Fortran/column-major order (i varies fastest)
+        # i.e. Array3(i,j,k) = data[i + ni*j + ni*nj*k]
+        grid = data.reshape((ni, nj, nk), order='F')
+
+    return grid, cell_size, bbox_min, bbox_max
+
+
+def analyze_sdf(grid, cell_size, bbox_min, bbox_max, output_dir):
+    """Analyze and print SDF statistics."""
+    ni, nj, nk = grid.shape
+
+    print(f"{'='*60}")
+    print("SDF GRID PROPERTIES (from C++ dump)")
+    print(f"{'='*60}")
+    print(f"Grid dimensions: {ni} x {nj} x {nk}")
+    print(f"Cell size:       ({cell_size[0]:.6f}, {cell_size[1]:.6f}, {cell_size[2]:.6f})")
+    print(f"Cell size (mm):  ({cell_size[0]*1000:.4f}, {cell_size[1]*1000:.4f}, {cell_size[2]*1000:.4f})")
+    print(f"Bbox min:        ({bbox_min[0]:.6f}, {bbox_min[1]:.6f}, {bbox_min[2]:.6f})")
+    print(f"Bbox max:        ({bbox_max[0]:.6f}, {bbox_max[1]:.6f}, {bbox_max[2]:.6f})")
+    bbox_size = bbox_max - bbox_min
+    print(f"Bbox size:       ({bbox_size[0]:.6f}, {bbox_size[1]:.6f}, {bbox_size[2]:.6f})")
+    print(f"Bbox size (mm):  ({bbox_size[0]*1000:.4f}, {bbox_size[1]*1000:.4f}, {bbox_size[2]*1000:.4f})")
+
+    print(f"\n{'='*60}")
+    print("SDF DISTANCE DISTRIBUTION")
+    print(f"{'='*60}")
+    print(f"Distance range: [{grid.min():.6f}, {grid.max():.6f}]")
+    print(f"Distance range (mm): [{grid.min()*1000:.4f}, {grid.max()*1000:.4f}]")
+
+    negative_count = int(np.sum(grid < 0))
+    positive_count = int(np.sum(grid > 0))
+    zero_count = int(np.sum(grid == 0))
+    total = grid.size
+
     print(f"\nVoxel classification:")
     print(f"  Negative (inside):  {negative_count:8d} ({100*negative_count/total:5.1f}%)")
     print(f"  Zero (surface):     {zero_count:8d} ({100*zero_count/total:5.1f}%)")
     print(f"  Positive (outside): {positive_count:8d} ({100*positive_count/total:5.1f}%)")
-    
+
     if negative_count == 0:
-        print("\n❌ WARNING: NO NEGATIVE DISTANCES FOUND!")
-        print("   This means the SDF thinks nothing is 'inside' the mesh!")
-        print("   This is typical of NON-WATERTIGHT meshes with holes!")
+        print("\n  WARNING: NO NEGATIVE DISTANCES FOUND!")
+        print("  The SDF has no inside region. Mesh may not be watertight.")
     else:
-        print(f"\n✓ SDF has inside region ({negative_count} voxels)")
-    
-    # Visualize 2D slice through the middle
-    print("\n=== GENERATING VISUALIZATIONS ===")
-    
-    # Slice at Z = mesh_center[2]
-    z_slice_idx = distance_grid.shape[2] // 2
-    slice_2d = distance_grid[:, :, z_slice_idx]
-    
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-    
-    # Plot 1: Distance field
-    im1 = axes[0].imshow(slice_2d.T, origin='lower', cmap='RdBu', vmin=-0.01, vmax=0.01)
-    axes[0].set_title(f'SDF Slice (Z={z_slice_idx})\nRed=Outside, Blue=Inside')
-    axes[0].set_xlabel('X index')
-    axes[0].set_ylabel('Y index')
-    plt.colorbar(im1, ax=axes[0], label='Distance (m)')
-    
-    # Plot 2: Inside/outside classification
-    binary_slice = (slice_2d < 0).astype(float)
-    axes[1].imshow(binary_slice.T, origin='lower', cmap='gray')
-    axes[1].set_title('Inside (white) vs Outside (black)')
-    axes[1].set_xlabel('X index')
-    axes[1].set_ylabel('Y index')
-    
-    # Plot 3: Histogram of distances
-    axes[2].hist(distance_grid.flatten() * 1000, bins=100, alpha=0.7)
-    axes[2].axvline(0, color='red', linestyle='--', linewidth=2, label='Zero level (surface)')
-    axes[2].set_xlabel('Distance (mm)')
-    axes[2].set_ylabel('Voxel count')
-    axes[2].set_title('SDF Distance Distribution')
-    axes[2].set_yscale('log')
-    axes[2].legend()
-    axes[2].grid(True, alpha=0.3)
-    
+        print(f"\n  SDF has inside region ({negative_count} voxels)")
+
+
+def visualize_slices(grid, output_dir):
+    """Generate orthogonal slice visualizations."""
+    ni, nj, nk = grid.shape
+
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+
+    slices = [
+        ("X (i)", ni // 2, grid[ni // 2, :, :]),
+        ("Y (j)", nj // 2, grid[:, nj // 2, :]),
+        ("Z (k)", nk // 2, grid[:, :, nk // 2]),
+    ]
+
+    vmax = min(abs(grid.min()), abs(grid.max()), 0.5)
+
+    for col, (axis_name, idx, slice_2d) in enumerate(slices):
+        # Row 0: Distance field with diverging colormap
+        im = axes[0, col].imshow(
+            slice_2d.T, origin="lower", cmap="RdBu",
+            vmin=-vmax, vmax=vmax,
+        )
+        axes[0, col].set_title(f"SDF Slice ({axis_name}={idx})\nRed=Outside, Blue=Inside")
+        plt.colorbar(im, ax=axes[0, col], label="Distance")
+
+        # Row 1: Inside/outside binary
+        binary_slice = (slice_2d < 0).astype(float)
+        axes[1, col].imshow(binary_slice.T, origin="lower", cmap="gray")
+        axes[1, col].set_title("Inside (white) / Outside (black)")
+
     plt.tight_layout()
-    slice_file = os.path.join(output_dir, 'sdf_slice.png')
+    slice_file = os.path.join(output_dir, "sdf_slices.png")
     plt.savefig(slice_file, dpi=150)
     print(f"  Saved slice visualization: {slice_file}")
     plt.close()
-    
-    # Create 3D scatter plot of sample points
-    print("\n=== SAMPLING SURFACE POINTS ===")
-    
-    # Sample points on the zero-level surface
-    surface_points = []
-    cell_size = sdf.grid_cell_size()
-    grid_origin = grid_bbox[0]
-    
-    # Sample every Nth point to avoid too many points
-    step = 4
-    for i in range(0, distance_grid.shape[0], step):
-        for j in range(0, distance_grid.shape[1], step):
-            for k in range(0, distance_grid.shape[2], step):
-                dist = distance_grid[i, j, k]
-                # Find points close to zero level
-                if abs(dist) < 0.002:  # Within 2mm of surface
-                    # Convert grid indices to world coordinates
-                    world_pos = grid_origin + np.array([i, j, k]) * cell_size
-                    surface_points.append(world_pos)
-    
-    surface_points = np.array(surface_points)
-    print(f"  Found {len(surface_points)} points near zero-level surface")
-    
-    if len(surface_points) > 0:
-        # Save as OBJ for visualization
-        surface_obj = os.path.join(output_dir, 'sdf_surface_points.obj')
-        with open(surface_obj, 'w') as f:
-            for pt in surface_points:
-                f.write(f"v {pt[0]} {pt[1]} {pt[2]}\n")
-        print(f"  Saved surface points: {surface_obj}")
-    
+
+
+def visualize_histogram(grid, output_dir):
+    """Generate distance histogram."""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.hist(grid.flatten() * 1000, bins=200, alpha=0.7)
+    ax.axvline(0, color="red", linestyle="--", linewidth=2, label="Zero level (surface)")
+    ax.set_xlabel("Distance (mm)")
+    ax.set_ylabel("Voxel count")
+    ax.set_title("SDF Distance Distribution")
+    ax.set_yscale("log")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    hist_file = os.path.join(output_dir, "sdf_histogram.png")
+    plt.savefig(hist_file, dpi=150)
+    print(f"  Saved histogram: {hist_file}")
+    plt.close()
+
+
+def reconstruct_surface(grid, cell_size, bbox_min, output_dir):
+    """Use marching cubes to extract zero-level isosurface and export as .obj."""
+    try:
+        from skimage.measure import marching_cubes
+    except ImportError:
+        print("  WARNING: scikit-image not installed. Skipping marching cubes.")
+        print("  Install with: pip3 install scikit-image")
+        return
+
+    ni, nj, nk = grid.shape
+
+    # Check that there's an inside region
+    if np.all(grid >= 0) or np.all(grid <= 0):
+        print("  WARNING: SDF has no sign change — cannot extract zero-level surface.")
+        return
+
+    print(f"  Running marching cubes on {ni}x{nj}x{nk} grid...")
+    verts, faces, normals, values = marching_cubes(grid, level=0.0, spacing=cell_size)
+
+    # Shift vertices to world coordinates (marching cubes outputs in grid-local coords)
+    verts += bbox_min
+
+    print(f"  Extracted {len(verts)} vertices, {len(faces)} triangles")
+
+    # Write OBJ
+    obj_file = os.path.join(output_dir, "reconstructed_surface.obj")
+    with open(obj_file, "w") as f:
+        f.write(f"# Reconstructed from SDF zero-level isosurface via marching cubes\n")
+        f.write(f"# {len(verts)} vertices, {len(faces)} faces\n")
+        for v in verts:
+            f.write(f"v {v[0]:.8f} {v[1]:.8f} {v[2]:.8f}\n")
+        for n in normals:
+            f.write(f"vn {n[0]:.6f} {n[1]:.6f} {n[2]:.6f}\n")
+        for face in faces:
+            # OBJ is 1-indexed
+            f.write(f"f {face[0]+1}//{face[0]+1} {face[1]+1}//{face[1]+1} {face[2]+1}//{face[2]+1}\n")
+
+    print(f"  Saved reconstructed surface: {obj_file}")
+    print(f"  Compare with original mesh in MeshLab:")
+    print(f"    meshlab resource/tools/dissector_uv.obj {obj_file}")
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <sdf_dump.bin> [output_dir]")
+        print(f"  sdf_dump.bin: Binary dump from MeshSDF::dumpToFile()")
+        print(f"  output_dir:   Output directory (default: same dir as input)")
+        sys.exit(1)
+
+    dump_file = sys.argv[1]
+    if not os.path.exists(dump_file):
+        print(f"ERROR: File not found: {dump_file}")
+        sys.exit(1)
+
+    output_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.dirname(dump_file) or "."
+    os.makedirs(output_dir, exist_ok=True)
+
+    print(f"Loading SDF dump: {dump_file}")
+    grid, cell_size, bbox_min, bbox_max = load_sdf_dump(dump_file)
+
+    analyze_sdf(grid, cell_size, bbox_min, bbox_max, output_dir)
+
     print(f"\n{'='*60}")
-    print("SUMMARY")
+    print("GENERATING VISUALIZATIONS")
     print(f"{'='*60}")
-    
-    if negative_count == 0:
-        print("❌ SDF IS INVALID - No inside region detected")
-        print("   Reason: Mesh is not watertight (has holes)")
-        print("   Solution: Close the mesh holes in MeshLab or Blender")
-    elif negative_count < 0.01 * total:
-        print("⚠️  SDF may be problematic - Very small inside region")
-        print(f"   Only {100*negative_count/total:.2f}% of voxels are inside")
-    else:
-        print("✓ SDF appears valid - Inside/outside regions detected")
-    
-    print(f"\nOutput files saved to: {output_dir}/")
-    print("  - sdf_slice.png: 2D visualization")
-    print("  - sdf_surface_points.obj: Points on SDF zero-level surface")
+    visualize_slices(grid, output_dir)
+    visualize_histogram(grid, output_dir)
+
+    print(f"\n{'='*60}")
+    print("RECONSTRUCTING SURFACE (marching cubes)")
+    print(f"{'='*60}")
+    reconstruct_surface(grid, cell_size, bbox_min, output_dir)
+
+    print(f"\n{'='*60}")
+    print("DONE")
+    print(f"{'='*60}")
+    print(f"Output files in: {output_dir}/")
+    print(f"  - sdf_slices.png:            2D slice visualization")
+    print(f"  - sdf_histogram.png:         Distance distribution histogram")
+    print(f"  - reconstructed_surface.obj: Marching cubes zero-level surface")
+
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        mesh_file = sys.argv[1]
-    else:
-        mesh_file = "resource/bone/tbone_800_fixed.obj"
-    
-    if not os.path.exists(mesh_file):
-        print(f"ERROR: File not found: {mesh_file}")
-        sys.exit(1)
-    
-    analyze_sdf(mesh_file)
+    main()

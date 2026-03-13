@@ -3014,6 +3014,7 @@ void Simulation::setup()
     {
         _logger->addOutput("time [s]", &_time);
     }
+
 }
 
 void Simulation::update()

@@ -37,7 +37,7 @@ MeshSDF::MeshSDF(const Sim::RigidMeshObject* mesh_obj, const Config::RigidMeshOb
         
         // Compute SDF in body frame (always centered at origin)
         _sdf = mesh2sdf::MeshSDF(mesh_copy.vertices(), mesh_copy.faces(), 128, 5, true);
-        
+
         // No offset needed - globalToBody() handles all coordinate conversion
         _sdf_offset = Vec3r::Zero();
         
@@ -111,7 +111,7 @@ inline Vec3r MeshSDF::gradient(const Vec3r& x) const
 }
 
  #ifdef HAVE_CUDA
-inline void MeshSDF::createGPUResource() 
+inline void MeshSDF::createGPUResource()
 {
     _gpu_resource = std::make_unique<Sim::MeshSDFGPUResource>(this);
     _gpu_resource->allocate();

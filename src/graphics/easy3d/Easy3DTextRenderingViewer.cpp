@@ -140,6 +140,8 @@ in vec2 vNDC;
 out vec4 fragOutput;
 uniform sampler2D uTexture;
 uniform mat4 uInverseVPRot;
+uniform float uUOffset;
+uniform float uVOffset;
 
 const float PI = 3.14159265359;
 
@@ -148,9 +150,9 @@ void main() {
     vec4 worldDir = uInverseVPRot * vec4(vNDC, -1.0, 1.0);
     vec3 dir = normalize(worldDir.xyz / worldDir.w);
 
-    // Equirectangular mapping: direction -> UV
-    float u = atan(dir.z, dir.x) / (2.0 * PI) + 0.5;
-    float v = asin(clamp(dir.y, -1.0, 1.0)) / PI + 0.5;
+    // Equirectangular mapping: direction -> UV (Z-up world convention)
+    float u = atan(-dir.y, dir.x) / (2.0 * PI) + 0.5 + uUOffset;
+    float v = asin(clamp(dir.z, -1.0, 1.0)) / PI + 0.5 + uVOffset;
 
     fragOutput = texture(uTexture, vec2(u, v));
 }
@@ -246,9 +248,13 @@ void Easy3DTextRenderingViewer::_drawBackground() const
     // Set uniforms
     GLint loc_tex = glGetUniformLocation(_bg_shader, "uTexture");
     GLint loc_mat = glGetUniformLocation(_bg_shader, "uInverseVPRot");
+    GLint loc_u_off = glGetUniformLocation(_bg_shader, "uUOffset");
+    GLint loc_v_off = glGetUniformLocation(_bg_shader, "uVOffset");
     glUniform1i(loc_tex, 0);
     // Easy3D mat4 is column-major, same as OpenGL expects
     glUniformMatrix4fv(loc_mat, 1, GL_FALSE, &invVPRot(0, 0));
+    glUniform1f(loc_u_off, _bg_u_offset);
+    glUniform1f(loc_v_off, _bg_v_offset);
 
     // Bind texture
     glActiveTexture(GL_TEXTURE0);
@@ -263,8 +269,49 @@ void Easy3DTextRenderingViewer::_drawBackground() const
     glDepthMask(GL_TRUE);
 }
 
+void Easy3DTextRenderingViewer::setInitialCameraConfig(
+    const std::optional<easy3d::vec3>& pos,
+    const std::optional<easy3d::vec3>& view_dir,
+    const std::optional<easy3d::vec3>& up_dir,
+    const std::optional<float>& fov)
+{
+    _pending_camera_position = pos;
+    _pending_camera_view_dir = view_dir;
+    _pending_camera_up_dir = up_dir;
+    _pending_camera_fov = fov;
+    _pending_camera_applied = false;
+}
+
+void Easy3DTextRenderingViewer::_applyPendingCamera() const
+{
+    if (_pending_camera_applied) return;
+    _pending_camera_applied = true;
+
+    // camera() returns const Camera*, but these setters need non-const access
+    easy3d::Camera* cam = const_cast<easy3d::Camera*>(camera());
+    if (_pending_camera_position.has_value()) {
+        cam->setPosition(_pending_camera_position.value());
+        std::cout << "[Camera] Position applied" << std::endl;
+    }
+    if (_pending_camera_view_dir.has_value()) {
+        cam->setViewDirection(_pending_camera_view_dir.value());
+        std::cout << "[Camera] View direction applied" << std::endl;
+    }
+    if (_pending_camera_up_dir.has_value()) {
+        cam->setUpVector(_pending_camera_up_dir.value());
+        std::cout << "[Camera] Up direction applied" << std::endl;
+    }
+    if (_pending_camera_fov.has_value()) {
+        cam->setFieldOfView(_pending_camera_fov.value() * M_PI / 180.0f);
+        std::cout << "[Camera] FOV applied: " << _pending_camera_fov.value() << " degrees" << std::endl;
+    }
+}
+
 void Easy3DTextRenderingViewer::draw() const
 {
+    // Apply pending camera config on first draw (after Easy3D's fit_screen)
+    _applyPendingCamera();
+
     // draw equirectangular environment map background
     if (_background_texture_id != 0)
     {

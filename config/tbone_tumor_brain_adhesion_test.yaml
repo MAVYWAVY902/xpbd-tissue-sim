@@ -13,6 +13,16 @@ description: "Testing rigid-deform and inter-deform adhesion with three objects"
 visualization: "Easy3D"
 background-image: "../resource/rendering/hdr/surgery_1k.png"
 
+## ==================== BACKGROUND POSITIONING ====================
+## Direct shader-level control over equirectangular background placement
+background-v-offset: -0.0                 # vertical shift: negative = background moves down (objects closer to table)
+                                           #                 positive = background moves up (objects closer to ceiling)
+                                           #                 range: roughly -0.5 to 0.5
+background-u-offset: 0.0                   # horizontal rotation: 0.25 = 90°, 0.5 = 180°
+
+## ==================== CAMERA CONFIGURATION ====================
+camera-fov: 45                             # field of view [degrees] (smaller = background feels closer)
+
 # g-accel: [-300, -300, -100] # downward acceleration due to gravity [m/s2]
 g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 
@@ -20,7 +30,7 @@ sim-mode: "AFAP"     # Run as fast as possible for testing
 
 # time-step: 3e-4      # 8e-5 for brain-tumor
 time-step: 2e-4      # 8e-5 for brain-tumor
-collision-rate: 100    # Hz: Check every 0.5s (Reduced to eliminate stutter, rely on unified constraint for collision)
+collision-rate: 500    # Hz: INCREASED from 100 — detect collisions 5x more often to reduce penetration
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
 end-time: 300        # test time [s]
@@ -117,7 +127,7 @@ rigid-deform-adhesion-alpha: 1e-7             # Compliance
 rigid-deform-adhesion-bond-distance: 0.0348   # construct adhesion within this radious [0.0348]
 
 # rigid-deform-adhesion-break-ratio: 1.27       # STRETCH-BASED breaking (RATIO for large gaps)
-rigid-deform-adhesion-break-ratio: 1.3       # for knife
+rigid-deform-adhesion-break-ratio: 1.27       # for knife
                                         
 
 # rigid-deform-adhesion-stretch-abs-min: 0.002 # for knife
@@ -238,7 +248,8 @@ objects:
     inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
 
     ## XPBD-specific options
-    num-solver-iters: 2            # REDUCED to 1 for maximum performance
+    num-solver-iters: 5            # INCREASED from 2 — more iterations = better convergence, less jiggling
+    num-local-collision-iters: 5   # Was missing (default 0!) — dedicate extra iterations to collision constraints
     # solver-type: "Gauss-Seidel"
     solver-type: "Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
 

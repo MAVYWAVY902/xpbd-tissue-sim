@@ -48,6 +48,34 @@ void Easy3DGraphicsScene::init()
     _easy3d_viewer = dynamic_cast<Easy3DTextRenderingViewer*>(_viewer.get());
     _easy3d_viewer->set_usage("");
 
+    // pass background UV offsets to viewer
+    _easy3d_viewer->setBackgroundOffset(
+        static_cast<float>(_sim_render_config.backgroundUOffset()),
+        static_cast<float>(_sim_render_config.backgroundVOffset()));
+
+    // pass initial camera config to viewer (will be applied on first draw, after fit_screen)
+    {
+        const auto& cfg = _sim_render_config;
+        std::optional<easy3d::vec3> pos, view_dir, up_dir;
+        std::optional<float> fov;
+        if (cfg.cameraPosition().has_value()) {
+            const auto& p = cfg.cameraPosition().value();
+            pos = easy3d::vec3(p(0), p(1), p(2));
+        }
+        if (cfg.cameraViewDirection().has_value()) {
+            const auto& v = cfg.cameraViewDirection().value();
+            view_dir = easy3d::vec3(v(0), v(1), v(2));
+        }
+        if (cfg.cameraUpDirection().has_value()) {
+            const auto& u = cfg.cameraUpDirection().value();
+            up_dir = easy3d::vec3(u(0), u(1), u(2));
+        }
+        if (cfg.cameraFOV().has_value()) {
+            fov = static_cast<float>(cfg.cameraFOV().value());
+        }
+        _easy3d_viewer->setInitialCameraConfig(pos, view_dir, up_dir, fov);
+    }
+
     // load background image if configured
     if (_sim_render_config.backgroundImage().has_value())
     {

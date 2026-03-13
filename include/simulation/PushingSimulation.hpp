@@ -43,9 +43,31 @@ protected:
     /// @brief Enable/disable pushing (for subclasses like HapticDissectionSimulation)
     void _setPushingEnabled(bool enabled) { _pushing_enabled = enabled; }
 
+    // Fixed-base pivot mode (accessible by HapticDissectionSimulation)
+    bool _fixed_base_mode = false;
+    Real _base_offset_right = 0.03;
+    Real _base_offset_up = -0.04;
+    Real _base_offset_forward = 0.08;
+    Real _knife_shaft_length = 0.06;
+    Vec3r _knife_rest_direction_camera = Vec3r(0, 0, 1);
+    Real _tip_sensitivity = 0.5;
+    Vec3r _tip_deflection_camera = Vec3r::Zero();  ///< accumulated user input in camera-local coords
+
 private:
     /// @brief move the tool cursor by a given displacement
     void _moveCursor(const Vec3r& dp);
+
+    /// @brief compute the base (pivot) position in world coords from camera frame
+    Vec3r _computeBasePosition() const;
+
+    /// @brief compute the tip position in world coords given base position
+    Vec3r _computeTipPosition(const Vec3r& base_world) const;
+
+    /// @brief compute knife orientation quaternion from base→tip direction
+    Vec4r _computeKnifeOrientation(const Vec3r& base_world, const Vec3r& tip_world) const;
+
+    /// @brief update knife position and orientation in fixed-base pivot mode
+    void _updateFixedBaseKnife();
 
     /// @brief apply pushing forces to vertices within the tool radius
     void _applyPushingForces();

@@ -4,6 +4,7 @@
 #include "config/simulation/HapticDissectionSimulationConfig.hpp"
 #include <memory>
 #include <map>
+#include <string>
 #include <vector>
 
 class HaplyInverse3Device;
@@ -50,8 +51,26 @@ private:
     /// Transform a device-frame quaternion (xyzw) to sim frame.
     Vec4r _hapticToSimQuaternion(const Vec4r& device_quat) const;
 
-    /// Build the 3x3 signed permutation matrix from a 1-based signed axis spec.
-    void _setAxisMapping(const std::vector<int>& axes);
+    /// Build the 3x3 matrix from a 1-based signed axis permutation (legacy).
+    void _setAxisMappingFromPermutation(const std::vector<int>& axes);
+
+    /// Set the device-to-camera matrix from a quaternion (xyzw scalar-last).
+    void _setDeviceToCameraFromQuat(const Vec4r& quat);
+
+    /// Run one step of the interactive position calibration state machine (C key).
+    void _advanceCalibration();
+
+    /// Run one step of the interactive rotation calibration state machine (O key).
+    void _advanceRotationCalibration();
+
+    /// Set the grip-to-camera matrix from a quaternion (xyzw scalar-last).
+    void _setGripToCameraFromQuat(const Vec4r& quat);
+
+    /// Axis cycling rotation calibration (M key to cycle, comma to confirm).
+    void _cycleAxisCalib();
+    void _confirmAxisCalib();
+    void _applyTrialGripMatrix();
+    void _getPitchOptions(int yaw_idx, Vec3r pitch_out[4], std::string names_out[4]) const;
 
     std::unique_ptr<HaplyInverse3Device> _haptic_device;
 
@@ -61,10 +80,30 @@ private:
     Vec4r _initial_grip_quat = Vec4r(0,0,0,1);    ///< VerseGrip orientation at startup
     Vec4r _initial_knife_quat = Vec4r(0,0,0,1);   ///< knife orientation at startup
     bool _use_grip_orientation = true;              ///< toggle with 'G' key
-    int _axis_mapping = 0;                          ///< cycle with 'M' key
-    Mat3r _device_to_camera = Mat3r::Identity();     ///< signed permutation matrix (device→camera)
+    Mat3r _device_to_camera = Mat3r::Identity();     ///< orthogonal matrix for position (device→camera-local)
     Real _det_device_to_camera = 1.0;               ///< determinant of _device_to_camera (+1 or -1)
+    Mat3r _grip_to_camera = Mat3r::Identity();       ///< orthogonal matrix for rotation (grip→camera-local)
+    Real _det_grip_to_camera = 1.0;                  ///< determinant of _grip_to_camera
+    bool _has_grip_calibration = false;              ///< true if grip rotation calibration is available
     bool _diag_printing = false;                    ///< toggle with 'N' key
+
+    // Position calibration state (C key)
+    enum class CalibState { IDLE, WAIT_RIGHT, WAIT_UP };
+    CalibState _calib_state = CalibState::IDLE;
+    Vec3r _calib_start_pos = Vec3r::Zero();        ///< device position at start of calibration step
+    Vec3r _calib_device_right = Vec3r::Zero();     ///< measured device-space "right" direction
+
+    // Rotation calibration state (O key)
+    enum class RotCalibState { IDLE, WAIT_YAW, WAIT_PITCH };
+    RotCalibState _rot_calib_state = RotCalibState::IDLE;
+    Vec4r _rot_calib_initial_grip = Vec4r(0,0,0,1); ///< grip orientation at start of rotation calibration step
+    Vec3r _rot_calib_yaw_axis = Vec3r::Zero();       ///< measured device-space yaw rotation axis
+
+    // Axis cycling rotation calibration state (M key)
+    enum class AxisCalibState { IDLE, PICKING_YAW, PICKING_PITCH };
+    AxisCalibState _axis_calib_state = AxisCalibState::IDLE;
+    int _axis_calib_yaw_index = 0;     ///< 0-5: ±X, ±Y, ±Z
+    int _axis_calib_pitch_index = 0;   ///< 0-3: remaining axis options
 
     // Config parameters
     Real _haptic_force_scaling = 5.0;
@@ -72,6 +111,8 @@ private:
     Real _force_filter_alpha = 0.3;
     Real _haptic_workspace_radius = 0.08;
     Real _sim_workspace_radius = 0.1;
+
+    Real _rotation_sensitivity = 1.0;  ///< VerseGrip rotation amplification (>1 = more sensitive)
 
     // Keyboard rotation state
     Real _rotation_speed = 1.0;  ///< radians per second

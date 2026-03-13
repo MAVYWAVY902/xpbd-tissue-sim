@@ -10,6 +10,7 @@
 #include "simulation/Simulation.hpp"
 
 #include <map>
+#include <optional>
 
 class Simulation;
 
@@ -37,6 +38,14 @@ class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
 
     /** Sets the background texture ID for rendering a full-screen background image. */
     void setBackgroundTexture(unsigned int id) { _background_texture_id = id; }
+
+    /** Sets UV offsets for the equirectangular background.
+     *  u_offset: horizontal rotation (0.5 = 180 degrees)
+     *  v_offset: vertical shift (positive = shift background up, showing more floor/table) */
+    void setBackgroundOffset(float u_offset, float v_offset) {
+        _bg_u_offset = u_offset;
+        _bg_v_offset = v_offset;
+    }
 
     /** Width of the viewer window. */
     virtual int width() const override { return easy3d::Viewer::width(); }
@@ -81,6 +90,10 @@ class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
     /** OpenGL texture ID for background image (0 = no background). */
     unsigned int _background_texture_id = 0;
 
+    /** UV offsets for equirectangular background positioning. */
+    float _bg_u_offset = 0.0f;
+    float _bg_v_offset = 0.0f;
+
     /** OpenGL resources for equirectangular background shader (mutable for const draw). */
     mutable unsigned int _bg_shader = 0;
     mutable unsigned int _bg_vao = 0;
@@ -93,6 +106,23 @@ class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
 
     /** Draws the equirectangular background using the camera's orientation. */
     void _drawBackground() const;
+
+    /** Pending initial camera configuration (applied on first draw, after Easy3D's fit_screen). */
+    mutable bool _pending_camera_applied = false;
+    std::optional<easy3d::vec3> _pending_camera_position;
+    std::optional<easy3d::vec3> _pending_camera_view_dir;
+    std::optional<easy3d::vec3> _pending_camera_up_dir;
+    std::optional<float> _pending_camera_fov;
+
+    /** Applies pending camera config (called once on first draw). */
+    void _applyPendingCamera() const;
+
+    public:
+    /** Set initial camera config to be applied after Easy3D's fit_screen(). */
+    void setInitialCameraConfig(const std::optional<easy3d::vec3>& pos,
+                                const std::optional<easy3d::vec3>& view_dir,
+                                const std::optional<easy3d::vec3>& up_dir,
+                                const std::optional<float>& fov);
 
     /** Maps Easy3D keys to SimulationInput keys */
     static const std::map<int, SimulationInput::Key> _easy3d_key_map;
