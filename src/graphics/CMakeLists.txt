@@ -26,6 +26,9 @@ set(GRAPHICS_HEADERS
     ${GRAPHICS_INCLUDE_DIR}/vtk/VTKMeshGraphicsObject.hpp
     ${GRAPHICS_INCLUDE_DIR}/vtk/VTKVirtuosoArmGraphicsObject.hpp
     ${GRAPHICS_INCLUDE_DIR}/vtk/VTKVirtuosoRobotGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/opengl/OpenGLViewer.hpp
+    ${GRAPHICS_INCLUDE_DIR}/opengl/OpenGLGraphicsScene.hpp
+    ${GRAPHICS_INCLUDE_DIR}/opengl/OpenGLMeshGraphicsObject.hpp
 )
 
 set(GRAPHICS_SOURCES
@@ -49,6 +52,10 @@ set(GRAPHICS_SOURCES
     ${GRAPHICS_SRC_DIR}/vtk/VTKMeshGraphicsObject.cpp
     ${GRAPHICS_SRC_DIR}/vtk/VTKVirtuosoArmGraphicsObject.cpp
     ${GRAPHICS_SRC_DIR}/vtk/VTKVirtuosoRobotGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/opengl/OpenGLViewer.cpp
+    ${GRAPHICS_SRC_DIR}/opengl/OpenGLGraphicsScene.cpp
+    ${GRAPHICS_SRC_DIR}/opengl/OpenGLMeshGraphicsObject.cpp
+    ${GRAPHICS_SRC_DIR}/opengl/stb_image_impl.cpp
 )
 
 target_sources(Graphics

@@ -16,7 +16,9 @@ RUN apt-get update && apt-get install -y \
     libncurses-dev \
     freeglut3-dev \
     build-essential \
-    libusb-1.0-0-dev
+    libusb-1.0-0-dev \
+    # needed by OpenGL backend
+    libglew-dev
 
 
 

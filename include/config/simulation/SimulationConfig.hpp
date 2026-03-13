@@ -35,7 +35,8 @@ enum class Visualization
 {
     NONE=0,
     EASY3D,
-    VTK
+    VTK,
+    OPENGL
 };
 
 class SimulationConfig : public Config
@@ -58,7 +59,8 @@ class SimulationConfig : public Config
     {
         static std::map<std::string, Visualization> visualization{{"None", Visualization::NONE},
                                                                   {"Easy3D", Visualization::EASY3D},
-                                                                  {"VTK", Visualization::VTK}};
+                                                                  {"VTK", Visualization::VTK},
+                                                                  {"OpenGL", Visualization::OPENGL}};
         return visualization;
     }
 

@@ -1,0 +1,354 @@
+## TBone-Tumor-Brain Adhesion Test Configuration
+## Complete test with:
+##   1. Rigid TBone mesh
+##   2. Deformable Tumor mesh
+##   3. Deformable Brain mesh
+## Adhesion constraints:
+##   - Inter-deform adhesion: Tumor ↔ Brain
+##   - Rigid-deform adhesion: TBone ↔ Tumor
+
+name: "TBone-Tumor-Brain Adhesion Test"
+description: "Testing rigid-deform and inter-deform adhesion with three objects"
+
+visualization: "OpenGL"
+background-image: "../resource/rendering/hdr/surgery_1k.png"
+
+## ==================== BACKGROUND POSITIONING ====================
+## Direct shader-level control over equirectangular background placement
+background-v-offset: -0.0                 # vertical shift: negative = background moves down (objects closer to table)
+                                           #                 positive = background moves up (objects closer to ceiling)
+                                           #                 range: roughly -0.5 to 0.5
+background-u-offset: 0.0                   # horizontal rotation: 0.25 = 90°, 0.5 = 180°
+
+## ==================== CAMERA CONFIGURATION ====================
+camera-fov: 45                             # field of view [degrees] (smaller = background feels closer)
+
+# g-accel: [-300, -300, -100] # downward acceleration due to gravity [m/s2]
+g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
+
+sim-mode: "AFAP"     # Run as fast as possible for testing
+
+# time-step: 3e-4      # 8e-5 for brain-tumor
+time-step: 2e-4      # 8e-5 for brain-tumor
+collision-rate: 500    # Hz: INCREASED from 100 — detect collisions 5x more often to reduce penetration
+collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
+fps: 60              # frames per second of the visualization
+end-time: 300        # test time [s]
+
+## ==================== STATE RECORDING CONFIGURATION ====================
+## Enable offline recording of simulation state for post-processing
+## WARNING: State recording significantly slows down real-time performance!
+##          Only enable for offline analysis, not for interactive testing.
+state-recording-enable: true  # DISABLED for real-time performance
+state-recording-output-folder: "../output/adhesion_recording"
+state-recording-snapshot-interval: 0.05  # Record every 0.1 seconds (10 fps) when enabled
+
+## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
+grasp-radius: 0.065   # Grasping tool radius: 7mm (default 100mm)
+tool-radius: 0.065    # Pushing knife tool scale: 7mm (controls knife mesh size)
+                      # The knife mesh will be scaled so its largest dimension = tool-radius
+# grasp-radius: 0.015   # Grasping tool radius: 7mm (default 100mm)
+# tool-radius: 0.015    # Pushing knife tool scale: 7mm (controls knife mesh size)
+
+
+#                       # Examples: 0.005 = 5mm knife, 0.01 = 10mm knife, 0.02 = 20mm knife
+# knife-scale-x: 0.05  # Make knife 8cm wide in X direction
+# knife-scale-y: 0.05  # Make knife 2cm thin in Y direction  
+# knife-scale-z: 0.05  # Make knife 5cm tall in Z direction
+
+# knife-rotation: [0, 0, 90]   # Rotate knife in degrees [rx, ry, rz]
+                               # Examples:
+                               # [0, 0, 90]  = 90° rotation around Z-axis
+                               # [90, 0, 0]  = 90° rotation around X-axis
+                               # [0, 90, 0]  = 90° rotation around Y-axis
+                               # [45, 0, 0]  = 45° rotation around X-axis
+
+push-stiffness: 1000.0  # Base stiffness for pushing forces [N/m]
+                        # Higher = stronger push, but may cause oscillations
+                        # Press Q/A during simulation to adjust in real-time
+push-damping: 0.7       # Damping coefficient to prevent oscillations (0-1)
+                        # 0 = no damping (oscillations at high stiffness)
+                        # 0.5 = moderate damping (default, good balance)
+                        # 1 = maximum damping (very stable, less responsive)
+                        # Increase this if you see jiggling at high stiffness
+
+fix-min-z: false      # CRITICAL: Disable automatic bottom fixing for ALL objects (GraspingTest/PushingTest default=true)
+
+## ==================== INTER-DEFORM ADHESION SETTINGS ====================
+## Adhesion between two deformable objects (Tumor ↔ Brain)
+inter-deform-adhesion-enable: false
+
+## ==================== INTERACTION TYPE ====================
+## "adhesion"         - OLD: max(0, d - rest_gap) tension-only, simple breaking
+## "unified-distance" - NEW: smooth signed-distance curve, no dead zones, point-to-point fixation
+
+inter-deform-adhesion-interaction-type: "unified-distance"  # Use new smooth constraint!
+
+## ==================== OLD ADHESION PARAMETERS (for "adhesion" type) ====================
+inter-deform-adhesion-rest-gap: 0.002        # 2mm rest gap (scaled for 50mm objects)
+inter-deform-adhesion-break-ratio: 1.2       # Break at 50% strain
+inter-deform-adhesion-alpha: 1e-5            # Compliance (softer = more stable, was 5e-6)
+inter-deform-adhesion-bond-distance: 0.002   # 3mm bond distance (reduced to minimize constraint count)
+inter-deform-adhesion-fixed-triangle-object: false  # Both objects are deformable
+
+## ==================== UNIFIED-DISTANCE PARAMETERS (for "unified-distance" type) ====================
+inter-deform-unified-alpha: 4e-5                     # Compliance (INCREASED for stability with larger timestep)
+inter-deform-unified-bond-distance: 0.002            # 10mm - INCREASED to catch collisions early (Simulates collision detection)
+inter-deform-unified-break-ratio: 1.5                # Stretch-based breaking ratio
+inter-deform-unified-stretch-abs-min: 0.003          # 3mm absolute minimum stretch tolerance
+
+## Curve shape parameters (defines d* target curve)
+inter-deform-unified-d-contact: 0.0003               # 0.5mm - contact equilibrium (thickened for safety)
+inter-deform-unified-d-rest: 0.0015                  # 2.0mm - mid-range target
+inter-deform-unified-d-neutral-start: 0.003          # 3mm - transition zone start
+inter-deform-unified-d-neutral-end: 0.005            # 5mm - transition zone end
+inter-deform-unified-d-bond: 0.015                   # 15mm - saturation distance
+
+## ==================== RIGID-DEFORM ADHESION SETTINGS ====================
+## Adhesion between rigid objects and deformable tissue (TBone ↔ Tumor)
+## NOTE: Keep collisions=true even with unified-distance!
+##       - Unified distance: smooth adhesion forces (separation servo)
+##       - Collision: hard contact barrier (prevents penetration)
+##       They work together, not as replacements!
+
+rigid-deform-adhesion-enable: true           # Enable rigid-deform adhesion
+
+## ==================== INTERACTION TYPE ====================
+## "adhesion"         - OLD: separate collision/adhesion zones, dead zones, breaking logic
+## "unified-distance" - NEW: smooth signed-distance curve, no jiggling, mathematically validated
+
+rigid-deform-adhesion-interaction-type: "unified-distance"  # Switch to new smooth constraint!
+
+
+## ==================== UNIFIED-DISTANCE PARAMETERS ====================
+
+rigid-deform-adhesion-alpha: 1e-7             # Compliance
+                                             
+rigid-deform-adhesion-bond-distance: 0.0348   # construct adhesion within this radious [0.0348]
+
+# rigid-deform-adhesion-break-ratio: 1.27       # STRETCH-BASED breaking (RATIO for large gaps)
+rigid-deform-adhesion-break-ratio: 1.27       # for knife
+                                        
+
+# rigid-deform-adhesion-stretch-abs-min: 0.002 # for knife
+
+rigid-deform-adhesion-stretch-abs-min: 0.005 # Absolute minimum stretch tolerance (5mm)
+                                             # Physical meaning: Intrinsic tissue toughness
+                                             # - Like rope breaking elongation ("breaks after 5mm stretch")
+                                             # - Represents collagen fiber rupture (~10-20% strain)
+                                             # - Independent of initial gap (prevents fragility)
+                                             # 
+                                             # Example: d0=1mm → max_stretch=max(2mm, 5mm)=5mm
+                                             #          breaks at d=1+5=6mm (tissue stretched 5mm)
+                                             # Example: d0=3mm → max_stretch=max(6mm, 5mm)=6mm  
+                                             #          breaks at d=3+6=9mm (tissue stretched 6mm)
+                                             #
+                                             # Tuning guide:
+                                             # - 3mm: Fragile (cascade breaking during grasp)
+                                             # - 5mm: Moderate (current setting, good balance)
+                                             # - 8mm: Tough (requires aggressive pulling to break)
+                                             #
+                                             # 
+                                             # Example: d0=1mm → max_stretch=max(2mm, 5mm)=5mm
+                                             #          breaks at d=1+5=6mm (tissue stretched 5mm)
+                                             # Example: d0=3mm → max_stretch=max(6mm, 5mm)=6mm  
+                                             #          breaks at d=3+6=9mm (tissue stretched 6mm)
+                                             #
+                                             # WHY BETTER: Measures actual tissue damage (elongation),
+                                             #             not absolute distance. 5mm abs_min prevents
+                                             #             clustering that caused cascade breaking.
+
+## ==================== UNIFIED-DISTANCE CURVE PARAMETERS====================
+## These control the shape of the smooth adhesion curve d*(d)
+## CRITICAL: Set d-contact ≤ minimum actual distance to avoid initial repulsion!
+## 
+## DESIGN GOAL: Push saturation point further out so large-gap constraints have strong pull-back force
+##              Old d_bond=5mm caused early saturation → weak forces for initial=3-4mm constraints
+
+rigid-deform-adhesion-d-contact: 0.0003       # Equilibrium distance (0.3mm)
+                                             # Minimum contact point
+                                             
+rigid-deform-adhesion-d-rest: 0.0032           # Mid-range target (3mm) - INCREASED from 1.5mm
+                                             # REASON: Prevent over-compression of 2-3mm constraints
+                                             # With d_rest=3mm, constraints around 2-3mm won't be
+                                             # forced down to 0.3mm (more natural behavior)
+                                             
+rigid-deform-adhesion-d-neutral-start: 0.005  # Transition zone start (5mm) - ADJUSTED
+                                             # Begin exponential blend to far adhesion
+                                             
+rigid-deform-adhesion-d-neutral-end: 0.005    # Transition zone end (5mm)
+                                             # Exponential component starts here
+                                             
+rigid-deform-adhesion-d-bond: 0.005           # Saturation distance (15mm) ← INCREASED!
+                                             # NOW: Constraints with initial=5-10mm have strong forces
+                                             # Example: d=8mm → d*(8)≈10mm → C=-2mm (strong attraction!)
+                                             # Old: d=8mm → d*(8)≈5mm → C=+3mm (weak/wrong direction)
+
+
+## ==================== OLD ADHESION PARAMETERS (IGNORED for unified-distance) ====================
+## These are only used when interaction-type: "adhesion"
+## Kept here for comparison/switching back
+
+# rigid-deform-adhesion-rest-gap: 0.0005       # [IGNORED] Only for "adhesion" type
+# rigid-deform-adhesion-break-ratio: 1.0     # [MOVED ABOVE - now used by unified-distance too!] 
+
+
+## define elastic materials
+materials:
+  -
+    name: "Soft Tissue"
+    density: 1000   # density [kg/m^3]
+    E: 8e4          # Young's modulus [Pa] - moderate stiffness
+    nu: 0.45        # Poisson's ratio [-]
+    mu-s: 1.2       # coefficient of static friction [-]
+    mu-k: 0.8       # coefficient of kinetic friction [-]
+
+## objects in the simulation
+objects:
+
+  ## ==================== DEFORMABLE TUMOR ====================
+  -
+    name: "Tumor"
+    type: "FirstOrderXPBDMeshObject"
+    filename: "../resource/tumor_fixed/tumor_squeezed_uv03.obj"
+
+    materials: ["Soft Tissue"]
+
+    ## visualization options
+    # color: [1.0, 0.5, 0.0]  # Orange - tumor (used if texture fails to load)
+    draw-points: false    # ENABLE to visualize active adhesion constraints (green=active, black=inactive)
+    draw-edges: false
+    draw-faces: true
+    
+    ## texture mapping
+    texture-file: "../resource/textures/AlbedoFat.png"
+
+    use-texture: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 0.05               # Scale to 50mm (0.05m)
+    position: [-0.0, 0.0, 0.0]    # LEFT: -30mm to avoid overlap!
+    velocity: [0.0, 0, 0.0]      # Stationary
+    rotation: [0, 0, 0]
+
+    ## ==================== BOUNDARY FIXING (Tumor) ====================
+    ## Optional: Fix tumor boundaries to simulate nerve root/vascular attachment
+    ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+    ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+    # fix-min-z: false       # Fix BOTTOM (posterior attachment) - can enable for nerve root
+    # fix-max-z: false     # Fix TOP
+    # fix-min-y: false     # Fix BACK (toward IAC/bone)
+    # fix-max-y: false     # Fix FRONT
+    # fix-min-x: false     # Fix LEFT (lateral)
+    # fix-max-x: false     # Fix RIGHT (medial)
+
+    ## collisions
+    collisions: true
+    inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
+
+    ## XPBD-specific options
+    num-solver-iters: 5            # INCREASED from 2 — more iterations = better convergence, less jiggling
+    num-local-collision-iters: 5   # Was missing (default 0!) — dedicate extra iterations to collision constraints
+    # solver-type: "Gauss-Seidel"
+    solver-type: "Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
+
+    constraint-type: "Stable-Neohookean-Combined"
+    residual-policy: "Never"
+    damping-multiplier: 7500000      # REDUCED from 9M - was causing excessive damping
+
+
+  # # ## ==================== DEFORMABLE BRAIN ====================
+  # -
+  #   name: "Brain"
+  #   type: "FirstOrderXPBDMeshObject"
+  #   filename: "../resource/brain_fixed/brain_MOD3.obj"
+  #   materials: ["Soft Tissue"]
+
+  ## texture mapping
+  # texture-file: "../resource/textures/brain.png"
+  # use-texture: true
+
+  #   ## visualization options
+  ##   color: [0.0, 1.0, 1.0]  # Cyan - brain
+  #   draw-points: false
+  #   draw-edges: true
+  #   draw-faces: true
+
+  #   ## initial configuration
+  #   use-original-coords: true   # Center and scale mesh
+  #   max-size: 0.05               # Scale to 50mm (0.05m)
+  #   position: [0.0, 0.0, 0.0]    # RIGHT: +30mm to avoid overlap!
+  #   velocity: [0.0, 0, 0.0]      # Stationary
+  #   rotation: [0, 0, 0]
+
+  #   ## ==================== BOUNDARY FIXING (Brain) ====================
+  #   ## Simulate brain stem connection - prevents whole-object translation
+  #   ## NOTE: Uses 5% bbox tolerance for each direction (fixes a "slice" not a point)
+  #   ## WARNING: Fixing ALL 6 directions will completely freeze the object!
+  #   fix-min-z: true        # Fix BOTTOM (brain stem/posterior fossa)
+  #   # fix-max-z: false     # Fix TOP (superior)
+  #   # fix-min-y: false     # Fix BACK (posterior wall)
+  #   # fix-max-y: false     # Fix FRONT (anterior wall)
+  #   # fix-min-x: false     # Fix LEFT (lateral)
+  #   # fix-max-x: false     # Fix RIGHT (lateral)
+
+  #   ## collisions
+  #   collisions: true
+  #   inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
+
+  #   ## XPBD-specific options
+  #   num-solver-iters: 2            # REDUCED to 1 for maximum performance
+  #   solver-type: "Gauss-Seidel"
+  #   constraint-type: "Stable-Neohookean-Combined"
+  #   residual-policy: "Never"
+  #   damping-multiplier: 6000000 
+
+
+  # # ==================== RIGID TBONE ====================
+  -
+    name: "RigidBone"
+    type: "RigidMeshObject"
+    filename: "../resource/tbone_fixed/tbone_MOD4.obj"
+    density: 1000      # Normal bone density (not critical when fixed=true)
+
+    ## visualization options
+    color: [0.95, 0.92, 0.85]  # Bone white
+    draw-points: false
+    draw-edges: true
+    draw-faces: true
+
+    ## initial configuration
+    use-original-coords: true   # Center and scale mesh
+    max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
+    position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
+    rotation: [0, 0, 0]          # No rotation
+    velocity: [0, 0, 0]
+    angular-velocity: [0, 0, 0]
+
+    ## physics
+    collisions: true   # Enable collisions with deformable objects
+    fixed: true        # Keep bone stationary (realistic for medical scenarios)
+                       # Adhesion will still work because:
+                       # 1. Bug #2 fix ensures rigid body weight is included in lambda calculation
+                       # 2. Deformable tissue receives correctly scaled force
+                       # 3. Modified breaking logic accounts for fixed bone
+                       # 4. Tissue can stretch toward bone without over-stretching
+
+## ==================== CONSTRAINT INFO ====================
+# Objects:
+#   Tumor - deformable
+#   Brain - deformable  
+#   RigidBone - rigid, fixed
+#
+# Constraints:
+#   1. Inter-deform adhesion: Tumor ↔ Brain
+#      Code: Simulation.cpp L2234 (looks for "Tumor" & "Brain")
+#      Vertex-to-face bonds when distance < 5mm, breaks at 50% strain
+#
+#   2. Rigid-deform adhesion: RigidBone ↔ Tumor
+#      Code: Simulation.cpp L2517 (rigid:"RigidBone" + deform:"Tumor"/"Brain"/"Tissue"/"DeformableMesh")
+#      Face centroid-to-SDF bonds when distance < 5mm, breaks at 100% strain
+#
+#   3. Inter-object collision: Tumor ↔ Brain
+#      Embree BVH spatial acceleration, prevents interpenetration

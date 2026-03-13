@@ -183,9 +183,6 @@ void PushingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton bu
 
 void PushingSimulation::notifyMouseMoved(double x, double y)
 {
-    // printf("DEBUG: Mouse moved: x=%.2f, y=%.2f, space_held=%d\n", x, y, 
-    //        _keys_held.count(SimulationInput::Key::SPACE) ? _keys_held.at(SimulationInput::Key::SPACE) : 0);
-           
     // Move cursor when spacebar is held
     if (_keys_held.count(SimulationInput::Key::SPACE) && _keys_held.at(SimulationInput::Key::SPACE) > 0)
     {
@@ -224,7 +221,7 @@ void PushingSimulation::notifyMouseMoved(double x, double y)
 void PushingSimulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int modifiers)
 {
     if (key == SimulationInput::Key::SPACE) {
-        // printf("DEBUG: Spacebar event: action=%d\n", static_cast<int>(action));
+        // spacebar press/release tracked via _keys_held
     }
     
     // Reset knife to initial position when 'o' key is pressed

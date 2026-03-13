@@ -1020,6 +1020,7 @@
 
 #include "graphics/easy3d/Easy3DGraphicsScene.hpp"
 #include "graphics/vtk/VTKGraphicsScene.hpp"
+#include "graphics/opengl/OpenGLGraphicsScene.hpp"
 
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
@@ -1189,6 +1190,10 @@ Simulation::Simulation(const Config::SimulationConfig* config)
     if (_config->visualization() == Config::Visualization::VTK)
     {
         _graphics_scene = std::make_unique<Graphics::VTKGraphicsScene>("main", config->renderConfig());
+    }
+    if (_config->visualization() == Config::Visualization::OPENGL)
+    {
+        _graphics_scene = std::make_unique<Graphics::OpenGLGraphicsScene>("main", config->renderConfig());
     }
 
     // initialize the Embree scene

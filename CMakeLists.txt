@@ -114,7 +114,9 @@ add_subdirectory("src/utils")
 # link in necessary libraries
 target_link_libraries(Collision Eigen3::Eigen mesh2sdf Geometry GeometryUtils)
 target_link_libraries(Config Eigen3::Eigen SimObject)
-target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer ${VTK_LIBRARIES}) # link Easy3D for Graphics library
+find_package(GLEW REQUIRED)
+find_package(glfw3 REQUIRED)
+target_link_libraries(Graphics Eigen3::Eigen easy3d::core easy3d::util easy3d::renderer easy3d::viewer ${VTK_LIBRARIES} GLEW::GLEW glfw) # link Easy3D + OpenGL backend deps for Graphics library
 target_link_libraries(Geometry Eigen3::Eigen mesh2sdf SimObject GeometryUtils embree)
 target_link_libraries(Haptics Eigen3::Eigen HD HDU)   # link OpenHaptics API libraries for Haptics library
 
