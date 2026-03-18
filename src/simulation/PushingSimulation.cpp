@@ -334,11 +334,18 @@ void PushingSimulation::_timeStep()
         // Check if knife is cutting adhesion constraints
         _checkKnifeAdhesionInterference();
 
-        // Apply pushing forces for tissue interaction
+        // Apply pushing forces for tissue interaction (pre-solve)
         _applyPushingForces();
     }
 
     Simulation::_timeStep();
+
+    // POST-SOLVE: Hard-project any penetrating vertices after XPBD solver.
+    // No damping, no soft zone — just enforce the constraint.
+    if (_pushing_enabled)
+    {
+        _postSolveProject();
+    }
 }
 
 void PushingSimulation::_togglePushing()
@@ -414,66 +421,55 @@ void PushingSimulation::_applyPushingForces()
                 vertices_contacted++;
             }
 
-            // Apply pushing if vertex is penetrating the knife
+            // Apply pushing if vertex is penetrating or near the knife surface
             Real contact_threshold = 0.001; // 1mm soft contact zone
             if (signed_distance < contact_threshold)
             {
-                Real penetration = contact_threshold - signed_distance;
-                // printf("DEBUG: PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
-                
                 // Get push direction from SDF gradient
-                // SDF gradient points in direction of increasing distance (away from knife surface)
                 Vec3r sdf_grad = knife_sdf->gradient(vertex_pos);
                 Vec3r push_direction;
-                
-                if (sdf_grad.norm() < 1e-6) // Handle zero gradient
+
+                if (sdf_grad.norm() < 1e-6)
                 {
-                    // Fallback: push away from tool center
                     Vec3r displacement = vertex_pos - tool_center;
                     if (displacement.norm() < 1e-6) {
-                        push_direction = Vec3r(0, 0, 1); // Push upward
+                        push_direction = Vec3r(0, 0, 1);
                     } else {
                         push_direction = displacement.normalized();
                     }
-                    // printf("DEBUG: Zero gradient - using fallback direction\n");
                 }
                 else
                 {
                     push_direction = sdf_grad.normalized();
                 }
-                
-                // Calculate push offset - stronger for deeper penetration
-                Real push_magnitude = penetration * (_push_stiffness / 600.0);
-                push_magnitude = std::min(push_magnitude, _tool_radius * 0.3);
-                
-                // Apply damping based on vertex velocity to prevent oscillations
-                Vec3r vertex_velocity = xpbd_mesh_obj->vertexVelocity(v);
-                Real velocity_along_push = vertex_velocity.dot(push_direction);
-                
-                // Reduce push if vertex is already moving in push direction (damping)
-                // This prevents overshoot and oscillations
-                if (velocity_along_push > 0) {
-                    Real damping_reduction = _push_damping * velocity_along_push * dt();
-                    push_magnitude = std::max(0.0, push_magnitude - damping_reduction);
+
+                Real push_magnitude;
+                if (signed_distance < 0)
+                {
+                    // FULL PROJECTION: vertex is inside the tool — project to surface + margin
+                    // No damping here — penetration must be fully resolved
+                    push_magnitude = -signed_distance + contact_threshold;
                 }
-                
+                else
+                {
+                    // SOFT ZONE: gentle proportional push to create a buffer zone
+                    Real penetration = contact_threshold - signed_distance;
+                    push_magnitude = penetration * 0.5;
+
+                    // Only apply damping in the soft zone (not for hard penetration)
+                    Vec3r vertex_velocity = xpbd_mesh_obj->vertexVelocity(v);
+                    Real velocity_along_push = vertex_velocity.dot(push_direction);
+                    if (velocity_along_push > 0) {
+                        Real damping_reduction = _push_damping * velocity_along_push * dt();
+                        push_magnitude = std::max(0.0, push_magnitude - damping_reduction);
+                    }
+                }
+
                 Vec3r push_offset = push_direction * push_magnitude;
-                
-                // printf("DEBUG: Pushing vertex %d by offset (%.6f, %.6f, %.6f), magnitude=%.6f\n", 
-                //        v, push_offset.x(), push_offset.y(), push_offset.z(), push_magnitude);
-                
-                // DIRECT VERTEX DISPLACEMENT - NO ATTACHMENT CONSTRAINTS!
                 Vec3r new_position = vertex_pos + push_offset;
                 xpbd_mesh_obj->mesh()->setVertex(v, new_position);
-                
+
                 vertices_pushed++;
-                
-                // if (vertices_pushed <= 3) // Detailed debug for first few
-                // {
-                //     printf("DEBUG: Vertex %d: (%.3f,%.3f,%.3f) -> (%.3f,%.3f,%.3f)\n", 
-                //            v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(),
-                //            new_position.x(), new_position.y(), new_position.z());
-                // }
             }
         }
     }
@@ -498,72 +494,113 @@ void PushingSimulation::_applyPushingForces()
                 vertices_contacted++;
             }
 
-            // Apply pushing if vertex is penetrating the knife
+            // Apply pushing if vertex is penetrating or near the knife surface
             Real contact_threshold = 0.001; // 1mm soft contact zone
             if (signed_distance < contact_threshold)
             {
-                Real penetration = contact_threshold - signed_distance;
-                // printf("DEBUG: FO PENETRATION detected! Vertex %d, penetration=%.4f\n", v, penetration);
-                
                 // Get push direction from SDF gradient
-                // SDF gradient points in direction of increasing distance (away from knife surface)
                 Vec3r sdf_grad = knife_sdf->gradient(vertex_pos);
                 Vec3r push_direction;
-                
-                if (sdf_grad.norm() < 1e-6) // Handle zero gradient
+
+                if (sdf_grad.norm() < 1e-6)
                 {
-                    // Fallback: push away from tool center
                     Vec3r displacement = vertex_pos - tool_center;
                     if (displacement.norm() < 1e-6) {
-                        push_direction = Vec3r(0, 0, 1); // Push upward
+                        push_direction = Vec3r(0, 0, 1);
                     } else {
                         push_direction = displacement.normalized();
                     }
-                    // printf("DEBUG: FO Zero gradient - using fallback direction\n");
                 }
                 else
                 {
                     push_direction = sdf_grad.normalized();
                 }
-                
-                // Calculate push offset
-                Real push_magnitude = penetration * (_push_stiffness / 600.0);
-                push_magnitude = std::min(push_magnitude, _tool_radius * 0.3);
-                
-                // Apply damping based on vertex velocity to prevent oscillations
-                Vec3r vertex_velocity = fo_xpbd_mesh_obj->vertexVelocity(v);
-                Real velocity_along_push = vertex_velocity.dot(push_direction);
-                
-                // Reduce push if vertex is already moving in push direction (damping)
-                // This prevents overshoot and oscillations
-                if (velocity_along_push > 0) {
-                    Real damping_reduction = _push_damping * velocity_along_push * dt();
-                    push_magnitude = std::max(0.0, push_magnitude - damping_reduction);
+
+                Real push_magnitude;
+                if (signed_distance < 0)
+                {
+                    // FULL PROJECTION: vertex is inside the tool — project to surface + margin
+                    push_magnitude = -signed_distance + contact_threshold;
                 }
-                
+                else
+                {
+                    // SOFT ZONE: gentle proportional push
+                    Real penetration = contact_threshold - signed_distance;
+                    push_magnitude = penetration * 0.5;
+
+                    Vec3r vertex_velocity = fo_xpbd_mesh_obj->vertexVelocity(v);
+                    Real velocity_along_push = vertex_velocity.dot(push_direction);
+                    if (velocity_along_push > 0) {
+                        Real damping_reduction = _push_damping * velocity_along_push * dt();
+                        push_magnitude = std::max(0.0, push_magnitude - damping_reduction);
+                    }
+                }
+
                 Vec3r push_offset = push_direction * push_magnitude;
-                
-                // printf("DEBUG: FO Pushing vertex %d by offset (%.6f, %.6f, %.6f), magnitude=%.6f\n", 
-                //        v, push_offset.x(), push_offset.y(), push_offset.z(), push_magnitude);
-                
-                // DIRECT VERTEX DISPLACEMENT - NO ATTACHMENT CONSTRAINTS!
                 Vec3r new_position = vertex_pos + push_offset;
                 fo_xpbd_mesh_obj->mesh()->setVertex(v, new_position);
-                
+
                 vertices_pushed++;
-                
-                if (vertices_pushed <= 3) // Detailed debug for first few
-                {
-                    // printf("DEBUG: FO Vertex %d: (%.3f,%.3f,%.3f) -> (%.3f,%.3f,%.3f)\n", 
-                    //        v, vertex_pos.x(), vertex_pos.y(), vertex_pos.z(),
-                    //        new_position.x(), new_position.y(), new_position.z());
-                }
             }
         }
     }
 
     // printf("DEBUG: Frame summary - Vertices contacted: %d, Vertices pushed: %d\n", vertices_contacted, vertices_pushed);
     // printf("DEBUG: === PUSHING FRAME END ===\n\n");
+}
+
+void PushingSimulation::_postSolveProject()
+{
+    const Geometry::MeshSDF* knife_sdf = _cursor->SDF();
+    if (!knife_sdf) return;
+
+    const Vec3r tool_center = _cursor->position();
+    const Real reject_radius = _tool_radius + 0.005;
+    const Real reject_radius_sq = reject_radius * reject_radius;
+    const Real surface_margin = 0.0005; // 0.5mm margin outside surface
+
+    auto projectVertices = [&](auto& mesh_obj) {
+        for (int v = 0; v < mesh_obj->mesh()->numVertices(); ++v)
+        {
+            if (mesh_obj->vertexFixed(v)) continue;
+
+            const Vec3r vertex_pos = mesh_obj->mesh()->vertex(v);
+            if ((vertex_pos - tool_center).squaredNorm() > reject_radius_sq) continue;
+
+            Real signed_distance = knife_sdf->evaluate(vertex_pos);
+
+            // Only project vertices that are actually inside the tool
+            if (signed_distance < 0)
+            {
+                Vec3r sdf_grad = knife_sdf->gradient(vertex_pos);
+                Vec3r push_direction;
+
+                if (sdf_grad.norm() < 1e-6)
+                {
+                    Vec3r displacement = vertex_pos - tool_center;
+                    push_direction = (displacement.norm() < 1e-6)
+                        ? Vec3r(0, 0, 1)
+                        : displacement.normalized();
+                }
+                else
+                {
+                    push_direction = sdf_grad.normalized();
+                }
+
+                // Hard projection: move vertex exactly to surface + margin
+                // No damping, no stiffness scaling — this is a hard constraint
+                Real push_magnitude = -signed_distance + surface_margin;
+                Vec3r new_position = vertex_pos + push_direction * push_magnitude;
+                mesh_obj->mesh()->setVertex(v, new_position);
+            }
+        }
+    };
+
+    auto& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
+    for (auto& obj : xpbd_mesh_objs) projectVertices(obj);
+
+    auto& fo_xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+    for (auto& obj : fo_xpbd_mesh_objs) projectVertices(obj);
 }
 
 void PushingSimulation::_checkKnifeAdhesionInterference()

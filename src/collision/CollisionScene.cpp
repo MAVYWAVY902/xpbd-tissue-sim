@@ -234,9 +234,8 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
     const Real bary_epsilon = -0.01; // Only 1% tolerance - much tighter than -0.1
     
     // ========== PART 1: Vertices of obj1 vs Faces of obj2 ==========
-    // ⚡ PERFORMANCE OPTIMIZATION: Sample vertices sparsely to reduce BVH queries
-    // Instead of checking ALL vertices, check every Nth vertex
-    const int VERTEX_SAMPLING_INTERVAL = 3;  // Check every 3rd vertex (3x faster!)
+    // Check ALL surface vertices for collision (no sparse sampling)
+    const int VERTEX_SAMPLING_INTERVAL = 1;
     
     if (use_brute_force)
     {

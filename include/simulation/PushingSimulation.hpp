@@ -72,6 +72,9 @@ private:
     /// @brief apply pushing forces to vertices within the tool radius
     void _applyPushingForces();
 
+    /// @brief hard-project penetrating vertices to tool surface (post-solve, no damping)
+    void _postSolveProject();
+
     /// @brief check if knife interferes with adhesion constraints and mark them for breaking
     void _checkKnifeAdhesionInterference();
 
