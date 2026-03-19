@@ -85,6 +85,103 @@ void main() {
 }
 )";
 
+// ==================== Static Model Shader (Blinn-Phong + Normal Map) ====================
+
+static const char* s_static_vert_src = R"(
+#version 330 core
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aTexCoord;
+layout(location = 3) in vec3 aTangent;
+
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+uniform mat3 uNormalMatrix;
+
+out vec3 vWorldPos;
+out vec3 vNormal;
+out vec2 vTexCoord;
+out mat3 vTBN;
+
+void main() {
+    vec4 worldPos = uModel * vec4(aPosition, 1.0);
+    vWorldPos = worldPos.xyz;
+    vNormal = normalize(uNormalMatrix * aNormal);
+    vTexCoord = aTexCoord;
+
+    // Build TBN matrix for normal mapping
+    vec3 T = normalize(uNormalMatrix * aTangent);
+    vec3 N = vNormal;
+    T = normalize(T - dot(T, N) * N);  // re-orthogonalize
+    vec3 B = cross(N, T);
+    vTBN = mat3(T, B, N);
+
+    gl_Position = uProjection * uView * worldPos;
+}
+)";
+
+static const char* s_static_frag_src = R"(
+#version 330 core
+in vec3 vWorldPos;
+in vec3 vNormal;
+in vec2 vTexCoord;
+in mat3 vTBN;
+
+uniform vec4 uColor;
+uniform vec3 uLightDir;
+uniform vec3 uViewPos;
+uniform int uUseLighting;
+uniform int uUseTexture;
+uniform sampler2D uTexture;
+uniform int uUseNormalMap;
+uniform sampler2D uNormalMap;
+uniform float uRoughness;
+
+out vec4 fragColor;
+
+void main() {
+    vec4 baseColor = uColor;
+    if (uUseTexture == 1) {
+        baseColor = texture(uTexture, vTexCoord);
+    }
+
+    if (uUseLighting == 1) {
+        vec3 N = normalize(vNormal);
+
+        // Apply normal map if available
+        if (uUseNormalMap == 1) {
+            vec3 mapNormal = texture(uNormalMap, vTexCoord).rgb;
+            mapNormal = mapNormal * 2.0 - 1.0;  // [0,1] -> [-1,1]
+            N = normalize(vTBN * mapNormal);
+        }
+
+        vec3 L = normalize(uLightDir);
+        vec3 V = normalize(uViewPos - vWorldPos);
+        vec3 H = normalize(L + V);
+
+        // Roughness controls specular: higher roughness = lower shininess
+        float shininess = mix(128.0, 4.0, uRoughness);
+
+        float ambient = 0.25;
+        float diff = max(dot(N, L), 0.0);
+        float spec = pow(max(dot(N, H), 0.0), shininess);
+
+        // Two-sided lighting
+        float diffBack = max(dot(-N, L), 0.0);
+        diff = max(diff, diffBack * 0.6);
+
+        // Reduce specular for rough surfaces
+        float specStrength = mix(0.4, 0.05, uRoughness);
+
+        vec3 lighting = baseColor.rgb * (ambient + diff * 0.75) + vec3(1.0) * spec * specStrength;
+        fragColor = vec4(lighting, baseColor.a);
+    } else {
+        fragColor = baseColor;
+    }
+}
+)";
+
 static GLuint compileShaderSrc(GLenum type, const char* src)
 {
     GLuint shader = glCreateShader(type);
@@ -129,6 +226,7 @@ OpenGLGraphicsScene::~OpenGLGraphicsScene()
 {
     _static_models.clear();  // must destroy before GL context dies
     if (_mesh_shader) glDeleteProgram(_mesh_shader);
+    if (_static_model_shader) glDeleteProgram(_static_model_shader);
 }
 
 // ==================== Init ====================
@@ -175,10 +273,18 @@ void OpenGLGraphicsScene::init()
 
 void OpenGLGraphicsScene::_initShaders()
 {
-    GLuint vs = compileShaderSrc(GL_VERTEX_SHADER, s_mesh_vert_src);
-    GLuint fs = compileShaderSrc(GL_FRAGMENT_SHADER, s_mesh_frag_src);
-    _mesh_shader = linkProgram(vs, fs);
-    std::cout << "[OpenGL] Mesh shader initialized." << std::endl;
+    {
+        GLuint vs = compileShaderSrc(GL_VERTEX_SHADER, s_mesh_vert_src);
+        GLuint fs = compileShaderSrc(GL_FRAGMENT_SHADER, s_mesh_frag_src);
+        _mesh_shader = linkProgram(vs, fs);
+        std::cout << "[OpenGL] Mesh shader initialized." << std::endl;
+    }
+    {
+        GLuint vs = compileShaderSrc(GL_VERTEX_SHADER, s_static_vert_src);
+        GLuint fs = compileShaderSrc(GL_FRAGMENT_SHADER, s_static_frag_src);
+        _static_model_shader = linkProgram(vs, fs);
+        std::cout << "[OpenGL] Static model shader initialized." << std::endl;
+    }
 }
 
 // ==================== Update / Run ====================
@@ -288,9 +394,15 @@ void OpenGLGraphicsScene::_drawScene() const
         }
     }
 
-    // Draw static decorative models
-    for (const auto& model : _static_models) {
-        model->draw(_mesh_shader);
+    // Draw static decorative models with normal-mapped shader
+    glUseProgram(_static_model_shader);
+    glUniformMatrix4fv(glGetUniformLocation(_static_model_shader, "uView"), 1, GL_FALSE, view.data());
+    glUniformMatrix4fv(glGetUniformLocation(_static_model_shader, "uProjection"), 1, GL_FALSE, proj.data());
+    glUniform3f(glGetUniformLocation(_static_model_shader, "uLightDir"), light_dir.x(), light_dir.y(), light_dir.z());
+    glUniform3f(glGetUniformLocation(_static_model_shader, "uViewPos"), cam_pos.x(), cam_pos.y(), cam_pos.z());
+
+    for (const auto& smodel : _static_models) {
+        smodel->draw(_static_model_shader);
     }
 
     glDisable(GL_BLEND);

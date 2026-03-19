@@ -51,6 +51,8 @@ class OpenGLGraphicsScene : public GraphicsScene
 
     /** Mesh shader program (Blinn-Phong). */
     unsigned int _mesh_shader = 0;
+    /** Static model shader (Blinn-Phong + normal mapping). */
+    unsigned int _static_model_shader = 0;
     /** Line/point shader program (unlit, uniform color). */
     unsigned int _simple_shader = 0;
 

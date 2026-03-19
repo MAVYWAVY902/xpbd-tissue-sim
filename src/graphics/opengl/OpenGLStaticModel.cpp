@@ -27,8 +27,10 @@ OpenGLStaticModel::~OpenGLStaticModel()
         if (sm.vbo) glDeleteBuffers(1, &sm.vbo);
         if (sm.nbo) glDeleteBuffers(1, &sm.nbo);
         if (sm.tbo) glDeleteBuffers(1, &sm.tbo);
+        if (sm.tanbo) glDeleteBuffers(1, &sm.tanbo);
         if (sm.ebo) glDeleteBuffers(1, &sm.ebo);
         if (sm.texture_id) glDeleteTextures(1, &sm.texture_id);
+        if (sm.normalmap_id) glDeleteTextures(1, &sm.normalmap_id);
     }
 }
 
@@ -43,6 +45,7 @@ void OpenGLStaticModel::_loadFromFile(const std::string& filepath)
     const aiScene* scene = importer.ReadFile(filepath,
         aiProcess_Triangulate |
         aiProcess_GenNormals |
+        aiProcess_CalcTangentSpace |
         aiProcess_FlipUVs);
 
     if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
@@ -73,6 +76,7 @@ void OpenGLStaticModel::_loadFromFile(const std::string& filepath)
             // Extract vertex data
             sm.positions.reserve(mesh->mNumVertices * 3);
             sm.normals.reserve(mesh->mNumVertices * 3);
+            sm.tangents.reserve(mesh->mNumVertices * 3);
             sm.texcoords.reserve(mesh->mNumVertices * 2);
 
             for (unsigned int v = 0; v < mesh->mNumVertices; ++v)
@@ -92,6 +96,19 @@ void OpenGLStaticModel::_loadFromFile(const std::string& filepath)
                     sm.normals.push_back(0.0f);
                     sm.normals.push_back(1.0f);
                     sm.normals.push_back(0.0f);
+                }
+
+                if (mesh->mTangents)
+                {
+                    sm.tangents.push_back(mesh->mTangents[v].x);
+                    sm.tangents.push_back(mesh->mTangents[v].y);
+                    sm.tangents.push_back(mesh->mTangents[v].z);
+                }
+                else
+                {
+                    sm.tangents.push_back(1.0f);
+                    sm.tangents.push_back(0.0f);
+                    sm.tangents.push_back(0.0f);
                 }
 
                 if (mesh->mTextureCoords[0])
@@ -262,6 +279,47 @@ void OpenGLStaticModel::_loadFromFile(const std::string& filepath)
                     }
                 }
 
+                // Also scan for normal map texture (for bump/roughness detail)
+                {
+                    aiString mat_name_str;
+                    mat->Get(AI_MATKEY_NAME, mat_name_str);
+                    std::string mat_name_s = mat_name_str.C_Str();
+
+                    DIR* dir = opendir(model_dir.c_str());
+                    if (dir)
+                    {
+                        struct dirent* entry;
+                        while ((entry = readdir(dir)) != nullptr)
+                        {
+                            if (sm.has_normalmap) break;
+                            std::string fname = entry->d_name;
+                            if (fname.find(mat_name_s) != std::string::npos &&
+                                fname.find("normal") != std::string::npos)
+                            {
+                                std::string full_path = model_dir + fname;
+                                int w, h, ch;
+                                unsigned char* pixels = stbi_load(full_path.c_str(), &w, &h, &ch, 0);
+                                if (pixels)
+                                {
+                                    sm.nmap_width = w;
+                                    sm.nmap_height = h;
+                                    sm.nmap_channels = ch;
+                                    sm.normalmap_pixels.assign(pixels, pixels + w * h * ch);
+                                    sm.has_normalmap = true;
+                                    stbi_image_free(pixels);
+                                    std::cout << "[OpenGLStaticModel]     Auto-matched normal map: " << full_path << std::endl;
+                                }
+                            }
+                        }
+                        closedir(dir);
+                    }
+                }
+
+                // Read roughness value from material
+                float roughness_val = 0.5f;
+                if (mat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness_val) == AI_SUCCESS)
+                    sm.roughness = roughness_val;
+
                 // Debug: print material info
                 aiString mat_name;
                 mat->Get(AI_MATKEY_NAME, mat_name);
@@ -270,6 +328,8 @@ void OpenGLStaticModel::_loadFromFile(const std::string& filepath)
                           << " verts=" << mesh->mNumVertices
                           << " color=(" << sm.color_r << "," << sm.color_g << "," << sm.color_b << ")"
                           << " texture=" << (sm.has_texture ? "YES" : "NO")
+                          << " normalmap=" << (sm.has_normalmap ? "YES" : "NO")
+                          << " roughness=" << sm.roughness
                           << std::endl;
 
                 // Debug: enumerate ALL texture types for this material
@@ -345,6 +405,16 @@ void OpenGLStaticModel::_ensureGLInitialized() const
             glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
         }
 
+        // Tangents (location 3) — for normal mapping
+        if (!sm.tangents.empty())
+        {
+            glGenBuffers(1, &sm.tanbo);
+            glBindBuffer(GL_ARRAY_BUFFER, sm.tanbo);
+            glBufferData(GL_ARRAY_BUFFER, sm.tangents.size() * sizeof(float), sm.tangents.data(), GL_STATIC_DRAW);
+            glEnableVertexAttribArray(3);
+            glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+        }
+
         // Indices
         glGenBuffers(1, &sm.ebo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sm.ebo);
@@ -352,7 +422,7 @@ void OpenGLStaticModel::_ensureGLInitialized() const
 
         glBindVertexArray(0);
 
-        // Texture
+        // Diffuse texture
         if (sm.has_texture)
         {
             GLenum fmt = (sm.tex_channels == 4) ? GL_RGBA : GL_RGB;
@@ -366,8 +436,26 @@ void OpenGLStaticModel::_ensureGLInitialized() const
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0);
 
-            std::cout << "[OpenGLStaticModel] Texture uploaded: "
+            std::cout << "[OpenGLStaticModel] Diffuse texture uploaded: "
                       << sm.tex_width << "x" << sm.tex_height << " (" << sm.tex_channels << "ch)" << std::endl;
+        }
+
+        // Normal map texture
+        if (sm.has_normalmap)
+        {
+            GLenum fmt = (sm.nmap_channels == 4) ? GL_RGBA : GL_RGB;
+            glGenTextures(1, &sm.normalmap_id);
+            glBindTexture(GL_TEXTURE_2D, sm.normalmap_id);
+            glTexImage2D(GL_TEXTURE_2D, 0, fmt, sm.nmap_width, sm.nmap_height, 0, fmt, GL_UNSIGNED_BYTE, sm.normalmap_pixels.data());
+            glGenerateMipmap(GL_TEXTURE_2D);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            std::cout << "[OpenGLStaticModel] Normal map uploaded: "
+                      << sm.nmap_width << "x" << sm.nmap_height << " (" << sm.nmap_channels << "ch)" << std::endl;
         }
     }
 }
@@ -391,7 +479,10 @@ void OpenGLStaticModel::draw(unsigned int shader_program) const
     {
         if (sm.num_indices == 0) continue;
 
-        // Bind texture or set color
+        // Set roughness
+        glUniform1f(glGetUniformLocation(shader_program, "uRoughness"), sm.roughness);
+
+        // Bind diffuse texture or set color
         if (sm.has_texture && sm.texture_id)
         {
             glActiveTexture(GL_TEXTURE0);
@@ -405,12 +496,28 @@ void OpenGLStaticModel::draw(unsigned int shader_program) const
             glUniform4f(glGetUniformLocation(shader_program, "uColor"), sm.color_r, sm.color_g, sm.color_b, sm.color_a);
         }
 
+        // Bind normal map
+        if (sm.has_normalmap && sm.normalmap_id)
+        {
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, sm.normalmap_id);
+            glUniform1i(glGetUniformLocation(shader_program, "uNormalMap"), 1);
+            glUniform1i(glGetUniformLocation(shader_program, "uUseNormalMap"), 1);
+        }
+        else
+        {
+            glUniform1i(glGetUniformLocation(shader_program, "uUseNormalMap"), 0);
+        }
+
         glBindVertexArray(sm.vao);
         glDrawElements(GL_TRIANGLES, sm.num_indices, GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
 
-        if (sm.has_texture && sm.texture_id)
-            glBindTexture(GL_TEXTURE_2D, 0);
+        // Unbind textures
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     // Restore identity model matrix for other objects
