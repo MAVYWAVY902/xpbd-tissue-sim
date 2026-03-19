@@ -8,8 +8,12 @@
 #include "config/simobject/MeshObjectConfig.hpp"
 #include "config/simobject/ObjectConfig.hpp"
 
+#include <memory>
+
 namespace Graphics
 {
+
+class OpenGLStaticModel;  // forward declare
 
 class OpenGLGraphicsScene : public GraphicsScene
 {
@@ -22,6 +26,9 @@ class OpenGLGraphicsScene : public GraphicsScene
     virtual int run() override;
 
     virtual int addObject(const Sim::Object* obj, const Config::ObjectRenderConfig& render_config) override;
+
+    /** Add a static decorative model (no physics). */
+    void addStaticModel(const std::string& filepath, const Eigen::Matrix4f& transform);
 
     virtual void setCameraOrthographic() override;
     virtual void setCameraPerspective() override;
@@ -51,6 +58,9 @@ class OpenGLGraphicsScene : public GraphicsScene
     void _initShaders();
     static void _drawSceneCallback(void* user_data);
     void _drawScene() const;
+
+    /** Static decorative models (surgical table, etc). */
+    std::vector<std::unique_ptr<OpenGLStaticModel>> _static_models;
 };
 
 } // namespace Graphics

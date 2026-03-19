@@ -1258,6 +1258,21 @@ void Simulation::setup()
     if (_graphics_scene)
     {
         _graphics_scene->init();
+
+        // Add static decorative models for OpenGL scene
+        if (auto* opengl_scene = dynamic_cast<Graphics::OpenGLGraphicsScene*>(_graphics_scene.get()))
+        {
+            // Load surgical table model — position it below the simulation objects
+            Eigen::Matrix4f table_transform = Eigen::Matrix4f::Identity();
+            float scale = 0.007f;
+            table_transform.block<3,3>(0,0) *= scale;
+            table_transform(2, 3) = -0.05f;  // place below bone-tumor (Z down)
+
+            // Load both parts: 01a = metal frame, 01b = cloth/drape
+            opengl_scene->addStaticModel("../resource/surgical_table/source/dkg_StandingSurgical_01a.fbx", table_transform);
+            opengl_scene->addStaticModel("../resource/surgical_table/source/dkg_StandingSurgical_01b.fbx", table_transform);
+        }
+
         _graphics_scene->viewer()->registerSimulation(this);
         _graphics_scene->viewer()->addText(
             "time", "Sim Time: 0.000 s",

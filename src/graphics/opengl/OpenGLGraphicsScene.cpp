@@ -1,5 +1,6 @@
 #include "graphics/opengl/OpenGLGraphicsScene.hpp"
 #include "graphics/opengl/OpenGLMeshGraphicsObject.hpp"
+#include "graphics/opengl/OpenGLStaticModel.hpp"
 
 #include <GL/glew.h>
 
@@ -126,6 +127,7 @@ OpenGLGraphicsScene::OpenGLGraphicsScene(const std::string& name, const Config::
 
 OpenGLGraphicsScene::~OpenGLGraphicsScene()
 {
+    _static_models.clear();  // must destroy before GL context dies
     if (_mesh_shader) glDeleteProgram(_mesh_shader);
 }
 
@@ -277,6 +279,11 @@ void OpenGLGraphicsScene::_drawScene() const
         }
     }
 
+    // Draw static decorative models
+    for (const auto& model : _static_models) {
+        model->draw(_mesh_shader);
+    }
+
     glDisable(GL_BLEND);
     glUseProgram(0);
 }
@@ -346,6 +353,13 @@ Vec3r OpenGLGraphicsScene::cameraPosition() const {
 void OpenGLGraphicsScene::setCameraPosition(const Vec3r& position) {
     _opengl_viewer->setCameraPosition(Eigen::Vector3f(
         static_cast<float>(position(0)), static_cast<float>(position(1)), static_cast<float>(position(2))));
+}
+
+// ==================== Static Models ====================
+
+void OpenGLGraphicsScene::addStaticModel(const std::string& filepath, const Eigen::Matrix4f& transform)
+{
+    _static_models.push_back(std::make_unique<OpenGLStaticModel>(filepath, transform));
 }
 
 } // namespace Graphics

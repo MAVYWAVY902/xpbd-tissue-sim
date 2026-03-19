@@ -29,6 +29,7 @@ set(GRAPHICS_HEADERS
     ${GRAPHICS_INCLUDE_DIR}/opengl/OpenGLViewer.hpp
     ${GRAPHICS_INCLUDE_DIR}/opengl/OpenGLGraphicsScene.hpp
     ${GRAPHICS_INCLUDE_DIR}/opengl/OpenGLMeshGraphicsObject.hpp
+    ${GRAPHICS_INCLUDE_DIR}/opengl/OpenGLStaticModel.hpp
 )
 
 set(GRAPHICS_SOURCES
@@ -56,6 +57,7 @@ set(GRAPHICS_SOURCES
     ${GRAPHICS_SRC_DIR}/opengl/OpenGLGraphicsScene.cpp
     ${GRAPHICS_SRC_DIR}/opengl/OpenGLMeshGraphicsObject.cpp
     ${GRAPHICS_SRC_DIR}/opengl/stb_image_impl.cpp
+    ${GRAPHICS_SRC_DIR}/opengl/OpenGLStaticModel.cpp
 )
 
 target_sources(Graphics
