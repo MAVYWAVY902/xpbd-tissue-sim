@@ -1263,10 +1263,24 @@ void Simulation::setup()
         if (auto* opengl_scene = dynamic_cast<Graphics::OpenGLGraphicsScene*>(_graphics_scene.get()))
         {
             // Load surgical table model — position it below the simulation objects
-            Eigen::Matrix4f table_transform = Eigen::Matrix4f::Identity();
+            // Build transform: scale, then rotate Y-up to Z-up, then translate
             float scale = 0.007f;
-            table_transform.block<3,3>(0,0) *= scale;
-            table_transform(2, 3) = -0.05f;  // place below bone-tumor (Z down)
+
+            // Rotation: -90 degrees around X axis (Y-up -> Z-up)
+            Eigen::Matrix4f rotation = Eigen::Matrix4f::Identity();
+            float angle = M_PI / 2.0f;
+            rotation(1,1) = std::cos(angle);  rotation(1,2) = -std::sin(angle);
+            rotation(2,1) = std::sin(angle);  rotation(2,2) =  std::cos(angle);
+
+            Eigen::Matrix4f scale_mat = Eigen::Matrix4f::Identity();
+            scale_mat.block<3,3>(0,0) *= scale;
+
+            Eigen::Matrix4f translation = Eigen::Matrix4f::Identity();
+            translation(0, 3) =  0.0f;   // X offset
+            translation(1, 3) =  0.2f;   // Y offset
+            translation(2, 3) = -0.7f;  // Z offset: below bone-tumor
+
+            Eigen::Matrix4f table_transform = translation * rotation * scale_mat;
 
             // Load both parts: 01a = metal frame, 01b = cloth/drape
             opengl_scene->addStaticModel("../resource/surgical_table/source/dkg_StandingSurgical_01a.fbx", table_transform);
