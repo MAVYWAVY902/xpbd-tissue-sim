@@ -6,6 +6,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include <algorithm>
 #include <iostream>
 #include <queue>
 #include <dirent.h>
@@ -214,52 +215,82 @@ void OpenGLStaticModel::_loadFromFile(const std::string& filepath)
                         }
                         else
                         {
-                            // External texture file — try loading from model directory
-                            std::string external_path = model_dir + tex_path.C_Str();
-                            int w, h, ch;
-                            unsigned char* pixels = stbi_load(external_path.c_str(), &w, &h, &ch, 0);
-                            if (pixels)
+                            // External texture file — try multiple search strategies
+                            std::string tex_str = tex_path.C_Str();
+
+                            // Extract just the filename (handle both / and \ separators for Windows paths)
+                            std::string tex_filename = tex_str;
+                            auto last_sep = tex_str.find_last_of("/\\");
+                            if (last_sep != std::string::npos)
+                                tex_filename = tex_str.substr(last_sep + 1);
+
+                            // Try paths in order: original, model_dir + filename, model_dir/textures/ + filename
+                            std::vector<std::string> try_paths = {
+                                model_dir + tex_str,
+                                model_dir + tex_filename,
+                                model_dir + "textures/" + tex_filename,
+                            };
+
+                            bool loaded = false;
+                            for (const auto& try_path : try_paths)
                             {
-                                sm.tex_width = w;
-                                sm.tex_height = h;
-                                sm.tex_channels = ch;
-                                sm.texture_pixels.assign(pixels, pixels + w * h * ch);
-                                sm.has_texture = true;
-                                found_texture = true;
-                                stbi_image_free(pixels);
-                                std::cout << "[OpenGLStaticModel]     Loaded external texture: " << external_path << std::endl;
+                                if (loaded) break;
+                                int w, h, ch;
+                                unsigned char* pixels = stbi_load(try_path.c_str(), &w, &h, &ch, 0);
+                                if (pixels)
+                                {
+                                    sm.tex_width = w;
+                                    sm.tex_height = h;
+                                    sm.tex_channels = ch;
+                                    sm.texture_pixels.assign(pixels, pixels + w * h * ch);
+                                    sm.has_texture = true;
+                                    found_texture = true;
+                                    loaded = true;
+                                    stbi_image_free(pixels);
+                                    std::cout << "[OpenGLStaticModel]     Loaded external texture: " << try_path << std::endl;
+                                }
                             }
-                            else
+                            if (!loaded)
                             {
-                                std::cerr << "[OpenGLStaticModel]     Failed to load external texture: " << external_path << std::endl;
+                                std::cerr << "[OpenGLStaticModel]     Failed to load external texture: " << tex_str
+                                          << " (tried " << try_paths.size() << " paths)" << std::endl;
                             }
                         }
                     }
                 }
 
-                // If no texture found via material, try to find base_color TGA by material name convention
-                // Convention: <model_prefix>.<material_name>.base_color.srgb.1001.tga
-                // If no texture found via Assimp, scan the model directory for a
-                // file matching the material name + "base_color" in its filename
+                // If no texture found via Assimp, scan model directory and textures/ subdirectory
+                // for a file matching the material name + "base" keyword in its filename
                 if (!found_texture)
                 {
                     aiString mat_name_str;
                     mat->Get(AI_MATKEY_NAME, mat_name_str);
                     std::string mat_name_s = mat_name_str.C_Str();
 
-                    DIR* dir = opendir(model_dir.c_str());
-                    if (dir)
+                    // Directories to search: model_dir itself, and model_dir/textures/
+                    std::vector<std::string> search_dirs = { model_dir, model_dir + "textures/" };
+
+                    for (const auto& search_dir : search_dirs)
                     {
+                        if (found_texture) break;
+                        DIR* dir = opendir(search_dir.c_str());
+                        if (!dir) continue;
+
                         struct dirent* entry;
                         while ((entry = readdir(dir)) != nullptr)
                         {
                             if (found_texture) break;
                             std::string fname = entry->d_name;
-                            // Match files containing the material name AND "base_color"
+                            // Match files containing the material name AND "_base" (covers "base_color", "_base.", etc.)
+                            // Also skip normal/roughness/emissive maps
                             if (fname.find(mat_name_s) != std::string::npos &&
-                                fname.find("base_color") != std::string::npos)
+                                fname.find("_base") != std::string::npos &&
+                                fname.find("Normal") == std::string::npos &&
+                                fname.find("Roughness") == std::string::npos &&
+                                fname.find("emmisive") == std::string::npos &&
+                                fname.find("emissive") == std::string::npos)
                             {
-                                std::string full_path = model_dir + fname;
+                                std::string full_path = search_dir + fname;
                                 int w, h, ch;
                                 unsigned char* pixels = stbi_load(full_path.c_str(), &w, &h, &ch, 0);
                                 if (pixels)
@@ -277,43 +308,65 @@ void OpenGLStaticModel::_loadFromFile(const std::string& filepath)
                         }
                         closedir(dir);
                     }
-                }
 
-                // Also scan for normal map texture (for bump/roughness detail)
-                {
-                    aiString mat_name_str;
-                    mat->Get(AI_MATKEY_NAME, mat_name_str);
-                    std::string mat_name_s = mat_name_str.C_Str();
-
-                    DIR* dir = opendir(model_dir.c_str());
-                    if (dir)
+                    // If still no texture, try matching just "_base" without material name
+                    // (some models use generic texture names like "t_floor_tiles_base.jpg")
+                    if (!found_texture)
                     {
-                        struct dirent* entry;
-                        while ((entry = readdir(dir)) != nullptr)
+                        for (const auto& search_dir : search_dirs)
                         {
-                            if (sm.has_normalmap) break;
-                            std::string fname = entry->d_name;
-                            if (fname.find(mat_name_s) != std::string::npos &&
-                                fname.find("normal") != std::string::npos)
+                            if (found_texture) break;
+                            DIR* dir = opendir(search_dir.c_str());
+                            if (!dir) continue;
+
+                            struct dirent* entry;
+                            while ((entry = readdir(dir)) != nullptr)
                             {
-                                std::string full_path = model_dir + fname;
-                                int w, h, ch;
-                                unsigned char* pixels = stbi_load(full_path.c_str(), &w, &h, &ch, 0);
-                                if (pixels)
+                                if (found_texture) break;
+                                std::string fname = entry->d_name;
+                                // Try a looser match: just look for material name anywhere in the filename
+                                // Convert material name to lowercase for case-insensitive matching
+                                std::string fname_lower = fname;
+                                std::string mat_lower = mat_name_s;
+                                std::transform(fname_lower.begin(), fname_lower.end(), fname_lower.begin(), ::tolower);
+                                std::transform(mat_lower.begin(), mat_lower.end(), mat_lower.begin(), ::tolower);
+
+                                if (mat_lower.length() > 1 &&
+                                    fname_lower.find(mat_lower) != std::string::npos &&
+                                    fname_lower.find("normal") == std::string::npos &&
+                                    fname_lower.find("roughness") == std::string::npos &&
+                                    fname_lower.find("emissive") == std::string::npos &&
+                                    fname_lower.find("emmisive") == std::string::npos &&
+                                    fname_lower.find("metallic") == std::string::npos &&
+                                    fname_lower.find("ambient_occlusion") == std::string::npos &&
+                                    fname_lower.find("rma") == std::string::npos &&
+                                    (fname_lower.find("base_color") != std::string::npos ||
+                                     fname_lower.find("_base") != std::string::npos ||
+                                     fname_lower.find("diffuse") != std::string::npos ||
+                                     fname_lower.find("albedo") != std::string::npos))
                                 {
-                                    sm.nmap_width = w;
-                                    sm.nmap_height = h;
-                                    sm.nmap_channels = ch;
-                                    sm.normalmap_pixels.assign(pixels, pixels + w * h * ch);
-                                    sm.has_normalmap = true;
-                                    stbi_image_free(pixels);
-                                    std::cout << "[OpenGLStaticModel]     Auto-matched normal map: " << full_path << std::endl;
+                                    std::string full_path = search_dir + fname;
+                                    int w, h, ch;
+                                    unsigned char* pixels = stbi_load(full_path.c_str(), &w, &h, &ch, 0);
+                                    if (pixels)
+                                    {
+                                        sm.tex_width = w;
+                                        sm.tex_height = h;
+                                        sm.tex_channels = ch;
+                                        sm.texture_pixels.assign(pixels, pixels + w * h * ch);
+                                        sm.has_texture = true;
+                                        found_texture = true;
+                                        stbi_image_free(pixels);
+                                        std::cout << "[OpenGLStaticModel]     Auto-matched texture (loose): " << full_path << std::endl;
+                                    }
                                 }
                             }
+                            closedir(dir);
                         }
-                        closedir(dir);
                     }
                 }
+
+                // Normal map loading disabled — user prefers smoother look
 
                 // Read roughness value from material
                 float roughness_val = 0.5f;

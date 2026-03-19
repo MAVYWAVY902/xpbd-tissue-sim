@@ -183,8 +183,11 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
-//The directory containing a CMake configuration file for Easy3D.
-Easy3D_DIR:PATH=Easy3D_DIR-NOTFOUND
+//No help, variable specified on the command line.
+Easy3D_DIR:UNINITIALIZED=/home/yunxin/local/easy3d/lib/CMake
+
+//The directory containing a CMake configuration file for Eigen3.
+Eigen3_DIR:PATH=/usr/share/eigen3/cmake
 
 //No help, variable specified on the command line.
 NO_GPU:UNINITIALIZED=ON
@@ -216,6 +219,9 @@ OpenMP_pthread_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libpthread.a
 //Path to the stdc++ library for OpenMP
 OpenMP_stdc++_LIBRARY:FILEPATH=/usr/lib/gcc/x86_64-linux-gnu/11/libstdc++.so
 
+//No help, variable specified on the command line.
+USE_OPENGL:UNINITIALIZED=ON
+
 //Value Computed by CMake
 XPBDSim_BINARY_DIR:STATIC=/home/yunxin/xpbd-tissue-sim/build_opengl
 
@@ -224,6 +230,12 @@ XPBDSim_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
 XPBDSim_SOURCE_DIR:STATIC=/home/yunxin/xpbd-tissue-sim
+
+//The directory containing a CMake configuration file for assimp.
+assimp_DIR:PATH=assimp_DIR-NOTFOUND
+
+//No help, variable specified on the command line.
+embree_DIR:UNINITIALIZED=/usr/local/lib/cmake/embree-4.4.0
 
 
 ########################
@@ -292,6 +304,10 @@ CMAKE_GENERATOR_INSTANCE:INTERNAL=
 CMAKE_GENERATOR_PLATFORM:INTERNAL=
 //Name of generator toolset.
 CMAKE_GENERATOR_TOOLSET:INTERNAL=
+//Test CMAKE_HAVE_LIBC_PTHREAD
+CMAKE_HAVE_LIBC_PTHREAD:INTERNAL=1
+//Have include pthread.h
+CMAKE_HAVE_PTHREAD_H:INTERNAL=1
 //Source directory with the top level CMakeLists.txt file for this
 // project
 CMAKE_HOME_DIRECTORY:INTERNAL=/home/yunxin/xpbd-tissue-sim
@@ -361,6 +377,8 @@ CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
 FIND_PACKAGE_MESSAGE_DETAILS_OpenMP:INTERNAL=[TRUE][c ][v4.5()]
 //Details about finding OpenMP_CXX
 FIND_PACKAGE_MESSAGE_DETAILS_OpenMP_CXX:INTERNAL=[-fopenmp][/usr/lib/gcc/x86_64-linux-gnu/11/libstdc++.so][/usr/lib/x86_64-linux-gnu/libm.so][/usr/lib/gcc/x86_64-linux-gnu/11/libgomp.so][/usr/lib/gcc/x86_64-linux-gnu/11/libgcc_s.so][/usr/lib/gcc/x86_64-linux-gnu/11/libgcc.a][/usr/lib/x86_64-linux-gnu/libpthread.a][/usr/lib/x86_64-linux-gnu/libc.so][/usr/lib/gcc/x86_64-linux-gnu/11/libgcc_s.so][/usr/lib/gcc/x86_64-linux-gnu/11/libgcc.a][v4.5()]
+//Details about finding Threads
+FIND_PACKAGE_MESSAGE_DETAILS_Threads:INTERNAL=[TRUE][v()]
 //Result of TRY_COMPILE
 OpenMP_COMPILE_RESULT_CXX_fopenmp:INTERNAL=TRUE
 //ADVANCED property for variable: OpenMP_CXX_FLAGS

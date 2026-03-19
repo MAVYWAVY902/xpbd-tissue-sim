@@ -1285,6 +1285,29 @@ void Simulation::setup()
             // Load both parts: 01a = metal frame, 01b = cloth/drape
             opengl_scene->addStaticModel("../resource/surgical_table/source/dkg_StandingSurgical_01a.fbx", table_transform);
             opengl_scene->addStaticModel("../resource/surgical_table/source/dkg_StandingSurgical_01b.fbx", table_transform);
+
+            // Load operating room model (if enabled in config)
+            if (_config->renderConfig().loadOperatingRoom())
+            {
+                float room_scale = 0.01f;  // adjust as needed
+
+                // Rotation: +90 degrees around X axis (Y-up -> Z-up)
+                Eigen::Matrix4f room_rotation = Eigen::Matrix4f::Identity();
+                float room_angle = M_PI / 2.0f;
+                room_rotation(1,1) = std::cos(room_angle);  room_rotation(1,2) = -std::sin(room_angle);
+                room_rotation(2,1) = std::sin(room_angle);  room_rotation(2,2) =  std::cos(room_angle);
+
+                Eigen::Matrix4f room_scale_mat = Eigen::Matrix4f::Identity();
+                room_scale_mat.block<3,3>(0,0) *= room_scale;
+
+                Eigen::Matrix4f room_translation = Eigen::Matrix4f::Identity();
+                room_translation(0, 3) = 0.0f;
+                room_translation(1, 3) = 0.0f;
+                room_translation(2, 3) = -1.0f;
+
+                Eigen::Matrix4f room_transform = room_translation * room_rotation * room_scale_mat;
+                opengl_scene->addStaticModel("../resource/surgical_table/operating_room_fbx/operating_room.fbx", room_transform);
+            }
         }
 
         _graphics_scene->viewer()->registerSimulation(this);

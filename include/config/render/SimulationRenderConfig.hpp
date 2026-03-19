@@ -36,6 +36,7 @@ class SimulationRenderConfig : public Config
         _extractParameter("camera-view-direction", node, _camera_view_direction);
         _extractParameter("camera-up-direction", node, _camera_up_direction);
         _extractParameter("camera-fov", node, _camera_fov);
+        _extractParameter("load-operating-room", node, _load_operating_room);
     }
 
     const std::optional<std::string>& hdrImageFilename() const { return _hdr_image_filename.value; }
@@ -53,6 +54,7 @@ class SimulationRenderConfig : public Config
     const std::optional<Vec3r>& cameraViewDirection() const { return _camera_view_direction.value; }
     const std::optional<Vec3r>& cameraUpDirection() const { return _camera_up_direction.value; }
     const std::optional<Real>& cameraFOV() const { return _camera_fov.value; }
+    bool loadOperatingRoom() const { return _load_operating_room.value; }
 
     protected:
     ConfigParameter<std::optional<std::string>> _hdr_image_filename;
@@ -70,6 +72,7 @@ class SimulationRenderConfig : public Config
     ConfigParameter<std::optional<Vec3r>> _camera_view_direction;
     ConfigParameter<std::optional<Vec3r>> _camera_up_direction;
     ConfigParameter<std::optional<Real>> _camera_fov;
+    ConfigParameter<bool> _load_operating_room = ConfigParameter<bool>(false);
 
 };
 

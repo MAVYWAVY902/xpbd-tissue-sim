@@ -22,6 +22,7 @@ background-u-offset: 0.0                   # horizontal rotation: 0.25 = 90°, 0
 
 ## ==================== CAMERA CONFIGURATION ====================
 camera-fov: 45                             # field of view [degrees] (smaller = background feels closer)
+load-operating-room: false                      # load operating room 3D model (decorative)
 camera-position: [0.5, 0.0, 0.25]           # closer to objects
 camera-view-direction: [-1.0, 0.0, -0.3]   # looking in -X direction
 
@@ -58,6 +59,7 @@ tool-radius: 0.065    # Pushing knife tool scale: 7mm (controls knife mesh size)
 # knife-scale-y: 0.05  # Make knife 2cm thin in Y direction  
 # knife-scale-z: 0.05  # Make knife 5cm tall in Z direction
 
+knife-position: [0.06, 0.0, 0.02]  # Closer to tumor (default was [0.15, 0.0, 0.05])
 # knife-rotation: [0, 0, 90]   # Rotate knife in degrees [rx, ry, rz]
                                # Examples:
                                # [0, 0, 90]  = 90° rotation around Z-axis
@@ -317,7 +319,7 @@ objects:
     ## visualization options
     color: [0.95, 0.92, 0.85]  # Bone white
     draw-points: false
-    draw-edges: true
+    draw-edges: false
     draw-faces: true
 
     ## initial configuration
