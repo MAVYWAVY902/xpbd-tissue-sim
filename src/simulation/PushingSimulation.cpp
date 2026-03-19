@@ -341,7 +341,6 @@ void PushingSimulation::_timeStep()
     Simulation::_timeStep();
 
     // POST-SOLVE: Hard-project any penetrating vertices after XPBD solver.
-    // No damping, no soft zone — just enforce the constraint.
     if (_pushing_enabled)
     {
         _postSolveProject();

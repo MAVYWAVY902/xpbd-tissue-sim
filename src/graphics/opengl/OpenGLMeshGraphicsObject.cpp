@@ -183,18 +183,12 @@ void OpenGLMeshGraphicsObject::_initGLBuffers()
 
 void OpenGLMeshGraphicsObject::update()
 {
-    // Just mark dirty — actual GL upload happens in draw() on the main/GL thread
-    _dirty = true;
-}
-
-void OpenGLMeshGraphicsObject::_updateVertexData()
-{
     if (!_mesh) return;
 
     const auto& vertices = _mesh->vertices();
     int nv = _mesh->numVertices();
-    _num_points = nv;
 
+    // Snapshot positions
     std::vector<float> positions(nv * 3);
     for (int i = 0; i < nv; i++) {
         positions[i*3+0] = static_cast<float>(vertices(0, i));
@@ -202,7 +196,7 @@ void OpenGLMeshGraphicsObject::_updateVertexData()
         positions[i*3+2] = static_cast<float>(vertices(2, i));
     }
 
-    // Recompute normals
+    // Compute normals from the snapshot
     std::vector<float> normals(nv * 3, 0.0f);
     if (_mesh->numFaces() > 0) {
         const auto& faces = _mesh->faces();
@@ -229,7 +223,33 @@ void OpenGLMeshGraphicsObject::_updateVertexData()
         }
     }
 
-    // Update faces VBO
+    // Store snapshot under lock
+    {
+        std::lock_guard<std::mutex> lock(_snapshot_mutex);
+        _snapshot_positions = std::move(positions);
+        _snapshot_normals = std::move(normals);
+        _snapshot_ready = true;
+    }
+
+    _dirty = true;
+}
+
+void OpenGLMeshGraphicsObject::_updateVertexData()
+{
+    // Read from thread-safe snapshot (populated by update() on sim thread)
+    std::vector<float> positions;
+    std::vector<float> normals;
+    {
+        std::lock_guard<std::mutex> lock(_snapshot_mutex);
+        if (!_snapshot_ready) return;
+        positions = _snapshot_positions;
+        normals = _snapshot_normals;
+        _snapshot_ready = false;
+    }
+
+    _num_points = static_cast<int>(positions.size() / 3);
+
+    // Upload to GPU
     if (_faces_vao) {
         glBindBuffer(GL_ARRAY_BUFFER, _faces_vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
@@ -237,13 +257,11 @@ void OpenGLMeshGraphicsObject::_updateVertexData()
         glBufferSubData(GL_ARRAY_BUFFER, 0, normals.size() * sizeof(float), normals.data());
     }
 
-    // Update edges VBO (shares same vertex data)
     if (_edges_vao) {
         glBindBuffer(GL_ARRAY_BUFFER, _edges_vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
     }
 
-    // Update points VBO
     if (_points_vao) {
         glBindBuffer(GL_ARRAY_BUFFER, _points_vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());

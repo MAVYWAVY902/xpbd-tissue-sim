@@ -1276,7 +1276,7 @@ void Simulation::setup()
             scale_mat.block<3,3>(0,0) *= scale;
 
             Eigen::Matrix4f translation = Eigen::Matrix4f::Identity();
-            translation(0, 3) =  0.0f;   // X offset
+            translation(0, 3) =  -0.075f;   // X offset
             translation(1, 3) =  0.2f;   // Y offset
             translation(2, 3) = -0.7f;  // Z offset: below bone-tumor
 

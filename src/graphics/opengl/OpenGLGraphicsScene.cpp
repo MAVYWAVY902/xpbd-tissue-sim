@@ -249,7 +249,16 @@ void OpenGLGraphicsScene::_drawScene() const
     // Set matrices
     Eigen::Matrix4f view = _opengl_viewer->viewMatrix();
     Eigen::Matrix4f proj = _opengl_viewer->projectionMatrix();
+
+    // Visual-only rotation: tilt simulation objects around X axis
+    // This does NOT affect physics — only how objects appear on screen
     Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
+    {
+        float tilt_angle = 0.6491f;  // -20 degrees in radians
+        float c = std::cos(tilt_angle), s = std::sin(tilt_angle);
+        model(1,1) = c;  model(1,2) = -s;
+        model(2,1) = s;  model(2,2) =  c;
+    }
 
     // Normal matrix = transpose(inverse(upper-left 3x3 of model))
     Eigen::Matrix3f normalMat = model.block<3,3>(0,0).inverse().transpose();

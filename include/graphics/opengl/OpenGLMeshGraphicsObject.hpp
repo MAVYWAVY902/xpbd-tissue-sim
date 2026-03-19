@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <array>
+#include <mutex>
 
 namespace Sim {
     class MeshObject;
@@ -93,6 +94,13 @@ class OpenGLMeshGraphicsObject : public MeshGraphicsObject
 
     // Deferred texture path (loaded when GL context is ready)
     std::string _pending_texture_path;
+
+    // Thread-safe vertex snapshot: update() copies mesh data here,
+    // draw() reads from here — avoids racing with the simulation thread.
+    mutable std::mutex _snapshot_mutex;
+    std::vector<float> _snapshot_positions;
+    std::vector<float> _snapshot_normals;
+    bool _snapshot_ready = false;
 };
 
 } // namespace Graphics

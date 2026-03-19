@@ -22,6 +22,8 @@ background-u-offset: 0.0                   # horizontal rotation: 0.25 = 90°, 0
 
 ## ==================== CAMERA CONFIGURATION ====================
 camera-fov: 45                             # field of view [degrees] (smaller = background feels closer)
+camera-position: [0.5, 0.0, 0.25]           # closer to objects
+camera-view-direction: [-1.0, 0.0, -0.3]   # looking in -X direction
 
 # g-accel: [-300, -300, -100] # downward acceleration due to gravity [m/s2]
 g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
@@ -230,7 +232,7 @@ objects:
     max-size: 0.05               # Scale to 50mm (0.05m)
     position: [-0.0, 0.0, 0.0]    # LEFT: -30mm to avoid overlap!
     velocity: [0.0, 0, 0.0]      # Stationary
-    rotation: [0, 0, 0]
+    rotation: [-0.3491, 0, 0]
 
     ## ==================== BOUNDARY FIXING (Tumor) ====================
     ## Optional: Fix tumor boundaries to simulate nerve root/vascular attachment
@@ -322,7 +324,7 @@ objects:
     use-original-coords: true   # Center and scale mesh
     max-size: 0.05               # Scale to 50mm max dimension (same as deformables)
     position: [0.0, 0.0, 0.0]    # UP: +30mm to avoid overlap!
-    rotation: [0, 0, 0]          # No rotation
+    rotation: [-0.3491, 0, 0]         # Tilt 20° around X axis
     velocity: [0, 0, 0]
     angular-velocity: [0, 0, 0]
 
