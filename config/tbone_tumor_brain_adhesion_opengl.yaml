@@ -11,14 +11,14 @@ name: "TBone-Tumor-Brain Adhesion Test"
 description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "OpenGL"
-background-image: "../resource/rendering/hdr/surgery_1k.png"
+background-image: "../resource/rendering/hdr/surgery_1k_mod.jpg"
 
 ## ==================== BACKGROUND POSITIONING ====================
 ## Direct shader-level control over equirectangular background placement
 background-v-offset: -0.0                 # vertical shift: negative = background moves down (objects closer to table)
                                            #                 positive = background moves up (objects closer to ceiling)
                                            #                 range: roughly -0.5 to 0.5
-background-u-offset: 0.0                   # horizontal rotation: 0.25 = 90°, 0.5 = 180°
+background-u-offset: 0.6                   # horizontal rotation: 0.25 = 90°, 0.5 = 180°
 
 ## ==================== CAMERA CONFIGURATION ====================
 camera-fov: 45                             # field of view [degrees] (smaller = background feels closer)
