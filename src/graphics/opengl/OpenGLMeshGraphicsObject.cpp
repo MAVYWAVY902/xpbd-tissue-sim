@@ -39,6 +39,9 @@ OpenGLMeshGraphicsObject::OpenGLMeshGraphicsObject(
               static_cast<float>(final_color[2]),
               static_cast<float>(render_config.opacity())};
 
+    _metallic = static_cast<float>(render_config.metallic());
+    _roughness = static_cast<float>(render_config.roughness());
+
     // GL buffers will be created lazily on first draw()
 }
 
@@ -313,6 +316,8 @@ void OpenGLMeshGraphicsObject::draw(unsigned int shader_program) const
         glUniform4f(glGetUniformLocation(shader_program, "uColor"),
                     _color[0], _color[1], _color[2], _color[3]);
         glUniform1i(glGetUniformLocation(shader_program, "uUseLighting"), 1);
+        glUniform1f(glGetUniformLocation(shader_program, "uMetallic"), _metallic);
+        glUniform1f(glGetUniformLocation(shader_program, "uRoughness"), _roughness);
 
         if (_has_texture && _texture_id) {
             glUniform1i(glGetUniformLocation(shader_program, "uUseTexture"), 1);

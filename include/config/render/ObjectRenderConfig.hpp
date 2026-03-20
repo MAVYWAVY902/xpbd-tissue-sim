@@ -133,6 +133,10 @@ class ObjectRenderConfig : public Config
     // Texture file setter
     void setTextureFile(const std::string& filename) { _texture_file.value = filename; }
 
+    // Material property setters
+    void setMetallic(Real val) { _metallic.value = val; }
+    void setRoughness(Real val) { _roughness.value = val; }
+
     protected:
     ConfigParameter<RenderType> _render_type = ConfigParameter<RenderType>(RenderType::PHONG); 
 

@@ -51,6 +51,8 @@ uniform vec3 uViewPos;
 uniform int uUseLighting;
 uniform int uUseTexture;
 uniform sampler2D uTexture;
+uniform float uMetallic;    // 0 = dielectric, 1 = metal
+uniform float uRoughness;   // 0 = mirror, 1 = rough
 
 out vec4 fragColor;
 
@@ -65,20 +67,67 @@ void main() {
         vec3 L = normalize(uLightDir);
         vec3 V = normalize(uViewPos - vWorldPos);
         vec3 H = normalize(L + V);
+        vec3 R = reflect(-V, N);
 
-        // Ambient
-        float ambient = 0.3;
-        // Diffuse
-        float diff = max(dot(N, L), 0.0);
-        // Specular (Blinn-Phong)
-        float spec = pow(max(dot(N, H), 0.0), 32.0);
+        float NdotL = max(dot(N, L), 0.0);
+        float NdotH = max(dot(N, H), 0.0);
+        float NdotV = max(dot(N, V), 0.001);
 
-        // Two-sided lighting: also light the back face
-        float diffBack = max(dot(-N, L), 0.0);
-        diff = max(diff, diffBack * 0.6);
+        // Two-sided lighting
+        float NdotLBack = max(dot(-N, L), 0.0);
+        NdotL = max(NdotL, NdotLBack * 0.6);
 
-        vec3 lighting = baseColor.rgb * (ambient + diff * 0.7) + vec3(1.0) * spec * 0.3;
-        fragColor = vec4(lighting, baseColor.a);
+        if (uMetallic > 0.01) {
+            // === Metallic material (procedural) ===
+            vec3 metalColor = baseColor.rgb;
+
+            // Fresnel: metals reflect their own color, stronger at grazing angles
+            float fresnel = pow(1.0 - NdotV, 5.0);
+            vec3 F0 = metalColor * 0.9;  // base reflectivity = metal color
+            vec3 F = F0 + (1.0 - F0) * fresnel;
+
+            // Specular: tighter highlight for smoother surfaces
+            float shininess = mix(256.0, 16.0, uRoughness);
+            float spec = pow(NdotH, shininess);
+
+            // Broader secondary specular for softer fill
+            float spec2 = pow(NdotH, shininess * 0.25);
+
+            // Ambient: metallic reflection tint
+            vec3 ambient = metalColor * 0.15;
+
+            // Diffuse: metals have very little diffuse
+            vec3 diffuse = metalColor * NdotL * 0.15 * uRoughness;
+
+            // Primary specular reflection
+            vec3 specular = F * spec * 1.2;
+
+            // Secondary soft specular
+            vec3 specular2 = F * spec2 * 0.15;
+
+            // Fake environment reflection (gradient based on reflection direction)
+            vec3 envColor = mix(
+                vec3(0.15, 0.18, 0.22),  // dark blueish (down/shadow)
+                vec3(0.6, 0.65, 0.7),    // light gray-blue (up/sky)
+                R.z * 0.5 + 0.5
+            );
+            vec3 envReflection = envColor * F * mix(0.6, 0.1, uRoughness);
+
+            vec3 result = ambient + diffuse + specular + specular2 + envReflection;
+
+            // Tone mapping to prevent blowout
+            result = result / (result + vec3(1.0));
+
+            fragColor = vec4(result, baseColor.a);
+        } else {
+            // === Non-metallic (original Blinn-Phong) ===
+            float ambient = 0.3;
+            float diff = NdotL;
+            float spec = pow(NdotH, 32.0);
+
+            vec3 lighting = baseColor.rgb * (ambient + diff * 0.7) + vec3(1.0) * spec * 0.3;
+            fragColor = vec4(lighting, baseColor.a);
+        }
     } else {
         fragColor = baseColor;
     }

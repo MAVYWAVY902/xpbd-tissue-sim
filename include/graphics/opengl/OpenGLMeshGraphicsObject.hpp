@@ -69,6 +69,10 @@ class OpenGLMeshGraphicsObject : public MeshGraphicsObject
     // Uniform color (RGBA)
     std::array<float, 4> _color = {0.8f, 0.8f, 0.8f, 1.0f};
 
+    // Material properties
+    float _metallic = 0.0f;
+    float _roughness = 0.5f;
+
     // OpenGL handles - faces
     unsigned int _faces_vao = 0;
     unsigned int _faces_vbo = 0;      // vertex positions

@@ -137,13 +137,14 @@ void PushingSimulation::setup()
         false,                                             // draw_points
         true,                                              // draw_edges
         true,                                              // draw_faces
-        Vec4r(0.8, 0.8, 0.8, 1.0),                        // color (silver/gray for knife)
+        Vec4r(0.75, 0.78, 0.8, 1.0),                       // color (steel blue-gray for knife)
         std::nullopt,                                      // sdf_filename
         []() {
             Config::ObjectRenderConfig render_cfg;
-            render_cfg.setTextureFile("../resource/textures/knife_texture.jpg");
+            render_cfg.setMetallic(1.0);
+            render_cfg.setRoughness(0.25);
             return render_cfg;
-        }()                                                // render_config with texture
+        }()                                                // render_config with metallic material
     );
     _cursor = _addObjectFromConfig(&cursor_config);
     assert(_cursor);
