@@ -5,6 +5,7 @@
 #include "solver/constraint/RigidBodyConstraint.hpp"
 #include "simobject/RigidObject.hpp"
 #include "geometry/SDF.hpp"
+#include <algorithm>
 
 namespace Solver
 {
@@ -153,6 +154,34 @@ public:
      */
     void markForBreaking() { _should_break = true; }
 
+    /** Weaken the break threshold based on tool proximity.
+     * Instead of instantly breaking, the tool makes the adhesion easier to break
+     * by reducing _break_ratio and _stretch_abs_min. The constraint still requires
+     * actual physical strain (mechanism 1) to fully break.
+     * @param factor - weakening factor in [0, 1]. 0 = no weakening, 1 = maximum weakening.
+     *                 The effective break threshold is scaled by (1 - factor * max_reduction).
+     */
+    void weakenBreakThreshold(Real factor)
+    {
+        // Clamp factor to [0, 1]
+        factor = std::max(Real(0), std::min(Real(1), factor));
+        // Reduce break_ratio toward 1.0 (= zero stretch tolerance from ratio)
+        // e.g., ratio=3.0, factor=1.0 → ratio becomes 1.0 + (3.0-1.0)*0.1 = 1.2
+        //        ratio=3.0, factor=0.5 → ratio becomes 1.0 + (3.0-1.0)*0.55 = 2.1
+        Real min_ratio = 1.0 + (_original_break_ratio - 1.0) * 0.1;  // keep 10% of original
+        _break_ratio = _original_break_ratio - factor * (_original_break_ratio - min_ratio);
+        // Reduce stretch_abs_min proportionally
+        Real min_abs = _original_stretch_abs_min * 0.1;  // keep 10% of original
+        _stretch_abs_min = _original_stretch_abs_min - factor * (_original_stretch_abs_min - min_abs);
+    }
+
+    /** Reset break threshold to original values (called when tool moves away). */
+    void resetBreakThreshold()
+    {
+        _break_ratio = _original_break_ratio;
+        _stretch_abs_min = _original_stretch_abs_min;
+    }
+
 protected:
     /** Compute signed distance from rigid body point to triangle
      * @param rigid_point_global - rigid body point in global coordinates
@@ -206,7 +235,7 @@ private:
     const Real _d_neutral_start;   ///< Transition zone start
     const Real _d_neutral_end;     ///< Transition zone end
     const Real _d_bond;            ///< Saturation distance (far adhesion limit)
-    const Real _stretch_abs_min;   ///< Absolute minimum stretch tolerance (tissue intrinsic toughness)
+    Real _stretch_abs_min;   ///< Absolute minimum stretch tolerance (tissue intrinsic toughness, modifiable by tool)
     
     // Cached values for frozen contact frame approach (mutable for const methods)
     mutable Vec3r _n_cached;         ///< unit normal (closest_point to rigid_point, geometric gradient direction)
@@ -220,6 +249,8 @@ private:
     // Breaking logic (mutable because computed on first evaluate())
     mutable Real _initial_distance{0.0};     ///< Distance when first evaluated (computed lazily)
     Real _break_ratio{3.0};                  ///< Break when d > _initial_distance * _break_ratio
+    Real _original_break_ratio{3.0};         ///< Original break ratio (for reset after weakening)
+    Real _original_stretch_abs_min{0.005};   ///< Original stretch abs min (for reset after weakening)
     mutable bool _should_break{false};       ///< Flag to mark constraint for removal
 };
 

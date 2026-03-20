@@ -38,6 +38,8 @@ UnifiedDistanceConstraint::UnifiedDistanceConstraint(
     _d_bond(d_bond),
     _stretch_abs_min(stretch_abs_min),
     _break_ratio(break_ratio),
+    _original_break_ratio(break_ratio),
+    _original_stretch_abs_min(stretch_abs_min),
     _initial_distance(initial_distance),  // Use precomputed value
     _should_break(false)
 {

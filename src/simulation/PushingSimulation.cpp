@@ -128,9 +128,9 @@ void PushingSimulation::setup()
         Vec3r(0,0,0),                                      // initial velocity
         Vec3r(0,0,0),                                      // initial angular velocity
         1.0,                                               // density
-        false,                                             // collisions (DISABLED - knife is graphics only)
-        true,                                              // graphics_only (TRUE = no physics collision)
-        false,                                             // fixed (allow manual movement)
+        false,                                             // collisions (we manually add to collision scene below)
+        true,                                              // graphics_only (TRUE - not in physics update loop)
+        true,                                              // fixed (kinematic - collision system uses StaticCollisionConstraint)
         "../resource/tools/dissector_uv.obj",      // filename
         max_size_param,                                    // max_size (uniform scaling)
         size_param,                                        // size (directional scaling)
@@ -156,6 +156,14 @@ void PushingSimulation::setup()
     std::cout << "[PushingSimulation] Creating SDF for knife tool..." << std::endl;
     _cursor->createSDF();
     std::cout << "[PushingSimulation] Knife tool SDF created successfully!" << std::endl;
+
+    // Manually add knife to collision scene for XPBD hard collision constraints.
+    // The knife is graphics_only=true (not in physics update loop), but we still want
+    // collision detection. Since fixed=true, StaticCollisionConstraint is used —
+    // tissue vertices get pushed out of the knife SDF, knife position is unaffected.
+    std::cout << "[PushingSimulation] Adding knife to collision scene..." << std::endl;
+    _collision_scene->addObject(_cursor);
+    std::cout << "[PushingSimulation] Knife added to collision scene!" << std::endl;
 
     // Report actual knife dimensions
     Geometry::AABB knife_bbox = _cursor->boundingBox();
@@ -332,20 +340,16 @@ void PushingSimulation::_timeStep()
     // Apply pushing forces if pushing is enabled
     if (_pushing_enabled)
     {
-        // Check if knife is cutting adhesion constraints
+        // Check if knife is cutting/weakening adhesion constraints
         _checkKnifeAdhesionInterference();
 
-        // Apply pushing forces for tissue interaction (pre-solve)
-        _applyPushingForces();
+        // NOTE: _applyPushingForces() and _postSolveProject() removed.
+        // Knife-tissue collision is now handled by XPBD solver via
+        // StaticCollisionConstraint (hard inequality constraints).
+        // This prevents the solver and direct position modification from fighting.
     }
 
     Simulation::_timeStep();
-
-    // POST-SOLVE: Hard-project any penetrating vertices after XPBD solver.
-    if (_pushing_enabled)
-    {
-        _postSolveProject();
-    }
 }
 
 void PushingSimulation::_togglePushing()

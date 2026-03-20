@@ -249,7 +249,8 @@ objects:
 
     ## collisions
     collisions: true
-    inter-object-collisions: false  # DISABLED: Deform-deform BVH rebuild causes stuttering
+    self-collisions: true          # Enable self-collision detection (prevents self-penetration)
+    inter-object-collisions: true  # DISABLED: Deform-deform BVH rebuild causes stuttering
 
     ## XPBD-specific options
     num-solver-iters: 5            # INCREASED from 2 — more iterations = better convergence, less jiggling
@@ -259,7 +260,7 @@ objects:
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 7500000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 1500000      # REDUCED from 9M - was causing excessive damping
 
 
   # # ## ==================== DEFORMABLE BRAIN ====================

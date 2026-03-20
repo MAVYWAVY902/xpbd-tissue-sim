@@ -2,6 +2,7 @@
 #define __INTER_DEFORM_UNIFIED_DISTANCE_CONSTRAINT_HPP
 
 #include "solver/constraint/Constraint.hpp"
+#include <algorithm>
 
 namespace Solver
 {
@@ -107,8 +108,32 @@ public:
     Real getBreakThreshold() const;
 
     /** Reset state at start of new timestep */
-    void resetMaxDistanceThisStep() const { 
+    void resetMaxDistanceThisStep() const {
         _cache_valid = false;  // Force geometry recomputation
+    }
+
+    /** Mark constraint for breaking (external trigger). */
+    void markForBreaking() { _should_break = true; }
+
+    /** Weaken the break threshold based on tool proximity.
+     * Reduces _break_ratio and _stretch_abs_min so the constraint is easier to break
+     * via strain (mechanism 1), but still requires actual physical stretch.
+     * @param factor - weakening factor in [0, 1]. 0 = no weakening, 1 = maximum weakening.
+     */
+    void weakenBreakThreshold(Real factor)
+    {
+        factor = std::max(Real(0), std::min(Real(1), factor));
+        Real min_ratio = 1.0 + (_original_break_ratio - 1.0) * 0.1;
+        _break_ratio = _original_break_ratio - factor * (_original_break_ratio - min_ratio);
+        Real min_abs = _original_stretch_abs_min * 0.1;
+        _stretch_abs_min = _original_stretch_abs_min - factor * (_original_stretch_abs_min - min_abs);
+    }
+
+    /** Reset break threshold to original values. */
+    void resetBreakThreshold()
+    {
+        _break_ratio = _original_break_ratio;
+        _stretch_abs_min = _original_stretch_abs_min;
     }
 
 protected:
@@ -131,7 +156,7 @@ private:
     const Real _d_neutral_start;   ///< Transition zone start
     const Real _d_neutral_end;     ///< Transition zone end
     const Real _d_bond;            ///< Saturation distance
-    const Real _stretch_abs_min;   ///< Absolute minimum stretch tolerance
+    Real _stretch_abs_min;   ///< Absolute minimum stretch tolerance (modifiable by tool)
     
     // Cached values for frozen contact frame (mutable for const methods)
     mutable Vec3r _n_cached;         ///< unit normal (vertex to triangle)
@@ -145,6 +170,8 @@ private:
     // Breaking logic
     mutable Real _initial_distance{0.0};     ///< Distance when first evaluated
     Real _break_ratio{3.0};                  ///< Break when d > initial * break_ratio
+    Real _original_break_ratio{3.0};         ///< Original break ratio (for reset)
+    Real _original_stretch_abs_min{0.005};   ///< Original stretch abs min (for reset)
     
     // Default Compliance (Soft) - stored to allow switching to Hard compliance for collision
     Real _default_alpha{0.0};
