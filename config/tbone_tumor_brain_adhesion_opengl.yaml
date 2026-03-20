@@ -253,14 +253,14 @@ objects:
     inter-object-collisions: true  # DISABLED: Deform-deform BVH rebuild causes stuttering
 
     ## XPBD-specific options
-    num-solver-iters: 5            # INCREASED from 2 — more iterations = better convergence, less jiggling
+    num-solver-iters: 3            # INCREASED from 2 — more iterations = better convergence, less jiggling
     num-local-collision-iters: 5   # Was missing (default 0!) — dedicate extra iterations to collision constraints
     # solver-type: "Gauss-Seidel"
     solver-type: "Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 1500000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 2500000      # REDUCED from 9M - was causing excessive damping
 
 
   # # ## ==================== DEFORMABLE BRAIN ====================
