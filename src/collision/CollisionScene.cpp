@@ -687,16 +687,20 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
         faces_checked_detailed++;
         const Vec3r x = _frankWolfe(sdf, p1, p2, p3);
         const double distance = sdf->evaluate(x);
-        // Collision threshold: slightly increased from 1e-4 to 1e-3 for numerical tolerance
-        if (distance <= 1e-6)
-        {// collision occurred, find barycentric coordinates (u,v,w) of x on triangle face
+        // Detection threshold: create constraints BEFORE penetration to prevent oscillation.
+        // Surface margin: push vertices to margin distance outside surface, not exactly d=0.
+        const Real collision_detect_threshold = 2e-3; // 2mm - detect near-collisions early
+        const Real surface_margin = 1e-3;             // 1mm - keep vertices this far from surface
+        if (distance <= collision_detect_threshold)
+        {// collision or near-collision, find barycentric coordinates (u,v,w) of x on triangle face
             // from https://ceng2.ktu.edu.tr/~cakir/files/grafikler/Texture_Mapping.pdf
             const auto [u, v, w] = GeometryUtils::barycentricCoords(x, p1, p2, p3);
             const Vec3r grad = sdf->gradient(x);
-            const Vec3r surface_x = x - grad*distance;
-            
+            // Offset surface point outward by margin so constraint enforces d >= margin
+            const Vec3r surface_x = x - grad*distance + grad * surface_margin;
+
             collisions_this_check++;
-            
+
             if (rigid_obj->isFixed())
             {
                 xpbd_mesh_obj->addStaticCollisionConstraint(sdf, surface_x, grad, i, u, v, w);
@@ -705,7 +709,7 @@ void CollisionScene::_collideObjectPair(Sim::XPBDMeshObject_Base_<IsFirstOrder>*
             {
                 xpbd_mesh_obj->addRigidDeformableCollisionConstraint(sdf, rigid_obj, surface_x, grad, i, u, v, w);
             }
-            
+
         }
     }
     
