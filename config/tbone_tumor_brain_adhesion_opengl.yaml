@@ -47,7 +47,7 @@ state-recording-output-folder: "../output/adhesion_recording"
 state-recording-snapshot-interval: 0.05  # Record every 0.1 seconds (10 fps) when enabled
 
 ## ==================== GRASPING/PUSHING TOOL SETTINGS ====================
-grasp-radius: 0.065   # Grasping tool radius: 7mm (default 100mm)
+grasp-radius: 0.01    # Grasping tool radius: 10mm
 tool-radius: 0.065    # Pushing knife tool scale: 7mm (controls knife mesh size)
                       # The knife mesh will be scaled so its largest dimension = tool-radius
 # grasp-radius: 0.015   # Grasping tool radius: 7mm (default 100mm)

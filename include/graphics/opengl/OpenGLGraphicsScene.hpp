@@ -10,6 +10,8 @@
 
 #include <memory>
 
+namespace Sim { class RigidSphere; }
+
 namespace Graphics
 {
 
@@ -63,6 +65,18 @@ class OpenGLGraphicsScene : public GraphicsScene
 
     /** Static decorative models (surgical table, etc). */
     std::vector<std::unique_ptr<OpenGLStaticModel>> _static_models;
+
+    /** Tracked sphere objects (grasp cursor, etc). */
+    struct SphereEntry {
+        const Sim::RigidSphere* sphere;
+        std::array<float, 4> color;
+    };
+    std::vector<SphereEntry> _sphere_objects;
+
+    /** Sphere GL data (generated once). */
+    mutable unsigned int _sphere_vao = 0, _sphere_vbo = 0, _sphere_nbo = 0, _sphere_ebo = 0;
+    mutable int _sphere_num_indices = 0;
+    void _ensureSphereGL() const;
 };
 
 } // namespace Graphics

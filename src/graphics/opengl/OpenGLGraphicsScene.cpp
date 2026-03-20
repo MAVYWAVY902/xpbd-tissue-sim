@@ -5,8 +5,10 @@
 #include <GL/glew.h>
 
 #include "simobject/MeshObject.hpp"
+#include "simobject/RigidPrimitives.hpp"
 #include "graphics/opengl/stb_image.h"
 
+#include <cmath>
 #include <iostream>
 #include <cassert>
 
@@ -443,6 +445,45 @@ void OpenGLGraphicsScene::_drawScene() const
         }
     }
 
+    // Draw sphere objects (grasp cursor, etc.)
+    if (!_sphere_objects.empty()) {
+        _ensureSphereGL();
+        for (const auto& entry : _sphere_objects) {
+            const auto* sphere = entry.sphere;
+            auto pos = sphere->position();
+            float r = static_cast<float>(sphere->radius());
+
+            // Build model matrix: visual tilt * translate * scale
+            Eigen::Matrix4f sphere_model = model;  // inherit visual tilt
+            // Apply translation in tilt-space
+            Eigen::Matrix4f translate = Eigen::Matrix4f::Identity();
+            translate(0, 3) = static_cast<float>(pos[0]);
+            translate(1, 3) = static_cast<float>(pos[1]);
+            translate(2, 3) = static_cast<float>(pos[2]);
+            Eigen::Matrix4f scale = Eigen::Matrix4f::Identity();
+            scale(0, 0) = r; scale(1, 1) = r; scale(2, 2) = r;
+            sphere_model = model * translate * scale;
+
+            Eigen::Matrix3f sphere_norm = sphere_model.block<3,3>(0,0).inverse().transpose();
+            glUniformMatrix4fv(glGetUniformLocation(_mesh_shader, "uModel"), 1, GL_FALSE, sphere_model.data());
+            glUniformMatrix3fv(glGetUniformLocation(_mesh_shader, "uNormalMatrix"), 1, GL_FALSE, sphere_norm.data());
+
+            glUniform4f(glGetUniformLocation(_mesh_shader, "uColor"),
+                        entry.color[0], entry.color[1], entry.color[2], entry.color[3]);
+            glUniform1i(glGetUniformLocation(_mesh_shader, "uUseLighting"), 1);
+            glUniform1i(glGetUniformLocation(_mesh_shader, "uUseTexture"), 0);
+            glUniform1f(glGetUniformLocation(_mesh_shader, "uMetallic"), 0.0f);
+            glUniform1f(glGetUniformLocation(_mesh_shader, "uRoughness"), 0.5f);
+
+            glBindVertexArray(_sphere_vao);
+            glDrawElements(GL_TRIANGLES, _sphere_num_indices, GL_UNSIGNED_INT, nullptr);
+            glBindVertexArray(0);
+        }
+        // Restore original model matrix
+        glUniformMatrix4fv(glGetUniformLocation(_mesh_shader, "uModel"), 1, GL_FALSE, model.data());
+        glUniformMatrix3fv(glGetUniformLocation(_mesh_shader, "uNormalMatrix"), 1, GL_FALSE, normalMat.data());
+    }
+
     // Draw static decorative models with normal-mapped shader
     glUseProgram(_static_model_shader);
     glUniformMatrix4fv(glGetUniformLocation(_static_model_shader, "uView"), 1, GL_FALSE, view.data());
@@ -469,7 +510,20 @@ int OpenGLGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectR
 
     std::unique_ptr<GraphicsObject> new_graphics_obj;
 
-    // Currently only support MeshObject for OpenGL backend
+    // Check if this is a RigidSphere (e.g. grasp cursor)
+    if (const Sim::RigidSphere* sphere = dynamic_cast<const Sim::RigidSphere*>(obj)) {
+        std::array<float, 4> color = {0.3f, 0.8f, 0.3f, 0.4f};  // semi-transparent green
+        if (obj_config.color().has_value()) {
+            auto c = obj_config.color().value();
+            color = {static_cast<float>(c[0]), static_cast<float>(c[1]), static_cast<float>(c[2]),
+                     static_cast<float>(obj_config.opacity())};
+        }
+        _sphere_objects.push_back({sphere, color});
+        std::cout << "[OpenGL] Registered sphere object: " << obj->name() << std::endl;
+        return static_cast<int>(_graphics_objects.size());  // dummy index
+    }
+
+    // MeshObject support
     if (const Sim::MeshObject* mo = dynamic_cast<const Sim::MeshObject*>(obj)) {
         auto gl_mgo = std::make_unique<OpenGLMeshGraphicsObject>(obj->name(), mo->mesh(), obj_config, mo);
 
@@ -530,6 +584,60 @@ void OpenGLGraphicsScene::setCameraPosition(const Vec3r& position) {
 void OpenGLGraphicsScene::addStaticModel(const std::string& filepath, const Eigen::Matrix4f& transform)
 {
     _static_models.push_back(std::make_unique<OpenGLStaticModel>(filepath, transform));
+}
+
+// ==================== Sphere Rendering ====================
+
+void OpenGLGraphicsScene::_ensureSphereGL() const
+{
+    if (_sphere_vao) return;
+
+    // Generate UV sphere (unit radius, centered at origin)
+    const int stacks = 16, slices = 24;
+    std::vector<float> positions, normals;
+    std::vector<unsigned int> indices;
+
+    for (int i = 0; i <= stacks; ++i) {
+        float phi = M_PI * float(i) / float(stacks);
+        float sp = std::sin(phi), cp = std::cos(phi);
+        for (int j = 0; j <= slices; ++j) {
+            float theta = 2.0f * M_PI * float(j) / float(slices);
+            float st = std::sin(theta), ct = std::cos(theta);
+            float x = sp * ct, y = sp * st, z = cp;
+            positions.push_back(x); positions.push_back(y); positions.push_back(z);
+            normals.push_back(x);   normals.push_back(y);   normals.push_back(z);
+        }
+    }
+    for (int i = 0; i < stacks; ++i) {
+        for (int j = 0; j < slices; ++j) {
+            int a = i * (slices + 1) + j;
+            int b = a + slices + 1;
+            indices.push_back(a); indices.push_back(b); indices.push_back(a + 1);
+            indices.push_back(a + 1); indices.push_back(b); indices.push_back(b + 1);
+        }
+    }
+    _sphere_num_indices = static_cast<int>(indices.size());
+
+    glGenVertexArrays(1, &_sphere_vao);
+    glBindVertexArray(_sphere_vao);
+
+    glGenBuffers(1, &_sphere_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, _sphere_vbo);
+    glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(float), positions.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    glGenBuffers(1, &_sphere_nbo);
+    glBindBuffer(GL_ARRAY_BUFFER, _sphere_nbo);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), normals.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+    glGenBuffers(1, &_sphere_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _sphere_ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
 }
 
 } // namespace Graphics
