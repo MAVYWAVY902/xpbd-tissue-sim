@@ -202,7 +202,8 @@ materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 8e4          # Young's modulus [Pa] - moderate stiffness
+    # E: 8e4          # Young's modulus [Pa] - moderate stiffness
+    E: 12e4          # Young's modulus [Pa] - moderate stiffness
     nu: 0.45        # Poisson's ratio [-]
     mu-s: 1.2       # coefficient of static friction [-]
     mu-k: 0.8       # coefficient of kinetic friction [-]
@@ -260,7 +261,7 @@ objects:
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 2500000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 5500000      # REDUCED from 9M - was causing excessive damping
 
 
   # # ## ==================== DEFORMABLE BRAIN ====================

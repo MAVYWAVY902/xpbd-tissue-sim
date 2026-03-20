@@ -157,14 +157,6 @@ void PushingSimulation::setup()
     _cursor->createSDF();
     std::cout << "[PushingSimulation] Knife tool SDF created successfully!" << std::endl;
 
-    // Manually add knife to collision scene for XPBD hard collision constraints.
-    // The knife is graphics_only=true (not in physics update loop), but we still want
-    // collision detection. Since fixed=true, StaticCollisionConstraint is used —
-    // tissue vertices get pushed out of the knife SDF, knife position is unaffected.
-    std::cout << "[PushingSimulation] Adding knife to collision scene..." << std::endl;
-    _collision_scene->addObject(_cursor);
-    std::cout << "[PushingSimulation] Knife added to collision scene!" << std::endl;
-
     // Report actual knife dimensions
     Geometry::AABB knife_bbox = _cursor->boundingBox();
     Vec3r bbox_size = knife_bbox.max - knife_bbox.min;
@@ -342,14 +334,17 @@ void PushingSimulation::_timeStep()
     {
         // Check if knife is cutting/weakening adhesion constraints
         _checkKnifeAdhesionInterference();
-
-        // NOTE: _applyPushingForces() and _postSolveProject() removed.
-        // Knife-tissue collision is now handled by XPBD solver via
-        // StaticCollisionConstraint (hard inequality constraints).
-        // This prevents the solver and direct position modification from fighting.
     }
 
     Simulation::_timeStep();
+
+    // Post-solve: project vertices out of knife SDF after solver finishes.
+    // Runs AFTER solver so it doesn't fight with elastic constraints.
+    // Uses a generous margin so vertices don't re-penetrate next frame.
+    if (_pushing_enabled)
+    {
+        _postSolveProject();
+    }
 }
 
 void PushingSimulation::_togglePushing()
@@ -559,9 +554,12 @@ void PushingSimulation::_postSolveProject()
     if (!knife_sdf) return;
 
     const Vec3r tool_center = _cursor->position();
-    const Real reject_radius = _tool_radius + 0.005;
+    // Generous reject radius: knife bounding diagonal + margin
+    const Real reject_radius = _tool_radius * 2.0 + 0.01;
     const Real reject_radius_sq = reject_radius * reject_radius;
-    const Real surface_margin = 0.0005; // 0.5mm margin outside surface
+    // Surface margin: vertices are pushed to this distance outside the SDF surface.
+    // Must be large enough that the solver doesn't pull them back inside next frame.
+    const Real surface_margin = 0.002; // 2mm
 
     auto projectVertices = [&](auto& mesh_obj) {
         for (int v = 0; v < mesh_obj->mesh()->numVertices(); ++v)
@@ -573,8 +571,9 @@ void PushingSimulation::_postSolveProject()
 
             Real signed_distance = knife_sdf->evaluate(vertex_pos);
 
-            // Only project vertices that are actually inside the tool
-            if (signed_distance < 0)
+            // Project vertices that are inside the tool OR within the margin zone.
+            // This prevents vertices from hovering just at the surface and re-penetrating.
+            if (signed_distance < surface_margin)
             {
                 Vec3r sdf_grad = knife_sdf->gradient(vertex_pos);
                 Vec3r push_direction;
@@ -591,8 +590,7 @@ void PushingSimulation::_postSolveProject()
                     push_direction = sdf_grad.normalized();
                 }
 
-                // Hard projection: move vertex exactly to surface + margin
-                // No damping, no stiffness scaling — this is a hard constraint
+                // Hard projection: move vertex to surface + margin
                 Real push_magnitude = -signed_distance + surface_margin;
                 Vec3r new_position = vertex_pos + push_direction * push_magnitude;
                 mesh_obj->mesh()->setVertex(v, new_position);
