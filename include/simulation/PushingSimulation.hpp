@@ -37,6 +37,7 @@ public:
 
 protected:
     void _timeStep() override;
+    void _onPostCollisionDetection() override;
 
     Sim::RigidMeshObject* _cursor = nullptr;   ///< visual representation of the knife tool
 
@@ -110,6 +111,12 @@ private:
 
     // Storage for per-vertex push targets to ensure stable pointer lifetimes
     std::vector<Vec3r> _push_targets;
+
+    // Blade geometry in body frame (computed once at setup)
+    Vec3r _blade_body_min;               ///< blade bounding box min in body frame
+    Vec3r _blade_body_max;               ///< blade bounding box max in body frame
+    Real  _blade_half_thickness{0.0};    ///< half the blade Y extent
+    Real  _blade_reject_radius_sq{0.0};  ///< squared bounding sphere radius for early rejection
 };
 
 } // namespace Sim

@@ -3151,6 +3151,9 @@ void Simulation::_timeStep()
         for (auto& obj : virtuoso_arms) obj->clearCollisionConstraints();
 
         _collision_scene->collideObjects();
+
+        // Hook for subclasses to add extra collision constraints after standard detection
+        _onPostCollisionDetection();
     }
 
     // —— PRE: read current length of the picked edge —— //

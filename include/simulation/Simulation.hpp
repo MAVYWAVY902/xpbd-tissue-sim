@@ -248,6 +248,10 @@ class Simulation
         /** Time step the simulation */
         virtual void _timeStep();
 
+        /** Hook called after collision detection, before XPBD solve.
+         *  Subclasses can override to add extra collision constraints. */
+        virtual void _onPostCollisionDetection() {}
+
         /** Update graphics in the sim */
         virtual void _updateGraphics();
 

@@ -1,6 +1,7 @@
 #include "simulation/PushingSimulation.hpp"
 #include "config/simobject/RigidMeshObjectConfig.hpp"
 #include "simobject/RigidMeshObject.hpp"
+#include "utils/GeometryUtils.hpp"
 #include <cstdio>
 
 namespace Sim
@@ -162,11 +163,37 @@ void PushingSimulation::setup()
     Vec3r bbox_size = knife_bbox.max - knife_bbox.min;
     Real bbox_radius = bbox_size.norm() / 2.0;
     std::cout << "[PushingSimulation] Knife scaled to max dimension: " << _tool_radius << " m" << std::endl;
-    std::cout << "[PushingSimulation] Knife bounding box size: (" 
+    std::cout << "[PushingSimulation] Knife bounding box size: ("
               << bbox_size.x() << ", " << bbox_size.y() << ", " << bbox_size.z() << ") m" << std::endl;
     std::cout << "[PushingSimulation] Knife bounding box diagonal: " << bbox_radius * 2.0 << " m" << std::endl;
-    
-    // Note: RigidMeshObject doesn't have setColor method, so color is set in config
+
+    // Compute blade geometry in body frame for plane-based collision
+    {
+        const Geometry::Mesh* knife_mesh = _cursor->mesh();
+        _blade_body_min = Vec3r(1e10, 1e10, 1e10);
+        _blade_body_max = Vec3r(-1e10, -1e10, -1e10);
+        for (int i = 0; i < knife_mesh->numVertices(); ++i)
+        {
+            Vec3r v_body = _cursor->globalToBody(knife_mesh->vertex(i));
+            _blade_body_min = _blade_body_min.cwiseMin(v_body);
+            _blade_body_max = _blade_body_max.cwiseMax(v_body);
+        }
+        _blade_half_thickness = (_blade_body_max.y() - _blade_body_min.y()) / 2.0;
+
+        // Reject radius = max distance from body origin to any bounding box corner + margin
+        // The blade mesh is NOT centered at origin (X offset ~0.047), so we must use
+        // the actual max distance, not half the extent.
+        Vec3r abs_min = _blade_body_min.cwiseAbs();
+        Vec3r abs_max = _blade_body_max.cwiseAbs();
+        Vec3r furthest = abs_min.cwiseMax(abs_max);
+        Real max_dist = furthest.norm() + 0.01; // 10mm margin
+        _blade_reject_radius_sq = max_dist * max_dist;
+
+        std::cout << "[PushingSimulation] Blade body-frame bounds: ("
+                  << _blade_body_min.transpose() << ") to (" << _blade_body_max.transpose() << ")\n"
+                  << "[PushingSimulation] Blade half-thickness: " << (_blade_half_thickness * 1000) << "mm\n"
+                  << "[PushingSimulation] Blade reject radius: " << (max_dist * 1000) << "mm\n";
+    }
 }
 
 void PushingSimulation::notifyMouseButtonPressed(SimulationInput::MouseButton button, SimulationInput::MouseAction action, int modifiers)
@@ -334,17 +361,12 @@ void PushingSimulation::_timeStep()
     {
         // Check if knife is cutting/weakening adhesion constraints
         _checkKnifeAdhesionInterference();
+
     }
 
     Simulation::_timeStep();
-
-    // Post-solve: project vertices out of knife SDF after solver finishes.
-    // Runs AFTER solver so it doesn't fight with elastic constraints.
-    // Uses a generous margin so vertices don't re-penetrate next frame.
-    if (_pushing_enabled)
-    {
-        _postSolveProject();
-    }
+    // Knife collision now handled by XPBD constraints in _onPostCollisionDetection()
+    // Post-solve projection disabled to avoid fighting the solver (causes jiggling)
 }
 
 void PushingSimulation::_togglePushing()
@@ -548,61 +570,200 @@ void PushingSimulation::_applyPushingForces()
     // printf("DEBUG: === PUSHING FRAME END ===\n\n");
 }
 
-void PushingSimulation::_postSolveProject()
+void PushingSimulation::_onPostCollisionDetection()
 {
-    const Geometry::MeshSDF* knife_sdf = _cursor->SDF();
-    if (!knife_sdf) return;
+    if (!_cursor || !_pushing_enabled) return;
 
-    const Vec3r tool_center = _cursor->position();
-    // Generous reject radius: knife bounding diagonal + margin
-    const Real reject_radius = _tool_radius * 2.0 + 0.01;
-    const Real reject_radius_sq = reject_radius * reject_radius;
-    // Surface margin: vertices are pushed to this distance outside the SDF surface.
-    // Must be large enough that the solver doesn't pull them back inside next frame.
-    const Real surface_margin = 0.002; // 2mm
+    const Vec3r knife_pos = _cursor->position();
+    // Detection margin: vertices within this distance of blade surface get constraints
+    const Real detect_margin = 0.003; // 3mm detection shell
 
-    auto projectVertices = [&](auto& mesh_obj) {
-        for (int v = 0; v < mesh_obj->mesh()->numVertices(); ++v)
+    auto& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
+    auto& fo_xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+
+    static int constraint_frame = 0;
+    constraint_frame++;
+    int constraints_added = 0;
+
+    // Blade normal in world frame (Y axis in body frame)
+    const Vec3r blade_normal_body(0.0, 1.0, 0.0);
+    const Vec3r blade_normal_world = GeometryUtils::rotateVectorByQuat(
+        blade_normal_body, _cursor->orientation());
+
+    // Track which vertices already have a constraint (avoid duplicates)
+    // Using a simple set per object isn't ideal for templates, so we use face-based dedup
+
+    auto addKnifeConstraints = [&](auto& mesh_objs) {
+        for (auto& obj : mesh_objs)
         {
-            if (mesh_obj->vertexFixed(v)) continue;
+            const Geometry::Mesh* mesh = obj->mesh();
+            const auto& faces = mesh->faces();
 
-            const Vec3r vertex_pos = mesh_obj->mesh()->vertex(v);
-            if ((vertex_pos - tool_center).squaredNorm() > reject_radius_sq) continue;
+            // Per-vertex: track which vertices are near the blade
+            std::vector<bool> vertex_near_blade(mesh->numVertices(), false);
+            std::vector<Real> vertex_body_y(mesh->numVertices(), 1e10);
+            std::vector<Vec3r> vertex_body_pos(mesh->numVertices());
 
-            Real signed_distance = knife_sdf->evaluate(vertex_pos);
-
-            // Project vertices that are inside the tool OR within the margin zone.
-            // This prevents vertices from hovering just at the surface and re-penetrating.
-            if (signed_distance < surface_margin)
+            // Pass 1: Check each vertex against blade region
+            for (int vi = 0; vi < mesh->numVertices(); ++vi)
             {
-                Vec3r sdf_grad = knife_sdf->gradient(vertex_pos);
-                Vec3r push_direction;
+                const Vec3r& vpos = mesh->vertex(vi);
+                if ((vpos - knife_pos).squaredNorm() > _blade_reject_radius_sq) continue;
 
-                if (sdf_grad.norm() < 1e-6)
+                Vec3r v_body = _cursor->globalToBody(vpos);
+                vertex_body_pos[vi] = v_body;
+
+                // Check XZ extent
+                if (v_body.x() < _blade_body_min.x() - detect_margin ||
+                    v_body.x() > _blade_body_max.x() + detect_margin ||
+                    v_body.z() < _blade_body_min.z() - detect_margin ||
+                    v_body.z() > _blade_body_max.z() + detect_margin)
+                    continue;
+
+                Real abs_y = std::abs(v_body.y());
+                if (abs_y < _blade_half_thickness + detect_margin)
                 {
-                    Vec3r displacement = vertex_pos - tool_center;
-                    push_direction = (displacement.norm() < 1e-6)
-                        ? Vec3r(0, 0, 1)
-                        : displacement.normalized();
+                    vertex_near_blade[vi] = true;
+                    vertex_body_y[vi] = v_body.y();
                 }
-                else
-                {
-                    push_direction = sdf_grad.normalized();
+            }
+
+            // Pass 2: For each face with ANY vertex near the blade, add constraint
+            for (int fi = 0; fi < faces.cols(); ++fi)
+            {
+                const Eigen::Vector3i& face = faces.col(fi);
+                int v0 = face[0], v1 = face[1], v2 = face[2];
+
+                // Check if any vertex of this face is near the blade
+                if (!vertex_near_blade[v0] && !vertex_near_blade[v1] && !vertex_near_blade[v2])
+                    continue;
+
+                // Find the vertex closest to the blade center (smallest |y|)
+                int closest_vi = v0;
+                Real closest_abs_y = std::abs(vertex_body_y[v0]);
+                if (vertex_near_blade[v1] && std::abs(vertex_body_y[v1]) < closest_abs_y) {
+                    closest_vi = v1;
+                    closest_abs_y = std::abs(vertex_body_y[v1]);
+                }
+                if (vertex_near_blade[v2] && std::abs(vertex_body_y[v2]) < closest_abs_y) {
+                    closest_vi = v2;
+                    closest_abs_y = std::abs(vertex_body_y[v2]);
                 }
 
-                // Hard projection: move vertex to surface + margin
-                Real push_magnitude = -signed_distance + surface_margin;
-                Vec3r new_position = vertex_pos + push_direction * push_magnitude;
-                mesh_obj->mesh()->setVertex(v, new_position);
+                // Use the closest vertex for constraint geometry
+                const Vec3r& cv_body = vertex_body_pos[closest_vi];
+                Real sign = (cv_body.y() >= 0) ? 1.0 : -1.0;
+
+                // Surface point: project the closest vertex onto blade surface
+                Vec3r surface_body = cv_body;
+                surface_body.y() = sign * _blade_half_thickness;
+                Vec3r surface_world = _cursor->bodyToGlobal(surface_body);
+
+                // Collision normal: outward from blade
+                Vec3r collision_normal = sign * blade_normal_world;
+
+                // Barycentric: concentrate weight on the closest vertex
+                Real u = 0.0, v = 0.0, w = 0.0;
+                if (closest_vi == v0)      u = 1.0;
+                else if (closest_vi == v1) v = 1.0;
+                else                       w = 1.0;
+
+                obj->addStaticCollisionConstraint(
+                    nullptr, surface_world, collision_normal, fi, u, v, w);
+                constraints_added++;
             }
         }
     };
 
-    auto& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
-    for (auto& obj : xpbd_mesh_objs) projectVertices(obj);
+    addKnifeConstraints(xpbd_mesh_objs);
+    addKnifeConstraints(fo_xpbd_mesh_objs);
 
+    if (constraint_frame % 500 == 0)
+    {
+        std::cout << "[KnifeXPBD] frame=" << constraint_frame
+                  << " constraints_added=" << constraints_added << std::endl;
+    }
+}
+
+void PushingSimulation::_postSolveProject()
+{
+    if (!_cursor) return;
+
+    const Vec3r knife_pos = _cursor->position();
+    // Margin to project vertices past the blade surface (prevents re-penetration next frame)
+    const Real contact_margin = 0.001; // 1mm — larger margin to fight XPBD pull-back
+
+    auto& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
     auto& fo_xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+
+    static int frame_counter = 0;
+    frame_counter++;
+    bool debug_print = (frame_counter % 500 == 0);
+
+    int vertices_in_sphere = 0;
+    int vertices_in_xz = 0;
+    int violations = 0;
+    Real worst_y = 1e10;
+
+    auto projectVertices = [&](auto& mesh_obj) {
+        Geometry::Mesh* mesh = mesh_obj->mesh();
+
+        for (int v = 0; v < mesh->numVertices(); ++v)
+        {
+            if (mesh_obj->vertexFixed(v)) continue;
+
+            const Vec3r vertex_pos = mesh->vertex(v);
+
+            // Early rejection: bounding sphere around knife
+            Real dist_sq = (vertex_pos - knife_pos).squaredNorm();
+            if (dist_sq > _blade_reject_radius_sq) continue;
+            vertices_in_sphere++;
+
+            // Transform vertex to knife body frame
+            Vec3r v_body = _cursor->globalToBody(vertex_pos);
+
+            // Check if within blade XZ extent (with margin for edges)
+            if (v_body.x() < _blade_body_min.x() - contact_margin ||
+                v_body.x() > _blade_body_max.x() + contact_margin ||
+                v_body.z() < _blade_body_min.z() - contact_margin ||
+                v_body.z() > _blade_body_max.z() + contact_margin)
+                continue;
+            vertices_in_xz++;
+
+            Real abs_y = std::abs(v_body.y());
+            worst_y = std::min(worst_y, abs_y);
+
+            // Check Y penetration: vertex is inside blade if |y| < half_thickness
+            if (abs_y < _blade_half_thickness + contact_margin)
+            {
+                // Project to nearest blade face + margin
+                Real sign = (v_body.y() >= 0) ? 1.0 : -1.0;
+                v_body.y() = sign * (_blade_half_thickness + contact_margin);
+
+                // Convert back to world frame
+                Vec3r corrected = _cursor->bodyToGlobal(v_body);
+                mesh->setVertex(v, corrected);
+                violations++;
+            }
+        }
+    };
+
+    for (auto& obj : xpbd_mesh_objs) projectVertices(obj);
     for (auto& obj : fo_xpbd_mesh_objs) projectVertices(obj);
+
+    if (debug_print)
+    {
+        std::cout << "[PlaneCollision] frame=" << frame_counter
+                  << " knife_pos=(" << knife_pos.x() << "," << knife_pos.y() << "," << knife_pos.z() << ")"
+                  << " reject_r=" << std::sqrt(_blade_reject_radius_sq) * 1000 << "mm"
+                  << " half_thick=" << _blade_half_thickness * 1000 << "mm"
+                  << "\n  in_sphere=" << vertices_in_sphere
+                  << " in_xz=" << vertices_in_xz
+                  << " violations=" << violations
+                  << " worst_y=" << (worst_y * 1000) << "mm"
+                  << "\n  blade_body=[(" << _blade_body_min.transpose() << ") to (" << _blade_body_max.transpose() << ")]"
+                  << std::endl;
+    }
 }
 
 void PushingSimulation::_checkKnifeAdhesionInterference()
