@@ -228,7 +228,7 @@ objects:
     ## texture mapping
     texture-file: "../resource/textures/AlbedoFat.png"
 
-    use-texture: true
+    use-texture: false
 
     ## initial configuration
     use-original-coords: true   # Center and scale mesh

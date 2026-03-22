@@ -168,10 +168,10 @@ public:
         // Reduce break_ratio toward 1.0 (= zero stretch tolerance from ratio)
         // e.g., ratio=3.0, factor=1.0 → ratio becomes 1.0 + (3.0-1.0)*0.1 = 1.2
         //        ratio=3.0, factor=0.5 → ratio becomes 1.0 + (3.0-1.0)*0.55 = 2.1
-        Real min_ratio = 1.0 + (_original_break_ratio - 1.0) * 0.1;  // keep 10% of original
+        Real min_ratio = 1.0 + (_original_break_ratio - 1.0) * 0.02;  // keep 2% of original
         _break_ratio = _original_break_ratio - factor * (_original_break_ratio - min_ratio);
         // Reduce stretch_abs_min proportionally
-        Real min_abs = _original_stretch_abs_min * 0.1;  // keep 10% of original
+        Real min_abs = _original_stretch_abs_min * 0.02;  // keep 2% of original
         _stretch_abs_min = _original_stretch_abs_min - factor * (_original_stretch_abs_min - min_abs);
     }
 

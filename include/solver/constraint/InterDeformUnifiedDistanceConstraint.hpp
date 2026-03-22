@@ -123,9 +123,9 @@ public:
     void weakenBreakThreshold(Real factor)
     {
         factor = std::max(Real(0), std::min(Real(1), factor));
-        Real min_ratio = 1.0 + (_original_break_ratio - 1.0) * 0.1;
+        Real min_ratio = 1.0 + (_original_break_ratio - 1.0) * 0.02;
         _break_ratio = _original_break_ratio - factor * (_original_break_ratio - min_ratio);
-        Real min_abs = _original_stretch_abs_min * 0.1;
+        Real min_abs = _original_stretch_abs_min * 0.02;
         _stretch_abs_min = _original_stretch_abs_min - factor * (_original_stretch_abs_min - min_abs);
     }
 

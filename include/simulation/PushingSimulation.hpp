@@ -4,6 +4,7 @@
 #include "config/simulation/PushingSimulationConfig.hpp"
 #include "simobject/RigidPrimitives.hpp"
 #include <vector>
+#include <unordered_map>
 
 namespace Sim
 {
@@ -73,8 +74,9 @@ private:
     /// @brief apply pushing forces to vertices within the tool radius
     void _applyPushingForces();
 
-    /// @brief hard-project penetrating vertices to tool surface (post-solve, no damping)
-    void _postSolveProject();
+    /// @brief CCD plane collision: detect blade-plane crossings and project vertices back
+    /// Runs every substep for robust thin-blade collision without SDF gradient issues.
+    void _ccdPlaneCollisionCheck();
 
     /// @brief check if knife interferes with adhesion constraints and mark them for breaking
     void _checkKnifeAdhesionInterference();
@@ -117,6 +119,11 @@ private:
     Vec3r _blade_body_max;               ///< blade bounding box max in body frame
     Real  _blade_half_thickness{0.0};    ///< half the blade Y extent
     Real  _blade_reject_radius_sq{0.0};  ///< squared bounding sphere radius for early rejection
+
+    // CCD plane collision: per-vertex persistent side assignment
+    // Key = global vertex index (unique per mesh object, offset by mesh start index)
+    // Value = +1.0 or -1.0 (which side of blade Y=0 plane the vertex belongs to)
+    std::unordered_map<int, Real> _vertex_blade_side;
 };
 
 } // namespace Sim
