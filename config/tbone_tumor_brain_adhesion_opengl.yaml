@@ -11,14 +11,14 @@ name: "TBone-Tumor-Brain Adhesion Test"
 description: "Testing rigid-deform and inter-deform adhesion with three objects"
 
 visualization: "OpenGL"
-background-image: "../resource/rendering/hdr/surgery_1k_mod.jpg"
+background-image: "../resource/rendering/hdr/surgery_4k.png"
 
 ## ==================== BACKGROUND POSITIONING ====================
 ## Direct shader-level control over equirectangular background placement
-background-v-offset: -0.0                 # vertical shift: negative = background moves down (objects closer to table)
+background-v-offset: -0.1                 # vertical shift: negative = background moves down (objects closer to table)
                                            #                 positive = background moves up (objects closer to ceiling)
                                            #                 range: roughly -0.5 to 0.5
-background-u-offset: 0.6                   # horizontal rotation: 0.25 = 90°, 0.5 = 180°
+background-u-offset: 0.25                   # horizontal rotation: 0.25 = 90°, 0.5 = 180°
 
 ## ==================== CAMERA CONFIGURATION ====================
 camera-fov: 45                             # field of view [degrees] (smaller = background feels closer)
@@ -33,7 +33,9 @@ sim-mode: "AFAP"     # Run as fast as possible for testing
 
 # time-step: 3e-4      # 8e-5 for brain-tumor
 time-step: 2e-4      # 8e-5 for brain-tumor
-collision-rate: 500    # Hz: INCREASED from 100 — detect collisions 5x more often to reduce penetration
+# time-step: 7e-5      # 8e-5 for brain-tumor
+collision-rate: 500    # Hz: MATCH physics rate (dt=2e-4 → 5000 Hz). Knife XPBD constraints
+                       # refresh every step → no stale surface_point → no sticking/jiggling
 collision-algorithm: "embree"  # Use Embree BVH for fast collision detection
 fps: 60              # frames per second of the visualization
 end-time: 300        # test time [s]
@@ -162,31 +164,34 @@ rigid-deform-adhesion-stretch-abs-min: 0.005 # Absolute minimum stretch toleranc
                                              #             not absolute distance. 5mm abs_min prevents
                                              #             clustering that caused cascade breaking.
 
-## ==================== UNIFIED-DISTANCE CURVE PARAMETERS====================
-## These control the shape of the smooth adhesion curve d*(d)
-## CRITICAL: Set d-contact ≤ minimum actual distance to avoid initial repulsion!
-## 
-## DESIGN GOAL: Push saturation point further out so large-gap constraints have strong pull-back force
-##              Old d_bond=5mm caused early saturation → weak forces for initial=3-4mm constraints
+## ==================== UNIFIED-DISTANCE CURVE PARAMETERS ====================
+## NOTE: After the 2026-01-26 redesign, computeTargetDistance() is RELATIVE
+##       to each constraint's initial distance d0. Only 3 params are live:
+##
+##   beta  = d_rest / d_neutral_start   (pull-back slope for extension)
+##   delta = d_contact                  (C¹ transition half-width around d0)
+##   d_neutral_end, d_bond              ← UNUSED (kept for backward compat)
+##
+## Curve behavior (centered on each constraint's d0):
+##   d < d0 - delta : hard push-back (slope 0.01, almost rigid)
+##   d > d0 + delta : soft pull-back (slope beta, fraction of stretch → force)
+##   |d - d0| ≤ delta : C¹ smooth interpolation
+##
+## beta controls adhesion stiffness:
+##   0.1 = very stiff (90% of stretch → constraint force)
+##   0.3 = stiff      (70% → force)  ← good for bone-tumor interface
+##   0.5 = moderate   (50% → force)
+##   0.8 = soft       (20% → force)
 
-rigid-deform-adhesion-d-contact: 0.0003       # Equilibrium distance (0.3mm)
-                                             # Minimum contact point
-                                             
-rigid-deform-adhesion-d-rest: 0.0032           # Mid-range target (3mm) - INCREASED from 1.5mm
-                                             # REASON: Prevent over-compression of 2-3mm constraints
-                                             # With d_rest=3mm, constraints around 2-3mm won't be
-                                             # forced down to 0.3mm (more natural behavior)
-                                             
-rigid-deform-adhesion-d-neutral-start: 0.005  # Transition zone start (5mm) - ADJUSTED
-                                             # Begin exponential blend to far adhesion
-                                             
-rigid-deform-adhesion-d-neutral-end: 0.005    # Transition zone end (5mm)
-                                             # Exponential component starts here
-                                             
-rigid-deform-adhesion-d-bond: 0.005           # Saturation distance (15mm) ← INCREASED!
-                                             # NOW: Constraints with initial=5-10mm have strong forces
-                                             # Example: d=8mm → d*(8)≈10mm → C=-2mm (strong attraction!)
-                                             # Old: d=8mm → d*(8)≈5mm → C=+3mm (weak/wrong direction)
+rigid-deform-adhesion-d-contact: 0.0003       # delta = C¹ transition half-width (0.3mm)
+                                              # Smoothing zone is [d0-0.3mm, d0+0.3mm]
+
+rigid-deform-adhesion-d-rest: 0.002           # ┐ beta = d_rest / d_neutral_start
+                                              # │      = 0.002 / 0.006 = 0.33
+rigid-deform-adhesion-d-neutral-start: 0.006  # ┘ → 67% of stretch becomes constraint force
+
+rigid-deform-adhesion-d-neutral-end: 0.006    # UNUSED by current computeTargetDistance()
+rigid-deform-adhesion-d-bond: 0.015           # UNUSED by current computeTargetDistance()
 
 
 ## ==================== OLD ADHESION PARAMETERS (IGNORED for unified-distance) ====================
@@ -202,8 +207,8 @@ materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    # E: 8e4          # Young's modulus [Pa] - moderate stiffness
-    E: 12e4          # Young's modulus [Pa] - moderate stiffness
+    E: 2e5          # Young's modulus [Pa] - moderate stiffness
+    # E: 20e4          # Young's modulus [Pa] - moderate stiffness
     nu: 0.45        # Poisson's ratio [-]
     mu-s: 1.2       # coefficient of static friction [-]
     mu-k: 0.8       # coefficient of kinetic friction [-]
@@ -215,7 +220,7 @@ objects:
   -
     name: "Tumor"
     type: "FirstOrderXPBDMeshObject"
-    filename: "../resource/tumor_fixed/tumor_squeezed_uv03.obj"
+    filename: "../resource/tumor_fixed/tumor_squeezed_uv03_tiled.obj"
 
     materials: ["Soft Tissue"]
 
@@ -227,8 +232,8 @@ objects:
     
     ## texture mapping
     texture-file: "../resource/textures/AlbedoFat.png"
-
-    use-texture: false
+    normals-texture-filename: "../resource/textures/NormalFat.png"
+    use-texture: true
 
     ## initial configuration
     use-original-coords: true   # Center and scale mesh
@@ -254,14 +259,14 @@ objects:
     inter-object-collisions: true  # DISABLED: Deform-deform BVH rebuild causes stuttering
 
     ## XPBD-specific options
-    num-solver-iters: 3            # INCREASED from 2 — more iterations = better convergence, less jiggling
-    num-local-collision-iters: 5   # Was missing (default 0!) — dedicate extra iterations to collision constraints
+    num-solver-iters: 5           # INCREASED: more iterations for collision-elastic equilibrium
+    num-local-collision-iters: 5  # INCREASED: collision constraints need enough iterations to resist elastic pull-back
     # solver-type: "Gauss-Seidel"
     solver-type: "Gauss-Seidel"   # Options: "Gauss-Seidel" (serial, stable), "Colored-Gauss-Seidel" (parallel, 4x faster)
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
-    damping-multiplier: 5500000      # REDUCED from 9M - was causing excessive damping
+    damping-multiplier: 8500000      # REDUCED from 9M - was causing excessive damping
 
 
   # # ## ==================== DEFORMABLE BRAIN ====================

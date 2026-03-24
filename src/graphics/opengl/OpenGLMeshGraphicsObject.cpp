@@ -7,6 +7,7 @@
 #include "graphics/opengl/stb_image.h"
 
 #include <iostream>
+#include <cmath>
 
 namespace Graphics
 {
@@ -61,6 +62,8 @@ OpenGLMeshGraphicsObject::~OpenGLMeshGraphicsObject()
 
     if (_texcoord_vbo) glDeleteBuffers(1, &_texcoord_vbo);
     if (_texture_id) glDeleteTextures(1, &_texture_id);
+    if (_tangent_vbo) glDeleteBuffers(1, &_tangent_vbo);
+    if (_normal_map_id) glDeleteTextures(1, &_normal_map_id);
 }
 
 void OpenGLMeshGraphicsObject::_ensureGLInitialized()
@@ -69,6 +72,7 @@ void OpenGLMeshGraphicsObject::_ensureGLInitialized()
     _gl_initialized = true;
     _initGLBuffers();
     _loadTexture();
+    _loadNormalMap();
 }
 
 void OpenGLMeshGraphicsObject::_initGLBuffers()
@@ -328,6 +332,15 @@ void OpenGLMeshGraphicsObject::draw(unsigned int shader_program) const
             glUniform1i(glGetUniformLocation(shader_program, "uUseTexture"), 0);
         }
 
+        if (_has_normal_map && _normal_map_id) {
+            glUniform1i(glGetUniformLocation(shader_program, "uUseNormalMap"), 1);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, _normal_map_id);
+            glUniform1i(glGetUniformLocation(shader_program, "uNormalMap"), 1);
+        } else {
+            glUniform1i(glGetUniformLocation(shader_program, "uUseNormalMap"), 0);
+        }
+
         glBindVertexArray(_faces_vao);
         glDrawElements(GL_TRIANGLES, _num_face_indices, GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
@@ -496,6 +509,127 @@ void OpenGLMeshGraphicsObject::_loadTexture()
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
         glBindVertexArray(0);
     }
+}
+
+void OpenGLMeshGraphicsObject::setNormalMap(const std::string& normal_map_path)
+{
+    std::cout << "[OpenGL] Loading normal map: " << normal_map_path << std::endl;
+
+    if (!_mesh->hasUVCoords()) {
+        std::cerr << "[OpenGL] ERROR: Mesh has no UV coordinates for normal mapping!" << std::endl;
+        return;
+    }
+    _pending_normal_map_path = normal_map_path;
+}
+
+void OpenGLMeshGraphicsObject::_loadNormalMap()
+{
+    if (_pending_normal_map_path.empty()) return;
+
+    std::string path = _pending_normal_map_path;
+    _pending_normal_map_path.clear();
+
+    int width, height, channels;
+    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+    if (!data) {
+        std::cerr << "[OpenGL] ERROR: Failed to load normal map: " << path << std::endl;
+        return;
+    }
+
+    GLenum format = (channels == 4) ? GL_RGBA : (channels == 3) ? GL_RGB : GL_RED;
+
+    glGenTextures(1, &_normal_map_id);
+    glBindTexture(GL_TEXTURE_2D, _normal_map_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(data);
+
+    std::cout << "[OpenGL] Normal map loaded: " << path
+              << " (" << width << "x" << height << ")" << std::endl;
+
+    _has_normal_map = true;
+
+    // Compute and upload tangent vectors
+    _computeAndUploadTangents();
+}
+
+void OpenGLMeshGraphicsObject::_computeAndUploadTangents()
+{
+    if (!_faces_vao || !_mesh->hasUVCoords()) return;
+
+    int nv = _mesh->numVertices();
+    const auto& vertices = _mesh->vertices();
+    const auto& faces = _mesh->faces();
+    const auto& uv_coords = _mesh->uvCoords();
+
+    // Accumulate tangent per vertex using MikkTSpace-style approach
+    std::vector<Eigen::Vector3f> tangents(nv, Eigen::Vector3f::Zero());
+
+    for (int f = 0; f < _mesh->numFaces(); f++) {
+        int i0 = faces(0, f), i1 = faces(1, f), i2 = faces(2, f);
+
+        Eigen::Vector3f v0(static_cast<float>(vertices(0, i0)),
+                           static_cast<float>(vertices(1, i0)),
+                           static_cast<float>(vertices(2, i0)));
+        Eigen::Vector3f v1(static_cast<float>(vertices(0, i1)),
+                           static_cast<float>(vertices(1, i1)),
+                           static_cast<float>(vertices(2, i1)));
+        Eigen::Vector3f v2(static_cast<float>(vertices(0, i2)),
+                           static_cast<float>(vertices(1, i2)),
+                           static_cast<float>(vertices(2, i2)));
+
+        Eigen::Vector2f uv0(static_cast<float>(uv_coords(0, i0)),
+                            static_cast<float>(uv_coords(1, i0)));
+        Eigen::Vector2f uv1(static_cast<float>(uv_coords(0, i1)),
+                            static_cast<float>(uv_coords(1, i1)));
+        Eigen::Vector2f uv2(static_cast<float>(uv_coords(0, i2)),
+                            static_cast<float>(uv_coords(1, i2)));
+
+        Eigen::Vector3f edge1 = v1 - v0;
+        Eigen::Vector3f edge2 = v2 - v0;
+        Eigen::Vector2f duv1 = uv1 - uv0;
+        Eigen::Vector2f duv2 = uv2 - uv0;
+
+        float det = duv1.x() * duv2.y() - duv2.x() * duv1.y();
+        if (std::abs(det) < 1e-8f) continue;
+
+        float inv_det = 1.0f / det;
+        Eigen::Vector3f T = (edge1 * duv2.y() - edge2 * duv1.y()) * inv_det;
+
+        tangents[i0] += T;
+        tangents[i1] += T;
+        tangents[i2] += T;
+    }
+
+    // Normalize tangents
+    std::vector<float> tangent_data(nv * 3);
+    for (int i = 0; i < nv; i++) {
+        Eigen::Vector3f t = tangents[i];
+        float len = t.norm();
+        if (len > 1e-8f) t /= len;
+        else t = Eigen::Vector3f(1, 0, 0);  // fallback
+        tangent_data[i*3+0] = t.x();
+        tangent_data[i*3+1] = t.y();
+        tangent_data[i*3+2] = t.z();
+    }
+
+    // Upload to VAO at location 3
+    glBindVertexArray(_faces_vao);
+    glGenBuffers(1, &_tangent_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, _tangent_vbo);
+    glBufferData(GL_ARRAY_BUFFER, tangent_data.size() * sizeof(float), tangent_data.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(3);  // location 3 for tangents
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glBindVertexArray(0);
+
+    std::cout << "[OpenGL] Tangent vectors computed and uploaded (" << nv << " vertices)" << std::endl;
 }
 
 } // namespace Graphics

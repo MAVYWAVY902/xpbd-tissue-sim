@@ -134,6 +134,9 @@ public:
      */
     Vec3r vertexPreviousPosition(int index) const { return _previous_vertices.col(index); }
 
+    /** Set the previous position of a vertex (used by CCD projection to prevent velocity artifacts). */
+    void setVertexPreviousPosition(int index, const Vec3r& pos) { _previous_vertices.col(index) = pos; }
+
     /** Returns the "constraint inertia" associated with the vertex.
      * For normal 2nd-order XPBD, this is just the vertex mass.
      * For 1st-Order XPBD, the vertex damping is used as the "mass" in the XPBD updates.

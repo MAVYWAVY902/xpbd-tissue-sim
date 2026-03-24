@@ -22,6 +22,7 @@ static const char* s_mesh_vert_src = R"(
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
+layout(location = 3) in vec3 aTangent;
 
 uniform mat4 uModel;
 uniform mat4 uView;
@@ -31,12 +32,21 @@ uniform mat3 uNormalMatrix;
 out vec3 vWorldPos;
 out vec3 vNormal;
 out vec2 vTexCoord;
+out mat3 vTBN;
 
 void main() {
     vec4 worldPos = uModel * vec4(aPosition, 1.0);
     vWorldPos = worldPos.xyz;
     vNormal = normalize(uNormalMatrix * aNormal);
     vTexCoord = aTexCoord;
+
+    // Build TBN matrix for normal mapping
+    vec3 T = normalize(uNormalMatrix * aTangent);
+    vec3 N = vNormal;
+    T = normalize(T - dot(T, N) * N);  // re-orthogonalize
+    vec3 B = cross(N, T);
+    vTBN = mat3(T, B, N);
+
     gl_Position = uProjection * uView * worldPos;
 }
 )";
@@ -46,6 +56,7 @@ static const char* s_mesh_frag_src = R"(
 in vec3 vWorldPos;
 in vec3 vNormal;
 in vec2 vTexCoord;
+in mat3 vTBN;
 
 uniform vec4 uColor;
 uniform vec3 uLightDir;
@@ -53,6 +64,8 @@ uniform vec3 uViewPos;
 uniform int uUseLighting;
 uniform int uUseTexture;
 uniform sampler2D uTexture;
+uniform int uUseNormalMap;
+uniform sampler2D uNormalMap;
 uniform float uMetallic;    // 0 = dielectric, 1 = metal
 uniform float uRoughness;   // 0 = mirror, 1 = rough
 
@@ -66,6 +79,14 @@ void main() {
 
     if (uUseLighting == 1 && length(vNormal) > 0.001) {
         vec3 N = normalize(vNormal);
+
+        // Apply normal map if available
+        if (uUseNormalMap == 1) {
+            vec3 mapNormal = texture(uNormalMap, vTexCoord).rgb;
+            mapNormal = mapNormal * 2.0 - 1.0;  // [0,1] -> [-1,1]
+            N = normalize(vTBN * mapNormal);
+        }
+
         vec3 L = normalize(uLightDir);
         vec3 V = normalize(uViewPos - vWorldPos);
         vec3 H = normalize(L + V);
@@ -122,7 +143,7 @@ void main() {
 
             fragColor = vec4(result, baseColor.a);
         } else {
-            // === Non-metallic (original Blinn-Phong) ===
+            // === Non-metallic (Blinn-Phong) ===
             float ambient = 0.3;
             float diff = NdotL;
             float spec = pow(NdotH, 32.0);
@@ -529,6 +550,9 @@ int OpenGLGraphicsScene::addObject(const Sim::Object* obj, const Config::ObjectR
 
         if (obj_config.textureFile().has_value()) {
             gl_mgo->setTexture(obj_config.textureFile().value());
+        }
+        if (obj_config.normalsTextureFilename().has_value()) {
+            gl_mgo->setNormalMap(obj_config.normalsTextureFilename().value());
         }
 
         new_graphics_obj = std::move(gl_mgo);

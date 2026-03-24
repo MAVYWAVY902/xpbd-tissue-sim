@@ -3132,7 +3132,7 @@ void Simulation::update()
 void Simulation::_timeStep()
 {
     // —— refresh collision constraints —— //
-    if (_time - _last_collision_detection_time > _time_between_collision_checks)
+    if (_time - _last_collision_detection_time >= _time_between_collision_checks)
     {
         auto& xpbd_mesh_objs = _objects.get<std::unique_ptr<XPBDMeshObject_Base>>();
         for (auto& obj : xpbd_mesh_objs) obj->clearCollisionConstraints();

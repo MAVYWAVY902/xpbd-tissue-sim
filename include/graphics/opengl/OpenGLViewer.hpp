@@ -145,6 +145,8 @@ class OpenGLViewer : public Viewer
     mutable unsigned int _bg_vbo = 0;
     mutable unsigned int _bg_ebo = 0;
     mutable bool _bg_shader_initialized = false;
+    mutable bool _initial_cam_pos_set = false;
+    float _initial_cam_pos[3] = {0, 0, 0};
 
     // External draw callback
     DrawCallback _draw_callback = nullptr;

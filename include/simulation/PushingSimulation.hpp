@@ -74,9 +74,11 @@ private:
     /// @brief apply pushing forces to vertices within the tool radius
     void _applyPushingForces();
 
-    /// @brief CCD plane collision: detect blade-plane crossings and project vertices back
-    /// Runs every substep for robust thin-blade collision without SDF gradient issues.
-    void _ccdPlaneCollisionCheck();
+    /// @brief Add knife collision constraints to XPBD solver (called every step)
+    void _addKnifeCollisionConstraints();
+
+    /// @brief Post-solve safety net: project vertices still inside blade
+    void _bladeCollisionCheck();
 
     /// @brief check if knife interferes with adhesion constraints and mark them for breaking
     void _checkKnifeAdhesionInterference();
@@ -120,10 +122,10 @@ private:
     Real  _blade_half_thickness{0.0};    ///< half the blade Y extent
     Real  _blade_reject_radius_sq{0.0};  ///< squared bounding sphere radius for early rejection
 
-    // CCD plane collision: per-vertex persistent side assignment
-    // Key = global vertex index (unique per mesh object, offset by mesh start index)
-    // Value = +1.0 or -1.0 (which side of blade Y=0 plane the vertex belongs to)
-    std::unordered_map<int, Real> _vertex_blade_side;
+    // Knife previous position/orientation for Plane CCD (stored each step)
+    Vec3r _knife_prev_pos{Vec3r::Zero()};
+    Vec4r _knife_prev_orient{Vec4r(0,0,0,1)};  // identity quaternion
+    bool  _knife_prev_initialized{false};
 };
 
 } // namespace Sim

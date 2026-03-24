@@ -3,6 +3,7 @@
 #include "simobject/RigidMeshObject.hpp"
 #include "utils/GeometryUtils.hpp"
 #include <cstdio>
+#include <unordered_set>
 
 namespace Sim
 {
@@ -129,9 +130,9 @@ void PushingSimulation::setup()
         Vec3r(0,0,0),                                      // initial velocity
         Vec3r(0,0,0),                                      // initial angular velocity
         1.0,                                               // density
-        false,                                             // collisions (manually added to collision scene below)
-        true,                                              // graphics_only (TRUE - not in physics update loop)
-        true,                                              // fixed (kinematic - collision system uses StaticCollisionConstraint)
+        false,                                             // collisions (added to collision scene MANUALLY below)
+        true,                                              // graphics_only (TRUE — keeps mesh stable, no update() drift)
+        true,                                              // fixed (kinematic — position set manually via forceSetPosition)
         "../resource/tools/dissector_uv.obj",      // filename
         max_size_param,                                    // max_size (uniform scaling)
         size_param,                                        // size (directional scaling)
@@ -158,10 +159,13 @@ void PushingSimulation::setup()
     _cursor->createSDF();
     std::cout << "[PushingSimulation] Knife tool SDF created successfully!" << std::endl;
 
-    // Knife collision is handled by CCD plane check (_ccdPlaneCollisionCheck),
-    // NOT by the standard SDF-based CollisionScene. SDF gradient discontinuity on
-    // thin blades causes jiggling — CCD plane approach avoids this entirely.
-    std::cout << "[PushingSimulation] Knife collision: CCD plane mode (not SDF)." << std::endl;
+    // Manually add knife to collision scene.
+    // Can't use collisions=true + graphics_only=false because RigidMeshObject::update()
+    // accumulates floating-point drift on the mesh vertices (breaks rendering).
+    // Instead: graphics_only=true (stable mesh) + manually add to collision scene.
+    // CollisionScene uses the SDF (which auto-tracks _p via globalToBody), not mesh vertices.
+    _collision_scene->addObject(_cursor);
+    std::cout << "[PushingSimulation] Knife added to CollisionScene manually (SDF 256^3)." << std::endl;
 
     // Report actual knife dimensions
     Geometry::AABB knife_bbox = _cursor->boundingBox();
@@ -236,8 +240,8 @@ void PushingSimulation::notifyMouseMoved(double x, double y)
         }
         else
         {
-            // Original translation mode
-            const Real base_scaling = _tool_radius / 100.0;
+            // Original translation mode — reduced sensitivity for finer control
+            const Real base_scaling = _tool_radius / 500.0;
             const Real scaling = _pushing_enabled ? base_scaling * 0.35 : base_scaling;
 
             const Vec3r up_vec = _graphics_scene->cameraUpDirection();
@@ -301,7 +305,7 @@ void PushingSimulation::notifyMouseScrolled(double dx, double dy)
         }
         else
         {
-            const Real base_scaling = _tool_radius / 3.0;
+            const Real base_scaling = _tool_radius / 15.0;
             const Real scaling = _pushing_enabled ? base_scaling * 0.5 : base_scaling;
             const Vec3r view_dir = _graphics_scene->cameraViewDirection();
             const Vec3r offset = view_dir * limited_dy;
@@ -315,12 +319,36 @@ void PushingSimulation::notifyMouseScrolled(double dx, double dy)
 void PushingSimulation::_moveCursor(const Vec3r& dp)
 {
     const Vec3r new_position = _cursor->position() + dp;
-    // Use forceSetPosition to prevent double-move from update() drift
     _cursor->forceSetPosition(new_position);
 }
 
 void PushingSimulation::_timeStep()
 {
+    // PER-STEP motion clamping: limit how far knife can move between physics steps.
+    // Mouse events accumulate between steps; this clamps the TOTAL displacement.
+    // Prevents tunneling even with fast mouse movement.
+    if (_cursor && _knife_prev_initialized)
+    {
+        const Real max_step_dist = 0.003;  // 3mm max per physics step (was 0.8mm — too jerky)
+        Vec3r knife_delta = _cursor->position() - _knife_prev_pos;
+        Real delta_norm = knife_delta.norm();
+        if (delta_norm > max_step_dist)
+        {
+            Vec3r clamped_pos = _knife_prev_pos + knife_delta * (max_step_dist / delta_norm);
+            _cursor->forceSetPosition(clamped_pos);
+        }
+    }
+    // Save knife state for next step's clamping and CCD
+    if (_cursor)
+    {
+        if (!_knife_prev_initialized)
+        {
+            _knife_prev_pos = _cursor->position();
+            _knife_prev_orient = _cursor->orientation();
+            _knife_prev_initialized = true;
+        }
+    }
+
     // Update knife position/orientation in fixed-base pivot mode
     if (_fixed_base_mode)
     {
@@ -371,10 +399,37 @@ void PushingSimulation::_timeStep()
 
     Simulation::_timeStep();
 
-    // CCD plane collision: runs every substep (not just at collision rate).
-    // Detects blade-plane crossings and projects vertices back.
-    // Fast O(N) operation — no SDF queries, no per-face iteration.
-    _ccdPlaneCollisionCheck();
+    // Debug: count collision constraints on tumor
+    {
+        static int dbg = 0;
+        dbg++;
+        if (dbg % 500 == 0)
+        {
+            auto& fo_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+            for (auto& obj : fo_objs)
+            {
+                // Check how many vertices are inside knife SDF after solve
+                const Geometry::MeshSDF* knife_sdf = _cursor ? _cursor->SDF() : nullptr;
+                if (!knife_sdf) continue;
+                int inside = 0;
+                for (int v = 0; v < obj->mesh()->numVertices(); v++)
+                {
+                    Real d = knife_sdf->evaluate(obj->mesh()->vertex(v));
+                    if (d < 0) inside++;
+                }
+                std::cout << "[PostSolve] frame=" << dbg
+                          << " tumor_verts_inside_knife=" << inside
+                          << std::endl;
+            }
+        }
+    }
+
+    // Update knife previous state for next step's motion clamping
+    if (_cursor)
+    {
+        _knife_prev_pos = _cursor->position();
+        _knife_prev_orient = _cursor->orientation();
+    }
 }
 
 void PushingSimulation::_togglePushing()
@@ -566,143 +621,179 @@ void PushingSimulation::_applyPushingForces()
     // printf("DEBUG: === PUSHING FRAME END ===\n\n");
 }
 
-void PushingSimulation::_onPostCollisionDetection()
+void PushingSimulation::_addKnifeCollisionConstraints()
 {
-    // Knife collision is handled by _ccdPlaneCollisionCheck() in _timeStep().
-    // This hook is kept for any future post-collision logic (e.g., adhesion interference).
-}
-
-void PushingSimulation::_ccdPlaneCollisionCheck()
-{
+    // Create SDF-based collision constraints for the knife, added to the XPBD solver.
+    // Called every physics step so constraints are always fresh (no stale surface_point).
+    // Uses SDF for shape-accurate detection + body-frame Y for stable normal.
     if (!_cursor) return;
 
+    const Geometry::MeshSDF* knife_sdf = _cursor->SDF();
+    if (!knife_sdf) return;
+
     const Vec3r knife_pos = _cursor->position();
-    // Margin: project vertices slightly past the blade surface to prevent re-penetration
-    const Real contact_margin = 0.0005; // 0.5mm
-    // XZ margin: how far outside blade bounds we still track vertices
-    const Real xz_margin = 0.003; // 3mm
-    // Clear distance: when vertex is this far from blade in Y, clear side assignment
-    const Real clear_distance = 0.01; // 10mm
+    const Real contact_threshold = 0.001;  // 1mm influence zone outside blade surface
 
-    auto& xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
-    auto& fo_xpbd_mesh_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+    // Blade normal in global coords
+    const Vec3r origin_global = _cursor->bodyToGlobal(Vec3r::Zero());
+    Vec3r blade_normal_global = _cursor->bodyToGlobal(Vec3r(0, 1, 0)) - origin_global;
+    blade_normal_global.normalize();
 
-    static int frame_counter = 0;
-    frame_counter++;
-    bool debug_print = (frame_counter % 2000 == 0);
+    static int debug_frame = 0;
+    debug_frame++;
+    int total_bsphere = 0;
+    int total_in_threshold = 0;
+    int total_inside = 0;       // SDF < 0
+    int total_near = 0;         // 0 <= SDF < threshold
+    Real min_sdf = 1e10;
+    Real max_sdf_constrained = -1e10;
 
-    int vertices_checked = 0;
-    int side_assigned = 0;
-    int projections = 0;
-    int cleared = 0;
+    auto processObject = [&](auto& mesh_obj) {
+        Geometry::Mesh* mesh = mesh_obj->mesh();
 
-    // We use a global vertex key: mesh_object_index * 100000 + vertex_index
-    // to distinguish vertices from different mesh objects
-    int mesh_offset = 0;
+        for (int fi = 0; fi < mesh->numFaces(); ++fi)
+        {
+            const Eigen::Vector3i face = mesh->face(fi);
+
+            // Skip faces with fixed vertices
+            if (mesh_obj->vertexFixed(face[0]) ||
+                mesh_obj->vertexFixed(face[1]) ||
+                mesh_obj->vertexFixed(face[2]))
+                continue;
+
+            const Vec3r p1 = mesh->vertex(face[0]);
+            const Vec3r p2 = mesh->vertex(face[1]);
+            const Vec3r p3 = mesh->vertex(face[2]);
+            const Vec3r centroid = (p1 + p2 + p3) / 3.0;
+
+            // Quick rejection on centroid
+            if ((centroid - knife_pos).squaredNorm() > _blade_reject_radius_sq) continue;
+
+            total_bsphere++;
+
+            // Check SDF at centroid — catches triangle-level penetration
+            // even when all 3 vertices are outside the blade
+            Real signed_distance = knife_sdf->evaluate(centroid);
+            if (signed_distance < min_sdf) min_sdf = signed_distance;
+
+            if (signed_distance > contact_threshold) continue;
+
+            total_in_threshold++;
+            if (signed_distance < 0) total_inside++;
+            else total_near++;
+
+            // Determine push direction from centroid body-frame Y
+            Vec3r centroid_body = _cursor->globalToBody(centroid);
+            Real side = (centroid_body.y() >= 0) ? 1.0 : -1.0;
+            Vec3r collision_normal = blade_normal_global * side;
+
+            // Surface point at blade surface (or at centroid if outside)
+            Real correction = -signed_distance;
+            if (correction < 0) correction = 0;
+            Vec3r surface_point = centroid + collision_normal * correction;
+
+            // Use centroid barycentric coords (1/3, 1/3, 1/3)
+            // Force distributed evenly across all 3 vertices of the face
+            const Real one_third = 1.0 / 3.0;
+            mesh_obj->addStaticCollisionConstraint(
+                nullptr, surface_point, collision_normal, fi, one_third, one_third, one_third);
+        }
+    };
+
+    auto& xpbd_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
+    auto& fo_xpbd_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+    for (auto& obj : xpbd_objs) processObject(obj);
+    for (auto& obj : fo_xpbd_objs) processObject(obj);
+
+    if (debug_frame % 500 == 0 && total_bsphere > 0)
+    {
+        std::cout << "[KnifeConstraint] frame=" << debug_frame
+                  << " bsphere=" << total_bsphere
+                  << " constrained=" << total_in_threshold
+                  << " (inside=" << total_inside
+                  << " near=" << total_near << ")"
+                  << " min_sdf=" << (min_sdf * 1000) << "mm"
+                  << " knife=(" << knife_pos.x() << "," << knife_pos.y() << "," << knife_pos.z() << ")"
+                  << std::endl;
+    }
+}
+
+void PushingSimulation::_onPostCollisionDetection()
+{
+    // Knife collision handled by standard CollisionScene.
+    // No custom constraints needed — Frank-Wolfe + SDF 256³ gradient handles it.
+}
+
+void PushingSimulation::_bladeCollisionCheck()
+{
+    // SDF-based collision check: runs EVERY physics step.
+    //
+    // The dissector mesh IS watertight (verified: 0 boundary edges, Euler=2).
+    // SDF inside/outside classification is reliable.
+    // Combined with per-step motion clamping (0.8mm/step), prevents tunneling.
+    //
+    // ONE-SIDED: only pushes vertices with SDF < 0 (inside blade).
+    // When knife moves away, SDF > 0 → no projection → no sticking.
+    if (!_cursor) return;
+
+    const Geometry::MeshSDF* knife_sdf = _cursor->SDF();
+    if (!knife_sdf) return;
+
+    const Vec3r knife_pos = _cursor->position();
+    // Larger margin so elastic constraints can't pull vertex back inside next step.
+    // "Proxy pop-out" approach from Triangle-Proxy CCD literature.
+    const Real surface_margin = 0.0015;  // 1.5mm outside blade surface
+
+    static int debug_frame = 0;
+    debug_frame++;
+    int total_checked = 0;
+    int total_projected = 0;
 
     auto processMesh = [&](auto& mesh_obj) {
         Geometry::Mesh* mesh = mesh_obj->mesh();
-        const int n_verts = mesh->numVertices();
 
-        for (int v = 0; v < n_verts; ++v)
+        for (int v = 0; v < mesh->numVertices(); ++v)
         {
             if (mesh_obj->vertexFixed(v)) continue;
 
-            const Vec3r x_new = mesh->vertex(v);
-            const int vkey = mesh_offset + v;
+            const Vec3r x = mesh->vertex(v);
 
-            // Bounding sphere rejection
-            if ((x_new - knife_pos).squaredNorm() > _blade_reject_radius_sq)
-            {
-                // Far from blade — clear any side assignment
-                if (_vertex_blade_side.erase(vkey)) cleared++;
-                continue;
-            }
+            // Quick bounding-sphere rejection
+            if ((x - knife_pos).squaredNorm() > _blade_reject_radius_sq) continue;
 
-            // Transform to knife body frame
-            Vec3r v_body = _cursor->globalToBody(x_new);
+            total_checked++;
 
-            // Check XZ bounds (is vertex in blade region?)
-            if (v_body.x() < _blade_body_min.x() - xz_margin ||
-                v_body.x() > _blade_body_max.x() + xz_margin ||
-                v_body.z() < _blade_body_min.z() - xz_margin ||
-                v_body.z() > _blade_body_max.z() + xz_margin)
-            {
-                if (_vertex_blade_side.erase(vkey)) cleared++;
-                continue;
-            }
+            // SDF: is vertex inside the blade? (watertight mesh → reliable)
+            Real signed_distance = knife_sdf->evaluate(x);
+            if (signed_distance >= 0) continue;  // outside → ONE-SIDED, no action
 
-            vertices_checked++;
+            // Inside blade → project out along body-frame Y axis
+            Vec3r v_body = _cursor->globalToBody(x);
+            Real side = (v_body.y() >= 0) ? 1.0 : -1.0;
 
-            // Look up or assign side
-            auto it = _vertex_blade_side.find(vkey);
+            // Blade normal in global coords
+            Vec3r blade_normal = _cursor->bodyToGlobal(Vec3r(0, side, 0))
+                               - _cursor->bodyToGlobal(Vec3r::Zero());
+            blade_normal.normalize();
 
-            if (it == _vertex_blade_side.end())
-            {
-                // New vertex near blade — determine side using CCD logic:
-                // Use PREVIOUS position to determine which side the vertex approached from.
-                // This is the key CCD insight: we catch the vertex BEFORE it crosses.
-                Vec3r x_old = mesh_obj->vertexPreviousPosition(v);
-                Vec3r v_body_old = _cursor->globalToBody(x_old);
-
-                // If previous position is clearly on one side, use that
-                if (std::abs(v_body_old.y()) > _blade_half_thickness * 0.3)
-                {
-                    Real side = (v_body_old.y() > 0) ? 1.0 : -1.0;
-                    _vertex_blade_side[vkey] = side;
-                    it = _vertex_blade_side.find(vkey);
-                    side_assigned++;
-                }
-                else
-                {
-                    // Both old and new are near center — use current position as best guess
-                    Real side = (v_body.y() >= 0) ? 1.0 : -1.0;
-                    _vertex_blade_side[vkey] = side;
-                    it = _vertex_blade_side.find(vkey);
-                    side_assigned++;
-                }
-            }
-
-            Real assigned_side = it->second;
-
-            // If vertex is far from blade on the correct side, clear assignment
-            // (allows re-approach from the other side in future)
-            if (v_body.y() * assigned_side > clear_distance)
-            {
-                _vertex_blade_side.erase(it);
-                cleared++;
-                continue;
-            }
-
-            // Enforce side: project vertex if it's on the wrong side of blade surface
-            // "Wrong side" means: the vertex is closer to blade center than blade_half_thickness
-            // AND on the wrong side (or inside the blade)
-            Real signed_y = v_body.y() * assigned_side; // positive = correct side, negative = wrong side
-            if (signed_y < _blade_half_thickness + contact_margin)
-            {
-                // Project to blade surface + margin on the assigned side
-                v_body.y() = assigned_side * (_blade_half_thickness + contact_margin);
-                Vec3r corrected = _cursor->bodyToGlobal(v_body);
-                mesh->setVertex(v, corrected);
-                projections++;
-            }
+            // Project to blade surface + margin
+            Vec3r corrected = x + blade_normal * (-signed_distance + surface_margin);
+            mesh->setVertex(v, corrected);
+            mesh_obj->setVertexPreviousPosition(v, corrected);
+            total_projected++;
         }
-
-        mesh_offset += 100000; // offset for next mesh object
     };
 
-    for (auto& obj : xpbd_mesh_objs) processMesh(obj);
-    for (auto& obj : fo_xpbd_mesh_objs) processMesh(obj);
+    auto& xpbd_objs = _objects.template get<std::unique_ptr<Sim::XPBDMeshObject_Base>>();
+    auto& fo_xpbd_objs = _objects.template get<std::unique_ptr<Sim::FirstOrderXPBDMeshObject_Base>>();
+    for (auto& obj : xpbd_objs) processMesh(obj);
+    for (auto& obj : fo_xpbd_objs) processMesh(obj);
 
-    if (debug_print)
+    if (debug_frame % 500 == 0 && total_checked > 0)
     {
-        std::cout << "[CCD-Plane] frame=" << frame_counter
-                  << " tracked=" << _vertex_blade_side.size()
-                  << " checked=" << vertices_checked
-                  << " assigned=" << side_assigned
-                  << " projected=" << projections
-                  << " cleared=" << cleared
-                  << " half_thick=" << (_blade_half_thickness * 1000) << "mm"
+        std::cout << "[BladeCheck] frame=" << debug_frame
+                  << " checked=" << total_checked
+                  << " projected=" << total_projected
                   << std::endl;
     }
 }

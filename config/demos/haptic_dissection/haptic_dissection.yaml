@@ -14,6 +14,9 @@ background-image: "../resource/rendering/hdr/surgery_1k.png"
 device-to-camera-rotation: [-0.694119, 0.138329, 0.359073, 0.608383]
 grip-to-camera-rotation: [0.707107, 0, 0, -0.707107]
 
+
+
+
 background-v-offset: -0.0                 # vertical shift: negative = background moves down (objects closer to table)
                                            #                 positive = background moves up (objects closer to ceiling)
                                            #                 range: roughly -0.5 to 0.5

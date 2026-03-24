@@ -46,10 +46,15 @@ class OpenGLMeshGraphicsObject : public MeshGraphicsObject
     /** Set texture for this mesh. */
     void setTexture(const std::string& texture_path);
 
+    /** Set normal map for this mesh. */
+    void setNormalMap(const std::string& normal_map_path);
+
     private:
     void _initGLBuffers();
     void _ensureGLInitialized();
     void _loadTexture();
+    void _loadNormalMap();
+    void _computeAndUploadTangents();
     void _updateVertexData();
     void _updateFaceIndices();
     void _updateEdgeIndices();
@@ -96,8 +101,14 @@ class OpenGLMeshGraphicsObject : public MeshGraphicsObject
     unsigned int _texcoord_vbo = 0;
     bool _has_texture = false;
 
-    // Deferred texture path (loaded when GL context is ready)
+    // Normal map
+    unsigned int _normal_map_id = 0;
+    unsigned int _tangent_vbo = 0;
+    bool _has_normal_map = false;
+
+    // Deferred texture/normal map paths (loaded when GL context is ready)
     std::string _pending_texture_path;
+    std::string _pending_normal_map_path;
 
     // Thread-safe vertex snapshot: update() copies mesh data here,
     // draw() reads from here — avoids racing with the simulation thread.

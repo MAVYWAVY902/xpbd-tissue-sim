@@ -36,7 +36,10 @@ MeshSDF::MeshSDF(const Sim::RigidMeshObject* mesh_obj, const Config::RigidMeshOb
         mesh_copy.rotateAbout(Vec3r::Zero(), rot_mat);
         
         // Compute SDF in body frame (always centered at origin)
-        _sdf = mesh2sdf::MeshSDF(mesh_copy.vertices(), mesh_copy.faces(), 128, 5, true);
+        // Resolution 256 (was 128): needed for thin features like dissector blades.
+        // At 128, a 65mm tool has 0.5mm cells → 2.4mm blade only spans ~5 cells → interpolation artifacts.
+        // At 256, cells are 0.25mm → blade spans ~10 cells → reliable inside/outside detection.
+        _sdf = mesh2sdf::MeshSDF(mesh_copy.vertices(), mesh_copy.faces(), 256, 5, true);
 
         // No offset needed - globalToBody() handles all coordinate conversion
         _sdf_offset = Vec3r::Zero();

@@ -314,11 +314,14 @@ uniform sampler2D uTexture;
 uniform mat4 uInverseVPRot;
 uniform float uUOffset;
 uniform float uVOffset;
+uniform float uZoomScale;
 
 const float PI = 3.14159265359;
 
 void main() {
-    vec4 worldDir = uInverseVPRot * vec4(vNDC, -1.0, 1.0);
+    // Scale NDC toward center to simulate zoom on the background
+    vec2 ndc = vNDC * uZoomScale;
+    vec4 worldDir = uInverseVPRot * vec4(ndc, -1.0, 1.0);
     vec3 dir = normalize(worldDir.xyz / worldDir.w);
 
     float u = atan(-dir.y, dir.x) / (2.0 * PI) + 0.5 + uUOffset;
@@ -391,22 +394,64 @@ void OpenGLViewer::_drawBackground() const
     if (!_bg_shader_initialized)
         const_cast<OpenGLViewer*>(this)->_initBackground();
 
-    // Strip translation from view matrix, keep only rotation
+    // Capture initial camera position on first call
     Eigen::Matrix4f view = viewMatrix();
-    view(0, 3) = 0.0f;
-    view(1, 3) = 0.0f;
-    view(2, 3) = 0.0f;
+    if (!_initial_cam_pos_set)
+    {
+        Eigen::Matrix3f R0 = view.block<3,3>(0,0);
+        Eigen::Vector3f t0(view(0,3), view(1,3), view(2,3));
+        Eigen::Vector3f cp0 = -R0.transpose() * t0;
+        const_cast<OpenGLViewer*>(this)->_initial_cam_pos[0] = cp0[0];
+        const_cast<OpenGLViewer*>(this)->_initial_cam_pos[1] = cp0[1];
+        const_cast<OpenGLViewer*>(this)->_initial_cam_pos[2] = cp0[2];
+        const_cast<OpenGLViewer*>(this)->_initial_cam_pos_set = true;
+    }
 
-    Eigen::Matrix4f vpRot = projectionMatrix() * view;
+    // Keep rotation-only matrix for equirectangular direction mapping
+    Eigen::Matrix4f viewRot = view;
+    viewRot(0, 3) = 0.0f;
+    viewRot(1, 3) = 0.0f;
+    viewRot(2, 3) = 0.0f;
+
+    Eigen::Matrix4f vpRot = projectionMatrix() * viewRot;
     Eigen::Matrix4f invVPRot = vpRot.inverse();
+
+    // Convert camera translation to UV offsets so background pans with camera.
+    // Extract camera position from view matrix: cam_pos = -R^T * t
+    Eigen::Matrix3f R = view.block<3,3>(0,0);
+    Eigen::Vector3f t(view(0,3), view(1,3), view(2,3));
+    Eigen::Vector3f cam_pos = -R.transpose() * t;
+    Eigen::Vector3f cam_pos0(_initial_cam_pos[0], _initial_cam_pos[1], _initial_cam_pos[2]);
+    Eigen::Vector3f delta = cam_pos - cam_pos0;
+
+    // Project onto camera right and up directions
+    Eigen::Vector3f cam_right = R.row(0).transpose();
+    Eigen::Vector3f cam_up    = R.row(1).transpose();
+    float pan_u = delta.dot(cam_right);
+    float pan_v = delta.dot(cam_up);
+
+    // Scale translation to angular UV offset (tunable sensitivity)
+    constexpr float kPanSensitivity = 0.15f;
+    float u_off = _bg_u_offset - pan_u * kPanSensitivity;
+    float v_off = _bg_v_offset + pan_v * kPanSensitivity;
+
+    // Compute zoom scale: camera moves along view direction → background zooms.
+    // Project delta onto view direction (negative Z row of view matrix).
+    Eigen::Vector3f cam_fwd = -R.row(2).transpose();
+    float dolly = delta.dot(cam_fwd);
+    constexpr float kZoomSensitivity = 1.5f;
+    float zoom_scale = 1.0f / (1.0f + dolly * kZoomSensitivity);
+    if (zoom_scale < 0.1f) zoom_scale = 0.1f;
+    if (zoom_scale > 5.0f) zoom_scale = 5.0f;
 
     glDepthMask(GL_FALSE);
     glUseProgram(_bg_shader);
 
     glUniform1i(glGetUniformLocation(_bg_shader, "uTexture"), 0);
     glUniformMatrix4fv(glGetUniformLocation(_bg_shader, "uInverseVPRot"), 1, GL_FALSE, invVPRot.data());
-    glUniform1f(glGetUniformLocation(_bg_shader, "uUOffset"), _bg_u_offset);
-    glUniform1f(glGetUniformLocation(_bg_shader, "uVOffset"), _bg_v_offset);
+    glUniform1f(glGetUniformLocation(_bg_shader, "uUOffset"), u_off);
+    glUniform1f(glGetUniformLocation(_bg_shader, "uVOffset"), v_off);
+    glUniform1f(glGetUniformLocation(_bg_shader, "uZoomScale"), zoom_scale);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _background_texture_id);
