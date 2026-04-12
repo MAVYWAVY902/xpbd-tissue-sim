@@ -7,6 +7,7 @@
 namespace Sim
 {
     class Simulation;
+    class PhysicsContext;
     class Object;
 }
 
@@ -63,7 +64,7 @@ class ObjectConfig : public Config
 
     ObjectRenderConfig _render_config;
 
-    const Sim::Simulation* _sim;
+    const Sim::PhysicsContext* _sim;
 
 };
 

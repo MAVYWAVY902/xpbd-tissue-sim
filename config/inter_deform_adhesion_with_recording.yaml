@@ -29,7 +29,7 @@ state-recording-snapshot-interval: 0.1  # Record every 0.1 seconds (10 fps)
 # OPTIMIZED FOR FIXED RIGID OBJECT (bone never moves)
 inter-deform-adhesion-enable: true
 inter-deform-adhesion-rest-gap: 0.01        # 10mm rest gap
-inter-deform-adhesion-break-ratio: 3.5     # Allow more stretch before breaking
+inter-deform-adhesion-break-ratio: 3.2     # Allow more stretch before breaking
 inter-deform-adhesion-alpha: 1e-7           # Moderate stiffness
 inter-deform-adhesion-bond-distance: 0.02   # 20mm: larger radius since bone is fixed
 
@@ -43,7 +43,7 @@ materials:
   -
     name: "Soft Tissue"
     density: 1000   # density [kg/m^3]
-    E: 5e4    # Young's modulus [Pa] - soft tissue
+    E: 7e4    # Young's modulus [Pa] - soft tissue
     nu: 0.45  # Poisson's ratio [-]
     mu-s: 0.0 # coefficient of static friction [-]
     mu-k: 0.0 # coefficient of kinetic friction [-]
@@ -53,7 +53,7 @@ objects:
 
   ## First deformable cube (RED - Left side)
   -
-    name: "Cube1"
+    name: "Tumor"
     type: "FirstOrderXPBDMeshObject"
     filename: "../resource/cube/cube8.msh"
 
@@ -83,12 +83,12 @@ objects:
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 60000  # Moderate damping
+    damping-multiplier: 90000  # Moderate damping
 
 
   ## Second deformable cube (BLUE - Right side, adhered to Cube1)
   -
-    name: "Cube2"
+    name: "Brain"
     type: "FirstOrderXPBDMeshObject"
     filename: "../resource/cube/cube8.msh"
     materials: ["Soft Tissue"]
@@ -110,12 +110,12 @@ objects:
     inter-object-collisions: true  # Enable inter-object collision
 
     ## XPBD-specific options
-    num-solver-iters: 5  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
+    num-solver-iters: 2  # OPTIMIZED: Fixed rigid allows faster convergence (was 8)
     solver-type: "Gauss-Seidel"  # SWITCH TO GAUSS-SEIDEL FOR SPEED AND STABILITY
     # solver-type: "Jacobi"       # Jacobi is too slow with 30 iterations
 
     constraint-type: "Stable-Neohookean-Combined"
     residual-policy: "Never"
     
-    damping-multiplier: 60000  # Moderate damping
+    damping-multiplier: 90000  # Moderate damping
 

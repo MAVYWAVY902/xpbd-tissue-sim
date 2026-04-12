@@ -27,7 +27,7 @@
 // namespace Collision
 // {
 
-CollisionScene::CollisionScene(const Sim::Simulation* sim, Geometry::EmbreeScene* embree_scene)
+CollisionScene::CollisionScene(const Sim::PhysicsContext* sim, Geometry::EmbreeScene* embree_scene)
     : _sim(sim), _embree_scene(embree_scene)
 {
 

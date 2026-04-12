@@ -5,7 +5,7 @@
 namespace Sim
 {
 
-RigidMeshObject::RigidMeshObject(const Simulation* sim, const ConfigType* config)
+RigidMeshObject::RigidMeshObject(const PhysicsContext* sim, const ConfigType* config)
     : RigidObject(sim, config), MeshObject(config, config), _config(config)
 {
     _density = config->density();

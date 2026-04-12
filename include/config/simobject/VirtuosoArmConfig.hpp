@@ -86,7 +86,7 @@ class VirtuosoArmConfig : public ObjectConfig
         _base_initial_rotation.value = initial_rot;
     }
 
-    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
+    std::unique_ptr<ObjectType> createObject(const Sim::PhysicsContext* sim) const;
 
     // Getters and setters
     Real innerTubeOuterDiameter() const { return _it_outer_diameter.value; }

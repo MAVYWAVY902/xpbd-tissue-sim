@@ -28,7 +28,7 @@ TetMesh::TetMesh(const TetMesh& other)
 }
 
 TetMesh::TetMesh(TetMesh&& other)
-    : Mesh(other)
+    : Mesh(std::move(other))
 {
     _elements = std::move(other._elements);
     _attached_elements_to_vertex = std::move(other._attached_elements_to_vertex);

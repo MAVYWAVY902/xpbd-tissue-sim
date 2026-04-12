@@ -90,7 +90,7 @@ class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : 
      * @param config : the YAML node dictionary describing the parameters for the new XPBDMeshObject
      */
     // TODO: parameter pack in constructor for ConstraintTypes type deduction. Maybe move this to XPBDMeshObjectConfig?
-    explicit XPBDMeshObject_(const Simulation* sim, const ConfigType* config);
+    explicit XPBDMeshObject_(const PhysicsContext* sim, const ConfigType* config);
 
     virtual ~XPBDMeshObject_();
 

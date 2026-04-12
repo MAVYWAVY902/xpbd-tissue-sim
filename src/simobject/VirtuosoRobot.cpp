@@ -3,7 +3,7 @@
 namespace Sim
 {
 
-VirtuosoRobot::VirtuosoRobot(const Simulation* sim, const ConfigType* config)
+VirtuosoRobot::VirtuosoRobot(const PhysicsContext* sim, const ConfigType* config)
     : Object(sim, config), _arm1(), _arm2()
 {
     for (const auto& arm_config : config->armConfigs())

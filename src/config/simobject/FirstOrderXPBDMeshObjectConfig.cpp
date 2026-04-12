@@ -5,7 +5,7 @@
 namespace Config
 {
 
-std::unique_ptr<FirstOrderXPBDMeshObjectConfig::ObjectType> FirstOrderXPBDMeshObjectConfig::createObject(const Sim::Simulation* sim) const
+std::unique_ptr<FirstOrderXPBDMeshObjectConfig::ObjectType> FirstOrderXPBDMeshObjectConfig::createObject(const Sim::PhysicsContext* sim) const
 {
     return XPBDObjectFactory::createFirstOrderXPBDMeshObject(sim, this);
 }

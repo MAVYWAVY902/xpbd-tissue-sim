@@ -32,7 +32,7 @@ g-accel: [-0, -0, -0] # downward acceleration due to gravity [m/s2]
 sim-mode: "AFAP"     # Run as fast as possible for testing
 
 # time-step: 3e-4      # 8e-5 for brain-tumor
-time-step: 2e-4      # 8e-5 for brain-tumor
+time-step: 1e-4      # 8e-5 for brain-tumor
 # time-step: 7e-5      # 8e-5 for brain-tumor
 collision-rate: 500    # Hz: MATCH physics rate (dt=2e-4 → 5000 Hz). Knife XPBD constraints
                        # refresh every step → no stale surface_point → no sticking/jiggling

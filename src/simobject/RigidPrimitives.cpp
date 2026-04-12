@@ -4,7 +4,7 @@
 namespace Sim
 {
 
-RigidSphere::RigidSphere(const Simulation* sim, const ConfigType* config)
+RigidSphere::RigidSphere(const PhysicsContext* sim, const ConfigType* config)
     : RigidObject(sim, config)
 {
     _radius = config->radius();
@@ -43,7 +43,7 @@ Geometry::AABB RigidSphere::boundingBox() const
 
 
 
-RigidBox::RigidBox(const Simulation* sim, const ConfigType* config)
+RigidBox::RigidBox(const PhysicsContext* sim, const ConfigType* config)
     : RigidObject(sim, config)
 {
     _size = config->size();
@@ -100,7 +100,7 @@ Geometry::AABB RigidBox::boundingBox() const
 
 
 
-RigidCylinder::RigidCylinder(const Simulation* sim, const ConfigType* config)
+RigidCylinder::RigidCylinder(const PhysicsContext* sim, const ConfigType* config)
     : RigidObject(sim, config)
 {
     _radius = config->radius();

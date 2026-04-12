@@ -35,7 +35,7 @@ class RigidSphereConfig : public RigidObjectConfig
         _radius.value = radius;
     }
 
-    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
+    std::unique_ptr<ObjectType> createObject(const Sim::PhysicsContext* sim) const;
 
 
     Real radius() const { return _radius.value; }
@@ -70,7 +70,7 @@ class RigidBoxConfig : public RigidObjectConfig
         _size.value = size;
     }
 
-    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
+    std::unique_ptr<ObjectType> createObject(const Sim::PhysicsContext* sim) const;
 
     Vec3r size() const { return _size.value; }
 
@@ -105,7 +105,7 @@ class RigidCylinderConfig : public RigidObjectConfig
         _height.value = height;
     }
 
-    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
+    std::unique_ptr<ObjectType> createObject(const Sim::PhysicsContext* sim) const;
 
     Real radius() const { return _radius.value; }
     Real height() const { return _height.value; }

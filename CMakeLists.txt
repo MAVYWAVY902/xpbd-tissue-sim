@@ -324,3 +324,8 @@ if (HAVE_CUDA AND NOT NO_GPU)
 endif()
 
 
+
+add_executable(TestPhysCtx ../test_physctx_full.cpp)
+target_link_libraries(TestPhysCtx Simulation)
+
+

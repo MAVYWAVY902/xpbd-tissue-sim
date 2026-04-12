@@ -86,7 +86,7 @@ public:
     using ConfigType = typename std::conditional<IsFirstOrder, Config::FirstOrderXPBDMeshObjectConfig, Config::XPBDMeshObjectConfig>::type;
 
     public:
-    explicit XPBDMeshObject_Base_(const Simulation* sim, const ConfigType* config);
+    explicit XPBDMeshObject_Base_(const PhysicsContext* sim, const ConfigType* config);
 
     virtual ~XPBDMeshObject_Base_() {}
 

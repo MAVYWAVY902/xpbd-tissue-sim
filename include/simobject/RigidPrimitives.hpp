@@ -20,7 +20,7 @@ class RigidSphere : public RigidObject
     using ConfigType = Config::RigidSphereConfig;
 
     public:
-    RigidSphere(const Simulation* sim, const ConfigType* config);
+    RigidSphere(const PhysicsContext* sim, const ConfigType* config);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
@@ -69,7 +69,7 @@ class RigidBox : public RigidObject
     using ConfigType = Config::RigidBoxConfig;
 
     public:
-    RigidBox(const Simulation* sim, const ConfigType* config);
+    RigidBox(const PhysicsContext* sim, const ConfigType* config);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string
@@ -117,7 +117,7 @@ class RigidCylinder : public RigidObject
     using ConfigType = Config::RigidCylinderConfig;
 
     public:
-    RigidCylinder(const Simulation* sim, const ConfigType* config);
+    RigidCylinder(const PhysicsContext* sim, const ConfigType* config);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string

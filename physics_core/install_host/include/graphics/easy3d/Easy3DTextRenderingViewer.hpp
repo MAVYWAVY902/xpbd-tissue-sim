@@ -1,0 +1,140 @@
+#ifndef __TEXT_RENDERING_VIEWER_HPP
+#define __TEXT_RENDERING_VIEWER_HPP
+
+#include <easy3d/viewer/viewer.h>
+#include <easy3d/renderer/text_renderer.h>
+#include <easy3d/core/types.h>
+#include <easy3d/util/resource.h>
+
+#include "graphics/Viewer.hpp"
+#include "simulation/Simulation.hpp"
+
+#include <map>
+#include <optional>
+
+class Simulation;
+
+namespace Graphics
+{
+
+/** A class that extends easy3d::Viewer in order to render text in the graphics window.
+ * Necessary so that the drawing of text can happen in the Viewer redraw, so that the text actually gets rendered.
+ * TextRenderingViewer has support for as much rendered text as needed through specifications of TextSpecs, which
+ * contain all information needed to render text on the screen.
+ * 
+ */
+class Easy3DTextRenderingViewer : public easy3d::Viewer, public Viewer
+{
+    public:
+
+    /** Constructor - initialize the viewer with a title */
+    explicit Easy3DTextRenderingViewer(const std::string& title);
+
+
+    /** Updates internal graphics buffers and redraws the viewport.
+     * Just a wrapper around easy3d::Viewer::update(), but needed to conform to the Graphics::Viewer specification.
+     */
+    virtual void update() override;
+
+    /** Sets the background texture ID for rendering a full-screen background image. */
+    void setBackgroundTexture(unsigned int id) { _background_texture_id = id; }
+
+    /** Sets UV offsets for the equirectangular background.
+     *  u_offset: horizontal rotation (0.5 = 180 degrees)
+     *  v_offset: vertical shift (positive = shift background up, showing more floor/table) */
+    void setBackgroundOffset(float u_offset, float v_offset) {
+        _bg_u_offset = u_offset;
+        _bg_v_offset = v_offset;
+    }
+
+    /** Width of the viewer window. */
+    virtual int width() const override { return easy3d::Viewer::width(); }
+
+    /** Height of the viewer window. */
+    virtual int height() const override { return easy3d::Viewer::height(); }
+
+    protected:
+    /** Overridden draw method from easy3d::Viewer, with added functionality to draw each TextSpec. */
+    void draw() const override;
+    
+    /** Overridden from easy3d::Viewer, with added functionality to add each font to the TextRenderer. */
+    void init() override;
+
+    /** Draws each TextSpec. */
+    void drawText() const;
+
+    /** Triggered on key-press events */
+    bool callback_event_keyboard(int key, int action, int modifiers) override;
+
+    /** Triggered on mouse press events */
+    bool callback_event_mouse_button(int button, int action, int modifiers) override;
+
+    /** Triggered when mouse moves */
+    bool callback_event_cursor_pos(double x, double y) override;
+
+    /** Triggered when mouse is scrolled */
+    bool callback_event_scroll(double dx, double dy) override;
+
+
+    private:
+    easy3d::TextRenderer::Align _getEasy3dAlignment(const TextAlignment& alignment) const;
+
+    int _getEasy3dFontIndex(const Font& font) const;
+
+    easy3d::vec3 _getEasy3dColor(const std::array<float,3>& color) const;
+
+    private:
+    /** The TextRenderer responsible for drawing the text on screen. */
+    std::unique_ptr<easy3d::TextRenderer> _text_renderer;
+
+    /** OpenGL texture ID for background image (0 = no background). */
+    unsigned int _background_texture_id = 0;
+
+    /** UV offsets for equirectangular background positioning. */
+    float _bg_u_offset = 0.0f;
+    float _bg_v_offset = 0.0f;
+
+    /** OpenGL resources for equirectangular background shader (mutable for const draw). */
+    mutable unsigned int _bg_shader = 0;
+    mutable unsigned int _bg_vao = 0;
+    mutable unsigned int _bg_vbo = 0;
+    mutable unsigned int _bg_ebo = 0;
+    mutable bool _bg_shader_initialized = false;
+
+    /** Initializes the equirectangular background shader and geometry. */
+    void _initBackgroundShader() const;
+
+    /** Draws the equirectangular background using the camera's orientation. */
+    void _drawBackground() const;
+
+    /** Pending initial camera configuration (applied on first draw, after Easy3D's fit_screen). */
+    mutable bool _pending_camera_applied = false;
+    std::optional<easy3d::vec3> _pending_camera_position;
+    std::optional<easy3d::vec3> _pending_camera_view_dir;
+    std::optional<easy3d::vec3> _pending_camera_up_dir;
+    std::optional<float> _pending_camera_fov;
+
+    /** Applies pending camera config (called once on first draw). */
+    void _applyPendingCamera() const;
+
+    public:
+    /** Set initial camera config to be applied after Easy3D's fit_screen(). */
+    void setInitialCameraConfig(const std::optional<easy3d::vec3>& pos,
+                                const std::optional<easy3d::vec3>& view_dir,
+                                const std::optional<easy3d::vec3>& up_dir,
+                                const std::optional<float>& fov);
+
+    /** Maps Easy3D keys to SimulationInput keys */
+    static const std::map<int, SimulationInput::Key> _easy3d_key_map;
+    /** Maps Easy3D key actions to SimulationInput key actions */
+    static const std::map<int, SimulationInput::KeyAction> _easy3d_key_action_map;
+    /** Maps Easy3D mouse buttons to SimulationInput mouse buttons */
+    static const std::map<int, SimulationInput::MouseButton> _easy3d_mouse_button_map;
+    /** Maps Easy3D mouse actions to SimulationInput mouse actions */
+    static const std::map<int, SimulationInput::MouseAction> _easy3d_mouse_action_map;
+    
+};
+
+} // namespace Graphics
+
+#endif // __TEXT_RENDERING_VIEWER_HPP

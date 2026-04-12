@@ -5,7 +5,7 @@
 namespace Config
 {
 
-std::unique_ptr<Sim::XPBDMeshObject_Base> XPBDMeshObjectConfig::createObject(const Sim::Simulation* sim) const
+std::unique_ptr<Sim::XPBDMeshObject_Base> XPBDMeshObjectConfig::createObject(const Sim::PhysicsContext* sim) const
 {
     return XPBDObjectFactory::createXPBDMeshObject(sim, this);
 }

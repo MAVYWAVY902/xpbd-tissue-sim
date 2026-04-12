@@ -186,7 +186,7 @@ class VirtuosoArm : public Object
         };
 
     public:
-    VirtuosoArm(const Simulation* sim, const ConfigType* config);
+    VirtuosoArm(const PhysicsContext* sim, const ConfigType* config);
 
     /** Returns a string with all relevant information about this object. 
      * @param indent : the level of indentation to use for formatting new lines of the string

@@ -51,12 +51,12 @@
 //     // initialize the graphics scene according to the type specified by the user
 //     if (_config->visualization() == Config::Visualization::EASY3D)
 //     {
-//         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main", config->renderConfig());
+//         _graphics_scene_raw = new Graphics::Easy3DGraphicsScene("main", config->renderConfig());
 //     }
 
 //     if (_config->visualization() == Config::Visualization::VTK)
 //     {
-//         _graphics_scene = std::make_unique<Graphics::VTKGraphicsScene>("main", config->renderConfig());
+//         _graphics_scene_raw = new Graphics::VTKGraphicsScene("main", config->renderConfig());
 //     }
 
 //     // initialize the Embree scene
@@ -107,11 +107,11 @@
 //     _setup = true;
 
 //     // graphics
-//     if (_graphics_scene)
+//     if (_graphics_scene_raw)
 //     {
-//         _graphics_scene->init();
-//         _graphics_scene->viewer()->registerSimulation(this);
-//         _graphics_scene->viewer()->addText(
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->init();
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->registerSimulation(this);
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->addText(
 //             "time", "Sim Time: 0.000 s",
 //             10.0f, 10.0f, 15.0f,
 //             Graphics::Viewer::TextAlignment::LEFT,
@@ -120,7 +120,7 @@
 //             0.5f,
 //             false);
 
-//         _graphics_scene->viewer()->enableMouseInteraction(_config->enableMouseInteraction());
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->enableMouseInteraction(_config->enableMouseInteraction());
 //     }
 
 //     // create objects from YAML
@@ -361,10 +361,10 @@
 
 // void Simulation::_updateGraphics()
 // {
-//     if (_graphics_scene)
+//     if (_graphics_scene_raw)
 //     {
-//         _graphics_scene->update();
-//         _graphics_scene->viewer()->editText("time", "Sim Time: " + std::to_string(_time) + " s");
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->update();
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->editText("time", "Sim Time: " + std::to_string(_time) + " s");
 //     }
 // }
 
@@ -403,9 +403,9 @@
 //         update_thread = std::thread(&Simulation::update, this);
 //     }
 
-//     if (_graphics_scene)
+//     if (_graphics_scene_raw)
 //     {
-//         _graphics_scene->run();
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->run();
 //         return 0;
 //     }
 //     else
@@ -482,11 +482,11 @@
 //     // initialize the graphics scene according to the type specified by the user
 //     if (_config->visualization() == Config::Visualization::EASY3D)
 //     {
-//         _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main", config->renderConfig());
+//         _graphics_scene_raw = new Graphics::Easy3DGraphicsScene("main", config->renderConfig());
 //     }
 //     if (_config->visualization() == Config::Visualization::VTK)
 //     {
-//         _graphics_scene = std::make_unique<Graphics::VTKGraphicsScene>("main", config->renderConfig());
+//         _graphics_scene_raw = new Graphics::VTKGraphicsScene("main", config->renderConfig());
 //     }
 
 //     // initialize the Embree scene
@@ -537,11 +537,11 @@
 //     _setup = true;
 
 //     // graphics
-//     if (_graphics_scene)
+//     if (_graphics_scene_raw)
 //     {
-//         _graphics_scene->init();
-//         _graphics_scene->viewer()->registerSimulation(this);
-//         _graphics_scene->viewer()->addText(
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->init();
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->registerSimulation(this);
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->addText(
 //             "time", "Sim Time: 0.000 s",
 //             10.0f, 10.0f, 15.0f,
 //             Graphics::Viewer::TextAlignment::LEFT,
@@ -549,7 +549,7 @@
 //             std::array<float, 3>({0, 0, 0}),
 //             0.5f,
 //             false);
-//         _graphics_scene->viewer()->enableMouseInteraction(_config->enableMouseInteraction());
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->enableMouseInteraction(_config->enableMouseInteraction());
 //     }
 
 //     // create objects from YAML
@@ -952,10 +952,10 @@
 
 // void Simulation::_updateGraphics()
 // {
-//     if (_graphics_scene)
+//     if (_graphics_scene_raw)
 //     {
-//         _graphics_scene->update();
-//         _graphics_scene->viewer()->editText("time", "Sim Time: " + std::to_string(_time) + " s");
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->update();
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->editText("time", "Sim Time: " + std::to_string(_time) + " s");
 //     }
 // }
 
@@ -994,9 +994,9 @@
 //         update_thread = std::thread(&Simulation::update, this);
 //     }
 
-//     if (_graphics_scene)
+//     if (_graphics_scene_raw)
 //     {
-//         _graphics_scene->run();
+//         static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->run();
 //         return 0;
 //     }
 //     else
@@ -1018,9 +1018,11 @@
 #include "config/simobject/VirtuosoArmConfig.hpp"
 #include "config/simobject/VirtuosoRobotConfig.hpp"
 
+#ifndef NO_GRAPHICS
 #include "graphics/easy3d/Easy3DGraphicsScene.hpp"
 #include "graphics/vtk/VTKGraphicsScene.hpp"
 #include "graphics/opengl/OpenGLGraphicsScene.hpp"
+#endif
 
 #include "simobject/RigidMeshObject.hpp"
 #include "simobject/XPBDMeshObject.hpp"
@@ -1050,6 +1052,9 @@
 
 namespace Sim
 {
+
+// Destructor must be defined here where GraphicsScene is a complete type
+Simulation::~Simulation() = default;
 
 // Helper function: Compute point-to-triangle distance for adhesion constraint creation
 // Simplified version of NerveTumorAdhesionConstraint::computePointTriangleDistance
@@ -1183,18 +1188,20 @@ Simulation::Simulation(const Config::SimulationConfig* config)
     _sim_mode = _config->simMode();
 
     // initialize the graphics scene according to the type specified by the user
+#ifndef NO_GRAPHICS
     if (_config->visualization() == Config::Visualization::EASY3D)
     {
-        _graphics_scene = std::make_unique<Graphics::Easy3DGraphicsScene>("main", config->renderConfig());
+        _graphics_scene_raw = new Graphics::Easy3DGraphicsScene("main", config->renderConfig());
     }
     if (_config->visualization() == Config::Visualization::VTK)
     {
-        _graphics_scene = std::make_unique<Graphics::VTKGraphicsScene>("main", config->renderConfig());
+        _graphics_scene_raw = new Graphics::VTKGraphicsScene("main", config->renderConfig());
     }
     if (_config->visualization() == Config::Visualization::OPENGL)
     {
-        _graphics_scene = std::make_unique<Graphics::OpenGLGraphicsScene>("main", config->renderConfig());
+        _graphics_scene_raw = new Graphics::OpenGLGraphicsScene("main", config->renderConfig());
     }
+#endif
 
     // initialize the Embree scene
     _embree_scene = std::make_unique<Geometry::EmbreeScene>();
@@ -1255,72 +1262,47 @@ void Simulation::setup()
     _setup = true;
 
     // graphics
-    if (_graphics_scene)
+#ifndef NO_GRAPHICS
+    if (_graphics_scene_raw)
     {
-        _graphics_scene->init();
+        static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->init();
 
-        // Add static decorative models for OpenGL scene
-        if (auto* opengl_scene = dynamic_cast<Graphics::OpenGLGraphicsScene*>(_graphics_scene.get()))
+        if (auto* opengl_scene = dynamic_cast<Graphics::OpenGLGraphicsScene*>(static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)))
         {
-            // Load surgical table model — position it below the simulation objects
-            // Build transform: scale, then rotate Y-up to Z-up, then translate
             float scale = 0.007f;
-
-            // Rotation: -90 degrees around X axis (Y-up -> Z-up)
             Eigen::Matrix4f rotation = Eigen::Matrix4f::Identity();
             float angle = M_PI / 2.0f;
             rotation(1,1) = std::cos(angle);  rotation(1,2) = -std::sin(angle);
             rotation(2,1) = std::sin(angle);  rotation(2,2) =  std::cos(angle);
-
             Eigen::Matrix4f scale_mat = Eigen::Matrix4f::Identity();
             scale_mat.block<3,3>(0,0) *= scale;
-
             Eigen::Matrix4f translation = Eigen::Matrix4f::Identity();
-            translation(0, 3) =  -0.075f;   // X offset
-            translation(1, 3) =  0.2f;   // Y offset
-            translation(2, 3) = -0.7f;  // Z offset: below bone-tumor
-
+            translation(0, 3) = -0.075f; translation(1, 3) = 0.2f; translation(2, 3) = -0.7f;
             Eigen::Matrix4f table_transform = translation * rotation * scale_mat;
-
-            // Load both parts: 01a = metal frame, 01b = cloth/drape
             opengl_scene->addStaticModel("../resource/surgical_table/source/dkg_StandingSurgical_01a.fbx", table_transform);
             opengl_scene->addStaticModel("../resource/surgical_table/source/dkg_StandingSurgical_01b.fbx", table_transform);
-
-            // Load operating room model (if enabled in config)
             if (_config->renderConfig().loadOperatingRoom())
             {
-                float room_scale = 0.01f;  // adjust as needed
-
-                // Rotation: +90 degrees around X axis (Y-up -> Z-up)
+                float room_scale = 0.01f;
                 Eigen::Matrix4f room_rotation = Eigen::Matrix4f::Identity();
                 float room_angle = M_PI / 2.0f;
-                room_rotation(1,1) = std::cos(room_angle);  room_rotation(1,2) = -std::sin(room_angle);
-                room_rotation(2,1) = std::sin(room_angle);  room_rotation(2,2) =  std::cos(room_angle);
-
+                room_rotation(1,1) = std::cos(room_angle); room_rotation(1,2) = -std::sin(room_angle);
+                room_rotation(2,1) = std::sin(room_angle); room_rotation(2,2) =  std::cos(room_angle);
                 Eigen::Matrix4f room_scale_mat = Eigen::Matrix4f::Identity();
                 room_scale_mat.block<3,3>(0,0) *= room_scale;
-
                 Eigen::Matrix4f room_translation = Eigen::Matrix4f::Identity();
-                room_translation(0, 3) = 0.0f;
-                room_translation(1, 3) = 0.0f;
-                room_translation(2, 3) = -1.0f;
-
+                room_translation(0, 3) = 0.0f; room_translation(1, 3) = 0.0f; room_translation(2, 3) = -1.0f;
                 Eigen::Matrix4f room_transform = room_translation * room_rotation * room_scale_mat;
                 opengl_scene->addStaticModel("../resource/surgical_table/operating_room_fbx/operating_room.fbx", room_transform);
             }
         }
-
-        _graphics_scene->viewer()->registerSimulation(this);
-        _graphics_scene->viewer()->addText(
-            "time", "Sim Time: 0.000 s",
-            10.0f, 10.0f, 15.0f,
-            Graphics::Viewer::TextAlignment::LEFT,
-            Graphics::Viewer::Font::MAO,
-            std::array<float, 3>({0, 0, 0}),
-            0.5f,
-            false);
-        _graphics_scene->viewer()->enableMouseInteraction(_config->enableMouseInteraction());
+        static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->registerSimulation(this);
+        static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->addText("time", "Sim Time: 0.000 s", 10.0f, 10.0f, 15.0f,
+            Graphics::Viewer::TextAlignment::LEFT, Graphics::Viewer::Font::MAO,
+            std::array<float, 3>({0, 0, 0}), 0.5f, false);
+        static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->enableMouseInteraction(_config->enableMouseInteraction());
     }
+#endif
 
     // create objects from YAML
     auto& object_configs = _config->objectConfigs();
@@ -2351,13 +2333,13 @@ void Simulation::setup()
         // Find objects named "Tumor" and "Brain"
         FirstOrderXPBDMeshObject_Base* cube1_ptr = nullptr;
         FirstOrderXPBDMeshObject_Base* cube2_ptr = nullptr;
-        
+
         for (auto& fo_uptr : fo_xpbd_objs) {
             FirstOrderXPBDMeshObject_Base* fo_base_ptr = fo_uptr.get();
             if (!fo_base_ptr) continue;
-            
+
             std::cout << "[inter-deform adhesion] Found object: " << fo_base_ptr->name() << "\n";
-            
+
             if (fo_base_ptr->name() == "Tumor") {
                 cube1_ptr = fo_base_ptr;
                 std::cout << "[inter-deform adhesion] ✅ Found Tumor\n";
@@ -3970,11 +3952,13 @@ void Simulation::_timeStep()
 
 void Simulation::_updateGraphics()
 {
-    if (_graphics_scene)
+#ifndef NO_GRAPHICS
+    if (_graphics_scene_raw)
     {
-        _graphics_scene->update();
-        _graphics_scene->viewer()->editText("time", "Sim Time: " + std::to_string(_time) + " s");
+        static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->update();
+        static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->viewer()->editText("time", "Sim Time: " + std::to_string(_time) + " s");
     }
+#endif
 }
 
 void Simulation::notifyKeyPressed(SimulationInput::Key key, SimulationInput::KeyAction action, int /* modifiers */)
@@ -4031,14 +4015,16 @@ int Simulation::run()
         update_thread = std::thread(&Simulation::update, this);
     }
 
-    if (_graphics_scene)
+#ifndef NO_GRAPHICS
+    if (_graphics_scene_raw)
     {
-        _graphics_scene->run();
+        static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->run();
         if (update_thread.joinable())
             update_thread.join();
         return 0;
     }
     else
+#endif
     {
         update_thread.join();
         return 0;

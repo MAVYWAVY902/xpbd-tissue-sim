@@ -109,7 +109,7 @@ class XPBDMeshObjectConfig : public ObjectConfig, public MeshObjectConfig
         _residual_policy.value = residual_policy;
     }
 
-    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
+    std::unique_ptr<ObjectType> createObject(const Sim::PhysicsContext* sim) const;
 
     // Getters
     bool selfCollisions() const { return _self_collisions.value; }

@@ -1,0 +1,440 @@
+#ifndef __XPBD_MESH_OBJECT_HPP
+#define __XPBD_MESH_OBJECT_HPP
+
+// #include "config/XPBDMeshObjectConfig.hpp"
+// #include "simobject/Object.hpp"
+// #include "simobject/MeshObject.hpp"
+#include "simobject/XPBDMeshObjectBase.hpp"
+#include "simobject/ElasticMaterial.hpp"
+#include "common/XPBDTypedefs.hpp"
+#include "solver/constraint/NerveStretchConstraint.hpp"
+#include "solver/constraint/InterDeformUnifiedDistanceConstraint.hpp"
+
+// #include "solver/XPBDSolverUpdates.hpp"
+
+#include "common/VariadicVectorContainer.hpp"
+#include "common/TypeList.hpp"
+
+#include "geometry/AABB.hpp"
+#include "geometry/Mesh.hpp"
+#include "geometry/MeshSDF.hpp"
+
+#ifdef HAVE_CUDA
+#include "gpu/resource/XPBDMeshObjectGPUResource.hpp"
+#endif
+
+namespace Sim
+{
+
+class RigidObject;
+
+/** A class for solving the dynamics of elastic, highly deformable materials with the XPBD method described in
+ *  "A Constraint-based Formulation of Stable Neo-Hookean Materials" by Macklin and Muller (2021).
+ *  Refer to the paper and preceding papers for details on the XPBD approach.
+ */
+template<bool IsFirstOrder, typename SolverType, typename ConstraintTypeList> class XPBDMeshObject_;
+
+template<typename SolverType, typename ConstraintTypeList>
+using XPBDMeshObject = XPBDMeshObject_<false, SolverType, ConstraintTypeList>;
+
+template<typename SolverType, typename ConstraintTypeList>
+using FirstOrderXPBDMeshObject = XPBDMeshObject_<true, SolverType, ConstraintTypeList>;
+
+// TODO: should the template parameters be SolverType, XPBDMeshObjectConstraintConfiguration?
+// if we have an XPBDObject base class that is templated with <SolverType, ...ConstraintTypes>, we can get constraints from XPBDMeshObjectConstraintConfiguration
+// this way, we can use if constexpr (std::is_same_v<XPBDMeshObjectConstraintConfiguration, XPBDMeshObjectConstraintConfigurations::StableNeohookean) which is maybe a more direct comparison
+//  instead of using a variant variable
+template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
+class XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>> : public XPBDMeshObject_Base_<IsFirstOrder>
+{
+    using Base = XPBDMeshObject_Base_<IsFirstOrder>;
+    // bring members and methods of base class into current scope (then we don't have to use this-> everywhere)
+    // methods
+    using Base::fixVertex;
+    using Base::vertexFixed;
+    using Base::vertexMass;
+    using Base::vertexVelocity;
+    using Base::vertexPreviousPosition;
+    using Base::vertexConstraintInertia;
+
+    using Base::tetMesh;
+    using Base::loadAndConfigureMesh;
+    // members
+    using Base::_previous_vertices;
+    using Base::_vertex_velocities;
+    using Base::_initial_velocity;
+    using Base::_materials;
+    using Base::_vertex_masses;
+    using Base::_vertex_volumes;
+    using Base::_is_fixed_vertex;
+    using Base::_sdf;
+    using Base::_damping_multiplier;
+    using Base::_adjust_b_to_material;
+    using Base::_vertex_B;
+
+    using Base::_mesh;
+
+    using Base::_sim;
+   #ifdef HAVE_CUDA
+    friend class XPBDMeshObjectGPUResource;
+   #endif
+    public:
+    using SDFType = typename Base::SDFType;
+    using ConfigType =  typename Base::ConfigType;
+
+    public:
+    virtual void getAdhesionConstraintLines(std::vector<std::pair<Vec3r, Vec3r>>& lines) const override;
+    
+    /** Creates a new XPBDMeshObject from a YAML config node
+     * @param name : the name of the new XPBDMeshObject
+     * @param config : the YAML node dictionary describing the parameters for the new XPBDMeshObject
+     */
+    // TODO: parameter pack in constructor for ConstraintTypes type deduction. Maybe move this to XPBDMeshObjectConfig?
+    explicit XPBDMeshObject_(const Simulation* sim, const ConfigType* config);
+
+    virtual ~XPBDMeshObject_();
+
+    virtual std::string toString(const int indent) const override;
+    virtual std::string type() const override { return "XPBDMeshObject"; }
+
+    /** Performs any one-time setup that needs to be done outside the constructor. */
+    virtual void setup() override;
+
+    /** Steps forward one time step. */
+    virtual void update() override;
+
+    virtual void velocityUpdate() override;
+
+    /** Returns the AABB around this object. */
+    virtual Geometry::AABB boundingBox() const override;
+
+    /** === Adding/removing additional constraints === */
+
+    /** Adds a collision constraint between a face on this object and a point on a static object in the scene.
+     * @param sdf : the SDF of the static object
+     * @param surface_point : the surface point on the static object
+     * @param collision_normal : the collision normal
+     * @param face_ind : the index of the face in collision
+     * @param u,v,w : the barycentric coordinates of the point on the face in collision
+     * @returns a reference to the constraint projector that was added for the collision constraint
+     */
+    virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::StaticDeformableCollisionConstraint>>
+    addStaticCollisionConstraint(const Geometry::SDF* sdf, const Vec3r& surface_point, const Vec3r& collision_normal,
+        int face_ind, const Real u, const Real v, const Real w) override;
+
+    /** Adds a collision constraint between a face on this object and a point on a rigid object in the scene.
+     * @param sdf : the SDF of the rigid object
+     * @param rigid_obj : a pointer to the rigid object in collision
+     * @param rigid_body_point : the surface point on the rigid object in collision (global coordinates)
+     * @param collision_normal : the collision normal
+     * @param face_ind : the index of the face in collision
+     * @param u,v,w : the barycentric coordinates of the point on the face in collision
+     * @returns a reference to the constraint projector that was added for the collision constraint
+     */
+    virtual Solver::ConstraintProjectorReference<Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformableCollisionConstraint>>
+    addRigidDeformableCollisionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj, const Vec3r& rigid_body_point, const Vec3r& collision_normal,
+        int face_ind, const Real u, const Real v, const Real w) override;
+
+    /** Adds a collision constraint between a vertex on this object and a face on another deformable object.
+     * This is for INTER-OBJECT deformable-deformable collision (separate from self-collision).
+     * 
+     * @param vertex_index : the index of the vertex on THIS object that is colliding
+     * @param other_face_v1, other_face_v2, other_face_v3 : indices of the triangle vertices on the OTHER object
+     * @param other_v1_ptr, other_v2_ptr, other_v3_ptr : pointers to the triangle vertex positions on the OTHER object
+     * @param other_m1, other_m2, other_m3 : inverse masses of the triangle vertices on the OTHER object
+     * @returns a reference to the constraint projector that was added for the inter-object collision constraint
+     */
+    virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::InterObjectDeformableCollisionConstraint>>
+    addInterObjectCollisionConstraint(int vertex_index,
+                                      int other_face_v1, Real* other_v1_ptr, Real other_m1,
+                                      int other_face_v2, Real* other_v2_ptr, Real other_m2,
+                                      int other_face_v3, Real* other_v3_ptr, Real other_m3);
+
+    /** Clears all collision constraints that are on this object. */
+    virtual void clearCollisionConstraints() override;
+
+    /** Clears all adhesion constraints that are on this object. */
+    virtual void clearAdhesionConstraints() override;
+    
+    /** Clear all attachment constraints */
+    virtual void clearAttachmentConstraints();
+
+    /** Checks and removes adhesion constraints that should break based on distance threshold. */
+    virtual void checkAndBreakAdhesionConstraints(Real break_distance);
+    
+    /** Check if any adhesion constraints have attachment points near/inside an SDF and break them
+     * This is used for knife cutting - when knife penetrates near the rigid body attachment point, break the constraint
+     * @param sdf - SDF of the cutting tool (e.g., knife)
+     * @param threshold - distance threshold for breaking (e.g., 3mm)
+     * @return number of constraints broken
+     */
+    virtual int checkAndBreakConstraintsNearSDF(const Geometry::MeshSDF* sdf, Real threshold);
+    
+    /** @returns the number of inter-deform adhesion constraints currently active on this object */
+    virtual int numInterDeformAdhesionConstraints() const override;
+    
+    /** Collects adhesion constraint forces for all vertices in this mesh.
+     * @param vertex_forces (OUTPUT) - vector to accumulate adhesion forces, sized to match mesh vertices
+     * @param vertex_offset - offset to apply to vertex indices (for multi-object scenarios)
+     */
+    virtual void collectAdhesionForces(std::vector<Vec3r>& vertex_forces, int vertex_offset = 0) const override;
+    
+    /** Collects inter-deformable adhesion constraint states for offline analysis.
+     * @param adhesion_states (OUTPUT) - vector to append inter-deform adhesion states
+     */
+    virtual void collectInterDeformAdhesionStates(std::vector<Sim::InterDeformAdhesionState>& adhesion_states) const override;
+    
+    /** Collects rigid-deformable adhesion constraint states for offline analysis.
+     * @param adhesion_states (OUTPUT) - vector to append rigid-deform adhesion states
+     */
+    virtual void collectRigidDeformAdhesionStates(std::vector<Sim::RigidDeformAdhesionState>& adhesion_states) const override;
+    
+    /** Adds an attachment constraint applied to the vertex at the specified index. TODO: clean this up a bit? The Vec3r pointer is a bit gross.
+     * @param v_ind : the index of the vertex
+     * @param attach_pos_ptr : a pointer to the position for the vertex to be attached to
+     * @param attachment_offset : an optional offset between the attachment position and the vertex. The vertex position will be (*attach_pos_ptr + attachment_offset).
+     */
+    virtual Solver::ConstraintProjectorReference<Solver::ConstraintProjector<IsFirstOrder, Solver::AttachmentConstraint>>  
+    addAttachmentConstraint(int v_ind, const Vec3r* attach_pos_ptr, const Vec3r& attachment_offset) override;
+
+
+
+    /** Adds a nerve-style stretch (distance) constraint between two vertices. */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::NerveStretchConstraint>>
+        addNerveStretchConstraint(int v0, int v1, Real rest_len, Real alpha);
+
+    /** Adds a nerve-style bending constraint between three consecutive vertices. */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::NerveBendingConstraint>>
+        addNerveBendingConstraint(int v0, int v1, int v2, Real rest_curvature = 0.0, Real alpha = 0.0);
+
+    /** Adds an adhesion constraint between a nerve vertex and tumor triangle face.
+     * @param nerve_obj - pointer to the nerve mesh object (to get vertex pointer and mass)
+     * @param nerve_v - nerve vertex index
+     * @param tri_v1, tri_v2, tri_v3 - tumor triangle vertex indices (from THIS object's mesh)
+     * @param rest_gap - rest separation distance
+     * @param break_ratio - strain threshold for breaking
+     * @param alpha - compliance parameter
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::NerveTumorAdhesionConstraint>>
+        addNerveTumorAdhesionConstraint(XPBDMeshObject_Base_<IsFirstOrder>* nerve_obj, int nerve_v,
+                                       int tri_v1, int tri_v2, int tri_v3, 
+                                       Real rest_gap, Real break_ratio, Real alpha = 0.0);
+
+    /** Adds an inter-object deformable adhesion constraint between a vertex from another object and a face from this object.
+     * This is a generalized adhesion constraint that works between any two deformable meshes.
+     * @param other_obj - pointer to the other deformable object containing the vertex
+     * @param vertex_v - vertex index from the OTHER object
+     * @param tri_v1, tri_v2, tri_v3 - triangle vertex indices from THIS object's mesh
+     * @param rest_gap - rest separation distance
+     * @param break_ratio - strain threshold for breaking
+     * @param alpha - compliance parameter
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformDeformAdhesionConstraint>>
+        addInterDeformDeformAdhesionConstraint(XPBDMeshObject_Base_<IsFirstOrder>* other_obj, int vertex_v,
+                                              int tri_v1, int tri_v2, int tri_v3, 
+                                              Real rest_gap, Real break_ratio, Real alpha = 0.0);
+
+    /** Adds a rigid-deformable adhesion constraint between a rigid body point and a face on this object.
+     * This enables adhesion between a rigid object and a deformable mesh.
+     * @param sdf - SDF of the rigid object
+     * @param rigid_obj - pointer to the rigid object
+     * @param rigid_body_point - attachment point on rigid body (in body coordinates)
+     * @param tri_v1, tri_v2, tri_v3 - triangle vertex indices from THIS object's mesh
+     * @param rest_gap - rest separation distance
+     * @param break_ratio - strain threshold for breaking
+     * @param alpha - compliance parameter
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::RigidDeformAdhesionConstraint>>
+        addRigidDeformAdhesionConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj,
+                                        const Vec3r& rigid_body_point,
+                                        int tri_v1, int tri_v2, int tri_v3,
+                                        Real rest_gap, Real break_ratio, Real alpha = 0.0);
+
+    /** Add unified distance constraint (replaces separate collision + adhesion).
+     * This constraint smoothly transitions between repulsion, neutral, and attraction
+     * using a validated mathematical curve (no dead zones, monotonic).
+     * 
+     * @param sdf - SDF of rigid object
+     * @param rigid_obj - pointer to rigid object
+     * @param rigid_body_point - point on rigid body (body coordinates)
+     * @param tri_v1, tri_v2, tri_v3 - triangle vertex indices on THIS deformable object
+     * @param alpha - compliance parameter (stiffness control)
+     * @param break_ratio - break when distance > initial_distance * break_ratio
+     * @param initial_distance - precomputed initial distance
+     * @param d_contact, d_rest, d_neutral_start, d_neutral_end, d_bond - curve parameters
+     * @return Reference to the created constraint projector
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::RigidBodyConstraintProjector<IsFirstOrder, Solver::UnifiedDistanceConstraint>>
+        addUnifiedDistanceConstraint(const Geometry::SDF* sdf, Sim::RigidObject* rigid_obj,
+                                     const Vec3r& rigid_body_point,
+                                     int tri_v1, int tri_v2, int tri_v3,
+                                     Real alpha = 0.0,
+                                     Real break_ratio = 3.0,  // Default: break at 200% strain (3x initial)
+                                     Real initial_distance = 0.0,  // Precomputed initial distance
+                                     Real d_contact = 0.018,  // Curve parameters with defaults
+                                     Real d_rest = 0.028,
+                                     Real d_neutral_start = 0.034,
+                                     Real d_neutral_end = 0.038,
+                                     Real d_bond = 0.058,
+                                     Real stretch_abs_min = 0.005);  // Absolute minimum stretch tolerance
+    
+    /** Adds a unified distance constraint between deformable objects (vertex-to-triangle).
+     * Similar to rigid-deform UnifiedDistanceConstraint but for deform-deform pairs.
+     * Uses smooth curve (hard repulsion → smooth blending → exponential approach → bond)
+     * with point-to-point fixation (frozen barycentric coordinates).
+     * 
+     * @param other_obj : Pointer to the other deformable object (contains the vertex)
+     * @param vertex_v : Vertex index on the other object
+     * @param tri_v1, tri_v2, tri_v3 : Triangle vertex indices on THIS object
+     * @param alpha : Constraint stiffness/compliance parameter
+     * @param break_ratio : Strain ratio at which constraint breaks (e.g., 3.0 = 200% strain)
+     * @param initial_distance : Precomputed initial distance at constraint creation
+     * @param d_contact : Hard contact distance (repulsion zone)
+     * @param d_rest : Rest distance (target equilibrium)
+     * @param d_neutral_start : Start of neutral zone
+     * @param d_neutral_end : End of neutral zone
+     * @param d_bond : Maximum bond distance
+     * @param stretch_abs_min : Absolute minimum stretch tolerance before breaking
+     * @return Reference to the created constraint projector
+     */
+    virtual Solver::ConstraintProjectorReference<
+        Solver::ConstraintProjector<IsFirstOrder, Solver::InterDeformUnifiedDistanceConstraint>>
+        addInterDeformUnifiedDistanceConstraint(XPBDMeshObject_Base_<IsFirstOrder>* other_obj,
+                                                int vertex_v,
+                                                int tri_v1, int tri_v2, int tri_v3,
+                                                Real alpha = 0.0,
+                                                Real break_ratio = 3.0,
+                                                Real initial_distance = 0.0,
+                                                Real d_contact = 0.0003,
+                                                Real d_rest = 0.0015,
+                                                Real d_neutral_start = 0.003,
+                                                Real d_neutral_end = 0.005,
+                                                Real d_bond = 0.015,
+                                                Real stretch_abs_min = 0.003);
+    
+    /** Updates vertex properties to mark which vertices have ACTIVE adhesion constraints.
+     * This enables per-vertex color visualization in the graphics system.
+     * Active vertices are marked green, inactive vertices become black.
+     */
+    virtual void updateAdhesionVisualizationMarkers() override;
+    
+    virtual bool interObjectCollisionsEnabled() const override { return _inter_object_collisions; }
+
+    /** === Querying the solver === */
+
+    /** @returns the constraint configuration type of this XPBD mesh object */
+    XPBDMeshObjectConstraintConfigurationEnum constraintType() const { return _constraint_type; }
+
+    /** @returns the most recently calculated primary residual from the solver object */
+    virtual VecXr lastPrimaryResidual() const override { return _solver.primaryResidual(); };
+
+    /** @returns the most recently calculated constraint residual from the solver object */
+    virtual VecXr lastConstraintResidual() const override { return _solver.constraintResidual(); }
+
+    /** === Miscellaneous useful methods === */
+
+    /** Computes the total strain energy associated with elastic deformation.
+    */
+    virtual Real totalStrainEnergy() const override;
+
+    /** Computes the elastic force on the vertex at the specified index. This is essentially just the current constraint force for all "elastic" constraints
+     * that affect the specified vertex. An "elastic" constraint is one that is internal to the mesh and corresponds to the mechanics of the mesh material.
+     * @param index : the index of the vertex
+     * @returns the elastic force vector on the vertex at the specified index
+     */
+    virtual Vec3r elasticForceAtVertex(int index) const override;
+
+    /** Computes the current global stiffness matrix of the mesh. This is done with a first-order approximation of delC^T * alpha * delC.
+     * @returns the global stiffness matrix
+     */
+    virtual MatXr stiffnessMatrix() const override;
+
+    /** Performs a check for self collision.
+     * If any surface vertices are inside tetrahedra (queries made using Embree), add a collision constraint to fix that.
+     * Assumes that the Embree scene is up to date.
+     */
+    virtual void selfCollisionCheck() override;
+
+
+ #ifdef HAVE_CUDA
+    virtual void createGPUResource() override;
+    virtual XPBDMeshObjectGPUResource* gpuResource() override;
+    virtual const XPBDMeshObjectGPUResource* gpuResource() const override;
+ #endif
+
+    protected:
+    /** Moves the vertices in the absence of constraints.
+     * i.e. according to their current velocities and the external forces applied to them
+     */
+    virtual void _movePositionsInertially();
+
+    /** Projects the constraints onto the inertial positions and updates the mesh positions accordingly to satisfy the constraints.
+     * Uses the XPBD algorithm to perform the constraint projection.
+     */
+    void _projectConstraints();
+
+    /** Update the velocities based on the updated positions.
+     */
+    // void _updateVelocities();
+
+    virtual void _calculatePerVertexQuantities();
+
+    /** Creates constraints according to the constraint type.
+     */
+    void _createElasticConstraints();
+
+    /** Assembles a vector of constraint projector references corresponding to constraints that are nearby active collision constraints.
+     * These are then passed to the solver to re-project and update the mesh.
+     * We also include all collision constraints (including currently inactive ones) to maintain a consistent contact manifold.
+     * 
+     * "Nearby" constraints are those that share a vertex with an active collision constraint. E.g., the hydrostatic and deviatoric constraints
+     * for all elements that share a vertex with an active collision constraint.
+     * 
+     * We are not concerned with duplicate constraint projectors in this vector since we are doing multiple iterations anyways - probably just
+     * faster to add all constraint projectors than try and make a unique set.
+     */
+    typename SolverType::projector_reference_container_type _gatherProjectorsForLocalCollisionIterations();
+
+    protected:
+    // fixed vertices specified in config (applied during setup)
+    std::vector<int> _initial_fixed_vertices;
+    /** The specific constraint configuration used to define internal constraints for the XPBD mesh. Set by the Config object
+     * TODO: is this necessary? Should XPBDMeshObjectConstraintConfiguration be a struct that can create the elastic constraints for the mesh?
+     */
+    XPBDMeshObjectConstraintConfigurationEnum _constraint_type;
+
+    /** Flag indicating if inter-object collision detection is enabled for this object */
+    bool _inter_object_collisions = false;  // default to false
+
+    /** The XPBD solver. Responsible for iterating through constraints and computing the XPBD positional updates.
+     * The XPBD projection is implemented in ConstraintProjector. The solver is just responsible for iterating/aggregating and 
+     * applying the results from the XPBD projections.
+     */
+    SolverType _solver;
+
+    /** A heterogeneous container of all the constraints.
+     */
+    VariadicVectorContainer<ConstraintTypes...> _constraints;
+
+    /** The number of local iterations for collision area.
+     * Constraint projectors in the vicinity of active collision constraints (see _gatherProjectorsForLocalCollisionIterations) are assembled
+     * and re-projected multiple times, which helps propagate the deformation imposed by collision constraints to the rest of the mesh.
+     * Called "local" iterations since only a subset of the constraint projectors are being re-projected.
+     * 
+     * This is set by the config object.
+     */
+    int _num_local_collision_iters;
+
+    /** The filename that has information about which class each element belongs to. Set by the config. */
+    std::optional<std::string> _element_classes_filename;
+};
+
+} // namespace Sim
+
+#endif // __XPBD_MESH_OBJECT_HPP

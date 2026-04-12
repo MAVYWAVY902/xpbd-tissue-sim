@@ -137,10 +137,8 @@ public:
     MeshObject(const ConfigType* mesh_config, const Config::ObjectConfig* obj_config)
     {
         _filename = mesh_config->filename();
-
         _initial_position = obj_config->initialPosition();
         _initial_rotation = obj_config->initialRotation();
-
         _initial_size = mesh_config->size();
         _max_size     = mesh_config->maxSize();
         _use_original_coords = mesh_config->useOriginalCoords();

@@ -72,7 +72,7 @@ class VirtuosoRobotConfig : public ObjectConfig
         _optic_tilt.value = optic_tilt_deg;
     }
 
-    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
+    std::unique_ptr<ObjectType> createObject(const Sim::PhysicsContext* sim) const;
 
     const std::vector<VirtuosoArmConfig>& armConfigs() const { return _arm_configs; }
     Real endoscopeDiameter() const { return _endoscope_diameter.value; }

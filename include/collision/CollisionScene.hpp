@@ -36,7 +36,7 @@ class CollisionScene
 
     public:
     /** Constructor - needs a reference back to the simulation to access the time step, current sim time, etc. */
-    explicit CollisionScene(const Sim::Simulation* sim, Geometry::EmbreeScene* embree_scene);
+    explicit CollisionScene(const Sim::PhysicsContext* sim, Geometry::EmbreeScene* embree_scene);
 
     /** Adds a new object to the CollisionScene.
      * Creates a SDF for the object and adds the object's pointer to the vector of objects in the CollisionScene.
@@ -153,7 +153,7 @@ class CollisionScene
 
     protected:
     /** Non-owning pointer to the Simulation object that this CollisionScene belongs to */
-    const Sim::Simulation* _sim;
+    const Sim::PhysicsContext* _sim;
 
     /** Stores the objects that have been added to the collision scene. */
     ObjectVectorType _objects;

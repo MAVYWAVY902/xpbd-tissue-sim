@@ -23,7 +23,7 @@ std::map<VirtuosoArm::ToolType, VirtuosoArmTool> VirtuosoArm::TOOL_TYPE_TO_STRUC
     };
 
 
-VirtuosoArm::VirtuosoArm(const Simulation* sim, const ConfigType* config)
+VirtuosoArm::VirtuosoArm(const PhysicsContext* sim, const ConfigType* config)
     : Object(sim, config), _ot_frames(), _it_frames()
 {
     _it_outer_dia = config->innerTubeOuterDiameter();

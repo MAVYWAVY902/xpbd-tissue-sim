@@ -16,7 +16,8 @@
 
 #include "config/simulation/SimulationConfig.hpp"
 #include "collision/CollisionScene.hpp"
-#include "graphics/GraphicsScene.hpp"
+// Forward declaration only — full header included in Simulation.cpp
+namespace Graphics { class GraphicsScene; }
 #include "geometry/embree/EmbreeScene.hpp"
 
 #include "common/VariadicVectorContainer.hpp"
@@ -35,7 +36,7 @@ namespace Sim
  * Owns the Objects, keeps track fo the sim time, etc.
  * 
  */
-class Simulation
+class Simulation : public PhysicsContext
 {
     public:
     using ObjectVectorType = VariadicVectorContainerFromTypeList<SimulationObjectTypes>::unique_ptr_type;
@@ -54,6 +55,7 @@ class Simulation
 
     public:
         explicit Simulation(const Config::SimulationConfig* config);
+        virtual ~Simulation();  // defined in .cpp (needs complete GraphicsScene type)
 
 
     protected:
@@ -88,7 +90,9 @@ class Simulation
         
         const Config::SimulationConfig* config() const { return _config; }
 
-        const Graphics::GraphicsScene* graphicsScene() const { return _graphics_scene.get(); }
+        const Graphics::GraphicsScene* graphicsScene() const {
+            return static_cast<const Graphics::GraphicsScene*>(_graphics_scene_raw);
+        }
         const Geometry::EmbreeScene* embreeScene() const { return _embree_scene.get(); }
         void updateEmbreeScene() { _embree_scene->update(); }
         const CollisionScene* collisionScene() const { return _collision_scene.get(); }
@@ -224,12 +228,12 @@ class Simulation
             }
             
             // add the new object to the graphics scene to be visualized
-            if (_graphics_scene)
+#ifndef NO_GRAPHICS
+            if (_graphics_scene_raw)
             {
-                std::cout << "[sim] DEBUG: About to add object '" << obj_config->name() << "' to graphics scene...\n" << std::flush;
-                _graphics_scene->addObject(new_obj.get(), obj_config->renderConfig());
-                std::cout << "[sim] DEBUG: Successfully added '" << obj_config->name() << "' to graphics scene!\n" << std::flush;
+                static_cast<Graphics::GraphicsScene*>(_graphics_scene_raw)->addObject(new_obj.get(), obj_config->renderConfig());
             }
+#endif
 
             // if we get to here, we have successfully created a new MeshObject of some kind
             // so add the new object to the simulation
@@ -312,7 +316,9 @@ class Simulation
         std::unique_ptr<CollisionScene> _collision_scene;
 
         /** Manages graphics objects and displaying things to the screen. */
-        std::unique_ptr<Graphics::GraphicsScene> _graphics_scene;
+        // When NO_GRAPHICS: stored as void* (same 8 bytes, no complete type needed)
+        // When full build: Simulation.cpp casts this back to GraphicsScene*
+        void* _graphics_scene_raw = nullptr;
 
         /** Embree is used to make some ray-tracing and collision queries.
          * The EmbreeScene acts as an interface between the Simulation and the Embree library.

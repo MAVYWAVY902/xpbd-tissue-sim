@@ -47,7 +47,7 @@ namespace Sim
 {
 
 template<bool IsFirstOrder>
-XPBDMeshObject_Base_<IsFirstOrder>::XPBDMeshObject_Base_(const Simulation* sim, const ConfigType* config)
+XPBDMeshObject_Base_<IsFirstOrder>::XPBDMeshObject_Base_(const PhysicsContext* sim, const ConfigType* config)
     : Object(sim, config), TetMeshObject(config, config)
 {
     for (const auto& mat_name : config->materials())
@@ -78,7 +78,7 @@ void XPBDMeshObject_Base_<IsFirstOrder>::createSDF()
 ////////////////////////////////////////////////////////////////////////////////////
 
 template<bool IsFirstOrder, typename SolverType, typename... ConstraintTypes>
-XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject_(const Simulation* sim, const ConfigType* config)
+XPBDMeshObject_<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>::XPBDMeshObject_(const PhysicsContext* sim, const ConfigType* config)
     : XPBDMeshObject_Base_<IsFirstOrder>(sim, config),
         _solver(this, config->numSolverIters(), config->residualPolicy())
 {
@@ -2661,7 +2661,7 @@ template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::Jacobi, Fir
 template class XPBDMeshObject_<true, FirstOrderSolverTypesNerveOnly::ParallelJacobi, FirstOrderNerveOnlyConstraints>;
 
 // CTAD
-// template<typename SolverType, typename ...ConstraintTypes> XPBDMeshObject(TypeList<ConstraintTypes...>, const Simulation*, const XPBDMeshObjectConfig* config)
+// template<typename SolverType, typename ...ConstraintTypes> XPBDMeshObject(TypeList<ConstraintTypes...>, const PhysicsContext*, const XPBDMeshObjectConfig* config)
 //     -> XPBDMeshObject<IsFirstOrder, SolverType, TypeList<ConstraintTypes...>>;
 
 } // namespace Sim

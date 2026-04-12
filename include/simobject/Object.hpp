@@ -8,6 +8,7 @@
 #include "geometry/AABB.hpp"
 #include "geometry/SDF.hpp"
 #include "config/simobject/ObjectConfig.hpp"
+#include "simulation/PhysicsContext.hpp"
 
 #ifdef HAVE_CUDA
 #include "gpu/resource/GPUResource.hpp"
@@ -16,6 +17,7 @@
 namespace Sim
 {
 
+// Keep forward declaration for backward compatibility
 class Simulation;
 
 class Object
@@ -25,7 +27,7 @@ class Object
     using ConfigType = Config::ObjectConfig;
 
     public:
-    Object(const Simulation* sim, const ConfigType* config)
+    Object(const PhysicsContext* sim, const ConfigType* config)
         : _name(config->name()), _sim(sim)
     {}
 
@@ -45,8 +47,8 @@ class Object
     /** Returns the name of this object. */
     std::string name() const { return _name; }
 
-    /** The simulation that this object belongs to. */
-    const Simulation* sim() const { return _sim; }
+    /** The physics context that this object belongs to. */
+    const PhysicsContext* sim() const { return _sim; }
 
     /** Performs any necessary setup for this object.
      * Called after instantiation (i.e. outside the constructor) and before update() is called for the first time.
@@ -77,10 +79,10 @@ class Object
     /** Name of the object */
     std::string _name;
 
-    /** Pointer to the Simulation object that created this Object.
-     * Useful for querying things like current sim time, sim time step, or acceleration due to gravity.
+    /** Pointer to the physics context (Simulation or standalone).
+     * Provides time step, gravity, materials, and embree scene.
     */
-    const Simulation* _sim;
+    const PhysicsContext* _sim;
 
 #ifdef HAVE_CUDA
     std::unique_ptr<HostReadableGPUResource> _gpu_resource;

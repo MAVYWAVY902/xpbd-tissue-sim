@@ -20,7 +20,7 @@ class RigidMeshObject : public RigidObject, public MeshObject
     using ConfigType = Config::RigidMeshObjectConfig;
 
     public:
-    RigidMeshObject(const Simulation* sim, const ConfigType* config);
+    RigidMeshObject(const PhysicsContext* sim, const ConfigType* config);
 
     virtual std::string type() const override { return "RigidMeshObject"; }
 

@@ -49,7 +49,7 @@ class FirstOrderXPBDMeshObjectConfig : public XPBDMeshObjectConfig
         _adjust_damping_to_material.value = adjust_damping_to_material;
     }
 
-    std::unique_ptr<ObjectType> createObject(const Sim::Simulation* sim) const;
+    std::unique_ptr<ObjectType> createObject(const Sim::PhysicsContext* sim) const;
 
     Real dampingMultiplier() const { return _damping_multiplier.value; }
     bool adjustDampingToMaterial() const { return _adjust_damping_to_material.value; }
